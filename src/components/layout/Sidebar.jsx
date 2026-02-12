@@ -5,6 +5,7 @@ import {
   Business as BusinessIcon,
   EmojiEvents as EmojiEventsIcon,
   AddCircleOutline as AddIcon,
+  LocationCity as LocationCityIcon,
 } from "@mui/icons-material";
 import { useAuth } from "../../auth/AuthContext";
 import { ROLES } from "../../auth/roles";
@@ -55,6 +56,13 @@ export default function Sidebar() {
           <NavLink to="/rep-management" className={linkClass}>
             <BusinessIcon fontSize="small" />
             REP Management
+          </NavLink>
+        )}
+
+        {canAccessTrialManagement && (
+          <NavLink to="/trial-cities" className={linkClass}>
+            <LocationCityIcon fontSize="small" />
+            Trial Cities
           </NavLink>
         )}
       </nav>

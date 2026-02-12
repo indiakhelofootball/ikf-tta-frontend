@@ -26,6 +26,7 @@ import {
 } from '@mui/icons-material';
 import { State, City } from 'country-state-city';
 import { generateTrialCityCode } from '../../utils/codeGenerator';
+import { repAPI } from '../../services/api';
 
 function CityModal({ open, onClose, onSave, editingCity, existingCities }) {
   const isEditMode = !!editingCity;
@@ -57,7 +58,8 @@ function CityModal({ open, onClose, onSave, editingCity, existingCities }) {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [loadingCities, setLoadingCities] = useState(false);
-  const [formError, setFormError] = useState(''); // NEW: For general form errors
+  const [formError, setFormError] = useState('');
+  const [repOptions, setRepOptions] = useState([]);
 
   // Load cities when state changes
   useEffect(() => {
@@ -78,6 +80,20 @@ function CityModal({ open, onClose, onSave, editingCity, existingCities }) {
       setAvailableCities([]);
     }
   }, [formData.stateCode]);
+
+  // Load active REPs when modal opens
+  useEffect(() => {
+    if (open) {
+      repAPI.getAll({ status: 'Active' })
+        .then(data => {
+          setRepOptions(data.reps || []);
+        })
+        .catch(err => {
+          console.error('Error loading REPs:', err);
+          setRepOptions([]);
+        });
+    }
+  }, [open]);
 
   useEffect(() => {
     if (open) {
@@ -557,9 +573,11 @@ function CityModal({ open, onClose, onSave, editingCity, existingCities }) {
                 disabled={saving}
               >
                 <MenuItem value=""><em>Select</em></MenuItem>
-                <MenuItem value="Sports Academy Mumbai">Sports Academy Mumbai</MenuItem>
-                <MenuItem value="Delhi Football Club">Delhi Football Club</MenuItem>
-                <MenuItem value="Bangalore Sports Hub">Bangalore Sports Hub</MenuItem>
+                {repOptions.map((rep) => (
+                  <MenuItem key={rep.id} value={rep.repName}>
+                    {rep.repName}
+                  </MenuItem>
+                ))}
               </TextField>
             </Grid>
 

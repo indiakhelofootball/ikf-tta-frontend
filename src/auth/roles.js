@@ -156,24 +156,3 @@ export const ROLE_PERMISSIONS = {
   },
 };
 
-// 🔹 DUMMY USERS (frontend only)
-export const DUMMY_USERS = [
-  {
-    email: "superadmin@ikf.com",
-    password: "123456",
-    role: ROLES.SUPER_ADMIN,
-    name: "Khushboo",
-  },
-  {
-    email: "admin@ikf.com",
-    password: "123456",
-    role: ROLES.ADMIN,
-    name: "Admin User",
-  },
-  {
-    email: "rep@ikf.com",
-    password: "123456",
-    role: ROLES.REP,
-    name: "REP User",
-  },
-];

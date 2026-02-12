@@ -13,6 +13,7 @@ import DashboardLayout from "./components/layout/DashboardLayout";
 import DashboardHome from "./components/dashboard/DashboardHome";
 import REPManagementPage from "./components/rep/REPManagementPage";
 import { TrialManagementPage, TrialWizard } from "./components/trials";
+import { TrialCitiesPage } from "./components/trialCities";
 import { ProfilePage } from "./components/profile";
 
 // Import error handling components
@@ -83,6 +84,11 @@ function App() {
             <Route path="/rep-management" element={
               <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
                 <REPManagementPage />
+              </RoleBasedRoute>
+            } />
+            <Route path="/trial-cities" element={
+              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+                <TrialCitiesPage />
               </RoleBasedRoute>
             } />
             <Route path="/profile" element={<ProfilePage />} />

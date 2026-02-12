@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(dir:*)",
-      "Bash(npm start)",
-      "Bash(npx react-scripts build:*)"
-    ]
-  }
-}
