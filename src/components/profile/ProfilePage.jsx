@@ -38,15 +38,17 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
 
-  // Load saved profile data
+  // Load saved profile data (per-user key matches AuthContext)
   useEffect(() => {
-    const savedProfile = localStorage.getItem('userProfile');
+    if (!user?.email) return;
+    const profileKey = `tta_profile_${user.email}`;
+    const savedProfile = localStorage.getItem(profileKey);
     if (savedProfile) {
       const profile = JSON.parse(savedProfile);
       setFormData({
         name: profile.name || '',
         designation: profile.designation || '',
-        email: profile.email || user?.email || '',
+        email: user.email,
         phone: profile.phone || '',
         department: profile.department || '',
         location: profile.location || '',
@@ -55,10 +57,10 @@ export default function ProfilePage() {
         setImagePreview(profile.profileImage);
       }
     } else {
-      // Set default email from user
       setFormData(prev => ({
         ...prev,
-        email: user?.email || '',
+        name: user.name || '',
+        email: user.email,
       }));
     }
   }, [user]);
@@ -105,8 +107,9 @@ export default function ProfilePage() {
         updatedAt: new Date().toISOString(),
       };
 
-      // Save to localStorage
-      localStorage.setItem('userProfile', JSON.stringify(profileData));
+      // Save to localStorage (per-user key matches AuthContext)
+      const profileKey = `tta_profile_${user.email}`;
+      localStorage.setItem(profileKey, JSON.stringify(profileData));
 
       // Update auth context
       if (updateUserProfile) {

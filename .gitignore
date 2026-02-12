@@ -37,6 +37,15 @@ bower_components
 # Compiled binary addons (https://nodejs.org/api/addons.html)
 build/Release
 
+# React build output (built on server)
+build/
+
+# Backend code (separate repo)
+tta_backend/
+
+# Deploy scripts (separate or in backend)
+deploy/
+
 # Dependency directories
 node_modules/
 jspm_packages/

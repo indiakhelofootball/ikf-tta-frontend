@@ -1,5 +1,0 @@
-Django
-djangorestframework
-djangorestframework-simplejwt
-mysqlclient
-python-decouple

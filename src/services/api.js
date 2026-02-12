@@ -1,11 +1,11 @@
 // src/services/api.js
 // Production-Ready API service with smart mock handling
 
-// ⚠️ REPLACE THIS WITH YOUR BACKEND URL
-const API_BASE_URL = 'https://9f6372d6-08fd-49e7-b0f5-06d702338a1f.mock.pstmn.io/api';
+// Backend API URL — update for production
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
-// 🔧 DEVELOPMENT MODE: Set to false when real backend is ready
-const IS_USING_MOCK = true;
+// Set to false to use real backend
+const IS_USING_MOCK = false;
 
 // 🎭 MOCK USER DATABASE (Only used when IS_USING_MOCK = true)
 // Remove this entire section when switching to real backend

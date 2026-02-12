@@ -147,7 +147,11 @@ export const AuthProvider = ({ children }) => {
       console.log('👤 User logged in:', userWithProfile);
 
       // Store auth data (separate from profile)
-      localStorage.setItem("tta_token", response.token);
+      const accessToken = response.token || response.tokens?.access;
+      localStorage.setItem("tta_token", accessToken);
+      if (response.tokens?.refresh) {
+        localStorage.setItem("tta_refresh_token", response.tokens.refresh);
+      }
       localStorage.setItem("tta_user", JSON.stringify(userWithPermissions));
       localStorage.setItem("tta_login_time", Date.now().toString());
       localStorage.setItem("tta_remember_me", rememberMe.toString());
