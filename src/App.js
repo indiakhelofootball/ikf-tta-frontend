@@ -5,6 +5,8 @@ import { useAuth } from "./auth/AuthContext";
 
 import Login from "./auth/Login";
 import RequireAuth from "./auth/RequireAuth";
+import RoleBasedRoute from "./auth/RoleBasedRoute";
+import { ROLES } from "./auth/roles";
 import Unauthorized from "./components/Unauthorized";
 
 import DashboardLayout from "./components/layout/DashboardLayout";
@@ -68,9 +70,21 @@ function App() {
           {/* Dashboard layout routes (with sidebar) */}
           <Route element={<DashboardLayout />}>
             <Route path="/dashboard" element={<DashboardHome />} />
-            <Route path="/trials/create" element={<TrialWizard />} />
-            <Route path="/trials" element={<TrialManagementPage />} />
-            <Route path="/rep-management" element={<REPManagementPage />} />
+            <Route path="/trials/create" element={
+              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+                <TrialWizard />
+              </RoleBasedRoute>
+            } />
+            <Route path="/trials" element={
+              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+                <TrialManagementPage />
+              </RoleBasedRoute>
+            } />
+            <Route path="/rep-management" element={
+              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+                <REPManagementPage />
+              </RoleBasedRoute>
+            } />
             <Route path="/profile" element={<ProfilePage />} />
           </Route>
         </Route>
