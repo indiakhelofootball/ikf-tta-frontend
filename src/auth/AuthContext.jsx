@@ -56,7 +56,6 @@ export const AuthProvider = ({ children }) => {
       const storedProfile = localStorage.getItem(profileKey);
       
       if (storedProfile) {
-        console.log(`📥 Loading profile for ${userEmail}`);
         return JSON.parse(storedProfile);
       }
     } catch (error) {
@@ -73,7 +72,6 @@ export const AuthProvider = ({ children }) => {
       // Create unique key for this user's profile
       const profileKey = `tta_profile_${userEmail}`;
       localStorage.setItem(profileKey, JSON.stringify(profileData));
-      console.log(`💾 Saved profile for ${userEmail}`);
       return true;
     } catch (error) {
       console.error('Error saving profile:', error);
@@ -101,12 +99,8 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password, rememberMe = false) => {
     try {
-      console.log('🔐 Attempting login...');
-      
       // Call backend API
       const response = await api.login(email, password);
-
-      console.log('📥 Backend response:', response);
 
       // Check if login was successful
       if (!response.success) {
@@ -121,7 +115,6 @@ export const AuthProvider = ({ children }) => {
 
       // Validate that backend sent required fields
       if (!userFromBackend || !userFromBackend.role) {
-        console.error('❌ Backend response missing user or role:', response);
         return {
           success: false,
           message: "Invalid response from server. Please contact support."
@@ -144,13 +137,11 @@ export const AuthProvider = ({ children }) => {
         ...profileData, // Override with saved profile data if exists
       };
 
-      console.log('👤 User logged in:', userWithProfile);
-
       // Store auth data (separate from profile)
       const accessToken = response.token || response.tokens?.access;
       localStorage.setItem("tta_token", accessToken);
       if (response.tokens?.refresh) {
-        localStorage.setItem("tta_refresh_token", response.tokens.refresh);
+        localStorage.setItem("tta_refresh", response.tokens.refresh);
       }
       localStorage.setItem("tta_user", JSON.stringify(userWithPermissions));
       localStorage.setItem("tta_login_time", Date.now().toString());
@@ -164,7 +155,6 @@ export const AuthProvider = ({ children }) => {
       return { success: true };
       
     } catch (error) {
-      console.error('❌ Login error:', error);
       return { 
         success: false, 
         message: error.message || "Login failed. Please check your connection." 
@@ -172,15 +162,21 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // 👤 PROFILE SUPPORT: Update user profile (per-user storage)
-  const updateUserProfile = (profileData) => {
+  // 👤 PROFILE SUPPORT: Update user profile (backend + local cache)
+  const updateUserProfile = async (profileData) => {
     if (!user || !user.email) {
-      console.error('❌ No user logged in');
       return { success: false, message: 'No user logged in' };
     }
 
     try {
-      // Prepare profile data
+      // Send to backend
+      const backendData = {
+        first_name: profileData.name?.split(' ')[0] || '',
+        last_name: profileData.name?.split(' ').slice(1).join(' ') || '',
+      };
+      await api.updateProfile(backendData);
+
+      // Also cache extended profile locally (designation, image, etc.)
       const profileToSave = {
         name: profileData.name,
         designation: profileData.designation,
@@ -191,12 +187,7 @@ export const AuthProvider = ({ children }) => {
         updatedAt: new Date().toISOString(),
       };
 
-      // Save profile for THIS user's email
-      const saved = saveProfileData(user.email, profileToSave);
-      
-      if (!saved) {
-        return { success: false, message: 'Failed to save profile' };
-      }
+      saveProfileData(user.email, profileToSave);
 
       // Update current user state
       setUser(prev => ({
@@ -204,16 +195,15 @@ export const AuthProvider = ({ children }) => {
         ...profileToSave,
       }));
 
-      console.log(`👤 Profile updated for ${user.email}`);
       return { success: true };
     } catch (error) {
-      console.error('❌ Profile update error:', error);
-      return { success: false, message: error.message };
+      return { success: false, message: error.message || 'Failed to update profile' };
     }
   };
 
   const logout = () => {
     localStorage.removeItem("tta_token");
+    localStorage.removeItem("tta_refresh");
     localStorage.removeItem("tta_user");
     localStorage.removeItem("tta_login_time");
     localStorage.removeItem("tta_remember_me");

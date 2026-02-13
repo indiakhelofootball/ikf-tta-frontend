@@ -86,7 +86,7 @@ class APIService {
    * Login — POST /auth/login
    */
   async login(email, password) {
-    const response = await this.request('/auth/login', {
+    const response = await this.request('/auth/login/', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
@@ -94,36 +94,20 @@ class APIService {
   }
 
   /**
-   * Get users list
+   * Get current user profile
    */
-  async getUsers() {
-    return this.request('/users');
+  async getProfile() {
+    return this.request('/auth/profile/');
   }
 
-  async getUser(userId) {
-    return this.request(`/users/${userId}`);
-  }
-
-  async createUser(userData) {
-    return this.request('/users', {
-      method: 'POST',
-      body: JSON.stringify(userData),
-    });
-  }
-
-  async updateUser(userId, userData) {
-    return this.request(`/users/${userId}`, {
+  /**
+   * Update current user profile
+   */
+  async updateProfile(profileData) {
+    return this.request('/auth/profile/', {
       method: 'PUT',
-      body: JSON.stringify(userData),
+      body: JSON.stringify(profileData),
     });
-  }
-
-  async deleteUser(userId) {
-    return this.request(`/users/${userId}`, { method: 'DELETE' });
-  }
-
-  async getStats() {
-    return this.request('/stats');
   }
 }
 
