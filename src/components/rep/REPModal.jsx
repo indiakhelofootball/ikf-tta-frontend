@@ -287,21 +287,49 @@ function REPModal({ open, onClose, onSave, editingREP }) {
       newErrors.city = 'City is required';
     }
 
-    // Optional: Add more validation
-    if (formData.phone && formData.phone.length !== 10) {
-      newErrors.phone = 'Phone must be 10 digits';
+    // Phone validation (Indian mobile: starts with 6-9, 10 digits)
+    if (formData.phone) {
+      const phoneDigits = formData.phone.replace(/\D/g, '');
+      if (phoneDigits.length !== 10) {
+        newErrors.phone = 'Phone must be exactly 10 digits';
+      } else if (!/^[6-9]\d{9}$/.test(phoneDigits)) {
+        newErrors.phone = 'Invalid Indian phone number (must start with 6-9)';
+      }
+    }
+
+    // Backup phone validation
+    if (formData.backupPhone) {
+      const bpDigits = formData.backupPhone.replace(/\D/g, '');
+      if (bpDigits.length !== 10) {
+        newErrors.backupPhone = 'Backup phone must be exactly 10 digits';
+      } else if (!/^[6-9]\d{9}$/.test(bpDigits)) {
+        newErrors.backupPhone = 'Invalid Indian phone number (must start with 6-9)';
+      }
     }
 
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Invalid email format';
     }
 
+    // PAN Card validation (mandatory)
     if (!formData.panCard || !formData.panCard.trim()) {
       newErrors.panCard = 'PAN Card is required';
-    } else if (formData.panCard.length !== 10) {
-      newErrors.panCard = 'PAN Card must be 10 characters';
-    } else if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(formData.panCard.toUpperCase())) {
+    } else if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(formData.panCard.trim().toUpperCase())) {
       newErrors.panCard = 'Invalid PAN format (e.g., AABCU9603R)';
+    }
+
+    // GST validation (optional but must be valid if provided)
+    if (formData.gstNo && formData.gstNo.trim()) {
+      if (!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(formData.gstNo.trim().toUpperCase())) {
+        newErrors.gstNo = 'Invalid GST format (e.g., 27AABCU9603R1ZM)';
+      }
+    }
+
+    // PIN code validation
+    if (formData.pinCode && formData.pinCode.trim()) {
+      if (!/^[1-9][0-9]{5}$/.test(formData.pinCode.trim())) {
+        newErrors.pinCode = 'Invalid PIN code (must be 6 digits)';
+      }
     }
 
     setErrors(newErrors);
@@ -663,6 +691,8 @@ function REPModal({ open, onClose, onSave, editingREP }) {
                 placeholder="e.g., 400001"
                 value={formData.pinCode}
                 onChange={handleChange('pinCode')}
+                error={!!errors.pinCode}
+                helperText={errors.pinCode}
                 disabled={saving}
               />
             </Grid>
@@ -802,6 +832,8 @@ function REPModal({ open, onClose, onSave, editingREP }) {
                 placeholder="Optional"
                 value={formData.backupPhone}
                 onChange={handleChange('backupPhone')}
+                error={!!errors.backupPhone}
+                helperText={errors.backupPhone}
                 disabled={saving}
               />
             </Grid>
@@ -981,7 +1013,10 @@ function REPModal({ open, onClose, onSave, editingREP }) {
                 placeholder="27AABCU9603R1ZM"
                 value={formData.gstNo}
                 onChange={handleChange('gstNo')}
+                error={!!errors.gstNo}
+                helperText={errors.gstNo}
                 disabled={saving}
+                inputProps={{ style: { textTransform: 'uppercase' } }}
               />
             </Grid>
 
