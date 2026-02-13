@@ -44,7 +44,7 @@ build/
 tta_backend/
 
 # Deploy scripts (separate or in backend)
-deploy/
+
 
 # Dependency directories
 node_modules/
