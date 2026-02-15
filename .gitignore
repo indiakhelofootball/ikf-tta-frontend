@@ -43,7 +43,16 @@ build/
 # Backend code (separate repo)
 tta_backend/
 
-# Deploy scripts (separate or in backend)
+# Deploy scripts (in backend repo)
+deploy/
+
+# Backend docs (in backend repo)
+TRIAL_MANAGEMENT_BACKEND.md
+
+# Screenshots / images in root
+*.png
+*.jpg
+*.jpeg
 
 
 # Dependency directories

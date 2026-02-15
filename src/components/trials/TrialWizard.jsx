@@ -47,7 +47,7 @@ import { SEASONS, TRIAL_TYPES, TIER_TYPES, SCHEDULE_TYPES } from './trialConstan
 import { generateTrialCode } from '../../utils/trialCodeGenerator';
 import { trialsAPI } from '../../services/api';
 
-const STEPS = ['Project Details', 'Cities & Regions', 'Tier & Pricing', 'Schedule', 'Review & Submit'];
+const STEPS = ['Project Details & Cities', 'Tier, Pricing & Schedule', 'Review & Submit'];
 
 function TrialWizard() {
   const navigate = useNavigate();
@@ -80,6 +80,7 @@ function TrialWizard() {
   const [checkingName, setCheckingName] = useState(false);
   const [existingTrials, setExistingTrials] = useState([]);
   const [confirmChecked, setConfirmChecked] = useState(false);
+  const [trialCreated, setTrialCreated] = useState(false);
 
   useEffect(() => {
     const loadTrials = async () => {
@@ -228,7 +229,7 @@ function TrialWizard() {
       if (!formData.season) newErrors.season = 'Season is required';
       if (!formData.trialType) newErrors.trialType = 'Trial type is required';
     }
-    if (step === 2) {
+    if (step === 1) {
       if (formData.tierType !== 'Not Any') {
         if (!formData.tierDetails.trim()) newErrors.tierDetails = 'Tier details are required';
         if (!formData.tierAmount) newErrors.tierAmount = 'Amount is required';
@@ -236,8 +237,6 @@ function TrialWizard() {
           newErrors.tierAmount = 'Amount must be a number';
         }
       }
-    }
-    if (step === 3) {
       if (formData.scheduleType === 'Fixed') {
         if (!formData.startDate) newErrors.startDate = 'Start date is required';
         if (!formData.endDate) newErrors.endDate = 'End date is required';
@@ -290,13 +289,39 @@ function TrialWizard() {
       };
       await trialsAPI.create(trialData);
       showToast('Trial created successfully!');
-      setTimeout(() => navigate('/trials'), 1000);
+      setTrialCreated(true);
     } catch (error) {
       console.error('Create error:', error);
       showToast(error.message || 'Failed to create trial', 'error');
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleCreateNewTrial = () => {
+    setFormData({
+      trialName: '',
+      season: '',
+      trialType: '',
+      comment: '',
+      assignedCities: [],
+      tierType: 'Not Any',
+      tierDetails: '',
+      tierAmount: '',
+      expectedParticipants: '',
+      scheduleType: 'Fixed',
+      startDate: '',
+      endDate: '',
+      tentativeMonth: '',
+      tentativeDateRange: '',
+      status: 'Draft',
+    });
+    setCityInput({ cityName: '', trialRegion: '' });
+    setErrors({});
+    setNameExists(false);
+    setConfirmChecked(false);
+    setTrialCreated(false);
+    setActiveStep(0);
   };
 
   const months = [
@@ -334,7 +359,7 @@ function TrialWizard() {
         PROJECT DETAILS
       </Typography>
 
-      <Grid container spacing={3}>
+      <Grid container spacing={2.5}>
         <Grid item xs={12}>
           <Typography variant="caption" sx={fieldLabelSx}>Trial Name *</Typography>
           <TextField
@@ -403,7 +428,7 @@ function TrialWizard() {
 
         {formData.season && formData.trialType && (
           <Grid item xs={12}>
-            <Box sx={{ p: 2, bgcolor: '#f0fdf4', borderRadius: 2, border: '1px solid #bbf7d0' }}>
+            <Box sx={{ p: 1.5, bgcolor: '#f0fdf4', borderRadius: 2, border: '1px solid #bbf7d0' }}>
               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
                 Generated Trial Code
               </Typography>
@@ -414,20 +439,18 @@ function TrialWizard() {
           </Grid>
         )}
       </Grid>
-    </Box>
-  );
 
-  const renderStep2 = () => (
-    <Box>
+      <Divider sx={{ my: 3 }} />
+
       <Typography variant="subtitle2" sx={sectionHeaderSx}>
         CITIES & REGIONS
       </Typography>
 
-      <Alert severity="info" sx={{ mb: 3, borderRadius: 1.5, '& .MuiAlert-icon': { color: '#3b82f6' } }} variant="outlined">
+      <Alert severity="info" sx={{ mb: 2, borderRadius: 1.5, '& .MuiAlert-icon': { color: '#3b82f6' } }} variant="outlined">
         Add cities where this trial will take place. You can optionally specify a trial region within each city.
       </Alert>
 
-      <Paper variant="outlined" sx={{ p: 2.5, mb: 3, borderRadius: 2, borderStyle: 'dashed', borderColor: '#cbd5e1' }}>
+      <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: 2, borderStyle: 'dashed', borderColor: '#cbd5e1' }}>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
           <TextField
             size="small"
@@ -460,7 +483,7 @@ function TrialWizard() {
         </Stack>
       </Paper>
 
-      <Stack direction="row" spacing={1.5} sx={{ mb: 3 }}>
+      <Stack direction="row" spacing={1.5} sx={{ mb: 2 }}>
         <Button
           variant="text" startIcon={<DownloadIcon />}
           onClick={handleDownloadTemplate} size="small"
@@ -479,27 +502,27 @@ function TrialWizard() {
       </Stack>
 
       {formData.assignedCities.length > 0 ? (
-        <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
-          <Table size="small">
+        <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, maxHeight: 250 }}>
+          <Table size="small" stickyHeader>
             <TableHead>
               <TableRow sx={{ bgcolor: '#f8fafc' }}>
-                <TableCell sx={{ fontWeight: 600, color: '#475569', py: 1.5 }}>#</TableCell>
-                <TableCell sx={{ fontWeight: 600, color: '#475569', py: 1.5 }}>City Name</TableCell>
-                <TableCell sx={{ fontWeight: 600, color: '#475569', py: 1.5 }}>Trial Region</TableCell>
-                <TableCell sx={{ fontWeight: 600, color: '#475569', py: 1.5 }}>Code</TableCell>
-                <TableCell sx={{ fontWeight: 600, color: '#475569', py: 1.5 }} align="center">Remove</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: '#475569', py: 1, bgcolor: '#f8fafc' }}>#</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: '#475569', py: 1, bgcolor: '#f8fafc' }}>City Name</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: '#475569', py: 1, bgcolor: '#f8fafc' }}>Trial Region</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: '#475569', py: 1, bgcolor: '#f8fafc' }}>Code</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: '#475569', py: 1, bgcolor: '#f8fafc' }} align="center">Remove</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {formData.assignedCities.map((city, index) => (
                 <TableRow key={index} sx={{ '&:hover': { bgcolor: '#f9fafb' }, '&:last-child td': { border: 0 } }}>
-                  <TableCell sx={{ color: '#94a3b8' }}>{index + 1}</TableCell>
-                  <TableCell><Typography variant="body2" fontWeight={600}>{city.cityName}</Typography></TableCell>
-                  <TableCell><Typography variant="body2" color="text.secondary">{city.trialRegion}</Typography></TableCell>
-                  <TableCell>
+                  <TableCell sx={{ color: '#94a3b8', py: 0.75 }}>{index + 1}</TableCell>
+                  <TableCell sx={{ py: 0.75 }}><Typography variant="body2" fontWeight={600}>{city.cityName}</Typography></TableCell>
+                  <TableCell sx={{ py: 0.75 }}><Typography variant="body2" color="text.secondary">{city.trialRegion}</Typography></TableCell>
+                  <TableCell sx={{ py: 0.75 }}>
                     <Chip label={city.code} size="small" sx={{ fontFamily: 'monospace', fontSize: '0.7rem', bgcolor: '#eef2ff', color: '#4f46e5', fontWeight: 600 }} />
                   </TableCell>
-                  <TableCell align="center">
+                  <TableCell align="center" sx={{ py: 0.75 }}>
                     <IconButton size="small" color="error" onClick={() => handleRemoveCity(index)}>
                       <DeleteIcon fontSize="small" />
                     </IconButton>
@@ -510,7 +533,7 @@ function TrialWizard() {
           </Table>
         </TableContainer>
       ) : (
-        <Box sx={{ textAlign: 'center', py: 5, bgcolor: '#f8fafc', borderRadius: 2, border: '1px dashed #cbd5e1' }}>
+        <Box sx={{ textAlign: 'center', py: 3, bgcolor: '#f8fafc', borderRadius: 2, border: '1px dashed #cbd5e1' }}>
           <Typography variant="body2" color="text.secondary">
             No cities added yet. Add cities above or use CSV import.
           </Typography>
@@ -518,24 +541,24 @@ function TrialWizard() {
       )}
 
       {formData.assignedCities.length > 0 && (
-        <Typography variant="caption" color="text.secondary" sx={{ mt: 1.5, display: 'block' }}>
+        <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
           {formData.assignedCities.length} {formData.assignedCities.length === 1 ? 'city' : 'cities'} added
         </Typography>
       )}
     </Box>
   );
 
-  const renderStep3 = () => (
+  const renderStep2 = () => (
     <Box>
       <Typography variant="subtitle2" sx={sectionHeaderSx}>
         TIER & PRICING
       </Typography>
 
-      <Alert severity="info" sx={{ mb: 3, borderRadius: 1.5 }} variant="outlined">
+      <Alert severity="info" sx={{ mb: 2, borderRadius: 1.5 }} variant="outlined">
         Tier & Pricing is optional. Select "Not Any" to skip this section.
       </Alert>
 
-      <Grid container spacing={3}>
+      <Grid container spacing={2.5}>
         <Grid item xs={12} sm={6}>
           <Typography variant="caption" sx={fieldLabelSx}>Tier Type</Typography>
           <TextField
@@ -587,7 +610,7 @@ function TrialWizard() {
 
         {formData.tierType === 'Not Any' && (
           <Grid item xs={12}>
-            <Box sx={{ p: 4, bgcolor: '#f8fafc', borderRadius: 2, textAlign: 'center', border: '1px dashed #cbd5e1' }}>
+            <Box sx={{ p: 3, bgcolor: '#f8fafc', borderRadius: 2, textAlign: 'center', border: '1px dashed #cbd5e1' }}>
               <Typography variant="body2" color="text.secondary">
                 No tier/pricing will be applied to this trial.
               </Typography>
@@ -595,16 +618,14 @@ function TrialWizard() {
           </Grid>
         )}
       </Grid>
-    </Box>
-  );
 
-  const renderStep4 = () => (
-    <Box>
+      <Divider sx={{ my: 3 }} />
+
       <Typography variant="subtitle2" sx={sectionHeaderSx}>
         TRIAL SCHEDULE
       </Typography>
 
-      <Grid container spacing={3}>
+      <Grid container spacing={2.5}>
         <Grid item xs={12}>
           <FormControl>
             <RadioGroup row value={formData.scheduleType} onChange={handleChange('scheduleType')}>
@@ -677,7 +698,7 @@ function TrialWizard() {
     </Box>
   );
 
-  const renderStep5 = () => {
+  const renderStep3 = () => {
     const previewCode = formData.season && formData.trialType
       ? generateTrialCode(formData.season, formData.trialType, existingTrials)
       : 'N/A';
@@ -850,7 +871,7 @@ function TrialWizard() {
     );
   };
 
-  const stepContent = [renderStep1, renderStep2, renderStep3, renderStep4, renderStep5];
+  const stepContent = [renderStep1, renderStep2, renderStep3];
 
   return (
     <Box sx={{ py: 4 }}>
@@ -866,80 +887,132 @@ function TrialWizard() {
         </Box>
 
         {/* Stepper */}
-        <Stepper
-          activeStep={activeStep}
-          alternativeLabel
-          sx={{
-            mb: 4,
-            '& .MuiStepIcon-root.Mui-active': { color: '#5B63D3' },
-            '& .MuiStepIcon-root.Mui-completed': { color: '#22c55e' },
-            '& .MuiStepLabel-label': { fontSize: '0.75rem', mt: 0.5 },
-          }}
-        >
-          {STEPS.map((label) => (
-            <Step key={label}>
-              <StepLabel>{label}</StepLabel>
-            </Step>
-          ))}
-        </Stepper>
-
-        {/* Step Content */}
-        <Paper
-          variant="outlined"
-          sx={{
-            borderRadius: 2.5,
-            p: { xs: 3, sm: 4 },
-            mb: 4,
-            borderColor: '#e2e8f0',
-          }}
-        >
-          {stepContent[activeStep]()}
-        </Paper>
-
-        {/* Navigation Buttons */}
-        <Stack direction="row" justifyContent="space-between">
-          <Button
-            variant="outlined"
-            startIcon={<BackIcon />}
-            onClick={activeStep === 0 ? () => navigate('/trials') : handleBack}
+        {!trialCreated && (
+          <Stepper
+            activeStep={activeStep}
+            alternativeLabel
             sx={{
-              borderColor: '#e2e8f0', color: '#475569', borderRadius: 1.5,
-              textTransform: 'none', fontWeight: 600,
-              '&:hover': { borderColor: '#94a3b8', bgcolor: '#f8fafc' },
+              mb: 4,
+              '& .MuiStepIcon-root.Mui-active': { color: '#5B63D3' },
+              '& .MuiStepIcon-root.Mui-completed': { color: '#22c55e' },
+              '& .MuiStepLabel-label': { fontSize: '0.75rem', mt: 0.5 },
             }}
           >
-            {activeStep === 0 ? 'Back to Trials' : 'Back'}
-          </Button>
+            {STEPS.map((label) => (
+              <Step key={label}>
+                <StepLabel>{label}</StepLabel>
+              </Step>
+            ))}
+          </Stepper>
+        )}
 
-          {activeStep < STEPS.length - 1 ? (
-            <Button
-              variant="contained"
-              endIcon={<NextIcon />}
-              onClick={handleNext}
+        {/* Step Content */}
+        {trialCreated ? (
+          <Paper
+            variant="outlined"
+            sx={{
+              borderRadius: 2.5,
+              p: { xs: 4, sm: 5 },
+              mb: 4,
+              borderColor: '#bbf7d0',
+              textAlign: 'center',
+            }}
+          >
+            <Box sx={{ mb: 2, width: 64, height: 64, borderRadius: '50%', bgcolor: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', mx: 'auto' }}>
+              <CheckIcon sx={{ fontSize: 32, color: '#22c55e' }} />
+            </Box>
+            <Typography variant="h6" fontWeight={700} sx={{ mb: 1, color: '#1e293b' }}>
+              Trial Created Successfully!
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>
+              Your trial "{formData.trialName}" has been created and saved as a Draft.
+            </Typography>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="center">
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={handleCreateNewTrial}
+                sx={{
+                  bgcolor: '#5B63D3', borderRadius: 1.5,
+                  textTransform: 'none', fontWeight: 600, px: 4,
+                  '&:hover': { bgcolor: '#4A52C2' },
+                }}
+              >
+                Create New Trial
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={() => navigate('/trials')}
+                sx={{
+                  borderColor: '#e2e8f0', color: '#475569', borderRadius: 1.5,
+                  textTransform: 'none', fontWeight: 600, px: 4,
+                  '&:hover': { borderColor: '#94a3b8', bgcolor: '#f8fafc' },
+                }}
+              >
+                Go to Trials List
+              </Button>
+            </Stack>
+          </Paper>
+        ) : (
+          <>
+            <Paper
+              variant="outlined"
               sx={{
-                bgcolor: '#5B63D3', borderRadius: 1.5,
-                textTransform: 'none', fontWeight: 600, px: 4,
-                '&:hover': { bgcolor: '#4A52C2' },
+                borderRadius: 2.5,
+                p: { xs: 3, sm: 4 },
+                mb: 4,
+                borderColor: '#e2e8f0',
               }}
             >
-              Next
-            </Button>
-          ) : (
-            <Button
-              variant="contained"
-              startIcon={saving ? <CircularProgress size={16} color="inherit" /> : <CheckIcon />}
-              onClick={handleSubmit}
-              disabled={!confirmChecked || saving}
-              sx={{
-                bgcolor: '#22c55e', borderRadius: 1.5,
-                textTransform: 'none', fontWeight: 600, px: 4,
-                '&:hover': { bgcolor: '#16a34a' },
-              }}
-            >
-              {saving ? 'Creating...' : 'Create Trial'}
-            </Button>
-          )}
-        </Stack>
+              {stepContent[activeStep]()}
+            </Paper>
+
+            {/* Navigation Buttons */}
+            <Stack direction="row" justifyContent="space-between">
+              <Button
+                variant="outlined"
+                startIcon={<BackIcon />}
+                onClick={activeStep === 0 ? () => navigate('/trials') : handleBack}
+                sx={{
+                  borderColor: '#e2e8f0', color: '#475569', borderRadius: 1.5,
+                  textTransform: 'none', fontWeight: 600,
+                  '&:hover': { borderColor: '#94a3b8', bgcolor: '#f8fafc' },
+                }}
+              >
+                {activeStep === 0 ? 'Back to Trials' : 'Back'}
+              </Button>
+
+              {activeStep < STEPS.length - 1 ? (
+                <Button
+                  variant="contained"
+                  endIcon={<NextIcon />}
+                  onClick={handleNext}
+                  sx={{
+                    bgcolor: '#5B63D3', borderRadius: 1.5,
+                    textTransform: 'none', fontWeight: 600, px: 4,
+                    '&:hover': { bgcolor: '#4A52C2' },
+                  }}
+                >
+                  Next
+                </Button>
+              ) : (
+                <Button
+                  variant="contained"
+                  startIcon={saving ? <CircularProgress size={16} color="inherit" /> : <CheckIcon />}
+                  onClick={handleSubmit}
+                  disabled={!confirmChecked || saving}
+                  sx={{
+                    bgcolor: '#22c55e', borderRadius: 1.5,
+                    textTransform: 'none', fontWeight: 600, px: 4,
+                    '&:hover': { bgcolor: '#16a34a' },
+                  }}
+                >
+                  {saving ? 'Creating...' : 'Create Trial'}
+                </Button>
+              )}
+            </Stack>
+          </>
+        )}
       </Container>
 
       <Snackbar
