@@ -286,3 +286,40 @@ export const trialCitiesAPI = {
     }
   },
 };
+
+// ============================================
+// VENDORS API
+// ============================================
+export const vendorsAPI = {
+  getAll: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.status && filters.status !== 'all') params.append('status', filters.status);
+    if (filters.vendorType && filters.vendorType !== 'all') params.append('vendor_type', filters.vendorType);
+    if (filters.search) params.append('search', filters.search);
+    if (filters.sort) params.append('sort', filters.sort);
+    const qs = params.toString();
+    return apiService.request(`/vendors/${qs ? `?${qs}` : ''}`);
+  },
+
+  getById: async (id) => {
+    return apiService.request(`/vendors/${id}/`);
+  },
+
+  create: async (vendorData) => {
+    return apiService.request('/vendors/', {
+      method: 'POST',
+      body: JSON.stringify(vendorData),
+    });
+  },
+
+  update: async (id, vendorData) => {
+    return apiService.request(`/vendors/${id}/`, {
+      method: 'PUT',
+      body: JSON.stringify(vendorData),
+    });
+  },
+
+  delete: async (id) => {
+    return apiService.request(`/vendors/${id}/`, { method: 'DELETE' });
+  },
+};

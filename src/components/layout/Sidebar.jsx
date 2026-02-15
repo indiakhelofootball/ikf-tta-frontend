@@ -6,6 +6,7 @@ import {
   EmojiEvents as EmojiEventsIcon,
   AddCircleOutline as AddIcon,
   LocationCity as LocationCityIcon,
+  Store as StoreIcon,
 } from "@mui/icons-material";
 import { useAuth } from "../../auth/AuthContext";
 import { ROLES } from "../../auth/roles";
@@ -18,6 +19,9 @@ export default function Sidebar() {
     user?.role === ROLES.SUPER_ADMIN || user?.role === ROLES.ADMIN;
 
   const canAccessTrialManagement =
+    user?.role === ROLES.SUPER_ADMIN || user?.role === ROLES.ADMIN;
+
+  const canAccessVendorManagement =
     user?.role === ROLES.SUPER_ADMIN || user?.role === ROLES.ADMIN;
 
   const linkClass = ({ isActive }) =>
@@ -63,6 +67,13 @@ export default function Sidebar() {
           <NavLink to="/trial-cities" className={linkClass}>
             <LocationCityIcon fontSize="small" />
             Trial Cities
+          </NavLink>
+        )}
+
+        {canAccessVendorManagement && (
+          <NavLink to="/vendors" className={linkClass}>
+            <StoreIcon fontSize="small" />
+            Vendors
           </NavLink>
         )}
       </nav>
