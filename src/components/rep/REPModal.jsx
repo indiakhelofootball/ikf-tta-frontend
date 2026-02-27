@@ -16,6 +16,8 @@ import {
   Autocomplete,
   Alert,
   Stack,
+  Checkbox,
+  FormControlLabel,
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -24,7 +26,8 @@ import {
   Delete as DeleteIcon,
   InsertDriveFile as FileIcon,
 } from '@mui/icons-material';
-import { State, City } from 'country-state-city';
+import { State } from 'country-state-city';
+import { trialsAPI } from '../../services/api';
 
 function REPModal({ open, onClose, onSave, editingREP }) {
   const isEditMode = !!editingREP;
@@ -36,7 +39,7 @@ function REPModal({ open, onClose, onSave, editingREP }) {
     }));
   }, []);
 
-  const [availableCities, setAvailableCities] = useState([]);
+  const [trialCitiesByState, setTrialCitiesByState] = useState({});
 
   const [formData, setFormData] = useState({
     repName: '',
@@ -52,12 +55,20 @@ function REPModal({ open, onClose, onSave, editingREP }) {
     backupContactName: '',
     backupPhone: '',
     backupEmail: '',
+    courierAddress: '',
+    courierPinCode: '',
     physicalAddress: '',
-    groundLocation: '',
+    googleMapLink: '',
     pinCode: '',
+    groundLocation: '',
+    groundPinCode: '',
     panCard: '',
     gstNo: '',
     mouStatus: '',
+    website: '',     websiteNA: false,
+    facebook: '',    facebookNA: false,
+    twitter: '',     twitterNA: false,
+    telegram: '',    telegramNA: false,
   });
 
   const [mouDocument, setMouDocument] = useState(null);
@@ -67,26 +78,31 @@ function REPModal({ open, onClose, onSave, editingREP }) {
 
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
-  const [loadingCities, setLoadingCities] = useState(false);
-  const [fileError, setFileError] = useState(''); // NEW: For file upload errors
+  const [fileError, setFileError] = useState('');
+  const [locationFocused, setLocationFocused] = useState(false);
+  const [courierFocused, setCourierFocused] = useState(false);
 
+  // Load project cities grouped by state when modal opens
   useEffect(() => {
-    if (formData.stateCode) {
-      setLoadingCities(true);
-      try {
-        const cities = City.getCitiesOfState('IN', formData.stateCode);
-        const cityNames = cities.map(city => city.name).sort();
-        setAvailableCities(cityNames);
-      } catch (error) {
-        console.error('Error loading cities:', error);
-        setAvailableCities([]);
-      } finally {
-        setLoadingCities(false);
+    if (!open) return;
+    trialsAPI.getAll({ limit: 200 }).then(response => {
+      const trials = response.trials || [];
+      const byState = {};
+      for (const trial of trials) {
+        for (const city of trial.assignedCities || []) {
+          if (city.state && city.cityName) {
+            if (!byState[city.state]) byState[city.state] = new Set();
+            byState[city.state].add(city.cityName);
+          }
+        }
       }
-    } else {
-      setAvailableCities([]);
-    }
-  }, [formData.stateCode]);
+      const result = {};
+      for (const [state, set] of Object.entries(byState)) {
+        result[state] = [...set].sort();
+      }
+      setTrialCitiesByState(result);
+    }).catch(() => {});
+  }, [open]);
 
   useEffect(() => {
     if (open) {
@@ -106,12 +122,20 @@ function REPModal({ open, onClose, onSave, editingREP }) {
           backupContactName: editingREP.backupContactName || '',
           backupPhone: editingREP.backupPhone || '',
           backupEmail: editingREP.backupEmail || '',
+          courierAddress: editingREP.courierAddress || '',
+          courierPinCode: editingREP.courierPinCode || '',
           physicalAddress: editingREP.physicalAddress || '',
-          groundLocation: editingREP.groundLocation || '',
+          googleMapLink: editingREP.googleMapLink || '',
           pinCode: editingREP.pinCode || '',
+          groundLocation: editingREP.groundLocation || '',
+          groundPinCode: editingREP.groundPinCode || '',
           panCard: editingREP.panCard || '',
           gstNo: editingREP.gstNo || '',
           mouStatus: editingREP.mouStatus || '',
+          website: editingREP.website || '',     websiteNA: !!editingREP.websiteNA,
+          facebook: editingREP.facebook || '',   facebookNA: !!editingREP.facebookNA,
+          twitter: editingREP.twitter || '',     twitterNA: !!editingREP.twitterNA,
+          telegram: editingREP.telegram || '',   telegramNA: !!editingREP.telegramNA,
         });
         
         if (editingREP.mouDocumentUrl) {
@@ -135,14 +159,21 @@ function REPModal({ open, onClose, onSave, editingREP }) {
           backupContactName: '',
           backupPhone: '',
           backupEmail: '',
+          courierAddress: '',
+          courierPinCode: '',
           physicalAddress: '',
-          groundLocation: '',
+          googleMapLink: '',
           pinCode: '',
+          groundLocation: '',
+          groundPinCode: '',
           panCard: '',
           gstNo: '',
           mouStatus: '',
+          website: '',     websiteNA: false,
+          facebook: '',    facebookNA: false,
+          twitter: '',     twitterNA: false,
+          telegram: '',    telegramNA: false,
         });
-        setAvailableCities([]);
         setMouDocument(null);
         setMouDocumentPreview(null);
         setRepLogo(null);
@@ -311,6 +342,11 @@ function REPModal({ open, onClose, onSave, editingREP }) {
       newErrors.email = 'Invalid email format';
     }
 
+    // Google Maps link required for trial location
+    if (!formData.googleMapLink || !formData.googleMapLink.trim()) {
+      newErrors.googleMapLink = 'Google Maps link is required for trial location';
+    }
+
     // PAN Card validation (mandatory)
     if (!formData.panCard || !formData.panCard.trim()) {
       newErrors.panCard = 'PAN Card is required';
@@ -388,10 +424,9 @@ function REPModal({ open, onClose, onSave, editingREP }) {
     }
   };
 
-  const seasons = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6'];
-  const regions = ['North', 'South', 'East', 'West', 'Central'];
-  const statuses = ['Active', 'Inactive'];
+  const seasons = ['Season 5', 'Season 6'];
   const mouStatuses = ['Signed', 'Pending', 'Not Required'];
+  const availableCities = trialCitiesByState[formData.state] || [];
 
   const selectedState = indianStates.find(s => s.isoCode === formData.stateCode) || null;
 
@@ -469,17 +504,13 @@ function REPModal({ open, onClose, onSave, editingREP }) {
                 Season
               </Typography>
               <TextField
-                select
-                fullWidth
-                size="small"
+                select fullWidth size="small"
                 value={formData.season}
                 onChange={handleChange('season')}
                 disabled={saving}
               >
                 <MenuItem value=""><em>Select Season</em></MenuItem>
-                {seasons.map((season) => (
-                  <MenuItem key={season} value={season}>{season}</MenuItem>
-                ))}
+                {seasons.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
               </TextField>
             </Grid>
 
@@ -487,57 +518,33 @@ function REPModal({ open, onClose, onSave, editingREP }) {
               <Typography variant="caption" sx={{ mb: 0.5, display: 'block', fontWeight: 500 }}>
                 Status
               </Typography>
-              <TextField
-                select
-                fullWidth
-                size="small"
-                value={formData.status}
-                onChange={handleChange('status')}
-                disabled={saving}
-              >
-                {statuses.map((status) => (
-                  <MenuItem key={status} value={status}>{status}</MenuItem>
-                ))}
-              </TextField>
+              <Box sx={{
+                height: 40, px: 1.5, display: 'flex', alignItems: 'center',
+                bgcolor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 1,
+              }}>
+                <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: '#22c55e', mr: 1 }} />
+                <Typography sx={{ fontSize: '0.875rem', color: '#15803d', fontWeight: 600 }}>
+                  Active
+                </Typography>
+              </Box>
             </Grid>
 
-            <Grid item xs={12} sm={6}>
-              <Typography variant="caption" sx={{ mb: 0.5, display: 'block', fontWeight: 500 }}>
-                Region
-              </Typography>
-              <TextField
-                select
-                fullWidth
-                size="small"
-                value={formData.region}
-                onChange={handleChange('region')}
-                disabled={saving}
-              >
-                <MenuItem value=""><em>Select Region</em></MenuItem>
-                {regions.map((region) => (
-                  <MenuItem key={region} value={region}>{region}</MenuItem>
-                ))}
-              </TextField>
-            </Grid>
           </Grid>
 
-          {/* TRIAL CITY Section */}
-          <Typography 
-            variant="subtitle2" 
-            sx={{ 
-              color: '#3B82F6',
-              fontWeight: 700,
-              mb: 2,
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px',
-              fontSize: '0.8rem'
+          {/* REGION Section */}
+          <Typography
+            variant="subtitle2"
+            sx={{
+              color: '#3B82F6', fontWeight: 700, mb: 2,
+              textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '0.8rem',
             }}
           >
-            TRIAL CITY
+            REGION
           </Typography>
 
           <Grid container spacing={2} sx={{ mb: 3 }}>
-            <Grid item xs={12} sm={6}>
+            {/* State + Assign Trial City — always side by side */}
+            <Grid item xs={6}>
               <Typography variant="caption" sx={{ mb: 0.5, display: 'block', fontWeight: 500 }}>
                 State *
               </Typography>
@@ -552,132 +559,91 @@ function REPModal({ open, onClose, onSave, editingREP }) {
                 renderOption={(props, option) => {
                   const { key, ...otherProps } = props;
                   return (
-                    <Box
-                      component="li"
-                      key={option.isoCode}
-                      {...otherProps}
-                      sx={{
-                        py: 1.5,
-                        px: 2,
-                        fontSize: '0.95rem',
-                        whiteSpace: 'normal',
-                        wordWrap: 'break-word',
-                        borderBottom: '1px solid #f3f4f6',
-                        '&:hover': {
-                          backgroundColor: '#f0f9ff !important',
-                        },
-                        '&:last-child': {
-                          borderBottom: 'none',
-                        }
-                      }}
-                    >
+                    <Box component="li" key={option.isoCode} {...otherProps}
+                      sx={{ py: 1.5, px: 2, fontSize: '0.9rem', borderBottom: '1px solid #f3f4f6',
+                        '&:hover': { backgroundColor: '#f0f9ff !important' } }}>
                       {option.name}
                     </Box>
                   );
                 }}
                 renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    size="small"
-                    placeholder="Search state..."
-                    error={!!errors.state}
-                    helperText={errors.state}
-                  />
+                  <TextField {...params} size="small" placeholder="Search state..."
+                    error={!!errors.state} helperText={errors.state} />
                 )}
                 slotProps={{
-                  popper: {
-                    sx: { zIndex: 1500 },
-                    placement: 'bottom-start',
-                    modifiers: [{name: 'flip', enabled: false}],
-                  },
-                  paper: {
-                    sx: {
-                      mt: 0.5,
-                      boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-                      borderRadius: 2,
-                      minWidth: '350px',
-                      maxWidth: '400px',
-                      '& .MuiAutocomplete-listbox': {
-                        padding: 0,
-                        maxHeight: 280,
-                      }
-                    }
-                  }
+                  popper: { sx: { zIndex: 1500 }, placement: 'bottom-start',
+                    modifiers: [{ name: 'flip', enabled: false }] },
+                  paper: { sx: { mt: 0.5, boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                    borderRadius: 2, minWidth: 300,
+                    '& .MuiAutocomplete-listbox': { padding: 0, maxHeight: 260 } } },
                 }}
               />
             </Grid>
 
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={6}>
               <Typography variant="caption" sx={{ mb: 0.5, display: 'block', fontWeight: 500 }}>
-                City *
+                Assign Trial City *
               </Typography>
               <Autocomplete
                 value={formData.city || null}
                 onChange={handleCityChange}
                 options={availableCities}
-                disabled={!formData.stateCode || saving}
-                loading={loadingCities}
-                freeSolo
+                disabled={!formData.state || saving}
                 openOnFocus
+                noOptionsText={
+                  formData.state
+                    ? 'No trial cities for this state — add cities to a project first'
+                    : 'Select state first'
+                }
                 renderOption={(props, option) => {
                   const { key, ...otherProps } = props;
                   return (
-                    <Box
-                      component="li"
-                      key={option}
-                      {...otherProps}
-                      sx={{
-                        py: 1.5,
-                        px: 2,
-                        fontSize: '0.95rem',
-                        borderBottom: '1px solid #f3f4f6',
-                        '&:hover': {
-                          backgroundColor: '#f0f9ff !important',
-                        },
-                        '&:last-child': {
-                          borderBottom: 'none',
-                        }
-                      }}
-                    >
+                    <Box component="li" key={option} {...otherProps}
+                      sx={{ py: 1.5, px: 2, fontSize: '0.9rem', borderBottom: '1px solid #f3f4f6',
+                        '&:hover': { backgroundColor: '#f0f9ff !important' } }}>
                       {option}
                     </Box>
                   );
                 }}
                 renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    size="small"
-                    placeholder={formData.stateCode ? "Search city..." : "Select state first"}
+                  <TextField {...params} size="small"
+                    placeholder={formData.state ? 'Select city...' : 'Select state first'}
                     error={!!errors.city}
-                    helperText={errors.city || (loadingCities ? 'Loading...' : formData.stateCode ? `${availableCities.length} cities available` : '')}
-                    InputProps={{
-                      ...params.InputProps,
-                      endAdornment: (
-                        <>
-                          {loadingCities ? <CircularProgress color="inherit" size={16} /> : null}
-                          {params.InputProps.endAdornment}
-                        </>
-                      ),
-                    }}
+                    helperText={errors.city || (formData.state && availableCities.length > 0
+                      ? `${availableCities.length} cities available`
+                      : '')}
                   />
                 )}
                 slotProps={{
-                  popper: {
-                    sx: { zIndex: 1500 },
-                    placement: 'bottom-start',
-                  },
-                  paper: {
-                    sx: {
-                      mt: 0.5,
-                      boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-                      borderRadius: 2,
-                      '& .MuiAutocomplete-listbox': {
-                        padding: 0,
-                        maxHeight: 280,
-                      }
-                    }
-                  }
+                  popper: { sx: { zIndex: 1500 }, placement: 'bottom-start' },
+                  paper: { sx: { mt: 0.5, boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                    borderRadius: 2,
+                    '& .MuiAutocomplete-listbox': { padding: 0, maxHeight: 260 } } },
                 }}
+              />
+            </Grid>
+
+          </Grid>
+
+          {/* LOCATION Section */}
+          <Typography variant="subtitle2" sx={{
+            color: '#3B82F6', fontWeight: 700, mb: 2,
+            textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '0.8rem',
+          }}>
+            LOCATION
+          </Typography>
+
+          <Grid container spacing={2} sx={{ mb: 3 }}>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="caption" sx={{ mb: 0.5, display: 'block', fontWeight: 500 }}>
+                Google Maps Link *
+              </Typography>
+              <TextField fullWidth size="small"
+                placeholder="https://maps.google.com/..."
+                value={formData.googleMapLink}
+                onChange={handleChange('googleMapLink')}
+                error={!!errors.googleMapLink} helperText={errors.googleMapLink}
+                disabled={saving}
               />
             </Grid>
 
@@ -685,44 +651,94 @@ function REPModal({ open, onClose, onSave, editingREP }) {
               <Typography variant="caption" sx={{ mb: 0.5, display: 'block', fontWeight: 500 }}>
                 Pin Code
               </Typography>
-              <TextField
-                fullWidth
-                size="small"
-                placeholder="e.g., 400001"
-                value={formData.pinCode}
-                onChange={handleChange('pinCode')}
-                error={!!errors.pinCode}
-                helperText={errors.pinCode}
+              <TextField fullWidth size="small" placeholder="e.g., 400001"
+                value={formData.pinCode} onChange={handleChange('pinCode')}
+                error={!!errors.pinCode} helperText={errors.pinCode} disabled={saving}
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <Typography variant="caption" sx={{ mb: 0.5, display: 'block', fontWeight: 500 }}>
+                Location Address
+              </Typography>
+              <TextField fullWidth multiline size="small"
+                minRows={locationFocused ? 4 : 2}
+                placeholder="Complete location address"
+                value={formData.physicalAddress}
+                onChange={handleChange('physicalAddress')}
+                onFocus={() => setLocationFocused(true)}
+                onBlur={() => setLocationFocused(false)}
                 disabled={saving}
+                sx={{ transition: 'all 0.2s ease' }}
+              />
+            </Grid>
+          </Grid>
+
+          {/* COURIER ADDRESS Section */}
+          <Typography variant="subtitle2" sx={{
+            color: '#3B82F6', fontWeight: 700, mb: 2,
+            textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '0.8rem',
+          }}>
+            COURIER ADDRESS
+          </Typography>
+
+          <Grid container spacing={2} sx={{ mb: 3 }}>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="caption" sx={{ mb: 0.5, display: 'block', fontWeight: 500 }}>
+                Address for Courier / Deliveries
+              </Typography>
+              <TextField fullWidth multiline size="small"
+                minRows={courierFocused ? 4 : 2}
+                placeholder="Complete courier address with landmark..."
+                value={formData.courierAddress}
+                onChange={handleChange('courierAddress')}
+                onFocus={() => setCourierFocused(true)}
+                onBlur={() => setCourierFocused(false)}
+                disabled={saving}
+                sx={{ transition: 'all 0.2s ease' }}
               />
             </Grid>
 
             <Grid item xs={12} sm={6}>
               <Typography variant="caption" sx={{ mb: 0.5, display: 'block', fontWeight: 500 }}>
-                Ground Location
+                Pin Code
               </Typography>
-              <TextField
-                fullWidth
-                size="small"
-                placeholder="Stadium or ground address"
+              <TextField fullWidth size="small" placeholder="e.g., 400001"
+                value={formData.courierPinCode}
+                onChange={handleChange('courierPinCode')}
+                disabled={saving}
+              />
+            </Grid>
+          </Grid>
+
+          {/* GROUND LOCATION Section — separate from Trial Location */}
+          <Typography variant="subtitle2" sx={{
+            color: '#3B82F6', fontWeight: 700, mb: 2,
+            textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '0.8rem',
+          }}>
+            GROUND LOCATION
+          </Typography>
+
+          <Grid container spacing={2} sx={{ mb: 3 }}>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="caption" sx={{ mb: 0.5, display: 'block', fontWeight: 500 }}>
+                Ground / Stadium Name
+              </Typography>
+              <TextField fullWidth size="small"
+                placeholder="Stadium or ground name"
                 value={formData.groundLocation}
                 onChange={handleChange('groundLocation')}
                 disabled={saving}
               />
             </Grid>
 
-            <Grid item xs={12}>
+            <Grid item xs={12} sm={6}>
               <Typography variant="caption" sx={{ mb: 0.5, display: 'block', fontWeight: 500 }}>
-                Physical Address
+                Pin Code
               </Typography>
-              <TextField
-                fullWidth
-                multiline
-                rows={2}
-                size="small"
-                placeholder="Complete physical address"
-                value={formData.physicalAddress}
-                onChange={handleChange('physicalAddress')}
+              <TextField fullWidth size="small" placeholder="e.g., 400001"
+                value={formData.groundPinCode}
+                onChange={handleChange('groundPinCode')}
                 disabled={saving}
               />
             </Grid>
@@ -1038,6 +1054,56 @@ function REPModal({ open, onClose, onSave, editingREP }) {
                 ))}
               </TextField>
             </Grid>
+          </Grid>
+
+          {/* ONLINE PRESENCE Section */}
+          <Typography variant="subtitle2" sx={{
+            color: '#3B82F6', fontWeight: 700, mb: 2, mt: 3,
+            textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '0.8rem',
+          }}>
+            ONLINE PRESENCE
+          </Typography>
+
+          <Grid container spacing={2}>
+            {[
+              { field: 'website',  naField: 'websiteNA',  label: 'Website',  placeholder: 'https://www.example.com',      prefix: '🌐' },
+              { field: 'facebook', naField: 'facebookNA', label: 'Facebook', placeholder: 'https://facebook.com/page',    prefix: '📘' },
+              { field: 'twitter',  naField: 'twitterNA',  label: 'Twitter',  placeholder: 'https://twitter.com/handle',   prefix: '🐦' },
+              { field: 'telegram', naField: 'telegramNA', label: 'Telegram', placeholder: 'https://t.me/channel or @handle', prefix: '✈️' },
+            ].map(({ field, naField, label, placeholder, prefix }) => (
+              <Grid item xs={12} sm={6} key={field}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.5 }}>
+                  <Typography variant="caption" sx={{ fontWeight: 500 }}>
+                    {prefix} {label}
+                  </Typography>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        size="small"
+                        checked={formData[naField]}
+                        onChange={handleChange(naField)}
+                        disabled={saving}
+                        sx={{ p: 0.5 }}
+                      />
+                    }
+                    label={<Typography variant="caption" sx={{ color: '#9e9e9e', fontSize: '0.72rem' }}>Not Available</Typography>}
+                    sx={{ m: 0, gap: 0.5 }}
+                  />
+                </Stack>
+                <TextField
+                  fullWidth size="small"
+                  placeholder={formData[naField] ? 'Not Available' : placeholder}
+                  value={formData[naField] ? '' : formData[field]}
+                  onChange={handleChange(field)}
+                  disabled={saving || formData[naField]}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      bgcolor: formData[naField] ? '#f5f5f5' : 'white',
+                    },
+                  }}
+                />
+              </Grid>
+            ))}
           </Grid>
 
         </Box>

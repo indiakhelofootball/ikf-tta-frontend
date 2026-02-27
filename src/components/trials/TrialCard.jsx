@@ -1,194 +1,140 @@
 // src/components/trials/TrialCard.jsx
 
-import React, { useState } from 'react';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-  Card,
-  CardContent,
-  Typography,
-  Chip,
-  Stack,
-  Box,
-  Button,
-  Divider,
-  Collapse,
+  Card, CardContent, Typography, Stack, Box, Button, Divider,
 } from '@mui/material';
 import {
   Edit as EditIcon,
   Delete as DeleteIcon,
-  Visibility as ViewIcon,
-  CalendarMonth as CalendarIcon,
-  EmojiEvents as TrophyIcon,
-  LocationCity as CityIcon,
-  ExpandMore as ExpandMoreIcon,
-  ExpandLess as ExpandLessIcon,
+  ArrowForward as ArrowIcon,
 } from '@mui/icons-material';
-import { STATUS_COLORS } from './trialConstants';
 
-function TrialCard({ trial, onEdit, onDelete, onViewDetails }) {
-  const [expanded, setExpanded] = useState(false);
+const captionSx = {
+  fontSize: '0.65rem',
+  textTransform: 'uppercase',
+  letterSpacing: '0.06em',
+  color: '#86868b',
+  display: 'block',
+  mb: 0.3,
+  fontWeight: 600,
+};
+
+function TrialCard({ trial, onEdit, onDelete }) {
+  const navigate = useNavigate();
   const cities = trial.assignedCities || [];
   const cityCount = cities.length;
-
-  const formatDate = (dateString) => {
-    if (!dateString) return 'Not set';
-    return new Date(dateString).toLocaleDateString('en-IN', {
-      day: 'numeric', month: 'short', year: 'numeric',
-    });
-  };
-
-  const getDateDisplay = () => {
-    if (trial.scheduleType === 'Fixed' && trial.startDate) {
-      return `${formatDate(trial.startDate)} - ${formatDate(trial.endDate)}`;
-    }
-    if (trial.scheduleType === 'Tentative') {
-      return trial.tentativeDateRange || `Tentative: ${trial.tentativeMonth || 'TBD'}`;
-    }
-    return 'No dates set';
-  };
-
-  const tierDisplay = trial.tierType === 'Not Any' ? 'No Tier' : trial.tierType;
+  const hasTier = trial.tierType && trial.tierType !== 'Not Any';
 
   return (
     <Card
+      elevation={0}
       sx={{
-        minHeight: 340,
-        border: '1px solid #e2e8f0',
-        backgroundColor: '#fff',
+        border: '1px solid rgba(0,0,0,0.06)',
+        backgroundColor: '#ffffff',
         display: 'flex',
         flexDirection: 'column',
-        borderRadius: 2.5,
-        transition: 'box-shadow 0.2s ease, border-color 0.2s ease',
+        borderRadius: 4,
+        boxShadow: '0 2px 8px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02)',
+        transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
         '&:hover': {
-          boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
-          borderColor: '#cbd5e1',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+          transform: 'translateY(-2px)',
         },
       }}
     >
       <CardContent sx={{ flex: 1, p: 3, display: 'flex', flexDirection: 'column' }}>
-        {/* Header */}
-        <Box sx={{ mb: 2 }}>
-          <Typography variant="h6" fontWeight={700} sx={{ mb: 1, color: '#1e293b', lineHeight: 1.3 }}>
-            {trial.trialName}
+
+        {/* Project identity */}
+        <Box sx={{ mb: 3 }}>
+          <Typography sx={{
+            fontSize: '1.2rem', fontWeight: 700,
+            fontFamily: '"SF Mono", "Fira Code", monospace',
+            color: '#1d1d1f', letterSpacing: '0.01em', mb: 0.5,
+          }}>
+            {trial.trialCode || trial.trialName}
           </Typography>
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            <Chip
-              label={trial.trialCode}
-              size="small"
-              sx={{
-                fontFamily: 'monospace', bgcolor: '#f1f5f9',
-                fontSize: '0.7rem', fontWeight: 600, color: '#475569',
-                borderRadius: 1,
-              }}
-            />
-            <Chip
-              label={trial.status}
-              size="small"
-              color={STATUS_COLORS[trial.status] || 'default'}
-              sx={{ borderRadius: 1 }}
-            />
-          </Stack>
+          <Typography sx={{ fontSize: '0.875rem', color: '#6e6e73', fontWeight: 500 }}>
+            {trial.season}
+            {trial.trialType ? ` · ${trial.trialType}` : ''}
+          </Typography>
         </Box>
 
-        {/* Info rows */}
-        <Stack spacing={1.5} sx={{ flex: 1 }}>
-          <Stack direction="row" spacing={1.5} alignItems="center">
-            <TrophyIcon fontSize="small" sx={{ color: '#6366f1', opacity: 0.7 }} />
-            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8rem' }}>
-              {trial.season} &middot; {trial.trialType}
+        {/* Stats row */}
+        <Box sx={{
+          p: 2, bgcolor: '#f5f5f7', borderRadius: 2.5, mb: 'auto',
+          display: 'flex', gap: 0,
+        }}>
+          <Box sx={{ flex: 1, textAlign: 'center' }}>
+            <Typography sx={captionSx}>Regions</Typography>
+            <Typography sx={{ fontSize: '1.2rem', fontWeight: 700, color: '#1d1d1f', lineHeight: 1 }}>
+              {cityCount}
             </Typography>
-          </Stack>
+          </Box>
 
-          <Stack direction="row" spacing={1.5} alignItems="center">
-            <CalendarIcon fontSize="small" sx={{ color: '#f59e0b', opacity: 0.7 }} />
-            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8rem' }}>
-              {getDateDisplay()}
-            </Typography>
-          </Stack>
-
-          <Stack
-            direction="row" spacing={1.5} alignItems="center"
-            onClick={() => cityCount > 0 && setExpanded(!expanded)}
-            sx={{
-              cursor: cityCount > 0 ? 'pointer' : 'default',
-              borderRadius: 1, px: 0.5, mx: -0.5,
-              '&:hover': cityCount > 0 ? { bgcolor: '#f8fafc' } : {},
-            }}
-          >
-            <CityIcon fontSize="small" sx={{ color: '#10b981', opacity: 0.7 }} />
-            <Typography variant="body2" color="text.secondary" sx={{ flex: 1, fontSize: '0.8rem' }}>
-              {cityCount} {cityCount === 1 ? 'City' : 'Cities'} Assigned
-            </Typography>
-            {cityCount > 0 && (
-              expanded ? <ExpandLessIcon fontSize="small" sx={{ color: '#94a3b8' }} /> :
-              <ExpandMoreIcon fontSize="small" sx={{ color: '#94a3b8' }} />
-            )}
-          </Stack>
-
-          <Collapse in={expanded}>
-            <Box sx={{ pl: 4, pt: 0.5 }}>
-              <Stack spacing={0.5}>
-                {cities.map((city, i) => (
-                  <Stack key={i} direction="row" spacing={1} alignItems="center">
-                    <Box sx={{ width: 4, height: 4, borderRadius: '50%', bgcolor: '#cbd5e1' }} />
-                    <Typography variant="caption" color="text.secondary">
-                      {typeof city === 'string' ? city : `${city.cityName}${city.trialRegion && city.trialRegion !== city.cityName ? ` - ${city.trialRegion}` : ''}`}
-                    </Typography>
-                  </Stack>
-                ))}
-              </Stack>
-            </Box>
-          </Collapse>
-        </Stack>
-
-        {/* Tier summary */}
-        <Box sx={{ mt: 2, p: 1.5, bgcolor: '#f8fafc', borderRadius: 1.5 }}>
-          <Stack direction="row" spacing={3} justifyContent="space-between">
-            <Box>
-              <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Tier</Typography>
-              <Typography variant="body2" fontWeight={600} sx={{ color: '#334155' }}>{tierDisplay}</Typography>
-            </Box>
-            {trial.scheduleType === 'Tentative' && (
-              <Box>
-                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Schedule</Typography>
-                <Chip label="Tentative" size="small" color="warning" sx={{ display: 'block', mt: 0.25, height: 20 }} />
-              </Box>
-            )}
-            {trial.tierType !== 'Not Any' && trial.tierAmount && (
-              <Box>
-                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Amount</Typography>
-                <Typography variant="body2" fontWeight={600} sx={{ color: '#334155' }}>
-                  &#8377;{trial.tierAmount?.toLocaleString('en-IN')}
+          {hasTier && (
+            <>
+              <Box sx={{ width: '1px', bgcolor: 'rgba(0,0,0,0.08)', my: 0.25 }} />
+              <Box sx={{ flex: 1, textAlign: 'center' }}>
+                <Typography sx={captionSx}>Tier</Typography>
+                <Typography sx={{ fontSize: '0.9rem', fontWeight: 700, color: '#1d1d1f', lineHeight: 1 }}>
+                  {trial.tierType}
                 </Typography>
               </Box>
-            )}
-          </Stack>
+            </>
+          )}
+
+          {hasTier && trial.tierAmount && (
+            <>
+              <Box sx={{ width: '1px', bgcolor: 'rgba(0,0,0,0.08)', my: 0.25 }} />
+              <Box sx={{ flex: 1, textAlign: 'center' }}>
+                <Typography sx={captionSx}>Amount</Typography>
+                <Typography sx={{ fontSize: '0.9rem', fontWeight: 700, color: '#1d1d1f', lineHeight: 1 }}>
+                  ₹{Number(trial.tierAmount).toLocaleString('en-IN')}
+                </Typography>
+              </Box>
+            </>
+          )}
         </Box>
+
+        {/* Notes preview */}
+        {trial.comment && (
+          <Typography sx={{
+            fontSize: '0.78rem', color: '#86868b', mt: 2, lineHeight: 1.5,
+            display: '-webkit-box', WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical', overflow: 'hidden',
+          }}>
+            {trial.comment}
+          </Typography>
+        )}
       </CardContent>
 
       {/* Actions */}
       <Box sx={{ p: 3, pt: 0 }}>
-        <Divider sx={{ mb: 2, borderColor: '#f1f5f9' }} />
+        <Divider sx={{ mb: 2, borderColor: 'rgba(0,0,0,0.06)' }} />
         <Stack direction="row" spacing={1.5}>
           <Button
             variant="outlined" size="small"
-            startIcon={<ViewIcon sx={{ fontSize: '1rem' }} />}
-            onClick={() => onViewDetails(trial)}
+            endIcon={<ArrowIcon sx={{ fontSize: '0.95rem' }} />}
+            onClick={() => navigate(`/trials/${trial.id}`)}
             sx={{
-              flex: 1, borderColor: '#e2e8f0', color: '#475569',
-              fontWeight: 600, borderRadius: 1.5, textTransform: 'none',
-              '&:hover': { borderColor: '#5B63D3', bgcolor: '#f8fafc', color: '#5B63D3' },
+              flex: 1, borderColor: 'rgba(0,0,0,0.12)', color: '#1d1d1f',
+              fontWeight: 600, borderRadius: 2, textTransform: 'none', fontSize: '0.85rem',
+              '&:hover': { borderColor: '#5B63D3', bgcolor: '#f5f5f7', color: '#5B63D3' },
             }}
           >
-            View
+            Open
           </Button>
           <Button
             variant="contained" size="small"
-            startIcon={<EditIcon sx={{ fontSize: '1rem' }} />}
+            startIcon={<EditIcon sx={{ fontSize: '0.95rem' }} />}
             onClick={() => onEdit(trial)}
             sx={{
-              flex: 1, bgcolor: '#5B63D3', color: 'white',
-              fontWeight: 600, borderRadius: 1.5, textTransform: 'none',
-              '&:hover': { bgcolor: '#4A52C2' },
+              flex: 1, bgcolor: '#FDE68A', color: '#111827',
+              fontWeight: 600, borderRadius: 2, textTransform: 'none', fontSize: '0.85rem',
+              boxShadow: 'none',
+              '&:hover': { bgcolor: '#FCD34D', boxShadow: 'none' },
             }}
           >
             Edit
@@ -197,7 +143,7 @@ function TrialCard({ trial, onEdit, onDelete, onViewDetails }) {
             variant="outlined" size="small" color="error"
             onClick={() => onDelete(trial)}
             sx={{
-              minWidth: 'auto', px: 1.5, borderRadius: 1.5,
+              minWidth: 'auto', px: 1.5, borderRadius: 2,
               borderColor: '#fecaca',
               '&:hover': { bgcolor: '#fef2f2', borderColor: '#ef4444' },
             }}

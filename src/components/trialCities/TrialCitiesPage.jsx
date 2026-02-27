@@ -179,6 +179,24 @@ function TrialCitiesPage() {
     }
   };
 
+  const handleSaveAndAddAnother = async (cityData) => {
+    try {
+      await trialCitiesAPI.create(cityData);
+      showToast('City created! You can add another.', 'success');
+      await loadCities();
+    } catch (error) {
+      console.error('Failed to save city:', error);
+      if (error.response?.status === 409) {
+        showToast('A city with this name already exists in this state.', 'error');
+      } else if (error.message === 'Network Error') {
+        showToast('No internet connection. Please check your network.', 'error');
+      } else {
+        showToast(error.response?.data?.message || 'Failed to save city. Please try again.', 'error');
+      }
+      throw error;
+    }
+  };
+
   // ✅ IMPROVED: Better error handling for deleting cities
   const handleDeleteCity = async (city) => {
     // Confirm before deleting
@@ -453,9 +471,9 @@ function TrialCitiesPage() {
               onClick={handleAddCity}
               sx={{ 
                 px: 3,
-                bgcolor: '#5B63D3',
+                bgcolor: '#FDE68A',
                 '&:hover': {
-                  bgcolor: '#4A52C2'
+                  bgcolor: '#FCD34D'
                 }
               }}
             >
@@ -548,7 +566,7 @@ function TrialCitiesPage() {
                 variant="contained"
                 startIcon={<AddIcon />}
                 onClick={handleAddCity}
-                sx={{ mt: 2, bgcolor: '#5B63D3' }}
+                sx={{ mt: 2, bgcolor: '#FDE68A' }}
               >
                 Add Your First City
               </Button>
@@ -560,6 +578,7 @@ function TrialCitiesPage() {
           open={modalOpen}
           onClose={() => setModalOpen(false)}
           onSave={handleSaveCity}
+          onSaveAndAddAnother={handleSaveAndAddAnother}
           editingCity={editingCity}
           existingCities={cities}
         />
@@ -627,8 +646,8 @@ function TrialCitiesPage() {
               onClick={handleBulkUpload} 
               disabled={bulkUploading || bulkErrors.length > 0 || bulkData.length === 0}
               sx={{ 
-                bgcolor: '#5B63D3',
-                '&:hover': { bgcolor: '#4A52C2' }
+                bgcolor: '#FDE68A',
+                '&:hover': { bgcolor: '#FCD34D' }
               }}
             >
               {bulkUploading ? 'Importing...' : 'Import'}

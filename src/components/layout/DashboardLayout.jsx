@@ -9,7 +9,8 @@ import "./DashboardLayout.css";
 
 const pageTitles = {
   "/dashboard": "Dashboard",
-  "/trial-cities": "Trial Cities",
+  "/trials/create": "Project Setup",
+  "/trials": "Projects",
   "/payments": "Payments",
   "/logistics": "Logistics",
   "/profile": "Profile",
@@ -92,7 +93,7 @@ export default function DashboardLayout() {
                   sx={{ 
                     width: 56,  // BIGGER: 56px (was 40px)
                     height: 56, 
-                    bgcolor: '#FBBF24',
+                    bgcolor: '#FDE68A',
                     color: '#111827',
                     fontWeight: 700,
                     fontSize: '1.5rem', // BIGGER font inside avatar

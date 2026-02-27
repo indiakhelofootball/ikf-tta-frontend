@@ -173,7 +173,7 @@ export default function ProfilePage() {
                 sx={{
                   width: 120,
                   height: 120,
-                  bgcolor: '#FBBF24',
+                  bgcolor: '#FDE68A',
                   color: '#111827',
                   fontSize: '2.5rem',
                   fontWeight: 700,
@@ -198,10 +198,10 @@ export default function ProfilePage() {
                     position: 'absolute',
                     bottom: 0,
                     right: 0,
-                    bgcolor: '#FBBF24',
+                    bgcolor: '#FDE68A',
                     color: '#111827',
                     '&:hover': {
-                      bgcolor: '#F59E0B',
+                      bgcolor: '#FCD34D',
                     },
                     boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
                   }}

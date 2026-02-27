@@ -2,47 +2,23 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  Box,
-  Container,
-  Typography,
-  Button,
-  TextField,
-  InputAdornment,
-  Stack,
-  Snackbar,
-  Alert,
-  CircularProgress,
-  Menu,
-  MenuItem,
-  Chip,
-  Card,
-  CardContent,
-  Grid,
-  FormControl,
-  InputLabel,
-  Select,
+  Box, Container, Typography, Button, TextField, InputAdornment,
+  Stack, Snackbar, Alert, CircularProgress, Menu, MenuItem,
+  Chip, Card, CardContent, Grid, FormControl, InputLabel, Select,
 } from '@mui/material';
 import {
   Search as SearchIcon,
   FilterList as FilterIcon,
   Sort as SortIcon,
   EmojiEvents as TrophyIcon,
-  CheckCircle as CheckIcon,
-  CalendarToday as CalendarIcon,
+  LocationOn as RegionIcon,
 } from '@mui/icons-material';
 
 import TrialCard from './TrialCard';
-import TrialDetailView from './TrialDetailView';
 import TrialEditModal from './TrialEditModal';
 import TrialDeleteDialog from './TrialDeleteDialog';
 import { trialsAPI } from '../../services/api';
-import {
-  SEASONS,
-  TRIAL_TYPES,
-  STATUSES,
-  SORT_OPTIONS,
-  DATE_FILTER_OPTIONS,
-} from './trialConstants';
+import { SEASONS, SORT_OPTIONS } from './trialConstants';
 
 function TrialManagementPage() {
   const [trials, setTrials] = useState([]);
@@ -51,31 +27,21 @@ function TrialManagementPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
 
-  // Modals
-  const [detailViewTrial, setDetailViewTrial] = useState(null);
   const [editingTrial, setEditingTrial] = useState(null);
   const [deletingTrial, setDeletingTrial] = useState(null);
 
-  // Filters
   const [filterType, setFilterType] = useState('');
   const [filterSeason, setFilterSeason] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
-  const [filterDate, setFilterDate] = useState('');
   const [sortBy, setSortBy] = useState('latest');
 
-  // Menu anchors
   const [sortMenuAnchor, setSortMenuAnchor] = useState(null);
   const [filterMenuAnchor, setFilterMenuAnchor] = useState(null);
 
-  /* ============ LOAD & FILTER ============ */
-
-  useEffect(() => {
-    loadTrials();
-  }, []);
+  useEffect(() => { loadTrials(); }, []);
 
   useEffect(() => {
     filterAndSortTrials();
-  }, [trials, searchQuery, sortBy, filterType, filterSeason, filterStatus, filterDate]);
+  }, [trials, searchQuery, sortBy, filterType, filterSeason]);
 
   const loadTrials = async () => {
     try {
@@ -83,8 +49,7 @@ function TrialManagementPage() {
       const response = await trialsAPI.getAll();
       setTrials(response.trials || []);
     } catch (error) {
-      console.error('Load error:', error);
-      showToast('Failed to load trials', 'error');
+      showToast('Failed to load projects', 'error');
     } finally {
       setLoading(false);
     }
@@ -93,7 +58,6 @@ function TrialManagementPage() {
   const filterAndSortTrials = () => {
     let filtered = [...trials];
 
-    // Search
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       filtered = filtered.filter(t =>
@@ -103,227 +67,130 @@ function TrialManagementPage() {
         t.trialType?.toLowerCase().includes(q) ||
         t.comment?.toLowerCase().includes(q) ||
         t.assignedCities?.some(c =>
-          (typeof c === 'string' ? c : `${c.cityName} ${c.trialRegion} ${c.code}`).toLowerCase().includes(q)
+          (typeof c === 'string' ? c : `${c.cityName} ${c.state} ${c.region}`).toLowerCase().includes(q)
         )
       );
     }
 
-    // Type filter
-    if (filterType) {
-      filtered = filtered.filter(t => t.trialType === filterType);
-    }
+    if (filterType) filtered = filtered.filter(t => t.trialType === filterType);
+    if (filterSeason) filtered = filtered.filter(t => t.season === filterSeason);
 
-    // Season filter
-    if (filterSeason) {
-      filtered = filtered.filter(t => t.season === filterSeason);
-    }
-
-    // Status filter
-    if (filterStatus) {
-      filtered = filtered.filter(t => t.status === filterStatus);
-    }
-
-    // Date filter
-    if (filterDate) {
-      const now = new Date();
-      const thisMonth = now.getMonth();
-      const thisYear = now.getFullYear();
-
-      filtered = filtered.filter(t => {
-        if (filterDate === 'tentative-only') {
-          return t.scheduleType === 'Tentative';
-        }
-
-        const startDate = t.startDate ? new Date(t.startDate) : null;
-        if (!startDate && filterDate !== 'tentative-only') return false;
-
-        switch (filterDate) {
-          case 'this-month':
-            return startDate.getMonth() === thisMonth && startDate.getFullYear() === thisYear;
-          case 'next-month': {
-            const nextMonth = (thisMonth + 1) % 12;
-            const nextMonthYear = thisMonth === 11 ? thisYear + 1 : thisYear;
-            return startDate.getMonth() === nextMonth && startDate.getFullYear() === nextMonthYear;
-          }
-          case 'this-quarter': {
-            const quarterStart = Math.floor(thisMonth / 3) * 3;
-            return startDate.getMonth() >= quarterStart &&
-              startDate.getMonth() <= quarterStart + 2 &&
-              startDate.getFullYear() === thisYear;
-          }
-          default:
-            return true;
-        }
-      });
-    }
-
-    // Sort
     filtered.sort((a, b) => {
       switch (sortBy) {
-        case 'latest':
-          return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
-        case 'oldest':
-          return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
-        case 'name-asc':
-          return (a.trialName || '').localeCompare(b.trialName || '');
-        case 'name-desc':
-          return (b.trialName || '').localeCompare(a.trialName || '');
-        case 'upcoming': {
-          const aDate = a.startDate ? new Date(a.startDate) : new Date('9999-12-31');
-          const bDate = b.startDate ? new Date(b.startDate) : new Date('9999-12-31');
-          return aDate - bDate;
-        }
-        case 'past': {
-          const aDate = a.startDate ? new Date(a.startDate) : new Date('0001-01-01');
-          const bDate = b.startDate ? new Date(b.startDate) : new Date('0001-01-01');
-          return bDate - aDate;
-        }
-        default:
-          return 0;
+        case 'latest': return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+        case 'oldest': return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
+        case 'name-asc': return (a.trialName || '').localeCompare(b.trialName || '');
+        case 'name-desc': return (b.trialName || '').localeCompare(a.trialName || '');
+        default: return 0;
       }
     });
 
     setFilteredTrials(filtered);
   };
 
-  /* ============ ACTIONS ============ */
-
-  const showToast = (message, severity = 'success') => {
+  const showToast = (message, severity = 'success') =>
     setToast({ open: true, message, severity });
-  };
 
-  const handleViewDetails = (trial) => {
-    setDetailViewTrial(trial);
-  };
-
-  const handleEdit = (trial) => {
-    setEditingTrial(trial);
-  };
-
-  const handleDelete = (trial) => {
-    setDeletingTrial(trial);
-  };
+  const handleEdit = (trial) => setEditingTrial(trial);
+  const handleDelete = (trial) => setDeletingTrial(trial);
 
   const handleSaveEdit = async (trialId, updateData) => {
     try {
-      await trialsAPI.update(trialId, updateData);
-      showToast('Trial updated successfully');
+      await trialsAPI.patch(trialId, updateData);
+      showToast('Project updated');
       setEditingTrial(null);
       loadTrials();
     } catch (error) {
-      console.error('Update error:', error);
-      showToast(error.message || 'Failed to update trial', 'error');
+      showToast(error.message || 'Failed to update project', 'error');
       throw error;
     }
   };
 
   const handleConfirmDelete = async (trial) => {
     try {
-      await trialsAPI.delete(trial.id || trial._id);
-      showToast('Trial deleted successfully');
+      await trialsAPI.delete(trial.id);
+      showToast('Project deleted');
       setDeletingTrial(null);
       loadTrials();
     } catch (error) {
-      console.error('Delete error:', error);
-      showToast(error.message || 'Failed to delete trial', 'error');
+      showToast(error.message || 'Failed to delete project', 'error');
     }
   };
 
   const handleClearFilters = () => {
     setFilterType('');
     setFilterSeason('');
-    setFilterStatus('');
-    setFilterDate('');
     setFilterMenuAnchor(null);
   };
 
-  const hasActiveFilters = filterType || filterSeason || filterStatus || filterDate;
+  const hasActiveFilters = !!(filterType || filterSeason);
 
-  /* ============ STATS ============ */
-
+  // Stats
   const totalTrials = trials.length;
-  const activeTrials = trials.filter(t => t.status === 'Active').length;
-  const upcomingThisMonth = trials.filter(t => {
-    if (!t.startDate) return false;
-    const now = new Date();
-    const start = new Date(t.startDate);
-    return start.getMonth() === now.getMonth() && start.getFullYear() === now.getFullYear();
-  }).length;
+  const totalRegions = trials.reduce((sum, t) => sum + (t.assignedCities?.length || 0), 0);
 
-  /* ============ UI ============ */
+  // Unique project types for filter
+  const projectTypes = [...new Set(trials.map(t => t.trialType).filter(Boolean))];
 
   return (
     <Box sx={{ py: 4 }}>
       <Container maxWidth="xl" sx={{ px: { xs: 2, sm: 3, md: 4 } }}>
+
         {/* Header */}
         <Box sx={{ mb: 4 }}>
           <Typography variant="h5" fontWeight={700} sx={{ mb: 0.5, color: '#1e293b' }}>
-            Trials
+            Projects
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            View and manage trial projects across seasons
+            Manage trial projects across seasons
           </Typography>
         </Box>
 
-        {/* Summary Stats */}
+        {/* Stats */}
         <Grid container spacing={2.5} sx={{ mb: 4 }}>
-          <Grid item xs={12} sm={4}>
-            <Card sx={{ borderRadius: 2.5, border: '1px solid #e2e8f0', boxShadow: 'none' }}>
-              <CardContent sx={{ py: 2.5 }}>
-                <Stack direction="row" spacing={2} alignItems="center">
-                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: '#eef2ff' }}>
-                    <TrophyIcon sx={{ fontSize: 28, color: '#5B63D3' }} />
-                  </Box>
-                  <Box>
-                    <Typography variant="h4" fontWeight={700} sx={{ color: '#1e293b' }}>{totalTrials}</Typography>
-                    <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Trials</Typography>
-                  </Box>
-                </Stack>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <Card sx={{ borderRadius: 2.5, border: '1px solid #e2e8f0', boxShadow: 'none' }}>
-              <CardContent sx={{ py: 2.5 }}>
-                <Stack direction="row" spacing={2} alignItems="center">
-                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: '#f0fdf4' }}>
-                    <CheckIcon sx={{ fontSize: 28, color: '#22C55E' }} />
-                  </Box>
-                  <Box>
-                    <Typography variant="h4" fontWeight={700} sx={{ color: '#1e293b' }}>{activeTrials}</Typography>
-                    <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.5px' }}>Active Trials</Typography>
-                  </Box>
-                </Stack>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <Card sx={{ borderRadius: 2.5, border: '1px solid #e2e8f0', boxShadow: 'none' }}>
-              <CardContent sx={{ py: 2.5 }}>
-                <Stack direction="row" spacing={2} alignItems="center">
-                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: '#fffbeb' }}>
-                    <CalendarIcon sx={{ fontSize: 28, color: '#F59E0B' }} />
-                  </Box>
-                  <Box>
-                    <Typography variant="h4" fontWeight={700} sx={{ color: '#1e293b' }}>{upcomingThisMonth}</Typography>
-                    <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.5px' }}>Upcoming This Month</Typography>
-                  </Box>
-                </Stack>
-              </CardContent>
-            </Card>
-          </Grid>
+          {[
+            {
+              icon: <TrophyIcon sx={{ fontSize: 28, color: '#5B63D3' }} />,
+              value: totalTrials, label: 'Total Projects', iconBg: '#eef2ff',
+            },
+            {
+              icon: <RegionIcon sx={{ fontSize: 28, color: '#10b981' }} />,
+              value: totalRegions, label: 'Total Regions', iconBg: '#f0fdf4',
+            },
+          ].map((stat, i) => (
+            <Grid item xs={12} sm={6} md={4} key={i}>
+              <Card elevation={0} sx={{
+                borderRadius: 4,
+                border: '1px solid rgba(0,0,0,0.06)',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                bgcolor: '#ffffff',
+              }}>
+                <CardContent sx={{ py: 2.5 }}>
+                  <Stack direction="row" spacing={2} alignItems="center">
+                    <Box sx={{ p: 1.5, borderRadius: 3, bgcolor: stat.iconBg }}>
+                      {stat.icon}
+                    </Box>
+                    <Box>
+                      <Typography variant="h4" fontWeight={700} sx={{ color: '#1d1d1f', letterSpacing: '-0.025em' }}>
+                        {stat.value}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 500 }}>
+                        {stat.label}
+                      </Typography>
+                    </Box>
+                  </Stack>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
         </Grid>
 
-        {/* Search and Filter Bar */}
+        {/* Search + Sort + Filter */}
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mb: 4 }}>
           <TextField
-            fullWidth
-            size="small"
-            sx={{
-              maxWidth: { sm: 380 },
-              '& .MuiOutlinedInput-root': { bgcolor: 'white', borderRadius: 1.5 },
-            }}
-            placeholder="Search trials, codes, cities..."
+            fullWidth size="small"
+            sx={{ maxWidth: { sm: 380 }, '& .MuiOutlinedInput-root': { bgcolor: 'white', borderRadius: 1.5 } }}
+            placeholder="Search projects, codes, regions..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             InputProps={{
@@ -334,130 +201,64 @@ function TrialManagementPage() {
               ),
             }}
           />
-
           <Button
             variant="outlined" size="small"
             startIcon={<SortIcon sx={{ fontSize: '1rem' }} />}
             onClick={(e) => setSortMenuAnchor(e.currentTarget)}
-            sx={{
-              minWidth: 100, borderColor: '#e2e8f0', color: '#475569',
-              borderRadius: 1.5, textTransform: 'none', fontWeight: 500,
-              '&:hover': { borderColor: '#94a3b8' },
-            }}
+            sx={{ minWidth: 100, borderColor: '#e2e8f0', color: '#475569', borderRadius: 1.5, textTransform: 'none', fontWeight: 500 }}
           >
             Sort
           </Button>
-
           <Button
             variant="outlined" size="small"
             startIcon={<FilterIcon sx={{ fontSize: '1rem' }} />}
             onClick={(e) => setFilterMenuAnchor(e.currentTarget)}
-            sx={{
-              minWidth: 100, borderColor: '#e2e8f0', color: '#475569',
-              borderRadius: 1.5, textTransform: 'none', fontWeight: 500,
-              '&:hover': { borderColor: '#94a3b8' },
-            }}
+            sx={{ minWidth: 100, borderColor: '#e2e8f0', color: '#475569', borderRadius: 1.5, textTransform: 'none', fontWeight: 500 }}
           >
             Filter
             {hasActiveFilters && (
-              <Chip
-                label="Active" size="small"
-                sx={{ ml: 1, height: 18, fontSize: '0.65rem', bgcolor: '#5B63D3', color: 'white' }}
-              />
+              <Chip label="•" size="small" sx={{ ml: 0.5, height: 16, minWidth: 16, bgcolor: '#5B63D3', color: 'white', fontSize: '0.6rem' }} />
             )}
           </Button>
         </Stack>
 
         {/* Sort Menu */}
-        <Menu
-          anchorEl={sortMenuAnchor}
-          open={!!sortMenuAnchor}
-          onClose={() => setSortMenuAnchor(null)}
-        >
-          {SORT_OPTIONS.map(option => (
-            <MenuItem
-              key={option.value}
-              onClick={() => {
-                setSortBy(option.value);
-                setSortMenuAnchor(null);
-              }}
-              selected={sortBy === option.value}
-            >
-              {option.label}
+        <Menu anchorEl={sortMenuAnchor} open={!!sortMenuAnchor} onClose={() => setSortMenuAnchor(null)}>
+          {SORT_OPTIONS.map(opt => (
+            <MenuItem key={opt.value} selected={sortBy === opt.value}
+              onClick={() => { setSortBy(opt.value); setSortMenuAnchor(null); }}>
+              {opt.label}
             </MenuItem>
           ))}
         </Menu>
 
         {/* Filter Menu */}
         <Menu
-          anchorEl={filterMenuAnchor}
-          open={!!filterMenuAnchor}
+          anchorEl={filterMenuAnchor} open={!!filterMenuAnchor}
           onClose={() => setFilterMenuAnchor(null)}
-          PaperProps={{ sx: { width: 300, p: 2 } }}
+          PaperProps={{ sx: { width: 280, p: 2 } }}
         >
           <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600 }}>Filters</Typography>
 
           <FormControl fullWidth size="small" sx={{ mb: 2 }}>
-            <InputLabel>Trial Type</InputLabel>
-            <Select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
-              label="Trial Type"
-            >
-              <MenuItem value="">All</MenuItem>
-              {TRIAL_TYPES.map(type => (
-                <MenuItem key={type} value={type}>{type}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <FormControl fullWidth size="small" sx={{ mb: 2 }}>
             <InputLabel>Season</InputLabel>
-            <Select
-              value={filterSeason}
-              onChange={(e) => setFilterSeason(e.target.value)}
-              label="Season"
-            >
-              <MenuItem value="">All</MenuItem>
-              {SEASONS.map(s => (
-                <MenuItem key={s} value={s}>{s}</MenuItem>
-              ))}
+            <Select value={filterSeason} onChange={(e) => setFilterSeason(e.target.value)} label="Season">
+              <MenuItem value="">All Seasons</MenuItem>
+              {SEASONS.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
             </Select>
           </FormControl>
 
-          <FormControl fullWidth size="small" sx={{ mb: 2 }}>
-            <InputLabel>Status</InputLabel>
-            <Select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              label="Status"
-            >
-              <MenuItem value="">All</MenuItem>
-              {STATUSES.map(s => (
-                <MenuItem key={s} value={s}>{s}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          {projectTypes.length > 0 && (
+            <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+              <InputLabel>Project Type</InputLabel>
+              <Select value={filterType} onChange={(e) => setFilterType(e.target.value)} label="Project Type">
+                <MenuItem value="">All Types</MenuItem>
+                {projectTypes.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}
+              </Select>
+            </FormControl>
+          )}
 
-          <FormControl fullWidth size="small" sx={{ mb: 2 }}>
-            <InputLabel>Date Filter</InputLabel>
-            <Select
-              value={filterDate}
-              onChange={(e) => setFilterDate(e.target.value)}
-              label="Date Filter"
-            >
-              {DATE_FILTER_OPTIONS.map(opt => (
-                <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <Button
-            fullWidth
-            variant="outlined"
-            onClick={handleClearFilters}
-            sx={{ mt: 1 }}
-          >
+          <Button fullWidth variant="outlined" onClick={handleClearFilters} sx={{ mt: 0.5 }}>
             Clear Filters
           </Button>
         </Menu>
@@ -469,64 +270,39 @@ function TrialManagementPage() {
           </Box>
         )}
 
-        {/* Trial Cards Grid */}
+        {/* Cards Grid */}
         {!loading && filteredTrials.length > 0 && (
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: {
-                xs: '1fr',
-                md: 'repeat(2, 1fr)',
-                lg: 'repeat(3, 1fr)',
-              },
-              gap: 3,
-              mb: 4,
-            }}
-          >
+          <Box sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' },
+            gap: 3, mb: 4,
+          }}>
             {filteredTrials.map(trial => (
-              <Box key={trial.id || trial._id}>
-                <TrialCard
-                  trial={trial}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                  onViewDetails={handleViewDetails}
-                />
-              </Box>
+              <TrialCard
+                key={trial.id}
+                trial={trial}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+              />
             ))}
           </Box>
         )}
 
-        {/* Empty State */}
+        {/* Empty state */}
         {!loading && filteredTrials.length === 0 && (
-          <Box
-            sx={{
-              textAlign: 'center',
-              py: 8,
-              bgcolor: 'white',
-              borderRadius: 2.5,
-              border: '1px dashed #cbd5e1',
-            }}
-          >
+          <Box sx={{
+            textAlign: 'center', py: 8, bgcolor: 'white',
+            borderRadius: 2.5, border: '1px dashed #cbd5e1',
+          }}>
             <Typography variant="subtitle1" sx={{ color: '#475569', fontWeight: 600 }} gutterBottom>
-              No trials found
+              No projects found
             </Typography>
             <Typography variant="body2" color="text.secondary">
               {searchQuery || hasActiveFilters
                 ? 'Try adjusting your search or filters'
-                : 'Create your first trial to get started'}
+                : 'Create your first project to get started'}
             </Typography>
           </Box>
-        )}
-
-        {/* Detail View */}
-        {detailViewTrial && (
-          <TrialDetailView
-            trial={detailViewTrial}
-            open={!!detailViewTrial}
-            onClose={() => setDetailViewTrial(null)}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-          />
         )}
 
         {/* Edit Modal */}
@@ -547,13 +323,10 @@ function TrialManagementPage() {
 
         {/* Toast */}
         <Snackbar
-          open={toast.open}
-          autoHideDuration={4000}
+          open={toast.open} autoHideDuration={4000}
           onClose={() => setToast(prev => ({ ...prev, open: false }))}
         >
-          <Alert severity={toast.severity} variant="filled">
-            {toast.message}
-          </Alert>
+          <Alert severity={toast.severity} variant="filled">{toast.message}</Alert>
         </Snackbar>
       </Container>
     </Box>

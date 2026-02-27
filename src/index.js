@@ -14,6 +14,11 @@ import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import muiTheme from "./styles/muiTheme";
 
+// Suppress harmless ResizeObserver loop warning (from MUI Autocomplete / dynamic textareas)
+window.addEventListener('error', (e) => {
+  if (e.message?.includes('ResizeObserver')) e.stopImmediatePropagation();
+});
+
 const root = ReactDOM.createRoot(document.getElementById("root"));
 
 root.render(

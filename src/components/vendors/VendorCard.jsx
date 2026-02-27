@@ -25,7 +25,6 @@ import {
 import { VENDOR_STATUS_COLORS } from './vendorConstants';
 
 function VendorCard({ vendor, onEdit, onViewDetails, onVerify }) {
-  const isRep = vendor.isRepSourced;
   const statusStyle = VENDOR_STATUS_COLORS[vendor.status] || VENDOR_STATUS_COLORS.Pending;
 
   const getDocIcon = (verified) =>
@@ -180,43 +179,25 @@ function VendorCard({ vendor, onEdit, onViewDetails, onVerify }) {
             >
               View Details
             </Button>
-            {!isRep && (
-              <Button
-                size="small"
-                variant="outlined"
-                startIcon={<EditIcon fontSize="small" />}
-                onClick={() => onEdit(vendor)}
-                sx={{
-                  flex: 1,
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  fontSize: '0.75rem',
-                  borderColor: '#e2e8f0',
-                  color: '#475569',
-                  borderRadius: 1.5,
-                  '&:hover': { borderColor: '#94a3b8', bgcolor: '#f8fafc' },
-                }}
-              >
-                Edit
-              </Button>
-            )}
-            {isRep && (
-              <Typography
-                variant="caption"
-                sx={{
-                  flex: 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#94a3b8',
-                  fontStyle: 'italic',
-                  fontSize: '0.7rem',
-                }}
-              >
-                Edit via REP Management
-              </Typography>
-            )}
-            {!isRep && vendor.status === 'Pending' && (
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<EditIcon fontSize="small" />}
+              onClick={() => onEdit(vendor)}
+              sx={{
+                flex: 1,
+                textTransform: 'none',
+                fontWeight: 600,
+                fontSize: '0.75rem',
+                borderColor: '#e2e8f0',
+                color: '#475569',
+                borderRadius: 1.5,
+                '&:hover': { borderColor: '#94a3b8', bgcolor: '#f8fafc' },
+              }}
+            >
+              Edit
+            </Button>
+            {vendor.status === 'Pending' && (
               <Button
                 size="small"
                 variant="contained"
@@ -227,9 +208,9 @@ function VendorCard({ vendor, onEdit, onViewDetails, onVerify }) {
                   textTransform: 'none',
                   fontWeight: 600,
                   fontSize: '0.75rem',
-                  bgcolor: '#5B63D3',
+                  bgcolor: '#FDE68A',
                   borderRadius: 1.5,
-                  '&:hover': { bgcolor: '#4A52C2' },
+                  '&:hover': { bgcolor: '#FCD34D' },
                 }}
               >
                 Verify
