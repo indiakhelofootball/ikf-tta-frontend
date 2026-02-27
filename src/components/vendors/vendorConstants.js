@@ -1,15 +1,5 @@
 // src/components/vendors/vendorConstants.js
 
-export const VENDOR_TYPES = [
-  'REP',
-  'Printing',
-  'Logistics',
-  'Equipment',
-  'Events',
-  'Catering',
-  'Other',
-];
-
 export const VENDOR_STATUSES = ['Verified', 'Pending', 'Rejected'];
 
 export const VENDOR_STATUS_COLORS = {

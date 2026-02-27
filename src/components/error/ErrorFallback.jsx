@@ -81,9 +81,9 @@ function ErrorFallback({ error, resetErrorBoundary }) {
               startIcon={<RefreshIcon />}
               onClick={resetErrorBoundary}
               sx={{
-                bgcolor: '#5B63D3',
+                bgcolor: '#FDE68A',
                 '&:hover': {
-                  bgcolor: '#4A52C2',
+                  bgcolor: '#FCD34D',
                 },
               }}
             >

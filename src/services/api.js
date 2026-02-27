@@ -44,10 +44,33 @@ class APIService {
       }
     }
 
+    // Guard against HTML error pages (404/500 from server)
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      if (!response.ok) {
+        throw new Error(`Server error (${response.status}): endpoint may not exist or server needs restart`);
+      }
+      return null;
+    }
+
     const data = await response.json();
 
     if (!response.ok) {
-      const err = new Error(data.message || data.detail || 'Something went wrong');
+      // DRF validation errors come as { fieldName: ["error msg"] }
+      let message = data.message || data.detail;
+      if (!message) {
+        // Extract first validation error from DRF response
+        const firstKey = Object.keys(data).find(k => Array.isArray(data[k]));
+        if (firstKey) {
+          message = `${firstKey}: ${data[firstKey][0]}`;
+        } else if (typeof data === 'object') {
+          const firstVal = Object.values(data)[0];
+          message = Array.isArray(firstVal) ? firstVal[0] : String(firstVal);
+        } else {
+          message = 'Something went wrong';
+        }
+      }
+      const err = new Error(message);
       err.response = { status: response.status, data };
       throw err;
     }
@@ -151,6 +174,13 @@ export const trialsAPI = {
     });
   },
 
+  patch: async (id, trialData) => {
+    return apiService.request(`/trials/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(trialData),
+    });
+  },
+
   delete: async (id) => {
     return apiService.request(`/trials/${id}/`, { method: 'DELETE' });
   },
@@ -160,29 +190,24 @@ export const trialsAPI = {
     return data.exists;
   },
 
-  assignCity: async (trialId, cityData) => {
-    // Handled via update — fetch current trial, add city, then PUT
-    const { trial } = await apiService.request(`/trials/${trialId}/`);
-    const currentCodes = (trial.assignedCities || []).map(c =>
-      typeof c === 'string' ? c : c.code
-    );
-    if (!currentCodes.includes(cityData.code)) {
-      currentCodes.push(cityData.code);
-    }
-    return apiService.request(`/trials/${trialId}/`, {
+  // City sub-endpoints — operate on a specific trial's city
+  addCity: async (trialId, cityData) => {
+    return apiService.request(`/trials/${trialId}/cities/`, {
+      method: 'POST',
+      body: JSON.stringify(cityData),
+    });
+  },
+
+  updateCity: async (trialId, cityCode, data) => {
+    return apiService.request(`/trials/${trialId}/cities/${encodeURIComponent(cityCode)}/`, {
       method: 'PATCH',
-      body: JSON.stringify({ assigned_cities: currentCodes }),
+      body: JSON.stringify(data),
     });
   },
 
   removeCity: async (trialId, cityCode) => {
-    const { trial } = await apiService.request(`/trials/${trialId}/`);
-    const currentCodes = (trial.assignedCities || [])
-      .map(c => (typeof c === 'string' ? c : c.code))
-      .filter(c => c !== cityCode);
-    return apiService.request(`/trials/${trialId}/`, {
-      method: 'PATCH',
-      body: JSON.stringify({ assigned_cities: currentCodes }),
+    return apiService.request(`/trials/${trialId}/cities/${encodeURIComponent(cityCode)}/`, {
+      method: 'DELETE',
     });
   },
 };
@@ -291,6 +316,10 @@ export const trialCitiesAPI = {
 // VENDORS API
 // ============================================
 export const vendorsAPI = {
+  getBanks: async () => {
+    return apiService.request('/banks/');
+  },
+
   getAll: async (filters = {}) => {
     const params = new URLSearchParams();
     if (filters.status && filters.status !== 'all') params.append('status', filters.status);
@@ -321,5 +350,41 @@ export const vendorsAPI = {
 
   delete: async (id) => {
     return apiService.request(`/vendors/${id}/`, { method: 'DELETE' });
+  },
+};
+
+// ============================================
+// PAYMENTS API
+// ============================================
+export const paymentsAPI = {
+  getAll: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.status && filters.status !== 'all') params.append('status', filters.status);
+    if (filters.vendor) params.append('vendor', filters.vendor);
+    if (filters.search) params.append('search', filters.search);
+    const qs = params.toString();
+    return apiService.request(`/payments/${qs ? `?${qs}` : ''}`);
+  },
+
+  getById: async (id) => {
+    return apiService.request(`/payments/${id}/`);
+  },
+
+  create: async (paymentData) => {
+    return apiService.request('/payments/', {
+      method: 'POST',
+      body: JSON.stringify(paymentData),
+    });
+  },
+
+  update: async (id, paymentData) => {
+    return apiService.request(`/payments/${id}/`, {
+      method: 'PUT',
+      body: JSON.stringify(paymentData),
+    });
+  },
+
+  delete: async (id) => {
+    return apiService.request(`/payments/${id}/`, { method: 'DELETE' });
   },
 };

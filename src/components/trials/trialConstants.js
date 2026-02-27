@@ -1,27 +1,23 @@
 // src/components/trials/trialConstants.js
 
 export const SEASONS = [
-  'Season 1',
-  'Season 2',
-  'Season 3',
-  'Season 4',
-  'Season 5',
-  'Season 6',
-  'Season 7',
-  'Season 8',
-  'Season 9',
-  'Season 10',
-  'Custom',
+  'Season 1', 'Season 2', 'Season 3', 'Season 4', 'Season 5',
+  'Season 6', 'Season 7', 'Season 8', 'Season 9', 'Season 10', 'Custom',
 ];
 
-export const TRIAL_TYPES = [
-  'Regular',
-  'CSR',
-  'Championship',
-  'School Partnership',
-];
+// Seasons shown in the Project Setup wizard
+export const SEASONS_PROJECT = ['Season 5', 'Season 6'];
 
-// "Not Any" is the default/first option — means tier is not applicable
+// Project name options for the wizard dropdown
+export const PROJECT_NAMES = ['IKF', 'Project Nari Shakti'];
+
+// Short codes used in project code generation
+export const PROJECT_CODES = {
+  'IKF': 'IKF',
+  'Project Nari Shakti': 'PNS',
+};
+
+// "Not Any" = no tier / not applicable
 export const TIER_TYPES = [
   'Not Any',
   'Basic',
@@ -29,47 +25,24 @@ export const TIER_TYPES = [
   'Premium',
 ];
 
-export const STATUSES = [
-  'Active',
-  'Draft',
-  'Completed',
-  'Cancelled',
-];
-
-export const SCHEDULE_TYPES = [
-  'Fixed',
-  'Tentative',
-];
-
 export const SORT_OPTIONS = [
   { value: 'latest', label: 'Latest First' },
   { value: 'oldest', label: 'Oldest First' },
-  { value: 'name-asc', label: 'Name A-Z' },
-  { value: 'name-desc', label: 'Name Z-A' },
-  { value: 'upcoming', label: 'Upcoming First' },
-  { value: 'past', label: 'Past First' },
+  { value: 'name-asc', label: 'Name A–Z' },
+  { value: 'name-desc', label: 'Name Z–A' },
 ];
 
-export const DATE_FILTER_OPTIONS = [
-  { value: '', label: 'All Dates' },
-  { value: 'this-month', label: 'This Month' },
-  { value: 'next-month', label: 'Next Month' },
-  { value: 'this-quarter', label: 'This Quarter' },
-  { value: 'tentative-only', label: 'Tentative Only' },
+// City sort options used inside ProjectDashboard
+export const CITY_SORT_OPTIONS = [
+  { value: 'recent', label: 'Recently Added' },
+  { value: 'city-asc', label: 'City A–Z' },
+  { value: 'city-desc', label: 'City Z–A' },
+  { value: 'state-asc', label: 'State A–Z' },
+  { value: 'month-asc', label: 'Month (Jan → Dec)' },
+  { value: 'confirmed-first', label: 'Confirmed First' },
 ];
 
-// Trial type short codes for code generation
-export const TRIAL_TYPE_CODES = {
-  'Regular': 'REG',
-  'CSR': 'CSR',
-  'Championship': 'CHP',
-  'School Partnership': 'SPR',
-};
-
-// Status color mapping
-export const STATUS_COLORS = {
-  'Active': 'success',
-  'Draft': 'default',
-  'Completed': 'info',
-  'Cancelled': 'error',
-};
+export const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];

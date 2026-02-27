@@ -28,7 +28,9 @@ import { State, City } from 'country-state-city';
 import { generateTrialCityCode } from '../../utils/codeGenerator';
 import { repAPI } from '../../services/api';
 
-function CityModal({ open, onClose, onSave, editingCity, existingCities }) {
+const ZONES = ['North', 'South', 'East', 'West', 'Central', 'Not Yet Decided'];
+
+function CityModal({ open, onClose, onSave, onSaveAndAddAnother, editingCity, existingCities }) {
   const isEditMode = !!editingCity;
 
   const indianStates = useMemo(() => {
@@ -44,14 +46,13 @@ function CityModal({ open, onClose, onSave, editingCity, existingCities }) {
     state: '',
     stateCode: '',
     city: '',
+    zone: '',
     assignedREP: '',
     groundLocation: '',
     groundVerified: false,
     trialType: '',
-    trialDate: '',
     monthOnly: '',
     comment: '',
-    nextTrialDate: '',
   });
 
   const [previewCode, setPreviewCode] = useState('');
@@ -103,14 +104,13 @@ function CityModal({ open, onClose, onSave, editingCity, existingCities }) {
           state: editingCity.state || '',
           stateCode: stateObj?.isoCode || '',
           city: editingCity.city || '',
+          zone: editingCity.zone || '',
           assignedREP: editingCity.assignedREP || '',
           groundLocation: editingCity.groundLocation || '',
           groundVerified: editingCity.groundVerified || false,
           trialType: editingCity.trialType || '',
-          trialDate: editingCity.trialDate ? editingCity.trialDate.split('T')[0] : '',
           monthOnly: editingCity.monthOnly || '',
           comment: editingCity.comment || '',
-          nextTrialDate: editingCity.nextTrialDate ? editingCity.nextTrialDate.split('T')[0] : '',
         });
         setPreviewCode(editingCity.code);
       } else {
@@ -118,14 +118,13 @@ function CityModal({ open, onClose, onSave, editingCity, existingCities }) {
           state: '',
           stateCode: '',
           city: '',
+          zone: '',
           assignedREP: '',
           groundLocation: '',
           groundVerified: false,
           trialType: '',
-          trialDate: '',
           monthOnly: '',
           comment: '',
-          nextTrialDate: '',
         });
         setPreviewCode('');
         setAvailableCities([]);
@@ -223,16 +222,6 @@ function CityModal({ open, onClose, onSave, editingCity, existingCities }) {
       }
     }
 
-    // Validate dates if provided
-    if (formData.trialDate && formData.nextTrialDate) {
-      const trialDate = new Date(formData.trialDate);
-      const nextTrialDate = new Date(formData.nextTrialDate);
-      
-      if (nextTrialDate <= trialDate) {
-        newErrors.nextTrialDate = 'Next trial date must be after current trial date';
-      }
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -260,16 +249,15 @@ function CityModal({ open, onClose, onSave, editingCity, existingCities }) {
         ...formData,
         code: previewCode,
         trialCityName: formData.city,
+        zone: formData.zone || null,
         assignedREP: formData.assignedREP || null,
         groundLocation: formData.groundLocation || null,
         trialType: formData.trialType || null,
-        trialDate: formData.trialDate || null,
         monthOnly: formData.monthOnly || null,
         comment: formData.comment || null,
-        nextTrialDate: formData.nextTrialDate || null,
       };
       delete cityData.stateCode;
-      
+
       // Call parent save function
       await onSave(cityData);
       
@@ -295,6 +283,54 @@ function CityModal({ open, onClose, onSave, editingCity, existingCities }) {
       
       // Don't close modal - let user retry
       throw error; // Re-throw so parent knows it failed
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveAndAddAnother = async () => {
+    setFormError('');
+    if (!validate()) return;
+    if (!previewCode) {
+      setFormError('Failed to generate city code. Please try again.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const cityData = {
+        ...formData,
+        code: previewCode,
+        trialCityName: formData.city,
+        zone: formData.zone || null,
+        assignedREP: formData.assignedREP || null,
+        groundLocation: formData.groundLocation || null,
+        trialType: formData.trialType || null,
+        monthOnly: formData.monthOnly || null,
+        comment: formData.comment || null,
+      };
+      delete cityData.stateCode;
+      await onSaveAndAddAnother(cityData);
+      // Reset form for next city
+      setFormData({
+        state: '',
+        stateCode: '',
+        city: '',
+        zone: '',
+        assignedREP: '',
+        groundLocation: '',
+        groundVerified: false,
+        trialType: '',
+        monthOnly: '',
+        comment: '',
+      });
+      setPreviewCode('');
+      setAvailableCities([]);
+      setErrors({});
+      setFormError('');
+    } catch (error) {
+      console.error('Error saving city:', error);
+      setFormError(error.response?.data?.message || error.message || 'Failed to save city. Please try again.');
+      throw error;
     } finally {
       setSaving(false);
     }
@@ -529,6 +565,25 @@ function CityModal({ open, onClose, onSave, editingCity, existingCities }) {
               />
             </Grid>
 
+            <Grid item xs={12} sm={6}>
+              <Typography variant="caption" sx={{ mb: 0.5, display: 'block', fontWeight: 500 }}>
+                Zone
+              </Typography>
+              <TextField
+                select
+                fullWidth
+                size="small"
+                value={formData.zone}
+                onChange={handleChange('zone')}
+                disabled={saving}
+              >
+                <MenuItem value=""><em>Select Zone</em></MenuItem>
+                {ZONES.map((zone) => (
+                  <MenuItem key={zone} value={zone}>{zone}</MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+
             {/* Preview Code */}
             {previewCode && (
               <Grid item xs={12}>
@@ -627,7 +682,7 @@ function CityModal({ open, onClose, onSave, editingCity, existingCities }) {
           </Typography>
 
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={4}>
+            <Grid item xs={12} sm={6}>
               <Typography variant="caption" sx={{ mb: 0.5, display: 'block', fontWeight: 500 }}>
                 Trial Type
               </Typography>
@@ -646,24 +701,9 @@ function CityModal({ open, onClose, onSave, editingCity, existingCities }) {
               </TextField>
             </Grid>
 
-            <Grid item xs={6} sm={4}>
+            <Grid item xs={12} sm={6}>
               <Typography variant="caption" sx={{ mb: 0.5, display: 'block', fontWeight: 500 }}>
-                Trial Date
-              </Typography>
-              <TextField
-                fullWidth
-                type="date"
-                size="small"
-                value={formData.trialDate}
-                onChange={handleChange('trialDate')}
-                InputLabelProps={{ shrink: true }}
-                disabled={saving}
-              />
-            </Grid>
-
-            <Grid item xs={6} sm={4}>
-              <Typography variant="caption" sx={{ mb: 0.5, display: 'block', fontWeight: 500 }}>
-                Or Month Only
+                Trial Month
               </Typography>
               <TextField
                 select
@@ -673,28 +713,11 @@ function CityModal({ open, onClose, onSave, editingCity, existingCities }) {
                 onChange={handleChange('monthOnly')}
                 disabled={saving}
               >
-                <MenuItem value=""><em>Select</em></MenuItem>
+                <MenuItem value=""><em>Select Month</em></MenuItem>
                 {months.map((month) => (
                   <MenuItem key={month} value={month}>{month}</MenuItem>
                 ))}
               </TextField>
-            </Grid>
-
-            <Grid item xs={12} sm={6}>
-              <Typography variant="caption" sx={{ mb: 0.5, display: 'block', fontWeight: 500 }}>
-                Next Trial Date
-              </Typography>
-              <TextField
-                fullWidth
-                type="date"
-                size="small"
-                value={formData.nextTrialDate}
-                onChange={handleChange('nextTrialDate')}
-                error={!!errors.nextTrialDate}
-                helperText={errors.nextTrialDate}
-                InputLabelProps={{ shrink: true }}
-                disabled={saving}
-              />
             </Grid>
 
             <Grid item xs={12}>
@@ -718,16 +741,26 @@ function CityModal({ open, onClose, onSave, editingCity, existingCities }) {
       </DialogContent>
 
       {/* Actions */}
-      <DialogActions sx={{ px: 3, py: 2 }}>
+      <DialogActions sx={{ px: 3, py: 2, gap: 1 }}>
         <Button onClick={onClose} disabled={saving} sx={{ color: 'text.secondary' }}>
           Cancel
         </Button>
+        {!isEditMode && onSaveAndAddAnother && (
+          <Button
+            variant="outlined"
+            onClick={handleSaveAndAddAnother}
+            disabled={saving}
+            sx={{ minWidth: 160 }}
+          >
+            {saving ? 'Saving...' : 'Save & Add Another'}
+          </Button>
+        )}
         <Button
           variant="contained"
           startIcon={saving ? <CircularProgress size={16} color="inherit" /> : <SaveIcon />}
           onClick={handleSave}
           disabled={saving}
-          sx={{ 
+          sx={{
             minWidth: 100,
             bgcolor: '#FBB040',
             '&:hover': {

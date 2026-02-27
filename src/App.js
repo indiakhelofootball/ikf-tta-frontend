@@ -12,9 +12,10 @@ import Unauthorized from "./components/Unauthorized";
 import DashboardLayout from "./components/layout/DashboardLayout";
 import DashboardHome from "./components/dashboard/DashboardHome";
 import REPManagementPage from "./components/rep/REPManagementPage";
-import { TrialManagementPage, TrialWizard } from "./components/trials";
-import { TrialCitiesPage } from "./components/trialCities";
+import { TrialManagementPage, TrialWizard, ProjectDashboard } from "./components/trials";
+// TrialCitiesPage removed — city management merged into trial creation/edit flows
 import { VendorManagementPage } from "./components/vendors";
+import { PaymentManagementPage } from "./components/payments";
 import { ProfilePage } from "./components/profile";
 
 // Import error handling components
@@ -82,19 +83,24 @@ function App() {
                 <TrialManagementPage />
               </RoleBasedRoute>
             } />
+            <Route path="/trials/:id" element={
+              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+                <ProjectDashboard />
+              </RoleBasedRoute>
+            } />
             <Route path="/rep-management" element={
               <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
                 <REPManagementPage />
               </RoleBasedRoute>
             } />
-            <Route path="/trial-cities" element={
-              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
-                <TrialCitiesPage />
-              </RoleBasedRoute>
-            } />
             <Route path="/vendors" element={
               <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
                 <VendorManagementPage />
+              </RoleBasedRoute>
+            } />
+            <Route path="/payments" element={
+              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+                <PaymentManagementPage />
               </RoleBasedRoute>
             } />
             <Route path="/profile" element={<ProfilePage />} />

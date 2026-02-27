@@ -1,6 +1,6 @@
 // src/components/trials/TrialWizard.jsx
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -13,10 +13,7 @@ import {
   Step,
   StepLabel,
   MenuItem,
-  Radio,
-  RadioGroup,
   FormControlLabel,
-  FormControl,
   Checkbox,
   Alert,
   CircularProgress,
@@ -32,6 +29,7 @@ import {
   TableHead,
   TableRow,
   Paper,
+  Autocomplete,
 } from '@mui/material';
 import {
   ArrowBack as BackIcon,
@@ -39,816 +37,884 @@ import {
   Check as CheckIcon,
   Add as AddIcon,
   Delete as DeleteIcon,
-  CloudUpload as UploadIcon,
-  Download as DownloadIcon,
+  LocationOn as LocationIcon,
 } from '@mui/icons-material';
+import { State, City } from 'country-state-city';
 
-import { SEASONS, TRIAL_TYPES, TIER_TYPES, SCHEDULE_TYPES } from './trialConstants';
-import { generateTrialCode } from '../../utils/trialCodeGenerator';
+import { SEASONS_PROJECT, PROJECT_NAMES } from './trialConstants';
+import { generateProjectCode } from '../../utils/trialCodeGenerator';
 import { trialsAPI } from '../../services/api';
 
-const STEPS = ['Project Details & Cities', 'Tier, Pricing & Schedule', 'Review & Submit'];
+const STEPS = ['Project Setup', 'Locations', 'Schedule', 'Review'];
+const indianStates = State.getStatesOfCountry('IN');
+
+// ── MD3-aligned shared styles ──────────────────────────────────────
+const inputSx = {
+  '& .MuiOutlinedInput-root': { borderRadius: '12px', fontSize: '1rem' },
+  '& .MuiInputLabel-root': { fontSize: '1rem' },
+};
+
+// selectSx removed — Step 1 now uses external labels (Typography) like Steps 2/3
+
+const filledBtnSx = {
+  borderRadius: '20px', textTransform: 'none',
+  fontWeight: 700, fontSize: '0.95rem',
+  py: 1.25, px: 3.5, boxShadow: 'none',
+  '&:hover': { boxShadow: 'none' },
+  '&.Mui-disabled': { bgcolor: '#e0e0e0', color: '#9e9e9e' },
+};
+
+const outlinedBtnSx = {
+  borderRadius: '20px', textTransform: 'none',
+  fontWeight: 600, fontSize: '0.95rem',
+  py: 1.25, px: 3.5,
+  border: '1.5px solid #c7c7cc', color: '#1d1d1f',
+  '&:hover': { bgcolor: '#f5f5f7', border: '1.5px solid #888', boxShadow: 'none' },
+};
+
+const sectionTitleSx = {
+  fontSize: '1.1rem', fontWeight: 700, color: '#1d1d1f', mb: 0.5,
+};
+
+const fieldLabelSx = {
+  fontSize: '0.9rem', fontWeight: 600, color: '#3c3c43', mb: 0.75, display: 'block',
+};
+
+// ── Helper: generate city code ─────────────────────────────────────
+function makeCityCode(stateName, cityName, existingCities) {
+  const stateObj = indianStates.find(s => s.name === stateName);
+  const stateCode = stateObj?.isoCode || 'XX';
+  const cityAbbr = cityName.trim().substring(0, 3).toUpperCase();
+  const seq = String(
+    existingCities.filter(c => c.code && c.code.includes(`-${stateCode}-${cityAbbr}-`)).length + 1
+  ).padStart(3, '0');
+  return `IKF-${stateCode}-${cityAbbr}-${seq}`;
+}
 
 function TrialWizard() {
   const navigate = useNavigate();
-  const fileInputRef = useRef(null);
   const [activeStep, setActiveStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
+  const [confirmChecked, setConfirmChecked] = useState(false);
+  const [projectCreated, setProjectCreated] = useState(false);
+  const [existingTrials, setExistingTrials] = useState([]);
 
   const [formData, setFormData] = useState({
-    trialName: '',
+    projectName: '',
     season: '',
-    trialType: '',
-    comment: '',
+    description: '',      // merged about + notes
     assignedCities: [],
-    tierType: 'Not Any',
-    tierDetails: '',
-    tierAmount: '',
-    expectedParticipants: '',
-    scheduleType: 'Fixed',
-    startDate: '',
-    endDate: '',
     tentativeMonth: '',
     tentativeDateRange: '',
     status: 'Draft',
   });
 
-  const [cityInput, setCityInput] = useState({ cityName: '', trialRegion: '' });
+  // Multiple location rows (each row = one location being filled in)
+  const [locationRows, setLocationRows] = useState([
+    { id: Date.now(), state: null, city: null, region: '', availableCities: [] },
+  ]);
+
+  // Bulk add state
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkRows, setBulkRows] = useState(
+    Array.from({ length: 10 }, (_, i) => ({ id: i, state: null, city: null, region: '', availableCities: [] }))
+  );
+
+  // Per-city schedules: { [cityCode]: { month: '', date: '' } }
+  const [citySchedules, setCitySchedules] = useState({});
+
   const [errors, setErrors] = useState({});
-  const [nameExists, setNameExists] = useState(false);
-  const [checkingName, setCheckingName] = useState(false);
-  const [existingTrials, setExistingTrials] = useState([]);
-  const [confirmChecked, setConfirmChecked] = useState(false);
-  const [trialCreated, setTrialCreated] = useState(false);
 
   useEffect(() => {
-    const loadTrials = async () => {
-      try {
-        const response = await trialsAPI.getAll();
-        setExistingTrials(response.trials || []);
-      } catch (err) {
-        console.error('Failed to load trials:', err);
-      }
-    };
-    loadTrials();
+    trialsAPI.getAll()
+      .then(r => setExistingTrials(r.trials || []))
+      .catch(() => {});
   }, []);
 
-  useEffect(() => {
-    if (!formData.trialName.trim()) {
-      setNameExists(false);
-      return;
-    }
-    const timer = setTimeout(async () => {
-      setCheckingName(true);
-      try {
-        const exists = await trialsAPI.checkNameExists(formData.trialName);
-        setNameExists(exists);
-      } catch (err) {
-        console.error('Name check error:', err);
-      } finally {
-        setCheckingName(false);
-      }
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [formData.trialName]);
+  const showToast = (message, severity = 'success') =>
+    setToast({ open: true, message, severity });
 
-  const handleChange = useCallback((field) => (event) => {
-    const value = event.target.value;
-    setFormData(prev => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
-    }
+  const autoProjectCode = (formData.projectName && formData.season)
+    ? generateProjectCode(formData.projectName, formData.season, existingTrials)
+    : '';
+
+  const handleChange = useCallback((field) => (e) => {
+    setFormData(prev => ({ ...prev, [field]: e.target.value }));
+    if (errors[field]) setErrors(prev => ({ ...prev, [field]: '' }));
   }, [errors]);
 
-  const showToast = (message, severity = 'success') => {
-    setToast({ open: true, message, severity });
+  // ── Location row management ────────────────────────────────────
+  const updateRow = (id, updates) => {
+    setLocationRows(prev => prev.map(row => {
+      if (row.id !== id) return row;
+      const next = { ...row, ...updates };
+      if ('state' in updates) {
+        next.city = null;
+        next.availableCities = updates.state
+          ? City.getCitiesOfState('IN', updates.state.isoCode)
+          : [];
+      }
+      return next;
+    }));
   };
 
-  // --- City management ---
-  const generateCityCode = (cityName) => {
-    const stateMap = {
-      'mumbai': 'MH', 'pune': 'MH', 'nagpur': 'MH', 'thane': 'MH',
-      'delhi': 'DL', 'new delhi': 'DL', 'gurgaon': 'HR', 'noida': 'UP',
-      'bangalore': 'KA', 'bengaluru': 'KA', 'mysore': 'KA',
-      'chennai': 'TN', 'coimbatore': 'TN',
-      'kolkata': 'WB', 'hyderabad': 'TG', 'ahmedabad': 'GJ',
-      'jaipur': 'RJ', 'lucknow': 'UP', 'bhopal': 'MP', 'indore': 'MP',
-      'patna': 'BR', 'chandigarh': 'CH', 'kochi': 'KL',
-    };
-    const cityLower = cityName.toLowerCase().trim();
-    const stateCode = stateMap[cityLower] || 'XX';
-    const cityAbbr = cityName.trim().substring(0, 3).toUpperCase();
-    const seq = String(formData.assignedCities.filter(c =>
-      c.code.includes(`-${stateCode}-${cityAbbr}-`)
-    ).length + 1).padStart(3, '0');
-    return `IKF-${stateCode}-${cityAbbr}-${seq}`;
+  const removeRow = (id) => {
+    setLocationRows(prev => prev.filter(r => r.id !== id));
   };
 
-  const handleAddCity = () => {
-    const name = cityInput.cityName.trim();
-    if (!name) return;
-    const region = cityInput.trialRegion.trim() || name;
-    const code = generateCityCode(name);
-    const isDuplicate = formData.assignedCities.some(
-      c => c.cityName.toLowerCase() === name.toLowerCase() && c.trialRegion.toLowerCase() === region.toLowerCase()
-    );
-    if (isDuplicate) {
-      showToast('This city-region combination already exists', 'warning');
+  const addNewRow = () => {
+    setLocationRows(prev => [...prev, { id: Date.now(), state: null, city: null, region: '', availableCities: [] }]);
+  };
+
+  const saveRow = (id) => {
+    const row = locationRows.find(r => r.id === id);
+    if (!row?.state || !row?.city) {
+      showToast('Please select a state and city', 'warning');
       return;
     }
+    const stateName = row.state.name;
+    const cityName = row.city.name;
+    const region = row.region.trim() || cityName;
+
+    const isDuplicate = formData.assignedCities.some(
+      c => c.cityName?.toLowerCase() === cityName.toLowerCase() &&
+           c.state?.toLowerCase() === stateName.toLowerCase() &&
+           c.region?.toLowerCase() === region.toLowerCase()
+    );
+    if (isDuplicate) {
+      showToast('This location already exists', 'warning');
+      return;
+    }
+
+    const code = makeCityCode(stateName, cityName, formData.assignedCities);
     setFormData(prev => ({
       ...prev,
-      assignedCities: [...prev.assignedCities, { cityName: name, trialRegion: region, code }],
+      assignedCities: [...prev.assignedCities, {
+        state: stateName, cityName, region, trialRegion: region,
+        confirmed: false, code,
+      }],
     }));
-    setCityInput({ cityName: '', trialRegion: '' });
-    if (errors.assignedCities) {
-      setErrors(prev => ({ ...prev, assignedCities: '' }));
-    }
+    // Remove the saved row — user clicks "Add more cities" when ready for next
+    setLocationRows(prev => prev.filter(r => r.id !== id));
+    showToast(`${cityName} saved`);
   };
 
-  const handleRemoveCity = (index) => {
+  const removeCity = (index) => {
     setFormData(prev => ({
       ...prev,
       assignedCities: prev.assignedCities.filter((_, i) => i !== index),
     }));
   };
 
-  const handleDownloadTemplate = () => {
-    const csvContent = 'City Name,Trial Region (optional)\nMumbai,Mumbai Central\nBangalore,South Bangalore\nDelhi,\n';
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'trial_cities_template.csv';
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleCSVUpload = (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target.result;
-      const lines = text.split('\n').filter(line => line.trim());
-      const dataLines = lines.slice(1);
-      const newCities = [];
-      let skipped = 0;
-      dataLines.forEach(line => {
-        const parts = line.split(',').map(p => p.trim().replace(/^"|"$/g, ''));
-        const cityName = parts[0];
-        const trialRegion = parts[1] || cityName;
-        if (!cityName) return;
-        const isDuplicate = [...formData.assignedCities, ...newCities].some(
-          c => c.cityName.toLowerCase() === cityName.toLowerCase() && c.trialRegion.toLowerCase() === trialRegion.toLowerCase()
-        );
-        if (isDuplicate) { skipped++; return; }
-        const code = generateCityCode(cityName);
-        newCities.push({ cityName, trialRegion, code });
-      });
-      if (newCities.length > 0) {
-        setFormData(prev => ({
-          ...prev,
-          assignedCities: [...prev.assignedCities, ...newCities],
-        }));
-        showToast(`Imported ${newCities.length} cities${skipped > 0 ? ` (${skipped} duplicates skipped)` : ''}`);
-      } else {
-        showToast('No new cities to import', 'warning');
+  // ── Bulk add management ────────────────────────────────────────
+  const updateBulkRow = (id, updates) => {
+    setBulkRows(prev => prev.map(row => {
+      if (row.id !== id) return row;
+      const next = { ...row, ...updates };
+      if ('state' in updates) {
+        next.city = null;
+        next.availableCities = updates.state
+          ? City.getCitiesOfState('IN', updates.state.isoCode)
+          : [];
       }
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    };
-    reader.readAsText(file);
+      return next;
+    }));
   };
 
+  const saveBulkRows = () => {
+    const valid = bulkRows.filter(r => r.state && r.city);
+    if (valid.length === 0) {
+      showToast('Fill at least one city (state + city required)', 'warning');
+      return;
+    }
+    const toAdd = [];
+    let skipped = 0;
+    for (const row of valid) {
+      const stateName = row.state.name;
+      const cityName = row.city.name;
+      const region = row.region.trim() || cityName;
+      const isDuplicate = [...formData.assignedCities, ...toAdd].some(
+        c => c.cityName?.toLowerCase() === cityName.toLowerCase() &&
+             c.state?.toLowerCase() === stateName.toLowerCase()
+      );
+      if (isDuplicate) { skipped++; continue; }
+      const code = makeCityCode(stateName, cityName, [...formData.assignedCities, ...toAdd]);
+      toAdd.push({ state: stateName, cityName, region, trialRegion: region, confirmed: false, code });
+    }
+    if (toAdd.length > 0) {
+      setFormData(prev => ({ ...prev, assignedCities: [...prev.assignedCities, ...toAdd] }));
+    }
+    setBulkRows(Array.from({ length: 10 }, (_, i) => ({ id: i, state: null, city: null, region: '', availableCities: [] })));
+    setBulkOpen(false);
+    showToast(
+      skipped > 0 ? `${toAdd.length} saved, ${skipped} duplicate(s) skipped` : `${toAdd.length} cities saved!`,
+      toAdd.length > 0 ? 'success' : 'warning'
+    );
+  };
+
+  // ── Validation ─────────────────────────────────────────────────
   const validateStep = (step) => {
-    const newErrors = {};
+    const errs = {};
     if (step === 0) {
-      if (!formData.trialName.trim()) newErrors.trialName = 'Trial name is required';
-      if (nameExists) newErrors.trialName = 'A trial with this name already exists';
-      if (!formData.season) newErrors.season = 'Season is required';
-      if (!formData.trialType) newErrors.trialType = 'Trial type is required';
+      if (!formData.projectName) errs.projectName = 'Project name is required';
+      if (!formData.season) errs.season = 'Season is required';
     }
-    if (step === 1) {
-      if (formData.tierType !== 'Not Any') {
-        if (!formData.tierDetails.trim()) newErrors.tierDetails = 'Tier details are required';
-        if (!formData.tierAmount) newErrors.tierAmount = 'Amount is required';
-        if (formData.tierAmount && isNaN(Number(formData.tierAmount))) {
-          newErrors.tierAmount = 'Amount must be a number';
-        }
-      }
-      if (formData.scheduleType === 'Fixed') {
-        if (!formData.startDate) newErrors.startDate = 'Start date is required';
-        if (!formData.endDate) newErrors.endDate = 'End date is required';
-        if (formData.startDate && formData.endDate) {
-          if (new Date(formData.endDate) <= new Date(formData.startDate)) {
-            newErrors.endDate = 'End date must be after start date';
-          }
-        }
-      } else {
-        if (!formData.tentativeMonth) newErrors.tentativeMonth = 'Tentative month is required';
-      }
+    if (step === 2) {
+      const missingMonth = formData.assignedCities.some(city => !citySchedules[city.code]?.month);
+      if (missingMonth) errs.schedule = 'Please set a month for every city';
     }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
   };
 
   const handleNext = () => {
-    if (validateStep(activeStep)) setActiveStep(prev => prev + 1);
+    if (validateStep(activeStep)) setActiveStep(p => p + 1);
   };
+  const handleBack = () => setActiveStep(p => p - 1);
 
-  const handleBack = () => {
-    setActiveStep(prev => prev - 1);
-  };
-
+  // ── Submit ─────────────────────────────────────────────────────
   const handleSubmit = async () => {
     if (!confirmChecked) return;
     setSaving(true);
     try {
-      const trialCode = generateTrialCode(formData.season, formData.trialType, existingTrials);
-      const trialData = {
-        trialName: formData.trialName.trim(),
-        trialCode,
+      const code = generateProjectCode(formData.projectName, formData.season, existingTrials);
+      await trialsAPI.create({
+        trialName: code,
+        trialCode: code,
         season: formData.season,
-        trialType: formData.trialType,
-        tierType: formData.tierType,
-        tierDetails: formData.tierType !== 'Not Any' ? formData.tierDetails : null,
-        tierAmount: formData.tierType !== 'Not Any' ? Number(formData.tierAmount) : null,
-        expectedParticipants: formData.tierType !== 'Not Any' && formData.expectedParticipants
-          ? Number(formData.expectedParticipants) : null,
-        scheduleType: formData.scheduleType,
-        startDate: formData.scheduleType === 'Fixed' ? formData.startDate : null,
-        endDate: formData.scheduleType === 'Fixed' ? formData.endDate : null,
-        tentativeMonth: formData.scheduleType === 'Tentative' ? formData.tentativeMonth : null,
-        tentativeDateRange: formData.scheduleType === 'Tentative' ? formData.tentativeDateRange : null,
+        trialType: formData.description || formData.projectName,
+        tierType: 'Not Any',
+        tierDetails: null, tierAmount: null, expectedParticipants: null,
+        scheduleType: 'Tentative',
+        startDate: null, endDate: null,
+        tentativeMonth: null,
+        tentativeDateRange: null,
         nextTrialDate: null,
         status: formData.status,
-        comment: formData.comment || null,
-        assignedCities: formData.assignedCities,
-        createdBy: 'Admin User',
-      };
-      await trialsAPI.create(trialData);
-      showToast('Trial created successfully!');
-      setTrialCreated(true);
-    } catch (error) {
-      console.error('Create error:', error);
-      showToast(error.message || 'Failed to create trial', 'error');
+        comment: null,
+        assignedCities: formData.assignedCities.map(city => ({
+          ...city,
+          tentativeMonth: citySchedules[city.code]?.month || null,
+          tentativeDate: citySchedules[city.code]?.date || null,
+        })),
+      });
+      showToast('Project created successfully!');
+      setProjectCreated(true);
+    } catch (err) {
+      showToast(err.message || 'Failed to create project', 'error');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleCreateNewTrial = () => {
-    setFormData({
-      trialName: '',
-      season: '',
-      trialType: '',
-      comment: '',
-      assignedCities: [],
-      tierType: 'Not Any',
-      tierDetails: '',
-      tierAmount: '',
-      expectedParticipants: '',
-      scheduleType: 'Fixed',
-      startDate: '',
-      endDate: '',
-      tentativeMonth: '',
-      tentativeDateRange: '',
-      status: 'Draft',
-    });
-    setCityInput({ cityName: '', trialRegion: '' });
+  const handleReset = () => {
+    setFormData({ projectName: '', season: '', description: '', assignedCities: [], tentativeMonth: '', tentativeDateRange: '', status: 'Draft' });
+    setLocationRows([{ id: Date.now(), state: null, city: null, region: '', availableCities: [] }]);
+    setBulkRows(Array.from({ length: 10 }, (_, i) => ({ id: i, state: null, city: null, region: '', availableCities: [] })));
+    setBulkOpen(false);
+    setCitySchedules({});
     setErrors({});
-    setNameExists(false);
     setConfirmChecked(false);
-    setTrialCreated(false);
+    setProjectCreated(false);
     setActiveStep(0);
   };
 
-  const months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December',
-  ];
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
-  const formatDate = (dateString) => {
-    if (!dateString) return 'Not set';
-    return new Date(dateString).toLocaleDateString('en-IN', {
-      day: 'numeric', month: 'short', year: 'numeric',
-    });
-  };
-
-  const sectionHeaderSx = {
-    color: '#475569',
-    fontWeight: 700,
-    mb: 2.5,
-    textTransform: 'uppercase',
-    letterSpacing: '0.8px',
-    fontSize: '0.75rem',
-    borderBottom: '2px solid #e2e8f0',
-    pb: 1,
-  };
-
-  const fieldLabelSx = {
-    mb: 0.5, display: 'block', fontWeight: 600, color: '#334155', fontSize: '0.8rem',
-  };
-
-  /* =============== STEP RENDERERS =============== */
-
+  // ═══════════════════════════════════════════════════════════════
+  // STEP 1 — PROJECT SETUP
+  // ═══════════════════════════════════════════════════════════════
   const renderStep1 = () => (
     <Box>
-      <Typography variant="subtitle2" sx={sectionHeaderSx}>
-        PROJECT DETAILS
+      <Typography sx={sectionTitleSx}>Project Setup</Typography>
+      <Typography variant="body2" sx={{ mb: 3.5, color: '#6e6e73', fontSize: '0.95rem' }}>
+        Select your project and season to get started.
       </Typography>
 
-      <Grid container spacing={2.5}>
-        <Grid item xs={12}>
-          <Typography variant="caption" sx={fieldLabelSx}>Trial Name *</Typography>
+      <Grid container spacing={3}>
+        {/* Project Name */}
+        <Grid item xs={12} sm={6}>
+          <Typography sx={fieldLabelSx}>
+            Project Name <span style={{ color: '#ef4444' }}>*</span>
+          </Typography>
           <TextField
-            fullWidth
-            size="small"
-            placeholder="Enter a unique trial name"
-            value={formData.trialName}
-            onChange={handleChange('trialName')}
-            error={!!errors.trialName || nameExists}
-            helperText={
-              errors.trialName ||
-              (checkingName ? 'Checking availability...' : '') ||
-              (nameExists ? 'A trial with this name already exists' : '')
-            }
-            InputProps={{
-              endAdornment: checkingName ? (
-                <CircularProgress size={16} />
-              ) : formData.trialName && !nameExists ? (
-                <CheckIcon sx={{ color: '#22c55e', fontSize: 18 }} />
-              ) : null,
-            }}
-            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
-          />
+            select fullWidth size="small"
+            value={formData.projectName}
+            onChange={handleChange('projectName')}
+            error={!!errors.projectName}
+            helperText={errors.projectName}
+            sx={inputSx}
+          >
+            <MenuItem value=""><em style={{ color: '#888' }}>— Select Project —</em></MenuItem>
+            {PROJECT_NAMES.map(p => (
+              <MenuItem key={p} value={p} sx={{ fontSize: '1rem', fontWeight: 500 }}>{p}</MenuItem>
+            ))}
+          </TextField>
         </Grid>
 
+        {/* Season */}
         <Grid item xs={12} sm={6}>
-          <Typography variant="caption" sx={fieldLabelSx}>Season *</Typography>
+          <Typography sx={fieldLabelSx}>
+            Season <span style={{ color: '#ef4444' }}>*</span>
+          </Typography>
           <TextField
             select fullWidth size="small"
             value={formData.season}
             onChange={handleChange('season')}
             error={!!errors.season}
             helperText={errors.season}
-            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
+            sx={inputSx}
           >
-            <MenuItem value=""><em>Select Season</em></MenuItem>
-            {SEASONS.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
-          </TextField>
-        </Grid>
-
-        <Grid item xs={12} sm={6}>
-          <Typography variant="caption" sx={fieldLabelSx}>Trial Type *</Typography>
-          <TextField
-            select fullWidth size="small"
-            value={formData.trialType}
-            onChange={handleChange('trialType')}
-            error={!!errors.trialType}
-            helperText={errors.trialType}
-            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
-          >
-            <MenuItem value=""><em>Select Type</em></MenuItem>
-            {TRIAL_TYPES.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}
-          </TextField>
-        </Grid>
-
-        <Grid item xs={12}>
-          <Typography variant="caption" sx={fieldLabelSx}>Comment / Notes</Typography>
-          <TextField
-            fullWidth size="small" multiline rows={2}
-            placeholder="Add any additional notes..."
-            value={formData.comment}
-            onChange={handleChange('comment')}
-            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
-          />
-        </Grid>
-
-        {formData.season && formData.trialType && (
-          <Grid item xs={12}>
-            <Box sx={{ p: 1.5, bgcolor: '#f0fdf4', borderRadius: 2, border: '1px solid #bbf7d0' }}>
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-                Generated Trial Code
-              </Typography>
-              <Typography variant="body1" fontWeight={700} sx={{ fontFamily: 'monospace', color: '#16a34a' }}>
-                {generateTrialCode(formData.season, formData.trialType, existingTrials)}
-              </Typography>
-            </Box>
-          </Grid>
-        )}
-      </Grid>
-
-      <Divider sx={{ my: 3 }} />
-
-      <Typography variant="subtitle2" sx={sectionHeaderSx}>
-        CITIES & REGIONS
-      </Typography>
-
-      <Alert severity="info" sx={{ mb: 2, borderRadius: 1.5, '& .MuiAlert-icon': { color: '#3b82f6' } }} variant="outlined">
-        Add cities where this trial will take place. You can optionally specify a trial region within each city.
-      </Alert>
-
-      <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: 2, borderStyle: 'dashed', borderColor: '#cbd5e1' }}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-          <TextField
-            size="small"
-            placeholder="City Name (e.g., Bangalore)"
-            value={cityInput.cityName}
-            onChange={(e) => setCityInput(prev => ({ ...prev, cityName: e.target.value }))}
-            sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddCity(); } }}
-          />
-          <TextField
-            size="small"
-            placeholder="Trial Region (optional)"
-            value={cityInput.trialRegion}
-            onChange={(e) => setCityInput(prev => ({ ...prev, trialRegion: e.target.value }))}
-            sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddCity(); } }}
-          />
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleAddCity}
-            disabled={!cityInput.cityName.trim()}
-            sx={{
-              bgcolor: '#5B63D3', '&:hover': { bgcolor: '#4A52C2' },
-              minWidth: 120, borderRadius: 1.5, textTransform: 'none', fontWeight: 600,
-            }}
-          >
-            Add City
-          </Button>
-        </Stack>
-      </Paper>
-
-      <Stack direction="row" spacing={1.5} sx={{ mb: 2 }}>
-        <Button
-          variant="text" startIcon={<DownloadIcon />}
-          onClick={handleDownloadTemplate} size="small"
-          sx={{ textTransform: 'none', color: '#64748b', fontWeight: 500 }}
-        >
-          CSV Template
-        </Button>
-        <Button
-          variant="text" startIcon={<UploadIcon />}
-          onClick={() => fileInputRef.current?.click()} size="small"
-          sx={{ textTransform: 'none', color: '#64748b', fontWeight: 500 }}
-        >
-          Bulk Import
-        </Button>
-        <input ref={fileInputRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={handleCSVUpload} />
-      </Stack>
-
-      {formData.assignedCities.length > 0 ? (
-        <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, maxHeight: 250 }}>
-          <Table size="small" stickyHeader>
-            <TableHead>
-              <TableRow sx={{ bgcolor: '#f8fafc' }}>
-                <TableCell sx={{ fontWeight: 600, color: '#475569', py: 1, bgcolor: '#f8fafc' }}>#</TableCell>
-                <TableCell sx={{ fontWeight: 600, color: '#475569', py: 1, bgcolor: '#f8fafc' }}>City Name</TableCell>
-                <TableCell sx={{ fontWeight: 600, color: '#475569', py: 1, bgcolor: '#f8fafc' }}>Trial Region</TableCell>
-                <TableCell sx={{ fontWeight: 600, color: '#475569', py: 1, bgcolor: '#f8fafc' }}>Code</TableCell>
-                <TableCell sx={{ fontWeight: 600, color: '#475569', py: 1, bgcolor: '#f8fafc' }} align="center">Remove</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {formData.assignedCities.map((city, index) => (
-                <TableRow key={index} sx={{ '&:hover': { bgcolor: '#f9fafb' }, '&:last-child td': { border: 0 } }}>
-                  <TableCell sx={{ color: '#94a3b8', py: 0.75 }}>{index + 1}</TableCell>
-                  <TableCell sx={{ py: 0.75 }}><Typography variant="body2" fontWeight={600}>{city.cityName}</Typography></TableCell>
-                  <TableCell sx={{ py: 0.75 }}><Typography variant="body2" color="text.secondary">{city.trialRegion}</Typography></TableCell>
-                  <TableCell sx={{ py: 0.75 }}>
-                    <Chip label={city.code} size="small" sx={{ fontFamily: 'monospace', fontSize: '0.7rem', bgcolor: '#eef2ff', color: '#4f46e5', fontWeight: 600 }} />
-                  </TableCell>
-                  <TableCell align="center" sx={{ py: 0.75 }}>
-                    <IconButton size="small" color="error" onClick={() => handleRemoveCity(index)}>
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      ) : (
-        <Box sx={{ textAlign: 'center', py: 3, bgcolor: '#f8fafc', borderRadius: 2, border: '1px dashed #cbd5e1' }}>
-          <Typography variant="body2" color="text.secondary">
-            No cities added yet. Add cities above or use CSV import.
-          </Typography>
-        </Box>
-      )}
-
-      {formData.assignedCities.length > 0 && (
-        <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-          {formData.assignedCities.length} {formData.assignedCities.length === 1 ? 'city' : 'cities'} added
-        </Typography>
-      )}
-    </Box>
-  );
-
-  const renderStep2 = () => (
-    <Box>
-      <Typography variant="subtitle2" sx={sectionHeaderSx}>
-        TIER & PRICING
-      </Typography>
-
-      <Alert severity="info" sx={{ mb: 2, borderRadius: 1.5 }} variant="outlined">
-        Tier & Pricing is optional. Select "Not Any" to skip this section.
-      </Alert>
-
-      <Grid container spacing={2.5}>
-        <Grid item xs={12} sm={6}>
-          <Typography variant="caption" sx={fieldLabelSx}>Tier Type</Typography>
-          <TextField
-            select fullWidth size="small"
-            value={formData.tierType}
-            onChange={handleChange('tierType')}
-            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
-          >
-            {TIER_TYPES.map(t => (
-              <MenuItem key={t} value={t}>{t === 'Not Any' ? 'Not Any (Skip Tier)' : t}</MenuItem>
+            <MenuItem value=""><em style={{ color: '#888' }}>— Select Season —</em></MenuItem>
+            {SEASONS_PROJECT.map(s => (
+              <MenuItem key={s} value={s} sx={{ fontSize: '1rem', fontWeight: 500 }}>{s}</MenuItem>
             ))}
           </TextField>
         </Grid>
 
-        {formData.tierType !== 'Not Any' && (
-          <>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="caption" sx={fieldLabelSx}>Expected Participants</Typography>
-              <TextField
-                fullWidth size="small" type="number" placeholder="e.g., 200"
-                value={formData.expectedParticipants}
-                onChange={handleChange('expectedParticipants')}
-                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <Typography variant="caption" sx={fieldLabelSx}>Tier Details *</Typography>
-              <TextField
-                fullWidth size="small" multiline rows={2}
-                placeholder="Describe the tier package details..."
-                value={formData.tierDetails}
-                onChange={handleChange('tierDetails')}
-                error={!!errors.tierDetails} helperText={errors.tierDetails}
-                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="caption" sx={fieldLabelSx}>Amount (INR) *</Typography>
-              <TextField
-                fullWidth size="small" type="number" placeholder="e.g., 25000"
-                value={formData.tierAmount}
-                onChange={handleChange('tierAmount')}
-                error={!!errors.tierAmount} helperText={errors.tierAmount}
-                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
-              />
-            </Grid>
-          </>
-        )}
-
-        {formData.tierType === 'Not Any' && (
-          <Grid item xs={12}>
-            <Box sx={{ p: 3, bgcolor: '#f8fafc', borderRadius: 2, textAlign: 'center', border: '1px dashed #cbd5e1' }}>
-              <Typography variant="body2" color="text.secondary">
-                No tier/pricing will be applied to this trial.
-              </Typography>
-            </Box>
-          </Grid>
-        )}
-      </Grid>
-
-      <Divider sx={{ my: 3 }} />
-
-      <Typography variant="subtitle2" sx={sectionHeaderSx}>
-        TRIAL SCHEDULE
-      </Typography>
-
-      <Grid container spacing={2.5}>
+        {/* Project context banner — fixed height, opacity-based reveal, zero layout shift */}
         <Grid item xs={12}>
-          <FormControl>
-            <RadioGroup row value={formData.scheduleType} onChange={handleChange('scheduleType')}>
-              {SCHEDULE_TYPES.map(type => (
-                <FormControlLabel
-                  key={type} value={type}
-                  control={<Radio sx={{ '&.Mui-checked': { color: '#FBB040' } }} />}
-                  label={<Typography variant="body2" fontWeight={500}>{type}</Typography>}
-                />
-              ))}
-            </RadioGroup>
-          </FormControl>
+          <Box
+            sx={{
+              height: 46,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.5,
+              px: 2,
+              borderRadius: '10px',
+              bgcolor: '#f5f3ff',
+              border: '1.5px solid #ddd6fe',
+              opacity: (formData.projectName && formData.season) ? 1 : 0,
+              transition: 'opacity 0.25s ease',
+              pointerEvents: 'none',
+            }}
+          >
+            <Typography sx={{ fontSize: '0.78rem', fontWeight: 600, color: '#6e6e73', whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>
+              Project ID
+            </Typography>
+            <Chip
+              label={autoProjectCode}
+              size="small"
+              sx={{
+                bgcolor: '#1e1b4b', color: '#e0e7ff',
+                fontWeight: 700, fontSize: '0.78rem',
+                fontFamily: '"Roboto Mono", monospace',
+                borderRadius: '6px', height: 26,
+                letterSpacing: '0.04em',
+              }}
+            />
+            <Box sx={{ width: '1px', height: 20, bgcolor: '#c4b5fd', flexShrink: 0 }} />
+            <Chip
+              label={formData.projectName}
+              size="small"
+              sx={{ bgcolor: '#eef2ff', color: '#4338ca', fontWeight: 700, fontSize: '0.82rem', borderRadius: '7px', height: 26 }}
+            />
+            <Typography sx={{ color: '#c4b5fd', fontSize: '1.1rem', lineHeight: 1, flexShrink: 0 }}>·</Typography>
+            <Chip
+              label={formData.season}
+              size="small"
+              sx={{ bgcolor: '#fdf4ff', color: '#7e22ce', fontWeight: 700, fontSize: '0.82rem', borderRadius: '7px', height: 26 }}
+            />
+          </Box>
         </Grid>
 
-        {formData.scheduleType === 'Fixed' && (
-          <>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="caption" sx={fieldLabelSx}>Start Date *</Typography>
-              <TextField
-                fullWidth type="date" size="small"
-                value={formData.startDate} onChange={handleChange('startDate')}
-                error={!!errors.startDate} helperText={errors.startDate}
-                InputLabelProps={{ shrink: true }}
-                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="caption" sx={fieldLabelSx}>End Date *</Typography>
-              <TextField
-                fullWidth type="date" size="small"
-                value={formData.endDate} onChange={handleChange('endDate')}
-                error={!!errors.endDate} helperText={errors.endDate}
-                InputLabelProps={{ shrink: true }}
-                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
-              />
-            </Grid>
-          </>
-        )}
+        {/* Description / Notes */}
+        <Grid item xs={12}>
+          <TextField
+            fullWidth size="small" multiline rows={4}
+            label="Description / Notes"
+            placeholder="Describe this project — purpose, target audience, or any important notes..."
+            value={formData.description}
+            onChange={handleChange('description')}
+            sx={inputSx}
+            slotProps={{
+              inputLabel: { shrink: true },
+              input: { notched: true },
+            }}
+          />
+        </Grid>
 
-        {formData.scheduleType === 'Tentative' && (
-          <>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="caption" sx={fieldLabelSx}>Tentative Month *</Typography>
-              <TextField
-                select fullWidth size="small"
-                value={formData.tentativeMonth} onChange={handleChange('tentativeMonth')}
-                error={!!errors.tentativeMonth} helperText={errors.tentativeMonth}
-                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
-              >
-                <MenuItem value=""><em>Select Month</em></MenuItem>
-                {months.map(m => <MenuItem key={m} value={m}>{m}</MenuItem>)}
-              </TextField>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="caption" sx={fieldLabelSx}>Date Range Description</Typography>
-              <TextField
-                fullWidth size="small" placeholder="e.g., Mid June - End June 2024"
-                value={formData.tentativeDateRange} onChange={handleChange('tentativeDateRange')}
-                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <Alert severity="warning" sx={{ mt: 1, borderRadius: 1.5 }} variant="outlined">
-                Tentative trials will have a "Pending" schedule status until dates are confirmed.
-              </Alert>
-            </Grid>
-          </>
-        )}
       </Grid>
     </Box>
   );
 
-  const renderStep3 = () => {
-    const previewCode = formData.season && formData.trialType
-      ? generateTrialCode(formData.season, formData.trialType, existingTrials)
-      : 'N/A';
+  // ═══════════════════════════════════════════════════════════════
+  // STEP 2 — LOCATIONS
+  // ═══════════════════════════════════════════════════════════════
+  const renderStep2 = () => (
+    <Box>
+      <Typography sx={sectionTitleSx}>Locations</Typography>
 
-    const reviewSectionSx = {
-      p: 2.5, bgcolor: '#f8fafc', borderRadius: 2, border: '1px solid #e2e8f0',
+      {/* Colored project context */}
+      {formData.projectName && (
+        <Box sx={{ mb: 3, display: 'inline-flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+          <Typography sx={{ fontSize: '1rem', color: '#6e6e73' }}>Adding locations for</Typography>
+          <Chip
+            label={formData.projectName}
+            sx={{ bgcolor: '#eef2ff', color: '#4338ca', fontWeight: 700, fontSize: '0.9rem', height: 30, borderRadius: '8px' }}
+          />
+          <Typography sx={{ fontSize: '1rem', color: '#6e6e73' }}>—</Typography>
+          <Chip
+            label={formData.season}
+            sx={{ bgcolor: '#fdf4ff', color: '#7e22ce', fontWeight: 700, fontSize: '0.9rem', height: 30, borderRadius: '8px' }}
+          />
+        </Box>
+      )}
+
+      {/* ── Bulk Add Panel ─────────────────────────────────── */}
+      <Box sx={{ mb: 3 }}>
+        <Button
+          variant="outlined"
+          onClick={() => setBulkOpen(p => !p)}
+          sx={{
+            ...outlinedBtnSx,
+            borderColor: '#F59E0B', color: '#92400e',
+            bgcolor: bulkOpen ? '#fffbeb' : 'transparent',
+            '&:hover': { bgcolor: '#fffbeb', borderColor: '#D97706' },
+          }}
+        >
+          {bulkOpen ? 'Close Bulk Add' : '⚡ Bulk Add Cities'}
+        </Button>
+
+        {bulkOpen && (
+          <Paper variant="outlined" sx={{ mt: 2, p: 3, borderRadius: '14px', border: '1.5px solid #FDE68A', bgcolor: '#fffdf5' }}>
+            <Typography sx={{ fontSize: '0.9rem', fontWeight: 700, color: '#92400e', mb: 0.5 }}>
+              Bulk Add — fill up to 10 cities at once
+            </Typography>
+            <Typography sx={{ fontSize: '0.8rem', color: '#b45309', mb: 2.5 }}>
+              Rows with no state+city selected will be skipped automatically.
+            </Typography>
+
+            <Stack spacing={1.5}>
+              {bulkRows.map((row, idx) => (
+                <Grid container spacing={1.5} key={row.id} alignItems="center">
+                  {/* Row number */}
+                  <Grid item xs={12} sm="auto">
+                    <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: '#9e9e9e', minWidth: 22, textAlign: 'center' }}>
+                      {idx + 1}
+                    </Typography>
+                  </Grid>
+                  {/* State */}
+                  <Grid item xs={12} sm={4}>
+                    <Autocomplete
+                      size="small"
+                      options={indianStates}
+                      getOptionLabel={(o) => o.name || ''}
+                      value={row.state}
+                      onChange={(_, val) => updateBulkRow(row.id, { state: val })}
+                      renderInput={(params) => (
+                        <TextField {...params} placeholder="State" sx={inputSx} />
+                      )}
+                      isOptionEqualToValue={(o, v) => o.isoCode === v.isoCode}
+                      ListboxProps={{ style: { maxHeight: 200 } }}
+                    />
+                  </Grid>
+                  {/* City */}
+                  <Grid item xs={12} sm={4}>
+                    <Autocomplete
+                      size="small"
+                      options={row.availableCities}
+                      getOptionLabel={(o) => o.name || ''}
+                      value={row.city}
+                      onChange={(_, val) => updateBulkRow(row.id, { city: val })}
+                      renderInput={(params) => (
+                        <TextField {...params} placeholder={row.state ? 'City' : 'Select state first'} sx={inputSx} />
+                      )}
+                      disabled={!row.state}
+                      isOptionEqualToValue={(o, v) => o.name === v.name}
+                      noOptionsText="No cities found"
+                      ListboxProps={{ style: { maxHeight: 200 } }}
+                    />
+                  </Grid>
+                  {/* Sub City */}
+                  <Grid item xs={12} sm>
+                    <TextField
+                      fullWidth size="small"
+                      placeholder="Sub City (optional)"
+                      value={row.region}
+                      onChange={(e) => updateBulkRow(row.id, { region: e.target.value })}
+                      sx={inputSx}
+                    />
+                  </Grid>
+                </Grid>
+              ))}
+            </Stack>
+
+            <Button
+              variant="contained"
+              onClick={saveBulkRows}
+              sx={{
+                ...filledBtnSx,
+                mt: 3,
+                bgcolor: '#F59E0B', color: '#1c1917',
+                '&:hover': { bgcolor: '#D97706' },
+                px: 5,
+              }}
+            >
+              Save All Cities
+            </Button>
+          </Paper>
+        )}
+      </Box>
+
+      {/* ── Individual location rows ────────────────────────── */}
+      <Stack spacing={2.5} sx={{ mb: 3 }}>
+        {locationRows.map((row, idx) => (
+          <Paper
+            key={row.id}
+            variant="outlined"
+            sx={{
+              p: 2.5, borderRadius: '14px',
+              border: '1.5px solid #d1d5db', bgcolor: '#fafafa',
+            }}
+          >
+            {/* Row header */}
+            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+              <Typography sx={{ fontSize: '0.85rem', fontWeight: 700, color: '#5B63D3', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Location {formData.assignedCities.length + idx + 1}
+              </Typography>
+              {locationRows.length > 1 && (
+                <IconButton size="small" onClick={() => removeRow(row.id)} sx={{ color: '#ef4444', '&:hover': { bgcolor: '#fef2f2' } }}>
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              )}
+            </Stack>
+
+            <Grid container spacing={2.5}>
+              {/* State */}
+              <Grid item xs={12} sm={4}>
+                <Typography sx={fieldLabelSx}>State</Typography>
+                <Autocomplete
+                  size="small"
+                  options={indianStates}
+                  getOptionLabel={(o) => o.name || ''}
+                  value={row.state}
+                  onChange={(_, val) => updateRow(row.id, { state: val })}
+                  renderInput={(params) => (
+                    <TextField {...params} placeholder="Search state..." sx={inputSx} />
+                  )}
+                  isOptionEqualToValue={(o, v) => o.isoCode === v.isoCode}
+                  ListboxProps={{ style: { maxHeight: 220 } }}
+                />
+              </Grid>
+
+              {/* City */}
+              <Grid item xs={12} sm={4}>
+                <Typography sx={fieldLabelSx}>City</Typography>
+                <Autocomplete
+                  size="small"
+                  options={row.availableCities}
+                  getOptionLabel={(o) => o.name || ''}
+                  value={row.city}
+                  onChange={(_, val) => updateRow(row.id, { city: val })}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      placeholder={row.state ? 'Search city...' : 'Select state first'}
+                      sx={inputSx}
+                    />
+                  )}
+                  disabled={!row.state}
+                  isOptionEqualToValue={(o, v) => o.name === v.name}
+                  noOptionsText="No cities found"
+                  ListboxProps={{ style: { maxHeight: 220 } }}
+                />
+              </Grid>
+
+              {/* Sub City */}
+              <Grid item xs={12} sm={4}>
+                <Typography sx={fieldLabelSx}>
+                  Sub City <Typography component="span" sx={{ fontSize: '0.8rem', color: '#9e9e9e' }}>(optional)</Typography>
+                </Typography>
+                <TextField
+                  fullWidth size="small"
+                  placeholder="e.g., Andheri, Bandra"
+                  value={row.region}
+                  onChange={(e) => updateRow(row.id, { region: e.target.value })}
+                  sx={inputSx}
+                />
+              </Grid>
+
+              {/* Save button */}
+              <Grid item xs={12}>
+                <Button
+                  variant="contained"
+                  onClick={() => saveRow(row.id)}
+                  disabled={!row.state || !row.city}
+                  sx={{
+                    ...filledBtnSx,
+                    bgcolor: '#FDE68A', color: '#111827',
+                    '&:hover': { bgcolor: '#FCD34D' },
+                    minWidth: 120,
+                  }}
+                >
+                  Save
+                </Button>
+              </Grid>
+            </Grid>
+          </Paper>
+        ))}
+      </Stack>
+
+      {/* + Add more cities */}
+      <Button
+        variant="outlined"
+        onClick={addNewRow}
+        disabled={locationRows.length > 0}
+        sx={{
+          ...outlinedBtnSx,
+          borderStyle: 'dashed',
+          color: '#5B63D3', borderColor: '#5B63D3',
+          '&:hover': { bgcolor: '#eef2ff', borderColor: '#4338ca' },
+          mb: 3,
+        }}
+      >
+        + Add more cities
+      </Button>
+
+      {/* Saved locations table */}
+      {formData.assignedCities.length > 0 && (
+        <>
+          <Typography sx={{ ...fieldLabelSx, mb: 1 }}>
+            Saved Locations ({formData.assignedCities.length})
+          </Typography>
+          <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '12px', border: '1.5px solid #e0e0e0' }}>
+            <Table size="small">
+              <TableHead>
+                <TableRow sx={{ bgcolor: '#f5f5f7' }}>
+                  {['#', 'State', 'City', 'Sub City', ''].map((h, i) => (
+                    <TableCell key={i} align={i === 4 ? 'center' : 'left'} sx={{
+                      fontWeight: 700, color: '#1d1d1f', fontSize: '0.85rem',
+                      py: 1.5, borderBottom: '2px solid #e0e0e0',
+                    }}>
+                      {h}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {formData.assignedCities.map((loc, i) => (
+                  <TableRow key={i} sx={{ '&:hover': { bgcolor: '#f9f9fb' }, '&:last-child td': { border: 0 } }}>
+                    <TableCell sx={{ color: '#888', fontWeight: 600, py: 1.25, width: 36 }}>{i + 1}</TableCell>
+                    <TableCell sx={{ py: 1.25 }}>
+                      <Typography sx={{ fontSize: '0.9rem', color: '#555' }}>{loc.state || '—'}</Typography>
+                    </TableCell>
+                    <TableCell sx={{ py: 1.25 }}>
+                      <Typography sx={{ fontSize: '0.9rem', fontWeight: 700, color: '#1d1d1f' }}>{loc.cityName}</Typography>
+                    </TableCell>
+                    <TableCell sx={{ py: 1.25 }}>
+                      <Typography sx={{ fontSize: '0.9rem', color: '#555' }}>
+                        {loc.region && loc.region !== loc.cityName ? loc.region : '—'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="center" sx={{ py: 1.25, width: 44 }}>
+                      <IconButton size="small" onClick={() => removeCity(i)} sx={{ color: '#ef4444', '&:hover': { bgcolor: '#fef2f2' } }}>
+                        <DeleteIcon sx={{ fontSize: 18 }} />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </>
+      )}
+
+      {formData.assignedCities.length === 0 && locationRows.length === 0 && (
+        <Box sx={{ textAlign: 'center', py: 4, borderRadius: '14px', border: '2px dashed #e0e0e0', bgcolor: '#f9f9fb', mt: 2 }}>
+          <LocationIcon sx={{ fontSize: 40, color: '#ccc', mb: 1 }} />
+          <Typography sx={{ fontSize: '0.95rem', color: '#888', fontWeight: 500 }}>
+            No locations saved yet — click "+ Add more cities" to begin
+          </Typography>
+        </Box>
+      )}
+    </Box>
+  );
+
+  // ═══════════════════════════════════════════════════════════════
+  // STEP 3 — SCHEDULE
+  // ═══════════════════════════════════════════════════════════════
+  const updateCitySchedule = (code, field, value) => {
+    setCitySchedules(prev => ({
+      ...prev,
+      [code]: { ...prev[code], [field]: value },
+    }));
+    if (errors.schedule) setErrors(prev => ({ ...prev, schedule: '' }));
+  };
+
+  const renderStep3 = () => (
+    <Box>
+      <Typography sx={sectionTitleSx}>Schedule</Typography>
+      <Typography variant="body2" sx={{ mb: 3.5, color: '#6e6e73', fontSize: '0.95rem' }}>
+        Set a tentative date for each city.
+      </Typography>
+
+      {errors.schedule && (
+        <Alert severity="error" sx={{ mb: 2.5, borderRadius: '10px' }}>{errors.schedule}</Alert>
+      )}
+
+      {formData.assignedCities.length === 0 ? (
+        <Alert severity="info" sx={{ borderRadius: '10px' }}>
+          No cities added yet — go back to Locations to add cities first.
+        </Alert>
+      ) : (
+        <Stack spacing={2}>
+          {formData.assignedCities.map((city) => {
+            const sched = citySchedules[city.code] || {};
+            return (
+              <Paper key={city.code} variant="outlined" sx={{
+                p: 2.5, borderRadius: '14px',
+                border: '1.5px solid #d1d5db', bgcolor: '#fafafa',
+              }}>
+                {/* City label */}
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
+                  <LocationIcon sx={{ fontSize: 18, color: '#5B63D3' }} />
+                  <Typography sx={{ fontWeight: 700, color: '#1d1d1f', fontSize: '0.95rem' }}>
+                    {city.cityName}
+                  </Typography>
+                  <Typography sx={{ fontSize: '0.85rem', color: '#888' }}>— {city.state}</Typography>
+                  {city.region && city.region !== city.cityName && (
+                    <Typography sx={{ fontSize: '0.8rem', color: '#aaa' }}>· {city.region}</Typography>
+                  )}
+                </Stack>
+
+                <Grid container spacing={2.5}>
+                  {/* Month */}
+                  <Grid item xs={12} sm={6}>
+                    <Typography sx={fieldLabelSx}>
+                      Month <span style={{ color: '#ef4444' }}>*</span>
+                    </Typography>
+                    <TextField
+                      select fullWidth size="small"
+                      value={sched.month || ''}
+                      onChange={(e) => updateCitySchedule(city.code, 'month', e.target.value)}
+                      sx={inputSx}
+                    >
+                      <MenuItem value=""><em style={{ color: '#888' }}>— Select Month —</em></MenuItem>
+                      {months.map(m => (
+                        <MenuItem key={m} value={m} sx={{ fontSize: '1rem', fontWeight: 500 }}>{m}</MenuItem>
+                      ))}
+                    </TextField>
+                  </Grid>
+
+                  {/* Date picker */}
+                  <Grid item xs={12} sm={6}>
+                    <Typography sx={fieldLabelSx}>Date</Typography>
+                    <TextField
+                      fullWidth size="small" type="date"
+                      value={sched.date || ''}
+                      onChange={(e) => updateCitySchedule(city.code, 'date', e.target.value)}
+                      sx={inputSx}
+                      slotProps={{ inputLabel: { shrink: true } }}
+                    />
+                  </Grid>
+                </Grid>
+              </Paper>
+            );
+          })}
+        </Stack>
+      )}
+    </Box>
+  );
+
+  // ═══════════════════════════════════════════════════════════════
+  // STEP 4 — REVIEW
+  // ═══════════════════════════════════════════════════════════════
+  const renderStep4 = () => {
+    const sectionBox = {
+      p: 3, borderRadius: '14px', bgcolor: '#f9f9fb', border: '1.5px solid #e8e8e8', mb: 3,
     };
+    const label = { fontSize: '0.8rem', fontWeight: 600, color: '#888', mb: 0.5, display: 'block' };
+    const value = { fontSize: '1rem', fontWeight: 600, color: '#1d1d1f' };
 
     return (
       <Box>
-        <Typography variant="subtitle2" sx={sectionHeaderSx}>
-          REVIEW & SUBMIT
+        <Typography sx={sectionTitleSx}>Review</Typography>
+        <Typography variant="body2" sx={{ mb: 3.5, color: '#6e6e73', fontSize: '0.95rem' }}>
+          Check everything before creating the project.
         </Typography>
 
-        <Alert severity="info" sx={{ mb: 3, borderRadius: 1.5 }} variant="outlined">
-          Please review all details before submitting.
-        </Alert>
-
-        {/* Project Details */}
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="caption" sx={{ ...fieldLabelSx, mb: 1.5, fontSize: '0.75rem', color: '#64748b' }}>
-            PROJECT DETAILS
-          </Typography>
-          <Box sx={reviewSectionSx}>
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                <Typography variant="caption" color="text.secondary">Trial Name</Typography>
-                <Typography variant="body2" fontWeight={600}>{formData.trialName}</Typography>
-              </Grid>
-              <Grid item xs={12} sm={3}>
-                <Typography variant="caption" color="text.secondary">Season</Typography>
-                <Typography variant="body2" fontWeight={600}>{formData.season}</Typography>
-              </Grid>
-              <Grid item xs={12} sm={3}>
-                <Typography variant="caption" color="text.secondary">Trial Type</Typography>
-                <Typography variant="body2" fontWeight={600}>{formData.trialType}</Typography>
-              </Grid>
-              <Grid item xs={12}>
-                <Typography variant="caption" color="text.secondary">Trial Code</Typography>
-                <Typography variant="body2" fontWeight={700} sx={{ fontFamily: 'monospace', color: '#16a34a' }}>
-                  {previewCode}
-                </Typography>
-              </Grid>
-              {formData.comment && (
-                <Grid item xs={12}>
-                  <Typography variant="caption" color="text.secondary">Comments</Typography>
-                  <Typography variant="body2">{formData.comment}</Typography>
-                </Grid>
-              )}
+        {/* Project */}
+        <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: '#888', letterSpacing: '0.06em', textTransform: 'uppercase', mb: 1 }}>
+          Project Details
+        </Typography>
+        <Box sx={sectionBox}>
+          <Grid container spacing={2}>
+            <Grid item xs={6} sm={3}>
+              <Typography sx={label}>Project Name</Typography>
+              <Typography sx={value}>{formData.projectName}</Typography>
             </Grid>
-          </Box>
-        </Box>
-
-        {/* Cities */}
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="caption" sx={{ ...fieldLabelSx, mb: 1.5, fontSize: '0.75rem', color: '#64748b' }}>
-            CITIES & REGIONS ({formData.assignedCities.length})
-          </Typography>
-          <Box sx={reviewSectionSx}>
-            {formData.assignedCities.length > 0 ? (
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                {formData.assignedCities.map((city, i) => (
-                  <Chip
-                    key={i}
-                    label={`${city.cityName}${city.trialRegion !== city.cityName ? ` / ${city.trialRegion}` : ''}`}
-                    size="small"
-                    sx={{ bgcolor: '#eef2ff', color: '#4f46e5', fontWeight: 500, mb: 0.5 }}
-                  />
-                ))}
-              </Stack>
-            ) : (
-              <Typography variant="body2" color="text.secondary">No cities assigned</Typography>
-            )}
-          </Box>
-        </Box>
-
-        {/* Tier */}
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="caption" sx={{ ...fieldLabelSx, mb: 1.5, fontSize: '0.75rem', color: '#64748b' }}>
-            TIER & PRICING
-          </Typography>
-          <Box sx={reviewSectionSx}>
-            {formData.tierType === 'Not Any' ? (
-              <Typography variant="body2" color="text.secondary">No Tier / Pricing</Typography>
-            ) : (
-              <Grid container spacing={2}>
-                <Grid item xs={4}>
-                  <Typography variant="caption" color="text.secondary">Tier</Typography>
-                  <Typography variant="body2" fontWeight={600}>{formData.tierType}</Typography>
-                </Grid>
-                <Grid item xs={4}>
-                  <Typography variant="caption" color="text.secondary">Amount</Typography>
-                  <Typography variant="body2" fontWeight={600}>&#8377;{Number(formData.tierAmount).toLocaleString('en-IN')}</Typography>
-                </Grid>
-                {formData.expectedParticipants && (
-                  <Grid item xs={4}>
-                    <Typography variant="caption" color="text.secondary">Participants</Typography>
-                    <Typography variant="body2" fontWeight={600}>{formData.expectedParticipants}</Typography>
-                  </Grid>
-                )}
-                <Grid item xs={12}>
-                  <Typography variant="caption" color="text.secondary">Details</Typography>
-                  <Typography variant="body2">{formData.tierDetails}</Typography>
-                </Grid>
+            <Grid item xs={6} sm={3}>
+              <Typography sx={label}>Season</Typography>
+              <Typography sx={value}>{formData.season}</Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Typography sx={label}>Reference Code</Typography>
+              <Typography sx={{ ...value, fontFamily: 'monospace', color: '#16a34a', fontSize: '1.05rem' }}>
+                {autoProjectCode}
+              </Typography>
+            </Grid>
+            {formData.description && (
+              <Grid item xs={12}>
+                <Typography sx={label}>Description</Typography>
+                <Typography sx={{ fontSize: '0.95rem', color: '#444' }}>{formData.description}</Typography>
               </Grid>
             )}
-          </Box>
+          </Grid>
+        </Box>
+
+        {/* Locations */}
+        <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: '#888', letterSpacing: '0.06em', textTransform: 'uppercase', mb: 1 }}>
+          Locations ({formData.assignedCities.length})
+        </Typography>
+        <Box sx={sectionBox}>
+          {formData.assignedCities.length > 0 ? (
+            <Stack spacing={1}>
+              {formData.assignedCities.map((loc, i) => (
+                <Stack key={i} direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                  <Chip label={`${loc.state || ''} › ${loc.cityName}`} size="small"
+                    sx={{ bgcolor: '#eef2ff', color: '#3730a3', fontWeight: 700, fontSize: '0.85rem' }} />
+                  {loc.region && loc.region !== loc.cityName && (
+                    <Typography sx={{ fontSize: '0.875rem', color: '#666' }}>· {loc.region}</Typography>
+                  )}
+                </Stack>
+              ))}
+            </Stack>
+          ) : (
+            <Typography sx={{ fontSize: '0.95rem', color: '#888' }}>No locations assigned</Typography>
+          )}
         </Box>
 
         {/* Schedule */}
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="caption" sx={{ ...fieldLabelSx, mb: 1.5, fontSize: '0.75rem', color: '#64748b' }}>
-            SCHEDULE
-          </Typography>
-          <Box sx={reviewSectionSx}>
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={4}>
-                <Typography variant="caption" color="text.secondary">Type</Typography>
-                <Stack direction="row" spacing={1} alignItems="center">
-                  <Typography variant="body2" fontWeight={600}>{formData.scheduleType}</Typography>
-                  {formData.scheduleType === 'Tentative' && <Chip label="Tentative" size="small" color="warning" />}
-                </Stack>
-              </Grid>
-              {formData.scheduleType === 'Fixed' ? (
-                <>
-                  <Grid item xs={12} sm={4}>
-                    <Typography variant="caption" color="text.secondary">Start Date</Typography>
-                    <Typography variant="body2" fontWeight={600}>{formatDate(formData.startDate)}</Typography>
-                  </Grid>
-                  <Grid item xs={12} sm={4}>
-                    <Typography variant="caption" color="text.secondary">End Date</Typography>
-                    <Typography variant="body2" fontWeight={600}>{formatDate(formData.endDate)}</Typography>
-                  </Grid>
-                </>
-              ) : (
-                <>
-                  <Grid item xs={12} sm={4}>
-                    <Typography variant="caption" color="text.secondary">Month</Typography>
-                    <Typography variant="body2" fontWeight={600}>{formData.tentativeMonth}</Typography>
-                  </Grid>
-                  {formData.tentativeDateRange && (
-                    <Grid item xs={12} sm={4}>
-                      <Typography variant="caption" color="text.secondary">Range</Typography>
-                      <Typography variant="body2" fontWeight={600}>{formData.tentativeDateRange}</Typography>
-                    </Grid>
-                  )}
-                </>
-              )}
-            </Grid>
-          </Box>
+        <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: '#888', letterSpacing: '0.06em', textTransform: 'uppercase', mb: 1 }}>
+          Schedule
+        </Typography>
+        <Box sx={sectionBox}>
+          {formData.assignedCities.length === 0 ? (
+            <Typography sx={{ fontSize: '0.95rem', color: '#888' }}>No cities assigned</Typography>
+          ) : (
+            <Stack spacing={1.5}>
+              {formData.assignedCities.map((city) => {
+                const sched = citySchedules[city.code] || {};
+                return (
+                  <Stack key={city.code} direction="row" spacing={2} alignItems="center" flexWrap="wrap">
+                    <Chip
+                      label={`${city.state || ''} › ${city.cityName}`}
+                      size="small"
+                      sx={{ bgcolor: '#eef2ff', color: '#3730a3', fontWeight: 700, fontSize: '0.82rem' }}
+                    />
+                    <Typography sx={{ fontSize: '0.9rem', color: '#1d1d1f', fontWeight: 600 }}>
+                      {sched.month || '—'}
+                    </Typography>
+                    {sched.date && (
+                      <Typography sx={{ fontSize: '0.85rem', color: '#555' }}>{sched.date}</Typography>
+                    )}
+                  </Stack>
+                );
+              })}
+            </Stack>
+          )}
         </Box>
 
         <Divider sx={{ my: 3 }} />
@@ -858,12 +924,12 @@ function TrialWizard() {
             <Checkbox
               checked={confirmChecked}
               onChange={(e) => setConfirmChecked(e.target.checked)}
-              sx={{ '&.Mui-checked': { color: '#5B63D3' } }}
+              sx={{ '&.Mui-checked': { color: '#5B63D3' }, transform: 'scale(1.15)' }}
             />
           }
           label={
-            <Typography variant="body2" color="text.secondary">
-              I confirm that all details are correct and want to create this trial.
+            <Typography sx={{ fontSize: '0.95rem', color: '#555', ml: 0.5 }}>
+              I confirm all details are correct and want to create this project.
             </Typography>
           }
         />
@@ -871,23 +937,26 @@ function TrialWizard() {
     );
   };
 
-  const stepContent = [renderStep1, renderStep2, renderStep3];
+  const stepContent = [renderStep1, renderStep2, renderStep3, renderStep4];
 
+  // ═══════════════════════════════════════════════════════════════
+  // RENDER
+  // ═══════════════════════════════════════════════════════════════
   return (
-    <Box sx={{ py: 4 }}>
-      <Container maxWidth="md" sx={{ px: { xs: 2, sm: 3, md: 4 } }}>
+    <Box sx={{ py: 4, minHeight: '100vh', bgcolor: '#f5f5f7' }}>
+      <Container maxWidth="md">
         {/* Header */}
         <Box sx={{ mb: 4 }}>
-          <Typography variant="h5" fontWeight={700} sx={{ mb: 0.5, color: '#1e293b' }}>
-            Create New Trial
+          <Typography sx={{ fontSize: '1.75rem', fontWeight: 800, color: '#1d1d1f', mb: 0.5, letterSpacing: '-0.02em' }}>
+            Project Setup
           </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Follow the steps below to create a new trial project.
+          <Typography sx={{ fontSize: '1rem', color: '#6e6e73' }}>
+            Follow the steps below to create a new project.
           </Typography>
         </Box>
 
         {/* Stepper */}
-        {!trialCreated && (
+        {!projectCreated && (
           <Stepper
             activeStep={activeStep}
             alternativeLabel
@@ -895,91 +964,61 @@ function TrialWizard() {
               mb: 4,
               '& .MuiStepIcon-root.Mui-active': { color: '#5B63D3' },
               '& .MuiStepIcon-root.Mui-completed': { color: '#22c55e' },
-              '& .MuiStepLabel-label': { fontSize: '0.75rem', mt: 0.5 },
+              '& .MuiStepLabel-label': { fontSize: '0.85rem', mt: 0.5, fontWeight: 600 },
+              '& .MuiStepConnector-line': { borderTopWidth: 2 },
             }}
           >
-            {STEPS.map((label) => (
-              <Step key={label}>
-                <StepLabel>{label}</StepLabel>
-              </Step>
+            {STEPS.map(label => (
+              <Step key={label}><StepLabel>{label}</StepLabel></Step>
             ))}
           </Stepper>
         )}
 
-        {/* Step Content */}
-        {trialCreated ? (
-          <Paper
-            variant="outlined"
-            sx={{
-              borderRadius: 2.5,
-              p: { xs: 4, sm: 5 },
-              mb: 4,
-              borderColor: '#bbf7d0',
-              textAlign: 'center',
-            }}
-          >
-            <Box sx={{ mb: 2, width: 64, height: 64, borderRadius: '50%', bgcolor: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', mx: 'auto' }}>
-              <CheckIcon sx={{ fontSize: 32, color: '#22c55e' }} />
+        {/* Success */}
+        {projectCreated ? (
+          <Paper elevation={0} sx={{
+            borderRadius: '20px', p: 6, textAlign: 'center',
+            border: '1.5px solid #bbf7d0', bgcolor: '#fff',
+          }}>
+            <Box sx={{ width: 72, height: 72, borderRadius: '50%', bgcolor: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', mx: 'auto', mb: 2 }}>
+              <CheckIcon sx={{ fontSize: 40, color: '#22c55e' }} />
             </Box>
-            <Typography variant="h6" fontWeight={700} sx={{ mb: 1, color: '#1e293b' }}>
-              Trial Created Successfully!
+            <Typography sx={{ fontSize: '1.5rem', fontWeight: 800, color: '#1d1d1f', mb: 1 }}>
+              Project Created!
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>
-              Your trial "{formData.trialName}" has been created and saved as a Draft.
+            <Typography sx={{ fontSize: '1rem', color: '#6e6e73', mb: 4 }}>
+              <strong>{autoProjectCode}</strong> has been saved as a Draft.
             </Typography>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="center">
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={handleCreateNewTrial}
-                sx={{
-                  bgcolor: '#5B63D3', borderRadius: 1.5,
-                  textTransform: 'none', fontWeight: 600, px: 4,
-                  '&:hover': { bgcolor: '#4A52C2' },
-                }}
-              >
-                Create New Trial
+              <Button variant="contained" startIcon={<AddIcon />} onClick={handleReset}
+                sx={{ ...filledBtnSx, bgcolor: '#FDE68A', color: '#111827', '&:hover': { bgcolor: '#FCD34D' }, px: 5 }}>
+                Create Another Project
               </Button>
-              <Button
-                variant="outlined"
-                onClick={() => navigate('/trials')}
-                sx={{
-                  borderColor: '#e2e8f0', color: '#475569', borderRadius: 1.5,
-                  textTransform: 'none', fontWeight: 600, px: 4,
-                  '&:hover': { borderColor: '#94a3b8', bgcolor: '#f8fafc' },
-                }}
-              >
-                Go to Trials List
+              <Button variant="outlined" onClick={() => navigate('/trials')}
+                sx={{ ...outlinedBtnSx, px: 5 }}>
+                Go to Projects List
               </Button>
             </Stack>
           </Paper>
         ) : (
           <>
-            <Paper
-              variant="outlined"
-              sx={{
-                borderRadius: 2.5,
-                p: { xs: 3, sm: 4 },
-                mb: 4,
-                borderColor: '#e2e8f0',
-              }}
-            >
+            {/* Step card */}
+            <Paper elevation={0} sx={{
+              borderRadius: '20px', p: { xs: 3, sm: 4.5 }, mb: 3,
+              border: '1.5px solid #e8e8e8', bgcolor: '#fff',
+            }}>
               {stepContent[activeStep]()}
             </Paper>
 
-            {/* Navigation Buttons */}
-            <Stack direction="row" justifyContent="space-between">
+            {/* Navigation */}
+            <Stack direction="row" justifyContent="space-between" alignItems="center">
               <Button
                 variant="outlined"
                 startIcon={<BackIcon />}
                 onClick={activeStep === 0 ? () => navigate('/trials') : handleBack}
-                sx={{
-                  borderColor: '#e2e8f0', color: '#475569', borderRadius: 1.5,
-                  textTransform: 'none', fontWeight: 600,
-                  '&:hover': { borderColor: '#94a3b8', bgcolor: '#f8fafc' },
-                }}
+                sx={{ ...outlinedBtnSx, px: 3.5 }}
               >
-                {activeStep === 0 ? 'Back to Trials' : 'Back'}
+                {activeStep === 0 ? 'Back to Projects' : 'Previous'}
               </Button>
 
               {activeStep < STEPS.length - 1 ? (
@@ -987,27 +1026,19 @@ function TrialWizard() {
                   variant="contained"
                   endIcon={<NextIcon />}
                   onClick={handleNext}
-                  sx={{
-                    bgcolor: '#5B63D3', borderRadius: 1.5,
-                    textTransform: 'none', fontWeight: 600, px: 4,
-                    '&:hover': { bgcolor: '#4A52C2' },
-                  }}
+                  sx={{ ...filledBtnSx, bgcolor: '#FDE68A', color: '#111827', '&:hover': { bgcolor: '#FCD34D' }, px: 4.5 }}
                 >
                   Next
                 </Button>
               ) : (
                 <Button
                   variant="contained"
-                  startIcon={saving ? <CircularProgress size={16} color="inherit" /> : <CheckIcon />}
+                  startIcon={saving ? <CircularProgress size={20} color="inherit" /> : <CheckIcon />}
                   onClick={handleSubmit}
                   disabled={!confirmChecked || saving}
-                  sx={{
-                    bgcolor: '#22c55e', borderRadius: 1.5,
-                    textTransform: 'none', fontWeight: 600, px: 4,
-                    '&:hover': { bgcolor: '#16a34a' },
-                  }}
+                  sx={{ ...filledBtnSx, bgcolor: '#22c55e', color: '#fff', '&:hover': { bgcolor: '#16a34a' }, px: 4.5 }}
                 >
-                  {saving ? 'Creating...' : 'Create Trial'}
+                  {saving ? 'Creating...' : 'Create Project'}
                 </Button>
               )}
             </Stack>
@@ -1017,11 +1048,11 @@ function TrialWizard() {
 
       <Snackbar
         open={toast.open}
-        autoHideDuration={4000}
-        onClose={() => setToast(prev => ({ ...prev, open: false }))}
+        autoHideDuration={3500}
+        onClose={() => setToast(p => ({ ...p, open: false }))}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert severity={toast.severity} variant="filled" sx={{ borderRadius: 1.5 }}>
+        <Alert severity={toast.severity} variant="filled" sx={{ borderRadius: '12px', fontSize: '0.95rem' }}>
           {toast.message}
         </Alert>
       </Snackbar>

@@ -20,6 +20,7 @@ import {
   CheckCircle as CheckCircleIcon,
   Pending as PendingIcon,
   Edit as EditIcon,
+  InsertDriveFile as FileIcon,
 } from '@mui/icons-material';
 import { VENDOR_STATUS_COLORS } from './vendorConstants';
 
@@ -60,6 +61,8 @@ function VendorDetailView({ open, onClose, vendor, onEdit }) {
     </Stack>
   );
 
+  const isPanCardPdf = vendor.panCardImageUrl && !vendor.panCardImageUrl.startsWith('data:image');
+
   return (
     <Dialog
       open={open}
@@ -98,18 +101,24 @@ function VendorDetailView({ open, onClose, vendor, onEdit }) {
         <Box sx={sectionSx}>
           <Grid container spacing={2}>
             <Grid item xs={6}>
-              <Typography variant="caption" color="text.secondary">Vendor Name</Typography>
+              <Typography variant="caption" color="text.secondary">Partner Name</Typography>
               <Typography variant="body2" fontWeight={600}>{vendor.vendorName}</Typography>
             </Grid>
             <Grid item xs={6}>
-              <Typography variant="caption" color="text.secondary">Vendor Type</Typography>
+              <Typography variant="caption" color="text.secondary">Service Type</Typography>
               <Chip
-                label={vendor.vendorType}
+                label={vendor.vendorType || 'N/A'}
                 size="small"
                 variant="outlined"
                 sx={{ fontWeight: 500, borderColor: '#5B63D3', color: '#5B63D3' }}
               />
             </Grid>
+            {vendor.companyType && (
+              <Grid item xs={6}>
+                <Typography variant="caption" color="text.secondary">Company Type</Typography>
+                <Typography variant="body2" fontWeight={600}>{vendor.companyType}</Typography>
+              </Grid>
+            )}
           </Grid>
         </Box>
 
@@ -123,6 +132,40 @@ function VendorDetailView({ open, onClose, vendor, onEdit }) {
             <Grid item xs={6}>
               {getDocChip('PAN Number', vendor.panNumber, vendor.panVerified)}
             </Grid>
+            {vendor.tdsType && vendor.tdsType !== 'None' && (
+              <Grid item xs={12}>
+                <Typography variant="caption" color="text.secondary">TDS Type</Typography>
+                <Typography variant="body2" fontWeight={600}>{vendor.tdsType}</Typography>
+              </Grid>
+            )}
+            {vendor.panCardImageUrl && (
+              <Grid item xs={12}>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                  PAN Card
+                </Typography>
+                {isPanCardPdf ? (
+                  <Stack direction="row" spacing={1} alignItems="center"
+                    sx={{ p: 1, bgcolor: '#f0f9ff', borderRadius: 1, maxWidth: 260 }}>
+                    <FileIcon fontSize="small" color="primary" />
+                    <Typography variant="caption" sx={{ fontSize: '0.75rem' }}>
+                      {vendor.panCardImageUrl.length > 30
+                        ? vendor.panCardImageUrl.substring(0, 30) + '...'
+                        : vendor.panCardImageUrl}
+                    </Typography>
+                  </Stack>
+                ) : (
+                  <Box
+                    component="img"
+                    src={vendor.panCardImageUrl}
+                    alt="PAN Card"
+                    sx={{
+                      width: 200, height: 100, objectFit: 'cover',
+                      border: '1px solid #e5e7eb', borderRadius: 1.5,
+                    }}
+                  />
+                )}
+              </Grid>
+            )}
           </Grid>
         </Box>
 
@@ -148,11 +191,17 @@ function VendorDetailView({ open, onClose, vendor, onEdit }) {
                 <Typography variant="body2">{vendor.address}</Typography>
               </Grid>
             )}
+            {vendor.contactPinCode && (
+              <Grid item xs={6}>
+                <Typography variant="caption" color="text.secondary">Pin Code</Typography>
+                <Typography variant="body2" fontWeight={600}>{vendor.contactPinCode}</Typography>
+              </Grid>
+            )}
           </Grid>
         </Box>
 
         {/* Bank */}
-        {(vendor.bankName || vendor.accountNumber || vendor.ifscCode) && (
+        {(vendor.bankName || vendor.accountNumber || vendor.ifscCode || vendor.accountType || vendor.bankPinCode) && (
           <>
             <Typography variant="caption" sx={sectionLabelSx}>Bank Details</Typography>
             <Box sx={sectionSx}>
@@ -161,14 +210,26 @@ function VendorDetailView({ open, onClose, vendor, onEdit }) {
                   <Typography variant="caption" color="text.secondary">Bank Name</Typography>
                   <Typography variant="body2" fontWeight={600}>{vendor.bankName || 'N/A'}</Typography>
                 </Grid>
+                {vendor.accountType && (
+                  <Grid item xs={6}>
+                    <Typography variant="caption" color="text.secondary">Account Type</Typography>
+                    <Typography variant="body2" fontWeight={600}>{vendor.accountType}</Typography>
+                  </Grid>
+                )}
                 <Grid item xs={6}>
                   <Typography variant="caption" color="text.secondary">Account Number</Typography>
                   <Typography variant="body2" fontWeight={600}>{vendor.accountNumber || 'N/A'}</Typography>
                 </Grid>
-                <Grid item xs={12}>
+                <Grid item xs={6}>
                   <Typography variant="caption" color="text.secondary">IFSC Code</Typography>
                   <Typography variant="body2" fontWeight={600}>{vendor.ifscCode || 'N/A'}</Typography>
                 </Grid>
+                {vendor.bankPinCode && (
+                  <Grid item xs={6}>
+                    <Typography variant="caption" color="text.secondary">Branch Pin Code</Typography>
+                    <Typography variant="body2" fontWeight={600}>{vendor.bankPinCode}</Typography>
+                  </Grid>
+                )}
               </Grid>
             </Box>
           </>
@@ -195,7 +256,7 @@ function VendorDetailView({ open, onClose, vendor, onEdit }) {
             variant="caption"
             sx={{ color: '#94a3b8', fontStyle: 'italic', px: 2 }}
           >
-            Edit this vendor from REP Management
+            Edit this partner from REP Management
           </Typography>
         ) : (
           <Button
@@ -205,13 +266,13 @@ function VendorDetailView({ open, onClose, vendor, onEdit }) {
             sx={{
               textTransform: 'none',
               fontWeight: 600,
-              bgcolor: '#5B63D3',
+              bgcolor: '#FDE68A',
               borderRadius: 1.5,
               px: 3,
-              '&:hover': { bgcolor: '#4A52C2' },
+              '&:hover': { bgcolor: '#FCD34D' },
             }}
           >
-            Edit Vendor
+            Edit Partner
           </Button>
         )}
       </DialogActions>

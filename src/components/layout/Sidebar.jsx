@@ -5,8 +5,8 @@ import {
   Business as BusinessIcon,
   EmojiEvents as EmojiEventsIcon,
   AddCircleOutline as AddIcon,
-  LocationCity as LocationCityIcon,
   Store as StoreIcon,
+  Payment as PaymentIcon,
 } from "@mui/icons-material";
 import { useAuth } from "../../auth/AuthContext";
 import { ROLES } from "../../auth/roles";
@@ -22,6 +22,9 @@ export default function Sidebar() {
     user?.role === ROLES.SUPER_ADMIN || user?.role === ROLES.ADMIN;
 
   const canAccessVendorManagement =
+    user?.role === ROLES.SUPER_ADMIN || user?.role === ROLES.ADMIN;
+
+  const canAccessPayments =
     user?.role === ROLES.SUPER_ADMIN || user?.role === ROLES.ADMIN;
 
   const linkClass = ({ isActive }) =>
@@ -45,14 +48,14 @@ export default function Sidebar() {
         {canAccessTrialManagement && (
           <NavLink to="/trials/create" className={linkClass}>
             <AddIcon fontSize="small" />
-            Trial Creation
+            Project Setup
           </NavLink>
         )}
 
         {canAccessTrialManagement && (
           <NavLink to="/trials" className={linkClass} end>
             <EmojiEventsIcon fontSize="small" />
-            Trials
+            Projects
           </NavLink>
         )}
 
@@ -63,17 +66,18 @@ export default function Sidebar() {
           </NavLink>
         )}
 
-        {canAccessTrialManagement && (
-          <NavLink to="/trial-cities" className={linkClass}>
-            <LocationCityIcon fontSize="small" />
-            Trial Cities
-          </NavLink>
-        )}
 
         {canAccessVendorManagement && (
           <NavLink to="/vendors" className={linkClass}>
             <StoreIcon fontSize="small" />
-            Vendors
+            Service Providers
+          </NavLink>
+        )}
+
+        {canAccessPayments && (
+          <NavLink to="/payments" className={linkClass}>
+            <PaymentIcon fontSize="small" />
+            Payments
           </NavLink>
         )}
       </nav>

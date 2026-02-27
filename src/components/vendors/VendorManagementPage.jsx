@@ -31,9 +31,10 @@ import {
 
 import VendorCard from './VendorCard';
 import VendorModal from './VendorModal';
+import VendorBulkModal from './VendorBulkModal';
 import VendorDetailView from './VendorDetailView';
-import { vendorsAPI, repAPI } from '../../services/api';
-import { VENDOR_TYPES, VENDOR_STATUSES, SORT_OPTIONS } from './vendorConstants';
+import { vendorsAPI } from '../../services/api';
+import { VENDOR_STATUSES, SORT_OPTIONS } from './vendorConstants';
 
 function VendorManagementPage() {
   const [vendors, setVendors] = useState([]);
@@ -47,6 +48,7 @@ function VendorManagementPage() {
   const [editingVendor, setEditingVendor] = useState(null);
   const [detailVendor, setDetailVendor] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [bulkModalOpen, setBulkModalOpen] = useState(false);
 
   // Filters
   const [filterType, setFilterType] = useState('');
@@ -67,54 +69,14 @@ function VendorManagementPage() {
     filterAndSort();
   }, [vendors, searchQuery, sortBy, filterType, filterStatus]);
 
-  const mapRepToVendor = (rep) => ({
-    _id: `rep_${rep.id}`,
-    id: `rep_${rep.id}`,
-    repId: rep.id,
-    vendorName: rep.repName || '',
-    vendorType: 'REP',
-    gstNumber: rep.gstNo || '',
-    panNumber: rep.panCard || '',
-    gstVerified: false,
-    panVerified: false,
-    contactPerson: rep.contactName || '',
-    phone: rep.phone || '',
-    email: rep.email || '',
-    address: rep.physicalAddress || '',
-    bankName: '',
-    accountNumber: '',
-    ifscCode: '',
-    status: rep.status || 'Active',
-    isRepSourced: true,
-    // Extra REP fields for detail view
-    state: rep.state || '',
-    city: rep.city || '',
-    region: rep.region || '',
-    season: rep.season || '',
-    groundLocation: rep.groundLocation || '',
-    pinCode: rep.pinCode || '',
-    mouStatus: rep.mouStatus || '',
-    backupContactName: rep.backupContactName || '',
-    backupPhone: rep.backupPhone || '',
-    backupEmail: rep.backupEmail || '',
-    createdAt: rep.createdAt || '',
-  });
-
   const loadVendors = async () => {
     try {
       setLoading(true);
-      const [vendorResponse, repResponse] = await Promise.all([
-        vendorsAPI.getAll(),
-        repAPI.getAll().catch(() => ({ reps: [] })),
-      ]);
-
-      const regularVendors = vendorResponse.vendors || [];
-      const repVendors = (repResponse.reps || []).map(mapRepToVendor);
-
-      setVendors([...regularVendors, ...repVendors]);
+      const response = await vendorsAPI.getAll();
+      setVendors(response.vendors || []);
     } catch (error) {
       console.error('Load error:', error);
-      showToast('Failed to load vendors', 'error');
+      showToast('Failed to load service providers', 'error');
     } finally {
       setLoading(false);
     }
@@ -173,8 +135,12 @@ function VendorManagementPage() {
     setModalOpen(true);
   };
 
+  const handleBulkComplete = (count) => {
+    showToast(`${count} partner${count !== 1 ? 's' : ''} added successfully`);
+    loadVendors();
+  };
+
   const handleEdit = (vendor) => {
-    if (vendor.isRepSourced) return; // REP vendors are edited from REP Management
     setEditingVendor(vendor);
     setModalOpen(true);
   };
@@ -184,17 +150,17 @@ function VendorManagementPage() {
     try {
       if (editingVendor) {
         await vendorsAPI.update(editingVendor._id || editingVendor.id, vendorData);
-        showToast('Vendor updated successfully');
+        showToast('Partner updated successfully');
       } else {
         await vendorsAPI.create(vendorData);
-        showToast('Vendor added successfully');
+        showToast('Partner added successfully');
       }
       setModalOpen(false);
       setEditingVendor(null);
       loadVendors();
     } catch (error) {
       console.error('Save error:', error);
-      showToast(error.message || 'Failed to save vendor', 'error');
+      showToast(error.message || 'Failed to save partner', 'error');
     } finally {
       setSaving(false);
     }
@@ -207,7 +173,7 @@ function VendorManagementPage() {
       loadVendors();
     } catch (error) {
       console.error('Verify error:', error);
-      showToast('Failed to verify vendor', 'error');
+      showToast('Failed to verify partner', 'error');
     }
   };
 
@@ -225,10 +191,9 @@ function VendorManagementPage() {
   const totalVendors = vendors.length;
   const verifiedCount = vendors.filter((v) => v.status === 'Verified' || v.status === 'Active').length;
   const pendingCount = vendors.filter((v) => v.status === 'Pending').length;
-  const repCount = vendors.filter((v) => v.isRepSourced).length;
 
   const statCards = [
-    { label: 'Total Vendors', value: totalVendors, icon: <StoreIcon />, color: '#5B63D3' },
+    { label: 'Total Partners', value: totalVendors, icon: <StoreIcon />, color: '#5B63D3' },
     { label: 'Verified / Active', value: verifiedCount, icon: <VerifiedIcon />, color: '#22c55e' },
     { label: 'Pending', value: pendingCount, icon: <PendingIcon />, color: '#f59e0b' },
   ];
@@ -242,28 +207,46 @@ function VendorManagementPage() {
         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'center' }} sx={{ mb: 4 }}>
           <Box>
             <Typography variant="h5" fontWeight={700} sx={{ color: '#1e293b', mb: 0.5 }}>
-              Vendor Management
+              Service Provider Management
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Manage vendor profiles, documents, and verification status.
+              Manage service provider profiles, documents, and verification status.
             </Typography>
           </Box>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleAddNew}
-            sx={{
-              bgcolor: '#5B63D3',
-              textTransform: 'none',
-              fontWeight: 600,
-              borderRadius: 1.5,
-              px: 3,
-              mt: { xs: 2, sm: 0 },
-              '&:hover': { bgcolor: '#4A52C2' },
-            }}
-          >
-            Add Vendor
-          </Button>
+          <Stack direction="row" spacing={1.5} sx={{ mt: { xs: 2, sm: 0 } }}>
+            <Button
+              variant="outlined"
+              startIcon={<AddIcon />}
+              onClick={() => setBulkModalOpen(true)}
+              sx={{
+                textTransform: 'none',
+                fontWeight: 600,
+                borderRadius: 1.5,
+                px: 2.5,
+                borderColor: '#5B63D3',
+                color: '#5B63D3',
+                '&:hover': { bgcolor: '#eef2ff', borderColor: '#4338ca' },
+              }}
+            >
+              Bulk Add
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleAddNew}
+              sx={{
+                bgcolor: '#FDE68A',
+                textTransform: 'none',
+                fontWeight: 600,
+                borderRadius: 1.5,
+                px: 3,
+                color: '#1e293b',
+                '&:hover': { bgcolor: '#FCD34D' },
+              }}
+            >
+              Add Service Provider
+            </Button>
+          </Stack>
         </Stack>
 
         {/* Stats */}
@@ -303,7 +286,7 @@ function VendorManagementPage() {
         >
           <TextField
             size="small"
-            placeholder="Search vendors..."
+            placeholder="Search service providers..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             InputProps={{
@@ -347,7 +330,7 @@ function VendorManagementPage() {
               <MenuItem disabled sx={{ fontSize: '0.75rem', fontWeight: 600, color: '#94a3b8' }}>
                 BY TYPE
               </MenuItem>
-              {VENDOR_TYPES.map((t) => (
+              {[...new Set(vendors.map((v) => v.vendorType).filter(Boolean))].sort().map((t) => (
                 <MenuItem
                   key={t}
                   selected={filterType === t}
@@ -451,18 +434,18 @@ function VendorManagementPage() {
           <Box sx={{ textAlign: 'center', py: 10 }}>
             <CircularProgress sx={{ color: '#5B63D3' }} />
             <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-              Loading vendors...
+              Loading service providers...
             </Typography>
           </Box>
         ) : filteredVendors.length === 0 ? (
           <Box sx={{ textAlign: 'center', py: 10, bgcolor: '#f8fafc', borderRadius: 2, border: '1px dashed #cbd5e1' }}>
             <StoreIcon sx={{ fontSize: 48, color: '#cbd5e1', mb: 2 }} />
             <Typography variant="h6" fontWeight={600} color="text.secondary" sx={{ mb: 1 }}>
-              {vendors.length === 0 ? 'No vendors yet' : 'No vendors match your filters'}
+              {vendors.length === 0 ? 'No service providers yet' : 'No service providers match your filters'}
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
               {vendors.length === 0
-                ? 'Add your first vendor to get started.'
+                ? 'Add your first service provider to get started.'
                 : 'Try adjusting your search or filters.'}
             </Typography>
             {vendors.length === 0 && (
@@ -471,21 +454,21 @@ function VendorManagementPage() {
                 startIcon={<AddIcon />}
                 onClick={handleAddNew}
                 sx={{
-                  bgcolor: '#5B63D3',
+                  bgcolor: '#FDE68A',
                   textTransform: 'none',
                   fontWeight: 600,
                   borderRadius: 1.5,
-                  '&:hover': { bgcolor: '#4A52C2' },
+                  '&:hover': { bgcolor: '#FCD34D' },
                 }}
               >
-                Add Vendor
+                Add Service Provider
               </Button>
             )}
           </Box>
         ) : (
           <>
             <Typography variant="caption" color="text.secondary" sx={{ mb: 2, display: 'block' }}>
-              Showing {filteredVendors.length} of {vendors.length} vendors
+              Showing {filteredVendors.length} of {vendors.length} service providers
             </Typography>
             <Grid container spacing={2.5}>
               {filteredVendors.map((vendor) => (
@@ -517,6 +500,12 @@ function VendorManagementPage() {
         onClose={() => setDetailVendor(null)}
         vendor={detailVendor}
         onEdit={handleEdit}
+      />
+
+      <VendorBulkModal
+        open={bulkModalOpen}
+        onClose={() => setBulkModalOpen(false)}
+        onBulkComplete={handleBulkComplete}
       />
 
       {/* Toast */}

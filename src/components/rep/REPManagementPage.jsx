@@ -452,9 +452,9 @@ function REPManagementPage() {
               onClick={handleAddREP}
               sx={{ 
                 px: 3,
-                bgcolor: '#5B63D3',
+                bgcolor: '#FDE68A',
                 '&:hover': {
-                  bgcolor: '#4A52C2'
+                  bgcolor: '#FCD34D'
                 }
               }}
             >
@@ -798,8 +798,8 @@ function REPManagementPage() {
               onClick={handleBulkUpload} 
               disabled={bulkUploading || bulkErrors.length > 0}
               sx={{ 
-                bgcolor: '#5B63D3',
-                '&:hover': { bgcolor: '#4A52C2' }
+                bgcolor: '#FDE68A',
+                '&:hover': { bgcolor: '#FCD34D' }
               }}
             >
               {bulkUploading ? 'Importing...' : 'Import'}
