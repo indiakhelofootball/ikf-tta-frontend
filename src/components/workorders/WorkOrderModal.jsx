@@ -114,8 +114,8 @@ function WorkOrderModal({ open, onClose, onSave, workOrder, saving, allVendors =
 
   const filteredVendors = useMemo(() => {
     let pool = [...allVendors];
-    if (searchServiceType) pool = pool.filter(v => v.vendorType === searchServiceType);
-    if (searchEntityType) pool = pool.filter(v => v.companyType === searchEntityType);
+    if (searchServiceType) pool = pool.filter(v => (v.vendorType || '').toLowerCase() === searchServiceType.toLowerCase());
+    if (searchEntityType) pool = pool.filter(v => (v.companyType || '').toLowerCase() === searchEntityType.toLowerCase());
     return pool;
   }, [allVendors, searchServiceType, searchEntityType]);
 
