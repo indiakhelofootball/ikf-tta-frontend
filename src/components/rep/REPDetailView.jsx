@@ -11,306 +11,427 @@ import {
   Box,
   Stack,
   Chip,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
   Divider,
-  Grid,
 } from '@mui/material';
 import {
   Close as CloseIcon,
   Edit as EditIcon,
-  Phone as PhoneIcon,
-  Email as EmailIcon,
-  LocationCity as LocationCityIcon,
-  Business as BusinessIcon,
-  CalendarToday as CalendarIcon,
-  CheckCircle as CheckIcon,
+  OpenInNew as OpenInNewIcon,
+  InsertDriveFile as FileIcon,
 } from '@mui/icons-material';
+
+// ── shared styles (mirrors REPModal) ─────────────────────────────────────────
+
+const sectionHeaderSx = {
+  fontSize: '0.72rem',
+  fontWeight: 700,
+  color: '#3B82F6',
+  textTransform: 'uppercase',
+  letterSpacing: '0.06em',
+  mb: 1.5,
+};
+
+const subLabelSx = {
+  fontSize: '0.72rem',
+  fontWeight: 700,
+  color: '#64748b',
+  textTransform: 'uppercase',
+  letterSpacing: '0.06em',
+  mb: 1,
+  display: 'block',
+};
+
+const labelSx = {
+  fontSize: '0.72rem',
+  color: '#94a3b8',
+  fontWeight: 500,
+  mb: 0.25,
+  textTransform: 'uppercase',
+  letterSpacing: '0.04em',
+};
+
+const valueSx = {
+  fontSize: '0.9rem',
+  fontWeight: 600,
+  color: '#1e293b',
+};
+
+const cardSx = {
+  bgcolor: 'white',
+  border: '1px solid #e5e7eb',
+  borderRadius: '14px',
+  p: { xs: 2, sm: 2.5 },
+  mb: 2,
+};
+
+const grid2 = {
+  display: 'grid',
+  gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+  gap: 2,
+};
+
+const grid3 = {
+  display: 'grid',
+  gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr 1fr' },
+  gap: 2,
+};
+
+// ── Field helper ─────────────────────────────────────────────────────────────
+
+function Field({ label, value, mono = false, full = false, children }) {
+  if (!value && !children) return null;
+  return (
+    <Box sx={full ? { gridColumn: '1 / -1' } : {}}>
+      <Typography sx={labelSx}>{label}</Typography>
+      {children || (
+        <Typography sx={{ ...valueSx, ...(mono ? { fontFamily: 'monospace', letterSpacing: '0.05em' } : {}) }}>
+          {value}
+        </Typography>
+      )}
+    </Box>
+  );
+}
+
+// ── component ─────────────────────────────────────────────────────────────────
 
 function REPDetailView({ rep, open, onClose, onEdit }) {
   if (!rep) return null;
 
-  const totalTrials = rep.assignedTrials?.length || 0;
-  const activeTrials = rep.assignedTrials?.filter(t => t.status === 'Active').length || 0;
-  const completedTrials = rep.assignedTrials?.filter(t => t.status === 'Completed').length || 0;
+  const totalTrials = rep.assignedTrials?.length || rep.numberOfTrials || 0;
 
-  const formatDate = (dateString) => {
-    if (!dateString) return 'Not set';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-IN', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-  };
+  const onlineFields = [
+    { key: 'website',  naKey: 'websiteNA',  label: 'Website' },
+    { key: 'facebook', naKey: 'facebookNA', label: 'Facebook' },
+    { key: 'twitter',  naKey: 'twitterNA',  label: 'Twitter' },
+    { key: 'telegram', naKey: 'telegramNA', label: 'Telegram' },
+  ].filter(f => rep[f.key] || rep[f.naKey]);
+
+  const hasBackup = rep.backupContactName || rep.backupPhone || rep.backupEmail;
+  const hasCourier = rep.courierPinCode || rep.courierAddress || rep.courierDistrict;
+  const hasGroundLocation = rep.physicalAddress || rep.googleMapLink || rep.pinCode;
+  const hasDocs = rep.mouDocumentUrl || rep.repLogoUrl;
 
   return (
     <Dialog
       open={open}
       onClose={onClose}
-      maxWidth="lg"
+      maxWidth="md"
       fullWidth
-      PaperProps={{
-        sx: { borderRadius: 2, maxHeight: '90vh' }
-      }}
+      PaperProps={{ sx: { borderRadius: 3, maxHeight: '92vh', bgcolor: '#f8fafc' } }}
     >
-      <DialogTitle sx={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center',
-        bgcolor: '#f8fafc',
-        borderBottom: '1px solid #e5e7eb'
+      {/* ── TITLE ── */}
+      <DialogTitle sx={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+        bgcolor: 'white', borderBottom: '1px solid #e5e7eb', pb: 2,
       }}>
-        <Stack direction="row" spacing={2} alignItems="center">
-          <BusinessIcon color="primary" sx={{ fontSize: 32 }} />
-          <Box>
-            <Typography variant="h6" fontWeight={700}>
-              {rep.repName}
+        <Box>
+          <Typography variant="h6" fontWeight={700} color="#1e293b">
+            {rep.repName}
+          </Typography>
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.5, flexWrap: 'wrap', gap: 0.5 }}>
+            <Typography variant="body2" color="text.secondary">
+              {rep.city}{rep.state ? `, ${rep.state}` : ''}
             </Typography>
-            <Typography variant="caption" color="text.secondary">
-              REP Details & Trial Assignments
-            </Typography>
-          </Box>
-        </Stack>
-        <Stack direction="row" spacing={1}>
-          <IconButton 
-            onClick={() => {
-              onClose();
-              onEdit(rep);
-            }} 
-            size="small"
-            sx={{ bgcolor: 'white' }}
-          >
-            <EditIcon />
+            <Chip
+              label={rep.status || 'Active'}
+              size="small"
+              sx={{
+                fontSize: '0.7rem', fontWeight: 600, height: 20,
+                bgcolor: rep.status === 'Inactive' ? '#fee2e2' : '#dcfce7',
+                color: rep.status === 'Inactive' ? '#dc2626' : '#16a34a',
+              }}
+            />
+            {totalTrials > 0 && (
+              <Chip
+                label={`${totalTrials} trial${totalTrials !== 1 ? 's' : ''}`}
+                size="small"
+                sx={{ fontSize: '0.7rem', fontWeight: 600, height: 20, bgcolor: '#dbeafe', color: '#1d4ed8' }}
+              />
+            )}
+          </Stack>
+        </Box>
+        <Stack direction="row" spacing={0.5}>
+          <IconButton onClick={() => { onClose(); onEdit(rep); }} size="small"
+            sx={{ bgcolor: '#f1f5f9', '&:hover': { bgcolor: '#FBB040', color: 'white' } }}>
+            <EditIcon fontSize="small" />
           </IconButton>
-          <IconButton onClick={onClose} size="small" sx={{ bgcolor: 'white' }}>
-            <CloseIcon />
+          <IconButton onClick={onClose} size="small" sx={{ bgcolor: '#f1f5f9' }}>
+            <CloseIcon fontSize="small" />
           </IconButton>
         </Stack>
       </DialogTitle>
 
-      <DialogContent sx={{ p: 3 }}>
-        {/* Summary Stats */}
-        <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={12} sm={4}>
-            <Box sx={{ p: 2, bgcolor: '#f0f9ff', borderRadius: 2, border: '1px solid #bfdbfe' }}>
-              <Typography variant="h3" fontWeight={700} color="primary">
-                {totalTrials}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Total Trials
-              </Typography>
-            </Box>
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <Box sx={{ p: 2, bgcolor: '#f0fdf4', borderRadius: 2, border: '1px solid #bbf7d0' }}>
-              <Typography variant="h3" fontWeight={700} color="success.main">
-                {activeTrials}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Active Trials
-              </Typography>
-            </Box>
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <Box sx={{ p: 2, bgcolor: '#fafafa', borderRadius: 2, border: '1px solid #e5e7eb' }}>
-              <Typography variant="h3" fontWeight={700} color="text.secondary">
-                {completedTrials}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Completed Trials
-              </Typography>
-            </Box>
-          </Grid>
-        </Grid>
+      <DialogContent sx={{ p: 2.5 }}>
 
-        <Divider sx={{ my: 3 }} />
+        {/* ── BASIC INFORMATION ── */}
+        <Box sx={cardSx}>
+          <Typography sx={sectionHeaderSx}>Basic Information</Typography>
+          <Box sx={grid3}>
+            <Field label="REP Name" value={rep.repName} />
+            <Field label="Season" value={rep.season} />
+            <Field label="Status">
+              <Chip
+                label={rep.status || 'Active'}
+                size="small"
+                sx={{
+                  fontWeight: 600,
+                  bgcolor: rep.status === 'Inactive' ? '#fee2e2' : '#dcfce7',
+                  color: rep.status === 'Inactive' ? '#dc2626' : '#16a34a',
+                }}
+              />
+            </Field>
+          </Box>
+        </Box>
 
-        {/* REP Information */}
-        <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>
-          REP Information
-        </Typography>
-        
-        <Grid container spacing={3} sx={{ mb: 3 }}>
-          <Grid item xs={12} md={6}>
-            <Stack spacing={2}>
-              <Stack direction="row" spacing={2} alignItems="center">
-                <LocationCityIcon sx={{ color: '#6366f1' }} />
+        {/* ── TRIAL LOCATION ── */}
+        <Box sx={cardSx}>
+          <Typography sx={sectionHeaderSx}>Trial Location</Typography>
+          <Box sx={grid2}>
+            <Field label="State" value={rep.state} />
+            <Field label="Assigned Trial City" value={rep.city} />
+            {rep.region && <Field label="Trial Location" value={rep.region} />}
+          </Box>
+        </Box>
+
+        {/* ── TRIAL GROUND LOCATION ── */}
+        {hasGroundLocation && (
+          <Box sx={cardSx}>
+            <Typography sx={sectionHeaderSx}>Trial Ground Location</Typography>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+              {rep.googleMapLink && (
                 <Box>
-                  <Typography variant="caption" color="text.secondary">Location</Typography>
-                  <Typography variant="body1" fontWeight={600}>
-                    {rep.city}, {rep.state}
-                  </Typography>
-                </Box>
-              </Stack>
-
-              {rep.contactName && (
-                <Stack direction="row" spacing={2} alignItems="center">
-                  <BusinessIcon sx={{ color: '#10b981' }} />
-                  <Box>
-                    <Typography variant="caption" color="text.secondary">Contact Person</Typography>
-                    <Typography variant="body1" fontWeight={600}>
-                      {rep.contactName}
-                    </Typography>
+                  <Typography sx={labelSx}>Google Maps Link</Typography>
+                  <Box
+                    component="a"
+                    href={rep.googleMapLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    sx={{
+                      display: 'inline-flex', alignItems: 'center', gap: 0.5,
+                      fontSize: '0.85rem', color: '#3B82F6', fontWeight: 500,
+                      textDecoration: 'none', '&:hover': { textDecoration: 'underline' },
+                    }}
+                  >
+                    Open in Maps <OpenInNewIcon sx={{ fontSize: 14 }} />
                   </Box>
-                </Stack>
+                </Box>
               )}
+              <Field label="Pin Code" value={rep.pinCode} />
+              {rep.physicalAddress && (
+                <Box sx={{ gridColumn: '1 / -1' }}>
+                  <Typography sx={labelSx}>Ground Address</Typography>
+                  <Typography sx={{ ...valueSx, whiteSpace: 'pre-line' }}>{rep.physicalAddress}</Typography>
+                </Box>
+              )}
+            </Box>
+          </Box>
+        )}
 
-              {rep.phone && (
-                <Stack direction="row" spacing={2} alignItems="center">
-                  <PhoneIcon sx={{ color: '#f59e0b' }} />
-                  <Box>
-                    <Typography variant="caption" color="text.secondary">Phone</Typography>
-                    <Typography variant="body1" fontWeight={600}>
-                      {rep.phone}
-                    </Typography>
+        {/* ── COURIER ADDRESS ── */}
+        {hasCourier && (
+          <Box sx={cardSx}>
+            <Typography sx={sectionHeaderSx}>Courier Address</Typography>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '150px 1fr 1fr' }, gap: 2 }}>
+              <Field label="PIN Code" value={rep.courierPinCode} />
+              <Field label="District" value={rep.courierDistrict} />
+              <Field label="State" value={rep.courierState} />
+              {rep.courierSubArea && (
+                <Box sx={{ gridColumn: '1 / -1' }}>
+                  <Typography sx={labelSx}>Sub Area / Locality</Typography>
+                  <Typography sx={valueSx}>{rep.courierSubArea}</Typography>
+                </Box>
+              )}
+              {rep.courierAddress && (
+                <Box sx={{ gridColumn: '1 / -1' }}>
+                  <Typography sx={labelSx}>Flat / Door No. & Building</Typography>
+                  <Typography sx={valueSx}>{rep.courierAddress}</Typography>
+                </Box>
+              )}
+              {rep.courierLandmark && (
+                <Box sx={{ gridColumn: '1 / -1' }}>
+                  <Typography sx={labelSx}>Landmark</Typography>
+                  <Typography sx={valueSx}>{rep.courierLandmark}</Typography>
+                </Box>
+              )}
+            </Box>
+          </Box>
+        )}
+
+        {/* ── CONTACTS ── */}
+        <Box sx={cardSx}>
+          <Typography sx={sectionHeaderSx}>Contacts</Typography>
+
+          <Typography sx={subLabelSx}>Primary</Typography>
+          <Box sx={{ ...grid3, mb: hasBackup ? 2.5 : 0 }}>
+            <Field label="Contact Name" value={rep.contactName} />
+            <Field label="Phone" value={rep.phone} />
+            <Field label="Email" value={rep.email} />
+          </Box>
+
+          {hasBackup && (
+            <>
+              <Divider sx={{ mb: 2 }} />
+              <Typography sx={subLabelSx}>Backup</Typography>
+              <Box sx={grid3}>
+                <Field label="Contact Name" value={rep.backupContactName} />
+                <Field label="Phone" value={rep.backupPhone} />
+                <Field label="Email" value={rep.backupEmail} />
+              </Box>
+            </>
+          )}
+        </Box>
+
+        {/* ── DOCUMENTS & BRANDING ── */}
+        {hasDocs && (
+          <Box sx={cardSx}>
+            <Typography sx={sectionHeaderSx}>Documents & Branding</Typography>
+            <Box sx={grid2}>
+              {rep.mouDocumentUrl && (
+                <Box>
+                  <Typography sx={labelSx}>Signed MoU / Agreement</Typography>
+                  <Box
+                    component="a"
+                    href={rep.mouDocumentUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    sx={{
+                      display: 'inline-flex', alignItems: 'center', gap: 0.75,
+                      fontSize: '0.85rem', color: '#3B82F6', fontWeight: 500,
+                      textDecoration: 'none', '&:hover': { textDecoration: 'underline' },
+                    }}
+                  >
+                    <FileIcon fontSize="small" /> View Document
                   </Box>
-                </Stack>
-              )}
-
-              {rep.email && (
-                <Stack direction="row" spacing={2} alignItems="center">
-                  <EmailIcon sx={{ color: '#ec4899' }} />
-                  <Box>
-                    <Typography variant="caption" color="text.secondary">Email</Typography>
-                    <Typography variant="body1" fontWeight={600}>
-                      {rep.email}
-                    </Typography>
-                  </Box>
-                </Stack>
-              )}
-            </Stack>
-          </Grid>
-
-          <Grid item xs={12} md={6}>
-            <Stack spacing={2}>
-              {rep.region && (
-                <Box>
-                  <Typography variant="caption" color="text.secondary">Region</Typography>
-                  <Typography variant="body1" fontWeight={600}>
-                    {rep.region}
-                  </Typography>
                 </Box>
               )}
-
-              {rep.season && (
+              {rep.repLogoUrl && (
                 <Box>
-                  <Typography variant="caption" color="text.secondary">Season</Typography>
-                  <Typography variant="body1" fontWeight={600}>
-                    {rep.season}
-                  </Typography>
-                </Box>
-              )}
-
-              {rep.panCard && (
-                <Box>
-                  <Typography variant="caption" color="text.secondary">PAN Card</Typography>
-                  <Typography variant="body1" fontWeight={600} sx={{ fontFamily: 'monospace' }}>
-                    {rep.panCard}
-                  </Typography>
-                </Box>
-              )}
-
-              {rep.mouStatus && (
-                <Box>
-                  <Typography variant="caption" color="text.secondary">MoU Status</Typography>
-                  <Chip 
-                    label={rep.mouStatus} 
-                    size="small" 
-                    color={rep.mouStatus === 'Signed' ? 'success' : 'warning'}
-                    sx={{ mt: 0.5 }}
+                  <Typography sx={labelSx}>REP Logo</Typography>
+                  <Box
+                    component="img"
+                    src={rep.repLogoUrl}
+                    alt="REP Logo"
+                    sx={{
+                      height: 60, objectFit: 'contain',
+                      border: '1px solid #e5e7eb', borderRadius: 1,
+                      p: 1, bgcolor: '#f9fafb', display: 'block',
+                    }}
                   />
                 </Box>
               )}
-            </Stack>
-          </Grid>
-        </Grid>
-
-        <Divider sx={{ my: 3 }} />
-
-        {/* Assigned Trials Table */}
-        <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>
-          Assigned Trials
-        </Typography>
-
-        {rep.assignedTrials && rep.assignedTrials.length > 0 ? (
-          <TableContainer component={Paper} variant="outlined">
-            <Table size="small">
-              <TableHead>
-                <TableRow sx={{ bgcolor: '#f8fafc' }}>
-                  <TableCell sx={{ fontWeight: 600 }}>City</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Trial Name</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Trial Date</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Period</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {rep.assignedTrials.map((trial, index) => (
-                  <TableRow key={index} sx={{ '&:hover': { bgcolor: '#f9fafb' } }}>
-                    <TableCell>{trial.city}</TableCell>
-                    <TableCell>{trial.trialName}</TableCell>
-                    <TableCell>
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <CalendarIcon fontSize="small" sx={{ color: '#6b7280' }} />
-                        <Typography variant="body2">
-                          {formatDate(trial.trialDate)}
-                        </Typography>
-                      </Stack>
-                    </TableCell>
-                    <TableCell>
-                      <Chip 
-                        label={trial.period} 
-                        size="small" 
-                        color={trial.period === 'This Week' ? 'warning' : 'default'}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Chip 
-                        label={trial.status} 
-                        size="small" 
-                        color={trial.status === 'Active' ? 'success' : trial.status === 'Completed' ? 'default' : 'info'}
-                        icon={trial.status === 'Completed' ? <CheckIcon sx={{ fontSize: 14 }} /> : undefined}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        ) : (
-          <Box sx={{ 
-            textAlign: 'center', 
-            py: 4,
-            bgcolor: '#f9fafb',
-            borderRadius: 2,
-            border: '1px dashed #e5e7eb'
-          }}>
-            <Typography variant="body2" color="text.secondary">
-              No trials assigned yet
-            </Typography>
+            </Box>
           </Box>
         )}
+
+        {/* ── LEGAL INFORMATION ── */}
+        <Box sx={cardSx}>
+          <Typography sx={sectionHeaderSx}>Legal Information</Typography>
+          <Box sx={grid3}>
+            <Field label="MoU Status">
+              {rep.mouStatus ? (
+                <Chip
+                  label={rep.mouStatus}
+                  size="small"
+                  sx={{
+                    fontWeight: 600,
+                    bgcolor: rep.mouStatus === 'Signed' ? '#dcfce7'
+                      : rep.mouStatus === 'Pending' ? '#fef9c3' : '#f1f5f9',
+                    color: rep.mouStatus === 'Signed' ? '#16a34a'
+                      : rep.mouStatus === 'Pending' ? '#854d0e' : '#475569',
+                  }}
+                />
+              ) : null}
+            </Field>
+          </Box>
+        </Box>
+
+        {/* ── ONLINE PRESENCE ── */}
+        {onlineFields.length > 0 && (
+          <Box sx={cardSx}>
+            <Typography sx={sectionHeaderSx}>Online Presence</Typography>
+            <Box sx={grid2}>
+              {onlineFields.map(({ key, naKey, label }) => (
+                <Box key={key}>
+                  <Typography sx={labelSx}>{label}</Typography>
+                  {rep[naKey] ? (
+                    <Typography sx={{ fontSize: '0.82rem', color: '#94a3b8', fontStyle: 'italic' }}>
+                      Not Available
+                    </Typography>
+                  ) : (
+                    <Box
+                      component="a"
+                      href={rep[key]}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      sx={{
+                        display: 'inline-flex', alignItems: 'center', gap: 0.5,
+                        fontSize: '0.85rem', color: '#3B82F6', fontWeight: 500,
+                        textDecoration: 'none', wordBreak: 'break-all',
+                        '&:hover': { textDecoration: 'underline' },
+                      }}
+                    >
+                      {rep[key]} <OpenInNewIcon sx={{ fontSize: 12, flexShrink: 0 }} />
+                    </Box>
+                  )}
+                </Box>
+              ))}
+            </Box>
+          </Box>
+        )}
+
+        {/* ── ASSIGNED TRIALS ── */}
+        <Box sx={{ ...cardSx, mb: 0 }}>
+          <Typography sx={sectionHeaderSx}>
+            Assigned Trials {totalTrials > 0 && `(${totalTrials})`}
+          </Typography>
+          {rep.assignedTrials && rep.assignedTrials.length > 0 ? (
+            <Stack spacing={1}>
+              {rep.assignedTrials.map((trial) => (
+                <Box key={trial.id} sx={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  p: 1.5, bgcolor: '#f8fafc', border: '1px solid #e5e7eb', borderRadius: '8px',
+                }}>
+                  <Box>
+                    <Typography sx={{ fontSize: '0.88rem', fontWeight: 600, color: '#1e293b' }}>
+                      {trial.trialName}
+                    </Typography>
+                    {trial.season && (
+                      <Typography sx={{ fontSize: '0.75rem', color: '#64748b' }}>
+                        {trial.season}
+                      </Typography>
+                    )}
+                  </Box>
+                  {trial.trialType && (
+                    <Chip
+                      label={trial.trialType}
+                      size="small"
+                      sx={{ fontSize: '0.7rem', fontWeight: 500, bgcolor: '#dbeafe', color: '#1d4ed8' }}
+                    />
+                  )}
+                </Box>
+              ))}
+            </Stack>
+          ) : (
+            <Box sx={{
+              textAlign: 'center', py: 3,
+              bgcolor: '#f9fafb', borderRadius: 2, border: '1px dashed #e5e7eb',
+            }}>
+              <Typography variant="body2" color="text.secondary">
+                No trials assigned yet
+              </Typography>
+            </Box>
+          )}
+        </Box>
+
       </DialogContent>
 
-      <DialogActions sx={{ px: 3, pb: 3 }}>
-        <Button onClick={onClose}>Close</Button>
-        <Button 
-          variant="contained" 
+      <DialogActions sx={{ px: 2.5, pb: 2.5, pt: 1.5, borderTop: '1px solid #e5e7eb', bgcolor: 'white' }}>
+        <Button onClick={onClose} sx={{ color: '#64748b' }}>Close</Button>
+        <Button
+          variant="contained"
           startIcon={<EditIcon />}
-          onClick={() => {
-            onClose();
-            onEdit(rep);
-          }}
-          sx={{ 
-            bgcolor: '#FBB040',
-            '&:hover': { bgcolor: '#E89F2C' }
-          }}
+          onClick={() => { onClose(); onEdit(rep); }}
+          sx={{ bgcolor: '#FBB040', '&:hover': { bgcolor: '#E89F2C' }, fontWeight: 600 }}
         >
           Edit REP
         </Button>

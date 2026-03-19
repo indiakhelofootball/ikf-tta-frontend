@@ -1,6 +1,7 @@
 // src/components/vendors/VendorCard.jsx
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Card,
   CardContent,
@@ -14,18 +15,20 @@ import {
 import {
   Edit as EditIcon,
   Visibility as ViewIcon,
-  VerifiedUser as VerifyIcon,
   Person as PersonIcon,
   Phone as PhoneIcon,
   Email as EmailIcon,
   AccountBalance as BankIcon,
   CheckCircle as CheckCircleIcon,
   Pending as PendingIcon,
+  Assignment as WOIcon,
 } from '@mui/icons-material';
 import { VENDOR_STATUS_COLORS } from './vendorConstants';
 
-function VendorCard({ vendor, onEdit, onViewDetails, onVerify }) {
+function VendorCard({ vendor, onEdit, onViewDetails }) {
+  const navigate = useNavigate();
   const statusStyle = VENDOR_STATUS_COLORS[vendor.status] || VENDOR_STATUS_COLORS.Pending;
+  const isVerified = vendor.status === 'Verified' || vendor.status === 'Active';
 
   const getDocIcon = (verified) =>
     verified ? (
@@ -84,6 +87,12 @@ function VendorCard({ vendor, onEdit, onViewDetails, onVerify }) {
             height: 24,
           }}
         />
+
+        {vendor.entityName && (
+          <Typography variant="caption" sx={{ color: '#64748b', display: 'block', mb: 1.5, mt: -1 }}>
+            {vendor.entityName}
+          </Typography>
+        )}
 
         {/* Document Verification */}
         <Typography variant="caption" sx={{ color: '#94a3b8', fontWeight: 600, letterSpacing: '0.5px', mb: 1, display: 'block' }}>
@@ -197,26 +206,28 @@ function VendorCard({ vendor, onEdit, onViewDetails, onVerify }) {
             >
               Edit
             </Button>
-            {vendor.status === 'Pending' && (
-              <Button
-                size="small"
-                variant="contained"
-                startIcon={<VerifyIcon fontSize="small" />}
-                onClick={() => onVerify(vendor)}
-                sx={{
-                  flex: 1,
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  fontSize: '0.75rem',
-                  bgcolor: '#FDE68A',
-                  borderRadius: 1.5,
-                  '&:hover': { bgcolor: '#FCD34D' },
-                }}
-              >
-                Verify
-              </Button>
-            )}
           </Stack>
+          {isVerified && (
+            <Button
+              size="small"
+              fullWidth
+              variant="outlined"
+              startIcon={<WOIcon fontSize="small" />}
+              onClick={() => navigate('/work-orders', { state: { vendor } })}
+              sx={{
+                mt: 1,
+                textTransform: 'none',
+                fontWeight: 600,
+                fontSize: '0.75rem',
+                borderColor: '#5B63D3',
+                color: '#5B63D3',
+                borderRadius: 1.5,
+                '&:hover': { borderColor: '#4338ca', bgcolor: '#eef2ff' },
+              }}
+            >
+              Create Work Order
+            </Button>
+          )}
         </Box>
       </CardContent>
     </Card>

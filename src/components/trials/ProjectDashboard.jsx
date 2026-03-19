@@ -6,10 +6,10 @@ import {
   Box, Container, Typography, Button, IconButton, Stack, Chip,
   Card, CardContent, TextField, InputAdornment, Divider,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
-  Checkbox, CircularProgress, Alert, Snackbar, MenuItem, Select, FormControl,
+  Checkbox, FormControlLabel, CircularProgress, Alert, Snackbar, MenuItem,
   Dialog, DialogTitle, DialogContent, DialogActions,
   Autocomplete, Grid, Accordion, AccordionSummary, AccordionDetails,
-  Tooltip,
+  Tooltip, Collapse,
 } from '@mui/material';
 import {
   ArrowBack as BackIcon,
@@ -34,11 +34,15 @@ import { CITY_SORT_OPTIONS, MONTHS } from './trialConstants';
 const indianStates = State.getStatesOfCountry('IN');
 
 const inputSx = {
-  '& .MuiOutlinedInput-root': { borderRadius: '10px', fontSize: '0.9rem' },
+  '& .MuiOutlinedInput-root': { borderRadius: '12px', fontSize: '1rem' },
+};
+
+const selectInputSx = {
+  '& .MuiOutlinedInput-root': { borderRadius: '12px', fontSize: '1rem', height: '44px' },
 };
 
 const fieldLabelSx = {
-  fontSize: '0.82rem', fontWeight: 600, color: '#3c3c43', mb: 0.5, display: 'block',
+  fontSize: '0.9rem', fontWeight: 600, color: '#3c3c43', mb: 0.75, display: 'block',
 };
 
 const captionSx = {
@@ -60,7 +64,7 @@ const PAGE_SIZE = 20;
 
 function makeBulkRows(n) {
   return Array.from({ length: n }, (_, i) => ({
-    id: i, state: null, city: null, region: '', month: '', availableCities: [],
+    id: i, state: null, city: null, region: '', month: '', date: '', availableCities: [],
   }));
 }
 
@@ -84,12 +88,12 @@ function ProjectDashboard() {
 
   // Add city form
   const [addFormOpen, setAddFormOpen] = useState(false);
-  const [addForm, setAddForm] = useState({ state: null, city: null, region: '', month: '', date: '', availableCities: [] });
+  const [addForm, setAddForm] = useState({ state: null, city: null, region: '', month: 'July', date: `${new Date().getFullYear()}-07-10`, availableCities: [] });
   const [addSaving, setAddSaving] = useState(false);
 
   // Bulk add dialog
   const [bulkOpen, setBulkOpen] = useState(false);
-  const [bulkRows, setBulkRows] = useState(makeBulkRows(10));
+  const [bulkRows, setBulkRows] = useState(makeBulkRows(7));
   const [bulkSaving, setBulkSaving] = useState(false);
 
   // Inline city editing
@@ -100,6 +104,7 @@ function ProjectDashboard() {
   // City delete confirm
   const [deletingCity, setDeletingCity] = useState(null);
   const [deleteCitySaving, setDeleteCitySaving] = useState(false);
+
 
   // ── Load ──────────────────────────────────────────────────────────
   useEffect(() => { loadTrial(); }, [id]);
@@ -118,6 +123,7 @@ function ProjectDashboard() {
 
   const showToast = (msg, severity = 'success') =>
     setToast({ open: true, message: msg, severity });
+
 
   // ── Filtered + sorted cities ──────────────────────────────────────
   const filteredCities = useMemo(() => {
@@ -185,22 +191,23 @@ function ProjectDashboard() {
 
   // ── Add city ──────────────────────────────────────────────────────
   const handleAddCity = async () => {
-    if (!addForm.state || !addForm.city || !addForm.month) {
-      showToast('State, city and month are required', 'warning');
+    const subCity = addForm.region.trim();
+    const cityName = subCity
+      ? `${addForm.city?.name}, ${subCity}`
+      : addForm.city?.name || '';
+    if (!addForm.state || !addForm.city) {
+      showToast('State and city are required', 'warning');
       return;
     }
     const stateName = addForm.state.name;
-    const cityName = addForm.city.name;
-    const region = addForm.region.trim() || cityName;
     const existingCities = trial.assignedCities || [];
 
     const isDup = existingCities.some(c =>
       c.cityName?.toLowerCase() === cityName.toLowerCase() &&
-      c.state?.toLowerCase() === stateName.toLowerCase() &&
-      (c.region || '').toLowerCase() === region.toLowerCase()
+      c.state?.toLowerCase() === stateName.toLowerCase()
     );
     if (isDup) {
-      showToast('This city/region already exists in this project', 'warning');
+      showToast('This city already exists in this project', 'warning');
       return;
     }
 
@@ -208,13 +215,13 @@ function ProjectDashboard() {
     setAddSaving(true);
     try {
       const data = await trialsAPI.addCity(id, {
-        code, state: stateName, cityName, region,
+        code, state: stateName, cityName, region: cityName,
         tentativeMonth: addForm.month,
-        tentativeDate: addForm.date || null,
+        tentativeDate: addForm.date || `${new Date().getFullYear()}-07-10`,
         confirmed: false,
       });
       setTrial(data.trial);
-      setAddForm({ state: null, city: null, region: '', month: '', date: '', availableCities: [] });
+      setAddForm({ state: null, city: null, region: '', month: 'July', date: `${new Date().getFullYear()}-07-10`, availableCities: [] });
       setAddFormOpen(false);
       showToast(`${cityName} added`);
     } catch (err) {
@@ -232,6 +239,14 @@ function ProjectDashboard() {
         next.availableCities = updates.state
           ? City.getCitiesOfState('IN', updates.state.isoCode) : [];
       }
+      if ('month' in updates && updates.month) {
+        const idx = MONTHS.indexOf(updates.month);
+        const year = new Date().getFullYear();
+        next.date = `${year}-${String(idx + 1).padStart(2, '0')}-10`;
+      }
+      if ('month' in updates && !updates.month) {
+        next.date = '';
+      }
       return next;
     });
   };
@@ -246,39 +261,70 @@ function ProjectDashboard() {
         next.availableCities = updates.state
           ? City.getCitiesOfState('IN', updates.state.isoCode) : [];
       }
+      if ('month' in updates && updates.month) {
+        const idx = MONTHS.indexOf(updates.month);
+        const year = new Date().getFullYear();
+        next.date = `${year}-${String(idx + 1).padStart(2, '0')}-10`;
+      }
+      if ('month' in updates && !updates.month) {
+        next.date = '';
+      }
       return next;
     }));
   };
 
+  const addMoreBulkRows = () => {
+    setBulkRows(prev => [
+      ...prev,
+      ...Array.from({ length: 7 }, (_, i) => ({
+        id: Date.now() + i,
+        state: null, city: null, region: '', month: '', date: '', availableCities: [],
+      })),
+    ]);
+  };
+
   const handleBulkSave = async () => {
-    const valid = bulkRows.filter(r => r.state && r.city && r.month);
+    const valid = bulkRows.filter(r => r.state && r.city);
     if (valid.length === 0) {
-      showToast('Fill at least one row (state, city, month required)', 'warning');
+      showToast('Fill at least one row (state and city required)', 'warning');
       return;
     }
     setBulkSaving(true);
     const existingCities = trial.assignedCities || [];
     const toAdd = [];
     let skipped = 0;
+    const year = new Date().getFullYear();
 
     for (const row of valid) {
       const stateName = row.state.name;
-      const cityName = row.city.name;
-      const region = row.region?.trim() || cityName;
+      const subCity = row.region?.trim() || '';
+      const cityName = subCity ? `${row.city.name}, ${subCity}` : row.city.name;
       const isDup = [...existingCities, ...toAdd].some(c =>
         c.cityName?.toLowerCase() === cityName.toLowerCase() &&
         c.state?.toLowerCase() === stateName.toLowerCase()
       );
       if (isDup) { skipped++; continue; }
       const code = makeCityCode(stateName, cityName, [...existingCities, ...toAdd]);
-      toAdd.push({ code, state: stateName, cityName, region, tentativeMonth: row.month, confirmed: false });
+
+      let tentativeDate;
+      if (row.date) {
+        tentativeDate = row.date;
+      } else if (row.month) {
+        const idx = MONTHS.indexOf(row.month);
+        tentativeDate = `${year}-${String(idx + 1).padStart(2, '0')}-10`;
+      } else {
+        tentativeDate = `${year}-07-10`;
+      }
+      const tentativeMonth = row.month || 'July';
+
+      toAdd.push({ code, state: stateName, cityName, region: cityName, tentativeMonth, tentativeDate, confirmed: false });
     }
 
     try {
       await Promise.all(toAdd.map(cityData => trialsAPI.addCity(id, cityData)));
       await loadTrial();
       setBulkOpen(false);
-      setBulkRows(makeBulkRows(10));
+      setBulkRows(makeBulkRows(7));
       showToast(
         skipped > 0
           ? `${toAdd.length} added, ${skipped} duplicate(s) skipped`
@@ -296,7 +342,6 @@ function ProjectDashboard() {
   const startEditCity = (city) => {
     setEditingCode(city.code);
     setEditForm({
-      region: city.region || '',
       tentativeMonth: city.tentativeMonth || '',
       tentativeDate: city.tentativeDate || '',
       confirmed: city.confirmed || false,
@@ -307,7 +352,6 @@ function ProjectDashboard() {
     setEditSaving(true);
     try {
       const data = await trialsAPI.updateCity(id, editingCode, {
-        region: editForm.region,
         tentativeMonth: editForm.tentativeMonth,
         tentativeDate: editForm.tentativeDate || null,
         confirmed: editForm.confirmed,
@@ -377,23 +421,11 @@ function ProjectDashboard() {
           <Button
             startIcon={<BackIcon />}
             onClick={() => navigate('/trials')}
-            sx={{ color: '#5B63D3', fontWeight: 600, textTransform: 'none', borderRadius: 2 }}
+            sx={{ color: 'text.secondary', fontWeight: 600, textTransform: 'none', borderRadius: 2 }}
           >
             Back to Projects
           </Button>
           <Stack direction="row" spacing={1.5}>
-            <Button
-              variant="outlined" size="small"
-              startIcon={<EditIcon sx={{ fontSize: '0.95rem' }} />}
-              onClick={() => setEditOpen(true)}
-              sx={{
-                borderColor: 'rgba(0,0,0,0.12)', color: '#1d1d1f',
-                fontWeight: 600, borderRadius: 2, textTransform: 'none',
-                '&:hover': { borderColor: '#5B63D3', color: '#5B63D3' },
-              }}
-            >
-              Edit Project
-            </Button>
             <Button
               variant="outlined" size="small" color="error"
               startIcon={<DeleteIcon sx={{ fontSize: '0.95rem' }} />}
@@ -411,48 +443,62 @@ function ProjectDashboard() {
           boxShadow: '0 2px 8px rgba(0,0,0,0.04)', mb: 3, bgcolor: '#fff',
         }}>
           <CardContent sx={{ p: 3.5 }}>
-            <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'flex-start' }} spacing={2}>
-              <Box>
-                <Typography sx={{
-                  fontSize: '1.6rem', fontWeight: 700,
-                  fontFamily: '"SF Mono", "Fira Code", monospace',
-                  color: '#1d1d1f', letterSpacing: '0.01em', mb: 0.5,
-                }}>
-                  {trial.trialCode || trial.trialName}
+            {/* Gradient identity banner */}
+            <Box sx={{
+              height: 88,
+              borderRadius: '16px',
+              background: 'linear-gradient(135deg, rgba(251,207,232,0.18) 0%, rgba(199,210,254,0.14) 60%, rgba(167,139,250,0.12) 100%)',
+              border: '1px solid rgba(236,72,153,0.14)',
+              boxShadow: '0 2px 12px rgba(236,72,153,0.07)',
+              display: 'flex',
+              alignItems: 'stretch',
+              overflow: 'hidden',
+              mb: 2.5,
+            }}>
+              <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', px: 3, borderRight: '1px solid rgba(236,72,153,0.12)', overflow: 'hidden' }}>
+                <Typography sx={{ fontSize: '0.6rem', fontWeight: 700, color: '#be185d', textTransform: 'uppercase', letterSpacing: '0.1em', mb: 0.5 }}>
+                  Project
                 </Typography>
-                <Typography sx={{ fontSize: '0.95rem', color: '#6e6e73', fontWeight: 500 }}>
-                  {trial.season}
-                  {trial.trialType ? ` · ${trial.trialType}` : ''}
+                <Typography sx={{ fontSize: '1.05rem', fontWeight: 600, color: '#4c1d95', fontFamily: '"Georgia", "Times New Roman", serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.3 }}>
+                  {trial.trialType || trial.trialName}{trial.season ? ` — ${trial.season}` : ''}
                 </Typography>
               </Box>
+              <Box sx={{ width: 210, flexShrink: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', px: 3, background: 'linear-gradient(135deg, rgba(199,210,254,0.2) 0%, rgba(167,139,250,0.15) 100%)' }}>
+                <Typography sx={{ fontSize: '0.6rem', fontWeight: 700, color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.1em', mb: 0.4 }}>
+                  Reference Code
+                </Typography>
+                <Typography sx={{ fontSize: '0.95rem', fontWeight: 800, color: '#4338ca', fontFamily: '"Roboto Mono", "Courier New", monospace', letterSpacing: '0.04em', lineHeight: 1.3 }}>
+                  {trial.trialCode || trial.trialName}
+                </Typography>
+              </Box>
+            </Box>
 
-              {/* Quick stats chips */}
-              <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
+            {/* Quick stats chips */}
+            <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
+              <Chip
+                label={`${cityCount} Trial Locations`}
+                size="small"
+                sx={{ bgcolor: '#eef2ff', color: '#4f46e5', fontWeight: 600, borderRadius: 1.5 }}
+              />
+              {hasTier && (
                 <Chip
-                  label={`${cityCount} Regions`}
+                  label={trial.tierType}
                   size="small"
-                  sx={{ bgcolor: '#eef2ff', color: '#4f46e5', fontWeight: 600, borderRadius: 1.5 }}
+                  sx={{ bgcolor: '#fef3c7', color: '#92400e', fontWeight: 600, borderRadius: 1.5 }}
                 />
-                {hasTier && (
-                  <Chip
-                    label={trial.tierType}
-                    size="small"
-                    sx={{ bgcolor: '#fef3c7', color: '#92400e', fontWeight: 600, borderRadius: 1.5 }}
-                  />
-                )}
-                {hasTier && trial.tierAmount && (
-                  <Chip
-                    label={`₹${Number(trial.tierAmount).toLocaleString('en-IN')}`}
-                    size="small"
-                    sx={{ bgcolor: '#f0fdf4', color: '#166534', fontWeight: 600, borderRadius: 1.5 }}
-                  />
-                )}
-              </Stack>
+              )}
+              {hasTier && trial.tierAmount && (
+                <Chip
+                  label={`₹${Number(trial.tierAmount).toLocaleString('en-IN')}`}
+                  size="small"
+                  sx={{ bgcolor: '#f0fdf4', color: '#166534', fontWeight: 600, borderRadius: 1.5 }}
+                />
+              )}
             </Stack>
           </CardContent>
         </Card>
 
-        {/* ── Regions section ── */}
+        {/* ── Trial Locations section ── */}
         <Card elevation={0} sx={{
           border: '1px solid rgba(0,0,0,0.06)', borderRadius: 4,
           boxShadow: '0 2px 8px rgba(0,0,0,0.04)', mb: 3, bgcolor: '#fff',
@@ -462,7 +508,7 @@ function ProjectDashboard() {
             {/* Section header */}
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
               <Typography sx={{ fontSize: '1rem', fontWeight: 700, color: '#1d1d1f' }}>
-                Regions
+                Trial Locations
                 <Typography component="span" sx={{ ml: 1.5, fontSize: '0.78rem', color: '#86868b', fontWeight: 500 }}>
                   {filteredCities.length !== cityCount
                     ? `${filteredCities.length} of ${cityCount}`
@@ -491,89 +537,92 @@ function ProjectDashboard() {
                     boxShadow: 'none', '&:hover': { bgcolor: '#FCD34D', boxShadow: 'none' },
                   }}
                 >
-                  Add Region
+                  Add Trial Location
                 </Button>
               </Stack>
             </Stack>
 
             {/* Add region form */}
-            {addFormOpen && (
+            <Collapse in={addFormOpen} timeout={250}>
               <Card variant="outlined" sx={{ p: 2.5, borderRadius: 3, border: '1.5px solid #d1d5db', bgcolor: '#fafafa', mb: 3 }}>
                 <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: '#5B63D3', textTransform: 'uppercase', letterSpacing: '0.04em', mb: 2 }}>
-                  New Region
+                  Add Trial Location
                 </Typography>
-                <Grid container spacing={2} alignItems="flex-end">
-                  <Grid item xs={12} sm={6} md={2.4}>
-                    <Typography sx={fieldLabelSx}>State *</Typography>
-                    <Autocomplete
-                      size="small" options={indianStates} getOptionLabel={o => o.name || ''}
-                      value={addForm.state}
-                      onChange={(_, val) => updateAddForm({ state: val })}
-                      renderInput={(params) => <TextField {...params} placeholder="Search state..." sx={inputSx} />}
-                      isOptionEqualToValue={(o, v) => o.isoCode === v.isoCode}
-                      disabled={addSaving}
-                      ListboxProps={{ style: { maxHeight: 200 } }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6} md={2.4}>
-                    <Typography sx={fieldLabelSx}>City *</Typography>
-                    <Autocomplete
-                      size="small" options={addForm.availableCities} getOptionLabel={o => o.name || ''}
-                      value={addForm.city}
-                      onChange={(_, val) => updateAddForm({ city: val })}
-                      renderInput={(params) => (
-                        <TextField {...params} placeholder={addForm.state ? 'Search city...' : 'Select state first'} sx={inputSx} />
-                      )}
-                      disabled={!addForm.state || addSaving}
-                      isOptionEqualToValue={(o, v) => o.name === v.name}
-                      ListboxProps={{ style: { maxHeight: 200 } }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6} md={2.4}>
-                    <Typography sx={fieldLabelSx}>Sub City <span style={{ color: '#9e9e9e', fontWeight: 400 }}>(optional)</span></Typography>
-                    <TextField
-                      fullWidth size="small" placeholder="e.g., Andheri, Bandra"
-                      value={addForm.region}
-                      onChange={(e) => updateAddForm({ region: e.target.value })}
-                      disabled={addSaving} sx={inputSx}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6} md={2.4}>
-                    <Typography sx={fieldLabelSx}>Month *</Typography>
-                    <TextField
-                      select fullWidth size="small"
-                      value={addForm.month}
-                      onChange={(e) => updateAddForm({ month: e.target.value })}
-                      disabled={addSaving} sx={inputSx}
-                    >
-                      <MenuItem value=""><em style={{ color: '#888' }}>— Month —</em></MenuItem>
-                      {MONTHS.map(m => <MenuItem key={m} value={m}>{m}</MenuItem>)}
-                    </TextField>
-                  </Grid>
-                  <Grid item xs={12} sm={6} md={2.4}>
-                    <Typography sx={fieldLabelSx}>Date <span style={{ color: '#9e9e9e', fontWeight: 400 }}>(optional)</span></Typography>
-                    <TextField
-                      fullWidth size="small" type="date"
-                      value={addForm.date}
-                      onChange={(e) => updateAddForm({ date: e.target.value })}
-                      InputLabelProps={{ shrink: true }}
-                      disabled={addSaving} sx={inputSx}
-                    />
-                  </Grid>
-                </Grid>
+                {/* Location fields — CSS Grid, label row then input row */}
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr 1fr' }, columnGap: 3, rowGap: 0 }}>
+                  <Typography sx={fieldLabelSx}>State <span style={{ color: '#ef4444' }}>*</span></Typography>
+                  <Typography sx={fieldLabelSx}>City <span style={{ color: '#ef4444' }}>*</span></Typography>
+                  <Typography sx={fieldLabelSx}>
+                    Sub City <Typography component="span" sx={{ fontSize: '0.78rem', color: '#9e9e9e' }}>(opt)</Typography>
+                  </Typography>
+                  <Autocomplete
+                    size="small" options={indianStates} getOptionLabel={o => o.name || ''}
+                    value={addForm.state}
+                    onChange={(_, val) => updateAddForm({ state: val })}
+                    renderInput={(params) => <TextField {...params} placeholder="State..." sx={inputSx} />}
+                    isOptionEqualToValue={(o, v) => o.isoCode === v.isoCode}
+                    disabled={addSaving}
+                    ListboxProps={{ style: { maxHeight: 220 } }}
+                  />
+                  <Autocomplete
+                    size="small" options={addForm.availableCities} getOptionLabel={o => o.name || ''}
+                    value={addForm.city}
+                    onChange={(_, val) => updateAddForm({ city: val })}
+                    renderInput={(params) => (
+                      <TextField {...params} placeholder={addForm.state ? 'City...' : 'Select state'} sx={inputSx} />
+                    )}
+                    disabled={!addForm.state || addSaving}
+                    isOptionEqualToValue={(o, v) => o.name === v.name}
+                    ListboxProps={{ style: { maxHeight: 220 } }}
+                  />
+                  <TextField
+                    fullWidth size="small" placeholder="e.g. South Bangalore"
+                    value={addForm.region}
+                    onChange={(e) => updateAddForm({ region: e.target.value })}
+                    disabled={addSaving} sx={inputSx}
+                  />
+                </Box>
+
+                <Divider sx={{ my: 2 }}>
+                  <Typography sx={{ fontSize: '0.65rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                    Schedule
+                  </Typography>
+                </Divider>
+
+                {/* Schedule fields — CSS Grid, label row then input row */}
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, columnGap: 3, rowGap: 0 }}>
+                  <Typography sx={fieldLabelSx}>Month</Typography>
+                  <Typography sx={fieldLabelSx}>Date <Typography component="span" sx={{ fontSize: '0.78rem', color: '#9e9e9e' }}>(auto-filled)</Typography></Typography>
+                  <TextField
+                    select fullWidth size="small"
+                    value={addForm.month}
+                    onChange={(e) => updateAddForm({ month: e.target.value })}
+                    disabled={addSaving} sx={selectInputSx}
+                    SelectProps={{ displayEmpty: true }}
+                  >
+                    <MenuItem value="" sx={{ color: '#aaa' }}>Select month</MenuItem>
+                    {MONTHS.map(m => <MenuItem key={m} value={m} sx={{ fontSize: '1rem', fontWeight: 500 }}>{m}</MenuItem>)}
+                  </TextField>
+                  <TextField
+                    fullWidth size="small" type="date"
+                    value={addForm.date}
+                    onChange={(e) => updateAddForm({ date: e.target.value })}
+                    disabled={addSaving} sx={selectInputSx}
+                  />
+                </Box>
                 <Stack direction="row" spacing={1.5} sx={{ mt: 2 }}>
                   <Button
                     variant="contained" size="small"
                     onClick={handleAddCity} disabled={addSaving}
                     startIcon={addSaving ? <CircularProgress size={14} color="inherit" /> : <SaveIcon sx={{ fontSize: '0.9rem' }} />}
                     sx={{
-                      bgcolor: '#5B63D3', color: '#fff', borderRadius: 2,
-                      textTransform: 'none', fontWeight: 600, boxShadow: 'none',
-                      '&:hover': { bgcolor: '#4338ca', boxShadow: 'none' },
+                      bgcolor: '#FDE68A', color: '#111827', borderRadius: 2,
+                      textTransform: 'none', fontWeight: 700, boxShadow: 'none',
+                      '&:hover': { bgcolor: '#FCD34D', boxShadow: 'none' },
                       '&.Mui-disabled': { bgcolor: '#e0e0e0', color: '#9e9e9e' },
                     }}
                   >
-                    {addSaving ? 'Saving...' : 'Save Region'}
+                    {addSaving ? 'Saving...' : 'Save Location'}
                   </Button>
                   <Button
                     size="small" onClick={() => setAddFormOpen(false)} disabled={addSaving}
@@ -583,38 +632,57 @@ function ProjectDashboard() {
                   </Button>
                 </Stack>
               </Card>
-            )}
+            </Collapse>
 
             {/* Search + Filter + Sort */}
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mb: 2.5 }}>
-              <TextField
-                size="small" fullWidth
-                sx={{ maxWidth: { sm: 280 }, '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
-                placeholder="Search city or region..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon sx={{ color: '#94a3b8', fontSize: '1rem' }} />
-                    </InputAdornment>
-                  ),
+              <Autocomplete
+                size="small"
+                freeSolo
+                options={search.trim() ? [...new Set((trial?.assignedCities || []).flatMap(c => [c.cityName, c.region && c.region !== c.cityName ? c.region : null, c.state].filter(Boolean)))] : []}
+                inputValue={search}
+                onInputChange={(_, val) => {
+                  setSearch(val);
+                  if (val.trim()) setFilterState('');
                 }}
+                disabled={!!filterState}
+                sx={{ maxWidth: { sm: 280 }, width: '100%' }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder={filterState ? 'Clear state filter to search' : 'Search city or trial location...'}
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+                    InputProps={{
+                      ...params.InputProps,
+                      startAdornment: (
+                        <>
+                          <InputAdornment position="start">
+                            <SearchIcon sx={{ color: '#94a3b8', fontSize: '1rem' }} />
+                          </InputAdornment>
+                          {params.InputProps.startAdornment}
+                        </>
+                      ),
+                    }}
+                  />
+                )}
+                ListboxProps={{ style: { maxHeight: 220 } }}
               />
-              <FormControl size="small" sx={{ minWidth: 160 }}>
-                <Select
-                  displayEmpty
-                  value={filterState}
-                  onChange={(e) => setFilterState(e.target.value)}
-                  renderValue={(val) => val || 'All States'}
-                  sx={{ borderRadius: '8px', fontSize: '0.9rem' }}
-                >
-                  <MenuItem value="">All States</MenuItem>
-                  {indianStates.map(s => (
-                    <MenuItem key={s.isoCode} value={s.name}>{s.name}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <TextField
+                select size="small"
+                sx={{ minWidth: 160, '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+                value={filterState}
+                onChange={(e) => {
+                  setFilterState(e.target.value);
+                  if (e.target.value) setSearch('');
+                }}
+                disabled={!!search.trim()}
+                SelectProps={{ displayEmpty: true, renderValue: (val) => val || (search.trim() ? 'Searching...' : 'All States') }}
+              >
+                <MenuItem value="">All States</MenuItem>
+                {indianStates.map(s => (
+                  <MenuItem key={s.isoCode} value={s.name}>{s.name}</MenuItem>
+                ))}
+              </TextField>
               <TextField
                 select size="small" sx={{ minWidth: 180, '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
                 value={sortBy}
@@ -633,23 +701,23 @@ function ProjectDashboard() {
                 border: '2px dashed #e0e0e0', bgcolor: '#f9f9fb',
               }}>
                 <Typography sx={{ fontSize: '0.95rem', color: '#888', fontWeight: 500 }}>
-                  No regions assigned yet
+                  No trial locations assigned yet
                 </Typography>
                 <Typography sx={{ fontSize: '0.82rem', color: '#bbb', mt: 0.5 }}>
-                  Click "Add Region" to get started
+                  Click "Add Trial Location" to get started
                 </Typography>
               </Box>
             ) : (
               <>
-                <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '12px', border: '1.5px solid #e0e0e0' }}>
-                  <Table size="small">
+                <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '14px', border: '1.5px solid #e0e0e0' }}>
+                  <Table>
                     <TableHead>
                       <TableRow sx={{ bgcolor: '#f5f5f7' }}>
-                        {['#', 'City', 'Sub City', 'State', 'Month', 'Date', 'Confirmed', ''].map((h, i) => (
+                        {['#', 'City', 'State', 'Month', 'Date', 'Status', ''].map((h, i) => (
                           <TableCell key={i} sx={{
-                            fontWeight: 700, color: '#1d1d1f', fontSize: '0.78rem',
-                            py: 1.5, borderBottom: '2px solid #e0e0e0',
-                            textAlign: i === 6 ? 'center' : 'left',
+                            fontWeight: 700, color: '#1d1d1f', fontSize: '0.88rem',
+                            py: 2, borderBottom: '2px solid #e0e0e0',
+                            textAlign: i === 6 ? 'center' : i === 7 ? 'right' : 'left',
                           }}>
                             {h}
                           </TableCell>
@@ -667,71 +735,54 @@ function ProjectDashboard() {
                             '&:last-child td': { border: 0 },
                             bgcolor: isEditing ? '#f5f3ff' : 'transparent',
                           }}>
-                            <TableCell sx={{ color: '#999', fontWeight: 600, py: 1.2, width: 36, fontSize: '0.82rem' }}>
+                            <TableCell sx={{ color: '#999', fontWeight: 600, py: 1.75, width: 44, fontSize: '0.9rem' }}>
                               {rowNum}
                             </TableCell>
-                            <TableCell sx={{ py: 1.2, minWidth: 100 }}>
-                              <Typography sx={{ fontSize: '0.88rem', fontWeight: 600, color: '#1d1d1f' }}>
+                            <TableCell sx={{ py: 1.75, minWidth: 140 }}>
+                              <Typography sx={{ fontSize: '1rem', fontWeight: 700, color: '#1d1d1f' }}>
                                 {city.cityName || '—'}
                               </Typography>
                             </TableCell>
 
-                            {/* Region — editable */}
-                            <TableCell sx={{ py: 1.2, minWidth: 140 }}>
-                              {isEditing ? (
-                                <TextField
-                                  size="small" fullWidth
-                                  value={editForm.region}
-                                  onChange={(e) => setEditForm(f => ({ ...f, region: e.target.value }))}
-                                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '6px', fontSize: '0.85rem' } }}
-                                  disabled={editSaving}
-                                />
-                              ) : (
-                                <Typography sx={{ fontSize: '0.85rem', color: '#555' }}>
-                                  {city.region && city.region !== city.cityName ? city.region : '—'}
-                                </Typography>
-                              )}
-                            </TableCell>
-
-                            <TableCell sx={{ py: 1.2, minWidth: 120 }}>
-                              <Typography sx={{ fontSize: '0.85rem', color: '#555' }}>
+                            <TableCell sx={{ py: 1.75, minWidth: 140 }}>
+                              <Typography sx={{ fontSize: '0.95rem', color: '#555' }}>
                                 {city.state || '—'}
                               </Typography>
                             </TableCell>
 
                             {/* Month — editable */}
-                            <TableCell sx={{ py: 1.2, minWidth: 110 }}>
+                            <TableCell sx={{ py: 1.75, minWidth: 140 }}>
                               {isEditing ? (
                                 <TextField
                                   select size="small" fullWidth
                                   value={editForm.tentativeMonth}
                                   onChange={(e) => setEditForm(f => ({ ...f, tentativeMonth: e.target.value }))}
-                                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '6px', fontSize: '0.85rem' } }}
+                                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px', fontSize: '0.95rem' } }}
                                   disabled={editSaving}
                                 >
                                   <MenuItem value="">—</MenuItem>
-                                  {MONTHS.map(m => <MenuItem key={m} value={m} sx={{ fontSize: '0.85rem' }}>{m}</MenuItem>)}
+                                  {MONTHS.map(m => <MenuItem key={m} value={m} sx={{ fontSize: '0.95rem' }}>{m}</MenuItem>)}
                                 </TextField>
                               ) : (
-                                <Typography sx={{ fontSize: '0.85rem', color: '#555' }}>
+                                <Typography sx={{ fontSize: '0.95rem', color: '#555' }}>
                                   {city.tentativeMonth || '—'}
                                 </Typography>
                               )}
                             </TableCell>
 
                             {/* Date — editable */}
-                            <TableCell sx={{ py: 1.2, minWidth: 120 }}>
+                            <TableCell sx={{ py: 1.75, minWidth: 140 }}>
                               {isEditing ? (
                                 <TextField
                                   size="small" type="date" fullWidth
                                   value={editForm.tentativeDate || ''}
                                   onChange={(e) => setEditForm(f => ({ ...f, tentativeDate: e.target.value }))}
                                   InputLabelProps={{ shrink: true }}
-                                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '6px', fontSize: '0.85rem' } }}
+                                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px', fontSize: '0.95rem' } }}
                                   disabled={editSaving}
                                 />
                               ) : (
-                                <Typography sx={{ fontSize: '0.85rem', color: '#555' }}>
+                                <Typography sx={{ fontSize: '0.95rem', color: '#555' }}>
                                   {city.tentativeDate
                                     ? new Date(city.tentativeDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
                                     : '—'}
@@ -739,49 +790,70 @@ function ProjectDashboard() {
                               )}
                             </TableCell>
 
-                            {/* Confirmed toggle */}
-                            <TableCell align="center" sx={{ py: 1.2, width: 80 }}>
-                              <Checkbox
-                                checked={isEditing ? editForm.confirmed : city.confirmed}
-                                onChange={isEditing
-                                  ? (e) => setEditForm(f => ({ ...f, confirmed: e.target.checked }))
-                                  : () => handleToggleConfirmed(city)
-                                }
-                                size="small"
-                                sx={{ '&.Mui-checked': { color: '#22C55E' }, p: 0.5 }}
-                              />
+                            {/* Confirmed status */}
+                            <TableCell align="center" sx={{ py: 1.75, width: 130 }}>
+                              {isEditing ? (
+                                <FormControlLabel
+                                  control={
+                                    <Checkbox
+                                      checked={editForm.confirmed}
+                                      onChange={(e) => setEditForm(f => ({ ...f, confirmed: e.target.checked }))}
+                                      sx={{ '&.Mui-checked': { color: '#22C55E' }, p: 0.5 }}
+                                    />
+                                  }
+                                  label={<Typography variant="caption" fontWeight={600}>Confirmed</Typography>}
+                                  sx={{ m: 0 }}
+                                />
+                              ) : city.confirmed ? (
+                                <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5,
+                                  bgcolor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '20px',
+                                  px: 1.5, py: 0.4 }}>
+                                  <Box component="span" sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: '#22C55E', flexShrink: 0 }} />
+                                  <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#15803d' }}>Confirmed</Typography>
+                                </Box>
+                              ) : (
+                                <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5,
+                                  bgcolor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '20px',
+                                  px: 1.5, py: 0.4, cursor: 'pointer', '&:hover': { bgcolor: '#f0fdf4', borderColor: '#bbf7d0' } }}
+                                  onClick={() => handleToggleConfirmed(city)}
+                                >
+                                  <Box component="span" sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: '#94a3b8', flexShrink: 0 }} />
+                                  <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>Not Confirmed</Typography>
+                                </Box>
+                              )}
                             </TableCell>
 
                             {/* Actions */}
-                            <TableCell align="right" sx={{ py: 1.2, width: 100, whiteSpace: 'nowrap' }}>
+                            <TableCell align="right" sx={{ py: 1.75, width: 110, whiteSpace: 'nowrap' }}>
                               {isEditing ? (
                                 <Stack direction="row" spacing={0.5} justifyContent="flex-end">
                                   <Tooltip title="Save">
-                                    <IconButton size="small" onClick={handleSaveEditCity} disabled={editSaving}
+                                    <IconButton onClick={handleSaveEditCity} disabled={editSaving} aria-label="Save city edit"
                                       sx={{ color: '#22C55E', '&:hover': { bgcolor: '#f0fdf4' } }}>
-                                      {editSaving ? <CircularProgress size={14} /> : <SaveIcon sx={{ fontSize: 16 }} />}
+                                      {editSaving ? <CircularProgress size={16} /> : <SaveIcon sx={{ fontSize: 20 }} />}
                                     </IconButton>
                                   </Tooltip>
                                   <Tooltip title="Cancel">
-                                    <IconButton size="small" onClick={() => setEditingCode(null)} disabled={editSaving}
+                                    <IconButton onClick={() => setEditingCode(null)} disabled={editSaving} aria-label="Cancel edit"
                                       sx={{ color: '#86868b', '&:hover': { bgcolor: '#f5f5f7' } }}>
-                                      <CloseIcon sx={{ fontSize: 16 }} />
+                                      <CloseIcon sx={{ fontSize: 20 }} />
                                     </IconButton>
                                   </Tooltip>
                                 </Stack>
                               ) : (
                                 <Stack direction="row" spacing={0.5} justifyContent="flex-end">
                                   <Tooltip title="Edit">
-                                    <IconButton size="small" onClick={() => startEditCity(city)}
-                                      sx={{ color: '#5B63D3', '&:hover': { bgcolor: '#eef2ff' } }}>
-                                      <EditIcon sx={{ fontSize: 16 }} />
+                                    <IconButton onClick={() => startEditCity(city)} aria-label="Edit city"
+                                      sx={{ color: '#64748b', '&:hover': { bgcolor: '#f1f5f9', color: 'primary.dark' } }}>
+                                      <EditIcon sx={{ fontSize: 20 }} />
                                     </IconButton>
                                   </Tooltip>
                                   <Tooltip title="Remove">
-                                    <IconButton size="small"
+                                    <IconButton
+                                      aria-label="Remove city"
                                       onClick={() => setDeletingCity({ code: city.code, cityName: city.cityName })}
                                       sx={{ color: '#ef4444', '&:hover': { bgcolor: '#fef2f2' } }}>
-                                      <DeleteIcon sx={{ fontSize: 16 }} />
+                                      <DeleteIcon sx={{ fontSize: 20 }} />
                                     </IconButton>
                                   </Tooltip>
                                 </Stack>
@@ -798,7 +870,7 @@ function ProjectDashboard() {
                 {totalPages > 1 && (
                   <Stack direction="row" spacing={1} justifyContent="center" alignItems="center" sx={{ mt: 2 }}>
                     <Button size="small" disabled={page === 1} onClick={() => setPage(p => p - 1)}
-                      sx={{ minWidth: 32, borderRadius: 1.5, color: '#5B63D3' }}>
+                      sx={{ minWidth: 32, borderRadius: 1.5, color: 'text.secondary' }}>
                       ‹
                     </Button>
                     {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
@@ -809,8 +881,8 @@ function ProjectDashboard() {
                         sx={{
                           minWidth: 32, borderRadius: 1.5,
                           ...(p === page
-                            ? { bgcolor: '#5B63D3', color: '#fff', '&:hover': { bgcolor: '#4338ca' } }
-                            : { color: '#5B63D3' }
+                            ? { bgcolor: '#FDE68A', color: '#111827', '&:hover': { bgcolor: '#FCD34D' } }
+                            : { color: 'text.secondary' }
                           ),
                         }}
                       >
@@ -818,7 +890,7 @@ function ProjectDashboard() {
                       </Button>
                     ))}
                     <Button size="small" disabled={page === totalPages} onClick={() => setPage(p => p + 1)}
-                      sx={{ minWidth: 32, borderRadius: 1.5, color: '#5B63D3' }}>
+                      sx={{ minWidth: 32, borderRadius: 1.5, color: 'text.secondary' }}>
                       ›
                     </Button>
                   </Stack>
@@ -832,7 +904,7 @@ function ProjectDashboard() {
         </Card>
 
         {/* ── Project info accordion ── */}
-        <Accordion elevation={0} sx={{ border: '1px solid rgba(0,0,0,0.06)', borderRadius: '16px !important', '&:before': { display: 'none' } }}>
+        <Accordion elevation={0} sx={{ border: '1px solid rgba(0,0,0,0.06)', borderRadius: 4, '&:before': { display: 'none' } }}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 3, borderRadius: 4 }}>
             <Typography sx={{ fontSize: '0.9rem', fontWeight: 700, color: '#1d1d1f' }}>
               Project Info
@@ -863,7 +935,7 @@ function ProjectDashboard() {
               {trial.comment && (
                 <Grid item xs={12} sm={6}>
                   <Stack direction="row" spacing={1.5} alignItems="flex-start">
-                    <NotesIcon sx={{ fontSize: 18, color: '#5B63D3', mt: 0.25 }} />
+                    <NotesIcon sx={{ fontSize: 18, color: 'primary.dark', mt: 0.25 }} />
                     <Box>
                       <Typography sx={{ ...captionSx, mb: 0.5 }}>Notes</Typography>
                       <Typography sx={{ fontSize: '0.88rem', color: '#444', lineHeight: 1.6 }}>
@@ -904,70 +976,79 @@ function ProjectDashboard() {
       </Container>
 
       {/* ── Bulk Add Dialog ── */}
-      <Dialog open={bulkOpen} onClose={() => !bulkSaving && setBulkOpen(false)} maxWidth="md" fullWidth
-        PaperProps={{ sx: { borderRadius: '20px', maxHeight: '90vh' } }}>
-        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', px: 3, py: 2.5, borderBottom: '1.5px solid #f0f0f0' }}>
-          <Typography sx={{ fontWeight: 700, fontSize: '1rem' }}>Bulk Add Regions</Typography>
+      <Dialog open={bulkOpen} onClose={() => !bulkSaving && setBulkOpen(false)} maxWidth="xl" fullWidth
+        PaperProps={{ sx: { borderRadius: '20px', maxHeight: '92vh', minWidth: '92vw' } }}>
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', px: 4, py: 3, borderBottom: '1.5px solid #f0f0f0' }}>
+          <Box>
+            <Typography sx={{ fontWeight: 700, fontSize: '1.1rem', color: '#1e293b' }}>Bulk Add Cities</Typography>
+            <Typography sx={{ fontSize: '0.8rem', color: '#86868b', mt: 0.25 }}>
+              {bulkRows.length} rows · blank rows skipped · state & city required · no date = 10 July default
+            </Typography>
+          </Box>
           <IconButton onClick={() => setBulkOpen(false)} disabled={bulkSaving} size="small">
             <CloseIcon />
           </IconButton>
         </DialogTitle>
-        <DialogContent sx={{ px: 3, pt: 2.5 }}>
-          <Typography sx={{ fontSize: '0.82rem', color: '#86868b', mb: 2 }}>
-            Fill in state, city and month for each row you want to add. Leave blank rows are skipped.
-          </Typography>
+        <DialogContent sx={{ px: 4, pt: 3 }}>
           <TableContainer>
-            <Table size="small">
+            <Table>
               <TableHead>
-                <TableRow sx={{ bgcolor: '#f5f5f7' }}>
-                  {['#', 'State', 'City', 'Sub City (optional)', 'Month'].map((h, i) => (
-                    <TableCell key={i} sx={{ fontWeight: 700, fontSize: '0.78rem', py: 1.5 }}>{h}</TableCell>
+                <TableRow sx={{ bgcolor: '#f8fafc' }}>
+                  {['#', 'State *', 'City *', 'Sub City', 'Month', 'Date'].map((h, i) => (
+                    <TableCell key={i} sx={{ fontWeight: 700, fontSize: '0.82rem', py: 1.75, color: '#475569', whiteSpace: 'nowrap' }}>{h}</TableCell>
                   ))}
                 </TableRow>
               </TableHead>
               <TableBody>
                 {bulkRows.map((row, idx) => (
-                  <TableRow key={row.id}>
-                    <TableCell sx={{ color: '#999', fontSize: '0.82rem', width: 28 }}>{idx + 1}</TableCell>
-                    <TableCell sx={{ py: 0.75, minWidth: 160 }}>
+                  <TableRow key={row.id} sx={{ '& td': { py: 1.25 } }}>
+                    <TableCell sx={{ color: '#94a3b8', fontSize: '0.85rem', width: 36, fontWeight: 600 }}>{idx + 1}</TableCell>
+                    <TableCell sx={{ minWidth: 200 }}>
                       <Autocomplete
-                        size="small" options={indianStates} getOptionLabel={o => o.name || ''}
+                        options={indianStates} getOptionLabel={o => o.name || ''}
                         value={row.state}
                         onChange={(_, val) => updateBulkRow(row.id, { state: val })}
-                        renderInput={(params) => <TextField {...params} placeholder="State..." sx={{ '& .MuiOutlinedInput-root': { borderRadius: '6px' } }} />}
+                        renderInput={(params) => <TextField {...params} placeholder="State..." sx={inputSx} />}
                         isOptionEqualToValue={(o, v) => o.isoCode === v.isoCode}
                         disabled={bulkSaving}
-                        ListboxProps={{ style: { maxHeight: 180 } }}
+                        ListboxProps={{ style: { maxHeight: 200 } }}
                       />
                     </TableCell>
-                    <TableCell sx={{ py: 0.75, minWidth: 160 }}>
+                    <TableCell sx={{ minWidth: 200 }}>
                       <Autocomplete
-                        size="small" options={row.availableCities} getOptionLabel={o => o.name || ''}
+                        options={row.availableCities} getOptionLabel={o => o.name || ''}
                         value={row.city}
                         onChange={(_, val) => updateBulkRow(row.id, { city: val })}
-                        renderInput={(params) => <TextField {...params} placeholder={row.state ? 'City...' : '—'} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '6px' } }} />}
+                        renderInput={(params) => <TextField {...params} placeholder={row.state ? 'City...' : '—'} sx={inputSx} />}
                         disabled={!row.state || bulkSaving}
                         isOptionEqualToValue={(o, v) => o.name === v.name}
-                        ListboxProps={{ style: { maxHeight: 180 } }}
+                        ListboxProps={{ style: { maxHeight: 200 } }}
                       />
                     </TableCell>
-                    <TableCell sx={{ py: 0.75, minWidth: 140 }}>
-                      <TextField size="small" fullWidth placeholder="e.g., South Mumbai"
+                    <TableCell sx={{ minWidth: 160 }}>
+                      <TextField fullWidth placeholder="e.g. South Barh"
                         value={row.region}
                         onChange={(e) => updateBulkRow(row.id, { region: e.target.value })}
                         disabled={bulkSaving}
-                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: '6px' } }}
+                        sx={inputSx}
                       />
                     </TableCell>
-                    <TableCell sx={{ py: 0.75, minWidth: 130 }}>
-                      <TextField select size="small" fullWidth value={row.month}
+                    <TableCell sx={{ minWidth: 160 }}>
+                      <TextField select fullWidth value={row.month}
                         onChange={(e) => updateBulkRow(row.id, { month: e.target.value })}
                         disabled={bulkSaving}
-                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: '6px' } }}
+                        sx={selectInputSx}
                       >
                         <MenuItem value="">—</MenuItem>
-                        {MONTHS.map(m => <MenuItem key={m} value={m} sx={{ fontSize: '0.85rem' }}>{m}</MenuItem>)}
+                        {MONTHS.map(m => <MenuItem key={m} value={m} sx={{ fontSize: '0.9rem' }}>{m}</MenuItem>)}
                       </TextField>
+                    </TableCell>
+                    <TableCell sx={{ minWidth: 180 }}>
+                      <TextField fullWidth type="date" value={row.date}
+                        onChange={(e) => updateBulkRow(row.id, { date: e.target.value })}
+                        disabled={bulkSaving}
+                        sx={selectInputSx}
+                      />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -975,21 +1056,35 @@ function ProjectDashboard() {
             </Table>
           </TableContainer>
         </DialogContent>
-        <DialogActions sx={{ px: 3, py: 2.5, borderTop: '1.5px solid #f0f0f0', gap: 1.5 }}>
-          <Button onClick={() => setBulkOpen(false)} disabled={bulkSaving}
-            sx={{ borderRadius: '20px', textTransform: 'none', fontWeight: 600, color: '#555' }}>
-            Cancel
-          </Button>
-          <Button variant="contained" onClick={handleBulkSave} disabled={bulkSaving}
-            startIcon={bulkSaving ? <CircularProgress size={16} color="inherit" /> : null}
+        <DialogActions sx={{ px: 4, py: 3, borderTop: '1.5px solid #f0f0f0', gap: 1.5, justifyContent: 'space-between' }}>
+          <Button
+            onClick={addMoreBulkRows}
+            disabled={bulkSaving}
             sx={{
-              borderRadius: '20px', textTransform: 'none', fontWeight: 700,
-              bgcolor: '#FDE68A', color: '#111827', boxShadow: 'none',
-              '&:hover': { bgcolor: '#FCD34D', boxShadow: 'none' },
-              '&.Mui-disabled': { bgcolor: '#e0e0e0', color: '#9e9e9e' },
-            }}>
-            {bulkSaving ? 'Adding...' : 'Save All'}
+              borderRadius: '20px', textTransform: 'none', fontWeight: 600,
+              color: '#6366f1', border: '1.5px dashed #c7d2fe',
+              px: 3,
+              '&:hover': { bgcolor: '#eef2ff', borderColor: '#6366f1' },
+            }}
+          >
+            + Add 7 More
           </Button>
+          <Stack direction="row" spacing={1.5}>
+            <Button onClick={() => setBulkOpen(false)} disabled={bulkSaving}
+              sx={{ borderRadius: '20px', textTransform: 'none', fontWeight: 600, color: '#555', border: '1.5px solid #e2e8f0', px: 3 }}>
+              Cancel
+            </Button>
+            <Button variant="contained" onClick={handleBulkSave} disabled={bulkSaving}
+              startIcon={bulkSaving ? <CircularProgress size={16} color="inherit" /> : null}
+              sx={{
+                borderRadius: '20px', textTransform: 'none', fontWeight: 700,
+                bgcolor: '#FDE68A', color: '#111827', boxShadow: 'none', px: 4,
+                '&:hover': { bgcolor: '#FCD34D', boxShadow: 'none' },
+                '&.Mui-disabled': { bgcolor: '#e0e0e0', color: '#9e9e9e' },
+              }}>
+              {bulkSaving ? 'Adding...' : 'Confirm'}
+            </Button>
+          </Stack>
         </DialogActions>
       </Dialog>
 
@@ -1031,6 +1126,7 @@ function ProjectDashboard() {
         trial={trial}
         onConfirmDelete={handleDeleteProject}
       />
+
 
       {/* Toast */}
       <Snackbar open={toast.open} autoHideDuration={4000}

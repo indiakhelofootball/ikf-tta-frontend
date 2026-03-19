@@ -21,6 +21,7 @@ export default function DashboardLayout() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const title = pageTitles[location.pathname] || "Dashboard";
+  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
 
   const [anchorEl, setAnchorEl] = React.useState(null);
   const open = Boolean(anchorEl);
@@ -62,9 +63,9 @@ export default function DashboardLayout() {
 
   return (
     <div className="dashboard-layout">
-      <Sidebar />
+      <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(v => !v)} />
 
-      <div className="dashboard-content">
+      <div className="dashboard-content" style={{ marginLeft: sidebarCollapsed ? 64 : 260, transition: 'margin-left 0.25s ease' }}>
         {/* Header */}
         <div className="dashboard-header">
           <div className="dashboard-header-left">
@@ -84,6 +85,7 @@ export default function DashboardLayout() {
               <IconButton
                 onClick={handleClick}
                 size="small"
+                aria-label="Open account menu"
                 aria-controls={open ? 'account-menu' : undefined}
                 aria-haspopup="true"
                 aria-expanded={open ? 'true' : undefined}

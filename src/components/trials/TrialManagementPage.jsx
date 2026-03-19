@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Container, Typography, Button, TextField, InputAdornment,
   Stack, Snackbar, Alert, CircularProgress, Menu, MenuItem,
-  Chip, Card, CardContent, Grid, FormControl, InputLabel, Select,
+  Chip, Card, CardContent, Grid,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -150,8 +150,8 @@ function TrialManagementPage() {
         <Grid container spacing={2.5} sx={{ mb: 4 }}>
           {[
             {
-              icon: <TrophyIcon sx={{ fontSize: 28, color: '#5B63D3' }} />,
-              value: totalTrials, label: 'Total Projects', iconBg: '#eef2ff',
+              icon: <TrophyIcon sx={{ fontSize: 28, color: 'primary.dark' }} />,
+              value: totalTrials, label: 'Total Projects', iconBg: '#fef9c3',
             },
             {
               icon: <RegionIcon sx={{ fontSize: 28, color: '#10b981' }} />,
@@ -205,20 +205,22 @@ function TrialManagementPage() {
             variant="outlined" size="small"
             startIcon={<SortIcon sx={{ fontSize: '1rem' }} />}
             onClick={(e) => setSortMenuAnchor(e.currentTarget)}
-            sx={{ minWidth: 100, borderColor: '#e2e8f0', color: '#475569', borderRadius: 1.5, textTransform: 'none', fontWeight: 500 }}
+            sx={{ minWidth: 120, borderColor: '#e2e8f0', color: '#475569', borderRadius: 1.5, textTransform: 'none', fontWeight: 500 }}
           >
-            Sort
+            {SORT_OPTIONS.find(o => o.value === sortBy)?.label || 'Sort'}
           </Button>
           <Button
             variant="outlined" size="small"
             startIcon={<FilterIcon sx={{ fontSize: '1rem' }} />}
             onClick={(e) => setFilterMenuAnchor(e.currentTarget)}
-            sx={{ minWidth: 100, borderColor: '#e2e8f0', color: '#475569', borderRadius: 1.5, textTransform: 'none', fontWeight: 500 }}
+            sx={{
+              minWidth: 100, borderRadius: 1.5, textTransform: 'none', fontWeight: 500,
+              borderColor: hasActiveFilters ? 'primary.main' : '#e2e8f0',
+              color: hasActiveFilters ? 'primary.dark' : '#475569',
+              bgcolor: hasActiveFilters ? 'primary.light' : 'transparent',
+            }}
           >
-            Filter
-            {hasActiveFilters && (
-              <Chip label="•" size="small" sx={{ ml: 0.5, height: 16, minWidth: 16, bgcolor: '#5B63D3', color: 'white', fontSize: '0.6rem' }} />
-            )}
+            Filter{hasActiveFilters ? ` (${[filterType, filterSeason].filter(Boolean).length})` : ''}
           </Button>
         </Stack>
 
@@ -240,22 +242,26 @@ function TrialManagementPage() {
         >
           <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600 }}>Filters</Typography>
 
-          <FormControl fullWidth size="small" sx={{ mb: 2 }}>
-            <InputLabel>Season</InputLabel>
-            <Select value={filterSeason} onChange={(e) => setFilterSeason(e.target.value)} label="Season">
-              <MenuItem value="">All Seasons</MenuItem>
-              {SEASONS.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
-            </Select>
-          </FormControl>
+          <TextField
+            select fullWidth size="small" label="Season"
+            value={filterSeason}
+            onChange={(e) => setFilterSeason(e.target.value)}
+            sx={{ mb: 2 }}
+          >
+            <MenuItem value="">All Seasons</MenuItem>
+            {SEASONS.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+          </TextField>
 
           {projectTypes.length > 0 && (
-            <FormControl fullWidth size="small" sx={{ mb: 2 }}>
-              <InputLabel>Project Type</InputLabel>
-              <Select value={filterType} onChange={(e) => setFilterType(e.target.value)} label="Project Type">
-                <MenuItem value="">All Types</MenuItem>
-                {projectTypes.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}
-              </Select>
-            </FormControl>
+            <TextField
+              select fullWidth size="small" label="Project Type"
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+              sx={{ mb: 2 }}
+            >
+              <MenuItem value="">All Types</MenuItem>
+              {projectTypes.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}
+            </TextField>
           )}
 
           <Button fullWidth variant="outlined" onClick={handleClearFilters} sx={{ mt: 0.5 }}>
@@ -263,47 +269,43 @@ function TrialManagementPage() {
           </Button>
         </Menu>
 
-        {/* Loading */}
-        {loading && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-            <CircularProgress />
-          </Box>
-        )}
-
-        {/* Cards Grid */}
-        {!loading && filteredTrials.length > 0 && (
-          <Box sx={{
-            display: 'grid',
-            gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' },
-            gap: 3, mb: 4,
-          }}>
-            {filteredTrials.map(trial => (
-              <TrialCard
-                key={trial.id}
-                trial={trial}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-              />
-            ))}
-          </Box>
-        )}
-
-        {/* Empty state */}
-        {!loading && filteredTrials.length === 0 && (
-          <Box sx={{
-            textAlign: 'center', py: 8, bgcolor: 'white',
-            borderRadius: 2.5, border: '1px dashed #cbd5e1',
-          }}>
-            <Typography variant="subtitle1" sx={{ color: '#475569', fontWeight: 600 }} gutterBottom>
-              No projects found
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {searchQuery || hasActiveFilters
-                ? 'Try adjusting your search or filters'
-                : 'Create your first project to get started'}
-            </Typography>
-          </Box>
-        )}
+        {/* Content area — stable min-height prevents layout jump between states */}
+        <Box sx={{ minHeight: 320 }}>
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 10 }}>
+              <CircularProgress sx={{ color: 'primary.main' }} />
+            </Box>
+          ) : filteredTrials.length > 0 ? (
+            <Box sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' },
+              gap: 3, mb: 4,
+            }}>
+              {filteredTrials.map(trial => (
+                <TrialCard
+                  key={trial.id}
+                  trial={trial}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                />
+              ))}
+            </Box>
+          ) : (
+            <Box sx={{
+              textAlign: 'center', py: 8, bgcolor: 'white',
+              borderRadius: 2.5, border: '1px dashed #cbd5e1',
+            }}>
+              <Typography variant="subtitle1" sx={{ color: '#475569', fontWeight: 600 }} gutterBottom>
+                No projects found
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {searchQuery || hasActiveFilters
+                  ? 'Try adjusting your search or filters'
+                  : 'Create your first project to get started'}
+              </Typography>
+            </Box>
+          )}
+        </Box>
 
         {/* Edit Modal */}
         <TrialEditModal

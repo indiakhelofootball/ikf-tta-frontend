@@ -194,6 +194,7 @@ export default function ProfilePage() {
               <label htmlFor="profile-image-upload">
                 <IconButton
                   component="span"
+                  aria-label="Upload profile photo"
                   sx={{
                     position: 'absolute',
                     bottom: 0,

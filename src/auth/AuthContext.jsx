@@ -8,7 +8,7 @@ import api from "../services/api";
 
 const AuthContext = createContext(null);
 
-const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+const SESSION_TIMEOUT = 8 * 60 * 60 * 1000; // 8 hours
 const REMEMBER_ME_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 export const AuthProvider = ({ children }) => {

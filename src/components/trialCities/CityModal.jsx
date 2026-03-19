@@ -373,7 +373,7 @@ function CityModal({ open, onClose, onSave, onSaveAndAddAnother, editingCity, ex
         <Typography variant="h6" fontWeight={600}>
           {isEditMode ? 'Edit Trial City' : 'Add Trial City'}
         </Typography>
-        <IconButton onClick={onClose} size="small" disabled={saving}>
+        <IconButton onClick={onClose} size="small" disabled={saving} aria-label="Close">
           <CloseIcon />
         </IconButton>
       </DialogTitle>
