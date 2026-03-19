@@ -5,12 +5,12 @@ import {
   Card, CardContent, Box, Typography, Chip, Stack, Button,
 } from '@mui/material';
 import {
-  Visibility as ViewIcon, Edit as EditIcon,
+  Visibility as ViewIcon, Edit as EditIcon, Delete as DeleteIcon,
   Repeat as PeriodicIcon, PushPin as FixedIcon,
 } from '@mui/icons-material';
 import { WO_STATUS_COLORS } from './workOrderData';
 
-function WorkOrderCard({ workOrder, onView, onEdit }) {
+function WorkOrderCard({ workOrder, onView, onEdit, onDelete }) {
   const statusStyle = WO_STATUS_COLORS[workOrder.status] || WO_STATUS_COLORS.Issued;
   const isPeriodic = workOrder.type === 'Periodic';
 
@@ -102,6 +102,15 @@ function WorkOrderCard({ workOrder, onView, onEdit }) {
               boxShadow: 'none', '&:hover': { bgcolor: '#FCD34D', boxShadow: 'none' },
             }}>
             Edit
+          </Button>
+          <Button size="small" variant="outlined" startIcon={<DeleteIcon fontSize="small" />}
+            onClick={() => onDelete(workOrder)}
+            sx={{
+              textTransform: 'none', fontWeight: 600, fontSize: '0.78rem',
+              borderColor: '#fecaca', color: '#dc2626', borderRadius: 1.5,
+              '&:hover': { borderColor: '#dc2626', bgcolor: '#fef2f2' },
+            }}>
+            Delete
           </Button>
         </Stack>
       </CardContent>

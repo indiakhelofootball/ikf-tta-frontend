@@ -223,10 +223,12 @@ function VendorNamePanel({ items, onSave, serviceTypes, entityTypes }) {
 
   const isDuplicate = (name, serviceType, entityType, excludeId = null) => {
     const lower = name.toLowerCase().trim();
+    const svcLower = (serviceType || '').toLowerCase();
+    const entLower = (entityType || '').toLowerCase();
     return list.some(item =>
       item.name.toLowerCase().trim() === lower &&
-      (item.serviceType || '') === serviceType &&
-      (item.entityType || '') === entityType &&
+      (item.serviceType || '').toLowerCase() === svcLower &&
+      (item.entityType || '').toLowerCase() === entLower &&
       item.id !== excludeId
     );
   };

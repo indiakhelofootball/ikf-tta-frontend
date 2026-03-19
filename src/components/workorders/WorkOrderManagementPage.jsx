@@ -106,6 +106,14 @@ function WorkOrderManagementPage() {
     fetchVendors();
   };
 
+  const handleDelete = (wo) => {
+    if (!window.confirm(`Delete work order ${wo.workOrderNumber}?`)) return;
+    const updated = workOrders.filter((w) => w.id !== wo.id);
+    setWorkOrders(updated);
+    saveWorkOrders(updated);
+    showToast('Work order deleted');
+  };
+
 
   return (
     <Box sx={{ py: 4 }}>
@@ -172,6 +180,7 @@ function WorkOrderManagementPage() {
                   workOrder={wo}
                   onView={(w) => setDetailWO(w)}
                   onEdit={handleEdit}
+                  onDelete={handleDelete}
                 />
               </Grid>
             ))}
