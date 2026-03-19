@@ -251,14 +251,11 @@ export const repAPI = {
     return apiService.request(`/reps/${id}/`, { method: 'DELETE' });
   },
 
-  assignTrial: async (repId, trialData) => {
-    // Placeholder — trial assignment logic can be added later
-    return apiService.request(`/reps/${repId}/`, { method: 'GET' });
-  },
-
-  removeTrial: async (repId, trialId) => {
-    // Placeholder — trial removal logic can be added later
-    return apiService.request(`/reps/${repId}/`, { method: 'GET' });
+  assignTrials: async (repId, trialIds) => {
+    return apiService.request(`/reps/${repId}/`, {
+      method: 'PATCH',
+      body: JSON.stringify({ trialIds }),
+    });
   },
 
   search: async (query) => {
@@ -320,12 +317,19 @@ export const vendorsAPI = {
     return apiService.request('/banks/');
   },
 
+  getCompanyTypes: async () => {
+    return apiService.request('/company-types/');
+  },
+
   getAll: async (filters = {}) => {
     const params = new URLSearchParams();
     if (filters.status && filters.status !== 'all') params.append('status', filters.status);
     if (filters.vendorType && filters.vendorType !== 'all') params.append('vendor_type', filters.vendorType);
     if (filters.search) params.append('search', filters.search);
     if (filters.sort) params.append('sort', filters.sort);
+    if (filters.state) params.append('state', filters.state);
+    if (filters.city) params.append('city', filters.city);
+    if (filters.limit) params.append('limit', filters.limit);
     const qs = params.toString();
     return apiService.request(`/vendors/${qs ? `?${qs}` : ''}`);
   },

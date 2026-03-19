@@ -101,7 +101,7 @@ function VendorDetailView({ open, onClose, vendor, onEdit }) {
         <Box sx={sectionSx}>
           <Grid container spacing={2}>
             <Grid item xs={6}>
-              <Typography variant="caption" color="text.secondary">Partner Name</Typography>
+              <Typography variant="caption" color="text.secondary">Vendor Name</Typography>
               <Typography variant="body2" fontWeight={600}>{vendor.vendorName}</Typography>
             </Grid>
             <Grid item xs={6}>
@@ -117,6 +117,12 @@ function VendorDetailView({ open, onClose, vendor, onEdit }) {
               <Grid item xs={6}>
                 <Typography variant="caption" color="text.secondary">Company Type</Typography>
                 <Typography variant="body2" fontWeight={600}>{vendor.companyType}</Typography>
+              </Grid>
+            )}
+            {vendor.entityName && (
+              <Grid item xs={6}>
+                <Typography variant="caption" color="text.secondary">Entity Name</Typography>
+                <Typography variant="body2" fontWeight={600}>{vendor.entityName}</Typography>
               </Grid>
             )}
           </Grid>
@@ -203,7 +209,9 @@ function VendorDetailView({ open, onClose, vendor, onEdit }) {
         {/* Bank */}
         {(vendor.bankName || vendor.accountNumber || vendor.ifscCode || vendor.accountType || vendor.bankPinCode) && (
           <>
-            <Typography variant="caption" sx={sectionLabelSx}>Bank Details</Typography>
+            <Typography variant="caption" sx={sectionLabelSx}>
+              Bank Details {vendor.panNumber && `(PAN: ${vendor.panNumber})`}
+            </Typography>
             <Box sx={sectionSx}>
               <Grid container spacing={2}>
                 <Grid item xs={6}>
@@ -228,6 +236,12 @@ function VendorDetailView({ open, onClose, vendor, onEdit }) {
                   <Grid item xs={6}>
                     <Typography variant="caption" color="text.secondary">Branch Pin Code</Typography>
                     <Typography variant="body2" fontWeight={600}>{vendor.bankPinCode}</Typography>
+                  </Grid>
+                )}
+                {vendor.branchAddress && (
+                  <Grid item xs={12}>
+                    <Typography variant="caption" color="text.secondary">Branch Address</Typography>
+                    <Typography variant="body2">{vendor.branchAddress}</Typography>
                   </Grid>
                 )}
               </Grid>
@@ -256,7 +270,7 @@ function VendorDetailView({ open, onClose, vendor, onEdit }) {
             variant="caption"
             sx={{ color: '#94a3b8', fontStyle: 'italic', px: 2 }}
           >
-            Edit this partner from REP Management
+            Edit this vendor from REP Management
           </Typography>
         ) : (
           <Button
@@ -272,7 +286,7 @@ function VendorDetailView({ open, onClose, vendor, onEdit }) {
               '&:hover': { bgcolor: '#FCD34D' },
             }}
           >
-            Edit Partner
+            Edit Vendor
           </Button>
         )}
       </DialogActions>

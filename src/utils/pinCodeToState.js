@@ -1,0 +1,156 @@
+// src/utils/pinCodeToState.js
+// Indian PIN code → State mapping + State → Cities lookup
+
+// 3-digit overrides (higher priority — resolves ambiguous ranges)
+const PIN_3DIGIT = {
+  '110': 'Delhi',
+  '360': 'Gujarat', '361': 'Gujarat', '362': 'Gujarat',
+  '363': 'Gujarat', '364': 'Gujarat', '365': 'Gujarat',
+  '370': 'Jammu & Kashmir',
+  '403': 'Goa',
+  '416': 'Maharashtra',
+  '500': 'Telangana', '501': 'Telangana', '502': 'Telangana',
+  '503': 'Telangana', '504': 'Telangana', '505': 'Telangana',
+  '506': 'Telangana', '507': 'Telangana', '508': 'Telangana', '509': 'Telangana',
+  '534': 'Andhra Pradesh', '535': 'Andhra Pradesh',
+  '793': 'Meghalaya', '794': 'Meghalaya',
+  '795': 'Manipur', '796': 'Mizoram',
+  '797': 'Nagaland', '798': 'Nagaland',
+  '799': 'Tripura',
+  '813': 'Jharkhand', '814': 'Jharkhand', '815': 'Jharkhand',
+  '816': 'Jharkhand',
+  '822': 'Jharkhand', '823': 'Jharkhand', '824': 'Jharkhand',
+  '825': 'Jharkhand', '826': 'Jharkhand', '827': 'Jharkhand',
+  '828': 'Jharkhand', '829': 'Jharkhand',
+  '831': 'Jharkhand', '832': 'Jharkhand', '833': 'Jharkhand',
+  '834': 'Jharkhand', '835': 'Jharkhand',
+  '246': 'Uttarakhand', '247': 'Uttarakhand', '248': 'Uttarakhand',
+  '249': 'Uttarakhand', '262': 'Uttarakhand', '263': 'Uttarakhand',
+};
+
+// 2-digit prefix → State
+const PIN_2DIGIT = {
+  '11': 'Delhi',
+  '12': 'Haryana', '13': 'Haryana',
+  '14': 'Punjab', '15': 'Punjab', '16': 'Punjab',
+  '17': 'Himachal Pradesh',
+  '18': 'Jammu & Kashmir', '19': 'Jammu & Kashmir',
+  '20': 'Uttar Pradesh', '21': 'Uttar Pradesh', '22': 'Uttar Pradesh',
+  '23': 'Uttar Pradesh', '24': 'Uttar Pradesh', '25': 'Uttar Pradesh',
+  '26': 'Uttar Pradesh', '27': 'Uttar Pradesh', '28': 'Uttar Pradesh',
+  '30': 'Rajasthan', '31': 'Rajasthan', '32': 'Rajasthan',
+  '33': 'Rajasthan', '34': 'Rajasthan',
+  '36': 'Haryana',
+  '37': 'Andhra Pradesh',
+  '38': 'Gujarat', '39': 'Gujarat',
+  '40': 'Maharashtra', '41': 'Maharashtra', '42': 'Maharashtra',
+  '43': 'Maharashtra', '44': 'Maharashtra',
+  '45': 'Madhya Pradesh', '46': 'Madhya Pradesh',
+  '47': 'Madhya Pradesh', '48': 'Madhya Pradesh',
+  '49': 'Chhattisgarh',
+  '50': 'Telangana',
+  '51': 'Andhra Pradesh', '52': 'Andhra Pradesh', '53': 'Andhra Pradesh',
+  '56': 'Karnataka', '57': 'Karnataka', '58': 'Karnataka', '59': 'Karnataka',
+  '60': 'Tamil Nadu', '61': 'Tamil Nadu', '62': 'Tamil Nadu',
+  '63': 'Tamil Nadu', '64': 'Tamil Nadu',
+  '67': 'Kerala', '68': 'Kerala', '69': 'Kerala',
+  '70': 'West Bengal', '71': 'West Bengal', '72': 'West Bengal',
+  '73': 'West Bengal', '74': 'West Bengal',
+  '75': 'Odisha', '76': 'Odisha', '77': 'Odisha',
+  '78': 'Assam', '79': 'Assam',
+  '80': 'Bihar', '81': 'Bihar', '82': 'Bihar', '83': 'Bihar',
+  '84': 'Bihar', '85': 'Bihar',
+  '90': 'Manipur', '91': 'Mizoram', '92': 'Arunachal Pradesh',
+};
+
+export function getStateFromPinCode(pin) {
+  if (!pin || pin.length < 2) return '';
+  const p3 = pin.substring(0, 3);
+  const p2 = pin.substring(0, 2);
+  return PIN_3DIGIT[p3] || PIN_2DIGIT[p2] || '';
+}
+
+// All Indian states + UTs (sorted)
+export const INDIAN_STATES = [
+  'Andaman & Nicobar',
+  'Andhra Pradesh',
+  'Arunachal Pradesh',
+  'Assam',
+  'Bihar',
+  'Chandigarh',
+  'Chhattisgarh',
+  'Dadra & Nagar Haveli',
+  'Delhi',
+  'Goa',
+  'Gujarat',
+  'Haryana',
+  'Himachal Pradesh',
+  'Jammu & Kashmir',
+  'Jharkhand',
+  'Karnataka',
+  'Kerala',
+  'Ladakh',
+  'Lakshadweep',
+  'Madhya Pradesh',
+  'Maharashtra',
+  'Manipur',
+  'Meghalaya',
+  'Mizoram',
+  'Nagaland',
+  'Odisha',
+  'Puducherry',
+  'Punjab',
+  'Rajasthan',
+  'Sikkim',
+  'Tamil Nadu',
+  'Telangana',
+  'Tripura',
+  'Uttar Pradesh',
+  'Uttarakhand',
+  'West Bengal',
+];
+
+// Major cities/areas per state (for dropdown after state selection)
+const STATE_CITIES = {
+  'Andhra Pradesh': ['Visakhapatnam', 'Vijayawada', 'Guntur', 'Nellore', 'Kurnool', 'Tirupati', 'Rajahmundry', 'Kakinada', 'Anantapur', 'Eluru'],
+  'Arunachal Pradesh': ['Itanagar', 'Naharlagun', 'Pasighat', 'Tawang'],
+  'Assam': ['Guwahati', 'Silchar', 'Dibrugarh', 'Jorhat', 'Nagaon', 'Tinsukia', 'Tezpur'],
+  'Bihar': ['Patna', 'Gaya', 'Bhagalpur', 'Muzaffarpur', 'Darbhanga', 'Purnia', 'Arrah', 'Begusarai'],
+  'Chandigarh': ['Chandigarh'],
+  'Chhattisgarh': ['Raipur', 'Bhilai', 'Bilaspur', 'Korba', 'Durg', 'Rajnandgaon'],
+  'Delhi': ['New Delhi', 'Central Delhi', 'South Delhi', 'North Delhi', 'East Delhi', 'West Delhi', 'Dwarka', 'Rohini'],
+  'Goa': ['Panaji', 'Margao', 'Vasco da Gama', 'Mapusa', 'Ponda'],
+  'Gujarat': ['Ahmedabad', 'Surat', 'Vadodara', 'Rajkot', 'Bhavnagar', 'Jamnagar', 'Junagadh', 'Gandhinagar', 'Anand', 'Nadiad'],
+  'Haryana': ['Gurugram', 'Faridabad', 'Panipat', 'Ambala', 'Karnal', 'Hisar', 'Rohtak', 'Sonipat', 'Panchkula'],
+  'Himachal Pradesh': ['Shimla', 'Dharamshala', 'Mandi', 'Solan', 'Kullu', 'Manali', 'Kangra'],
+  'Jammu & Kashmir': ['Srinagar', 'Jammu', 'Anantnag', 'Baramulla', 'Udhampur', 'Kathua'],
+  'Jharkhand': ['Ranchi', 'Jamshedpur', 'Dhanbad', 'Bokaro', 'Hazaribagh', 'Deoghar', 'Giridih'],
+  'Karnataka': ['Bengaluru', 'Mysuru', 'Hubli', 'Mangalore', 'Belgaum', 'Dharwad', 'Gulbarga', 'Shimoga', 'Tumkur', 'Davangere'],
+  'Kerala': ['Thiruvananthapuram', 'Kochi', 'Kozhikode', 'Thrissur', 'Kollam', 'Kannur', 'Palakkad', 'Alappuzha'],
+  'Ladakh': ['Leh', 'Kargil'],
+  'Madhya Pradesh': ['Bhopal', 'Indore', 'Jabalpur', 'Gwalior', 'Ujjain', 'Sagar', 'Rewa', 'Satna', 'Dewas'],
+  'Maharashtra': ['Mumbai', 'Pune', 'Nagpur', 'Nashik', 'Aurangabad', 'Thane', 'Kolhapur', 'Solapur', 'Navi Mumbai', 'Amravati', 'Sangli'],
+  'Manipur': ['Imphal', 'Thoubal', 'Bishnupur'],
+  'Meghalaya': ['Shillong', 'Tura', 'Jowai'],
+  'Mizoram': ['Aizawl', 'Lunglei', 'Champhai'],
+  'Nagaland': ['Kohima', 'Dimapur', 'Mokokchung'],
+  'Odisha': ['Bhubaneswar', 'Cuttack', 'Rourkela', 'Berhampur', 'Sambalpur', 'Puri', 'Balasore'],
+  'Puducherry': ['Puducherry', 'Karaikal'],
+  'Punjab': ['Ludhiana', 'Amritsar', 'Jalandhar', 'Patiala', 'Bathinda', 'Mohali', 'Hoshiarpur', 'Pathankot'],
+  'Rajasthan': ['Jaipur', 'Jodhpur', 'Udaipur', 'Kota', 'Ajmer', 'Bikaner', 'Bhilwara', 'Alwar', 'Sikar'],
+  'Sikkim': ['Gangtok', 'Namchi', 'Pelling'],
+  'Tamil Nadu': ['Chennai', 'Coimbatore', 'Madurai', 'Tiruchirappalli', 'Salem', 'Tirunelveli', 'Erode', 'Vellore', 'Thanjavur'],
+  'Telangana': ['Hyderabad', 'Warangal', 'Nizamabad', 'Karimnagar', 'Khammam', 'Mahbubnagar', 'Secunderabad'],
+  'Tripura': ['Agartala', 'Udaipur', 'Dharmanagar'],
+  'Uttar Pradesh': ['Lucknow', 'Kanpur', 'Agra', 'Varanasi', 'Meerut', 'Allahabad', 'Bareilly', 'Aligarh', 'Moradabad', 'Ghaziabad', 'Noida', 'Greater Noida'],
+  'Uttarakhand': ['Dehradun', 'Haridwar', 'Rishikesh', 'Haldwani', 'Roorkee', 'Nainital', 'Mussoorie'],
+  'West Bengal': ['Kolkata', 'Howrah', 'Durgapur', 'Asansol', 'Siliguri', 'Bardhaman', 'Kharagpur', 'Haldia'],
+  'Andaman & Nicobar': ['Port Blair'],
+  'Dadra & Nagar Haveli': ['Silvassa'],
+  'Lakshadweep': ['Kavaratti'],
+};
+
+export function getCitiesForState(state) {
+  if (!state) return [];
+  return STATE_CITIES[state] || [];
+}

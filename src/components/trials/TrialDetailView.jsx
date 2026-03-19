@@ -104,6 +104,7 @@ function TrialDetailView({ trial, open, onClose, onEdit, onDelete }) {
           <IconButton
             onClick={() => { onClose(); onEdit(trial); }}
             size="small"
+            aria-label="Edit trial"
             sx={{ bgcolor: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}
           >
             <EditIcon />
@@ -111,11 +112,12 @@ function TrialDetailView({ trial, open, onClose, onEdit, onDelete }) {
           <IconButton
             onClick={() => { onClose(); onDelete(trial); }}
             size="small"
+            aria-label="Delete trial"
             sx={{ bgcolor: 'white', color: 'error.main', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}
           >
             <DeleteIcon />
           </IconButton>
-          <IconButton onClick={onClose} size="small" sx={{ bgcolor: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+          <IconButton onClick={onClose} size="small" aria-label="Close" sx={{ bgcolor: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
             <CloseIcon />
           </IconButton>
         </Stack>

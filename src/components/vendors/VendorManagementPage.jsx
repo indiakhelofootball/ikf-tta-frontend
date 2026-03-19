@@ -76,7 +76,7 @@ function VendorManagementPage() {
       setVendors(response.vendors || []);
     } catch (error) {
       console.error('Load error:', error);
-      showToast('Failed to load service providers', 'error');
+      showToast('Failed to load vendors', 'error');
     } finally {
       setLoading(false);
     }
@@ -94,6 +94,7 @@ function VendorManagementPage() {
           v.email?.toLowerCase().includes(q) ||
           v.gstNumber?.toLowerCase().includes(q) ||
           v.panNumber?.toLowerCase().includes(q) ||
+          v.entityName?.toLowerCase().includes(q) ||
           v.city?.toLowerCase().includes(q) ||
           v.state?.toLowerCase().includes(q)
       );
@@ -130,13 +131,13 @@ function VendorManagementPage() {
 
   /* ============ ACTIONS ============ */
 
-  const handleAddNew = () => {
+  const handleAddVendor = () => {
     setEditingVendor(null);
     setModalOpen(true);
   };
 
   const handleBulkComplete = (count) => {
-    showToast(`${count} partner${count !== 1 ? 's' : ''} added successfully`);
+    showToast(`${count} vendor${count !== 1 ? 's' : ''} added successfully`);
     loadVendors();
   };
 
@@ -145,22 +146,22 @@ function VendorManagementPage() {
     setModalOpen(true);
   };
 
-  const handleSave = async (vendorData) => {
+  const handleSave = async (vendorData, vendorId) => {
     setSaving(true);
     try {
-      if (editingVendor) {
-        await vendorsAPI.update(editingVendor._id || editingVendor.id, vendorData);
-        showToast('Partner updated successfully');
+      if (vendorId) {
+        await vendorsAPI.update(vendorId, vendorData);
+        showToast('Vendor updated successfully');
       } else {
         await vendorsAPI.create(vendorData);
-        showToast('Partner added successfully');
+        showToast('Vendor added successfully');
       }
       setModalOpen(false);
       setEditingVendor(null);
       loadVendors();
     } catch (error) {
       console.error('Save error:', error);
-      showToast(error.message || 'Failed to save partner', 'error');
+      showToast(error.message || 'Failed to save vendor', 'error');
     } finally {
       setSaving(false);
     }
@@ -173,7 +174,7 @@ function VendorManagementPage() {
       loadVendors();
     } catch (error) {
       console.error('Verify error:', error);
-      showToast('Failed to verify partner', 'error');
+      showToast('Failed to verify vendor', 'error');
     }
   };
 
@@ -193,7 +194,7 @@ function VendorManagementPage() {
   const pendingCount = vendors.filter((v) => v.status === 'Pending').length;
 
   const statCards = [
-    { label: 'Total Partners', value: totalVendors, icon: <StoreIcon />, color: '#5B63D3' },
+    { label: 'Total Vendors', value: totalVendors, icon: <StoreIcon />, color: '#5B63D3' },
     { label: 'Verified / Active', value: verifiedCount, icon: <VerifiedIcon />, color: '#22c55e' },
     { label: 'Pending', value: pendingCount, icon: <PendingIcon />, color: '#f59e0b' },
   ];
@@ -207,10 +208,10 @@ function VendorManagementPage() {
         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'center' }} sx={{ mb: 4 }}>
           <Box>
             <Typography variant="h5" fontWeight={700} sx={{ color: '#1e293b', mb: 0.5 }}>
-              Service Provider Management
+              Vendor Management
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Manage service provider profiles, documents, and verification status.
+              Manage vendor profiles, documents, and verification status.
             </Typography>
           </Box>
           <Stack direction="row" spacing={1.5} sx={{ mt: { xs: 2, sm: 0 } }}>
@@ -233,7 +234,7 @@ function VendorManagementPage() {
             <Button
               variant="contained"
               startIcon={<AddIcon />}
-              onClick={handleAddNew}
+              onClick={handleAddVendor}
               sx={{
                 bgcolor: '#FDE68A',
                 textTransform: 'none',
@@ -244,7 +245,7 @@ function VendorManagementPage() {
                 '&:hover': { bgcolor: '#FCD34D' },
               }}
             >
-              Add Service Provider
+              Add Vendor
             </Button>
           </Stack>
         </Stack>
@@ -286,7 +287,7 @@ function VendorManagementPage() {
         >
           <TextField
             size="small"
-            placeholder="Search service providers..."
+            placeholder="Search vendors..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             InputProps={{
@@ -434,41 +435,42 @@ function VendorManagementPage() {
           <Box sx={{ textAlign: 'center', py: 10 }}>
             <CircularProgress sx={{ color: '#5B63D3' }} />
             <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-              Loading service providers...
+              Loading vendors...
             </Typography>
           </Box>
         ) : filteredVendors.length === 0 ? (
           <Box sx={{ textAlign: 'center', py: 10, bgcolor: '#f8fafc', borderRadius: 2, border: '1px dashed #cbd5e1' }}>
             <StoreIcon sx={{ fontSize: 48, color: '#cbd5e1', mb: 2 }} />
             <Typography variant="h6" fontWeight={600} color="text.secondary" sx={{ mb: 1 }}>
-              {vendors.length === 0 ? 'No service providers yet' : 'No service providers match your filters'}
+              {vendors.length === 0 ? 'No vendors yet' : 'No vendors match your filters'}
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
               {vendors.length === 0
-                ? 'Add your first service provider to get started.'
+                ? 'Add your first vendor to get started.'
                 : 'Try adjusting your search or filters.'}
             </Typography>
             {vendors.length === 0 && (
               <Button
                 variant="contained"
                 startIcon={<AddIcon />}
-                onClick={handleAddNew}
+                onClick={handleAddVendor}
                 sx={{
                   bgcolor: '#FDE68A',
                   textTransform: 'none',
                   fontWeight: 600,
                   borderRadius: 1.5,
+                  color: '#1e293b',
                   '&:hover': { bgcolor: '#FCD34D' },
                 }}
               >
-                Add Service Provider
+                Add Vendor
               </Button>
             )}
           </Box>
         ) : (
           <>
             <Typography variant="caption" color="text.secondary" sx={{ mb: 2, display: 'block' }}>
-              Showing {filteredVendors.length} of {vendors.length} service providers
+              Showing {filteredVendors.length} of {vendors.length} vendors
             </Typography>
             <Grid container spacing={2.5}>
               {filteredVendors.map((vendor) => (
@@ -493,6 +495,7 @@ function VendorManagementPage() {
         onSave={handleSave}
         vendor={editingVendor}
         saving={saving}
+        vendors={vendors}
       />
 
       <VendorDetailView

@@ -40,8 +40,8 @@ function REPCard({ rep, onEdit, onDelete, onViewDetails }) {
   };
 
   const handleConfirmDelete = () => {
-    if (confirmText.trim() !== rep.repName) {
-      setDeleteError(`Please type "${rep.repName}" exactly`);
+    if (confirmText.trim() !== 'DELETE') {
+      setDeleteError('Please type "DELETE" exactly to confirm');
       return;
     }
     setDeleteDialogOpen(false);
@@ -79,30 +79,12 @@ function REPCard({ rep, onEdit, onDelete, onViewDetails }) {
             overflow: 'auto',
           }}
         >
-          {/* Header - REP Name & Status */}
-          <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 2 }}>
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="h6" fontWeight={700} sx={{ mb: 1 }}>
-                {rep.repName}
-              </Typography>
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                <Chip
-                  label={rep.status || 'Active'}
-                  size="small"
-                  color={rep.status === 'Active' ? 'success' : 'default'}
-                  sx={{ fontSize: '0.75rem' }}
-                />
-                {thisWeekTrials > 0 && (
-                  <Chip
-                    label={`${thisWeekTrials} This Week`}
-                    size="small"
-                    color="warning"
-                    sx={{ fontSize: '0.75rem' }}
-                  />
-                )}
-              </Stack>
-            </Box>
-          </Stack>
+          {/* Header - REP Name */}
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="h6" fontWeight={700}>
+              {rep.repName}
+            </Typography>
+          </Box>
 
           {/* Location Info */}
           <Stack spacing={1.5} sx={{ mb: 2 }}>
@@ -122,14 +104,6 @@ function REPCard({ rep, onEdit, onDelete, onViewDetails }) {
               </Stack>
             )}
 
-            {rep.phone && (
-              <Stack direction="row" spacing={1.5} alignItems="center">
-                <PhoneIcon fontSize="small" sx={{ color: '#f59e0b', flexShrink: 0 }} />
-                <Typography variant="body2" color="text.secondary">
-                  {rep.phone}
-                </Typography>
-              </Stack>
-            )}
           </Stack>
 
           {/* Trial Stats */}
@@ -217,7 +191,7 @@ function REPCard({ rep, onEdit, onDelete, onViewDetails }) {
       >
         <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6" fontWeight={600}>Delete REP?</Typography>
-          <IconButton onClick={() => setDeleteDialogOpen(false)} size="small">
+          <IconButton onClick={() => setDeleteDialogOpen(false)} size="small" aria-label="Close">
             <CloseIcon />
           </IconButton>
         </DialogTitle>
@@ -240,20 +214,20 @@ function REPCard({ rep, onEdit, onDelete, onViewDetails }) {
           </Box>
 
           <Typography variant="body2" fontWeight={600} gutterBottom>
-            Type the REP name to confirm:
+            Type DELETE to confirm:
           </Typography>
 
           <TextField
             fullWidth
             autoFocus
-            placeholder={rep.repName}
+            placeholder="DELETE"
             value={confirmText}
             onChange={(e) => {
               setConfirmText(e.target.value);
               setDeleteError('');
             }}
             error={!!deleteError}
-            helperText={deleteError || `Type: ${rep.repName}`}
+            helperText={deleteError || 'Type the word DELETE in uppercase'}
             sx={{ mt: 1 }}
           />
         </DialogContent>
@@ -265,8 +239,9 @@ function REPCard({ rep, onEdit, onDelete, onViewDetails }) {
             color="error"
             startIcon={<DeleteIcon />}
             onClick={handleConfirmDelete}
+            disabled={confirmText.trim() !== 'DELETE'}
           >
-            Delete
+            Delete REP
           </Button>
         </DialogActions>
       </Dialog>

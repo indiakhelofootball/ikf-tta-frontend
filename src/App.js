@@ -2,6 +2,9 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { ErrorBoundary } from 'react-error-boundary';
 import { useAuth } from "./auth/AuthContext";
+import Box from "@mui/material/Box";
+import CircularProgress from "@mui/material/CircularProgress";
+import Typography from "@mui/material/Typography";
 
 import Login from "./auth/Login";
 import RequireAuth from "./auth/RequireAuth";
@@ -16,7 +19,10 @@ import { TrialManagementPage, TrialWizard, ProjectDashboard } from "./components
 // TrialCitiesPage removed — city management merged into trial creation/edit flows
 import { VendorManagementPage } from "./components/vendors";
 import { PaymentManagementPage } from "./components/payments";
+import { WorkOrderManagementPage } from "./components/workorders";
+import { BankManagementPage } from "./components/bank";
 import { ProfilePage } from "./components/profile";
+import AdminPage from "./components/admin/AdminPage";
 
 // Import error handling components
 import ErrorFallback from "./components/error/ErrorFallback";
@@ -33,12 +39,22 @@ function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-yellow-50">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-yellow-800 font-semibold">Loading...</p>
-        </div>
-      </div>
+      <Box
+        sx={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          bgcolor: 'var(--yellow-50)',
+        }}
+      >
+        <Box sx={{ textAlign: 'center' }}>
+          <CircularProgress size={52} sx={{ color: '#FBBF24', mb: 2 }} />
+          <Typography variant="body1" sx={{ color: '#B45309', fontWeight: 600 }}>
+            Loading...
+          </Typography>
+        </Box>
+      </Box>
     );
   }
 
@@ -103,7 +119,22 @@ function App() {
                 <PaymentManagementPage />
               </RoleBasedRoute>
             } />
+            <Route path="/work-orders" element={
+              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+                <WorkOrderManagementPage />
+              </RoleBasedRoute>
+            } />
+            <Route path="/bank-tds" element={
+              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+                <BankManagementPage />
+              </RoleBasedRoute>
+            } />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/admin" element={
+              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+                <AdminPage />
+              </RoleBasedRoute>
+            } />
           </Route>
         </Route>
 

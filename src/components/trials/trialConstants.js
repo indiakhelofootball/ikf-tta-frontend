@@ -5,8 +5,8 @@ export const SEASONS = [
   'Season 6', 'Season 7', 'Season 8', 'Season 9', 'Season 10', 'Custom',
 ];
 
-// Seasons shown in the Project Setup wizard
-export const SEASONS_PROJECT = ['Season 5', 'Season 6'];
+// Default seasons shown in the Project Setup wizard (admin can add/remove)
+export const SEASONS_PROJECT = ['Season 5', 'Season 6', 'Season 7'];
 
 // Project name options for the wizard dropdown
 export const PROJECT_NAMES = ['IKF', 'Project Nari Shakti'];

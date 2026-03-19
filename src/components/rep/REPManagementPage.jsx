@@ -53,7 +53,7 @@ import {
   Business as BusinessIcon,
 } from '@mui/icons-material';
 
-import REPCard from './Repcard';
+import REPCard from './REPCard';
 import REPModal from './REPModal';
 import REPDetailView from './REPDetailView';
 import { repAPI } from '../../services/api';
@@ -739,7 +739,7 @@ function REPManagementPage() {
         <Dialog open={bulkUploadOpen} maxWidth="md" fullWidth>
           <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography variant="h6" fontWeight={600}>Bulk Import Preview</Typography>
-            <IconButton onClick={() => setBulkUploadOpen(false)} size="small">
+            <IconButton onClick={() => setBulkUploadOpen(false)} size="small" aria-label="Close">
               <CloseIcon />
             </IconButton>
           </DialogTitle>

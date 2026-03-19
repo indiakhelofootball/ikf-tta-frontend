@@ -587,7 +587,7 @@ function TrialCitiesPage() {
         <Dialog open={bulkUploadOpen} maxWidth="md" fullWidth>
           <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography variant="h6" fontWeight={600}>Bulk Import Preview</Typography>
-            <IconButton onClick={() => setBulkUploadOpen(false)} size="small" disabled={bulkUploading}>
+            <IconButton onClick={() => setBulkUploadOpen(false)} size="small" disabled={bulkUploading} aria-label="Close">
               <CloseIcon />
             </IconButton>
           </DialogTitle>

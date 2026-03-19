@@ -22,6 +22,7 @@ const emptyRow = () => ({
   vendorName: '',
   vendorType: '',
   companyType: '',
+  entityName: '',
   contactPerson: '',
   phone: '',
   email: '',
@@ -170,13 +171,13 @@ function VendorBulkModal({ open, onClose, onBulkComplete }) {
         <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
           <Box>
             <Typography variant="h6" fontWeight={700} sx={{ color: '#1e293b' }}>
-              Bulk Add Partners
+              Bulk Add Vendors
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              Fill key details for each partner. Use the edit button for full details (bank, address, etc.)
+              Fill key details for each vendor. Use the edit button for full details (bank, address, etc.)
             </Typography>
           </Box>
-          <IconButton size="small" onClick={onClose} disabled={submitting}>
+          <IconButton size="small" onClick={onClose} disabled={submitting} aria-label="Close">
             <CloseIcon />
           </IconButton>
         </DialogTitle>
@@ -247,7 +248,7 @@ function VendorBulkModal({ open, onClose, onBulkComplete }) {
                 <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
                   <Stack direction="row" spacing={1} alignItems="center">
                     <Typography variant="caption" sx={{ fontWeight: 700, color: '#5B63D3', fontSize: '0.75rem' }}>
-                      PARTNER {index + 1}
+                      VENDOR {index + 1}
                     </Typography>
                     {hasDetailsFilled && (
                       <Chip
@@ -262,6 +263,7 @@ function VendorBulkModal({ open, onClose, onBulkComplete }) {
                       <IconButton
                         size="small"
                         onClick={() => setEditingIndex(index)}
+                        aria-label="Edit vendor details"
                         sx={{ color: '#5B63D3', '&:hover': { bgcolor: '#eef2ff' } }}
                       >
                         <EditIcon fontSize="small" />
@@ -272,6 +274,7 @@ function VendorBulkModal({ open, onClose, onBulkComplete }) {
                         <IconButton
                           size="small"
                           onClick={() => removeRow(row._bulkId)}
+                          aria-label="Remove vendor row"
                           sx={{ color: '#ef4444', '&:hover': { bgcolor: '#fef2f2' } }}
                         >
                           <DeleteIcon fontSize="small" />
@@ -284,10 +287,10 @@ function VendorBulkModal({ open, onClose, onBulkComplete }) {
                 {/* Inline fields — 3 per row */}
                 <Grid container spacing={1.5}>
                   <Grid item xs={12} sm={4}>
-                    <Typography variant="caption" sx={fieldLabelSx}>Partner Name *</Typography>
+                    <Typography variant="caption" sx={fieldLabelSx}>Vendor Name *</Typography>
                     <TextField
                       fullWidth size="small"
-                      placeholder="Partner name"
+                      placeholder="Vendor name"
                       value={row.vendorName}
                       onChange={e => handleInlineChange(row._bulkId, 'vendorName', e.target.value)}
                       error={!!errs.vendorName}
@@ -376,7 +379,7 @@ function VendorBulkModal({ open, onClose, onBulkComplete }) {
                 '&:hover': { bgcolor: '#eef2ff', borderColor: '#818cf8' },
               }}
             >
-              Add Another Partner
+              Add Another Vendor
             </Button>
           )}
 
@@ -387,8 +390,8 @@ function VendorBulkModal({ open, onClose, onBulkComplete }) {
         <DialogActions sx={{ px: 3, py: 2, justifyContent: 'space-between' }}>
           <Typography variant="caption" color="text.secondary">
             {done
-              ? `${successCount} of ${rows.length} partners added`
-              : `${rows.length} partner${rows.length !== 1 ? 's' : ''} to add`}
+              ? `${successCount} of ${rows.length} vendors added`
+              : `${rows.length} vendor${rows.length !== 1 ? 's' : ''} to add`}
           </Typography>
           <Stack direction="row" spacing={1.5}>
             <Button
@@ -416,7 +419,7 @@ function VendorBulkModal({ open, onClose, onBulkComplete }) {
               >
                 {submitting
                   ? `Adding ${results.length + 1} of ${rows.length}...`
-                  : `Add ${rows.length} Partner${rows.length !== 1 ? 's' : ''}`}
+                  : `Add ${rows.length} Vendor${rows.length !== 1 ? 's' : ''}`}
               </Button>
             )}
           </Stack>

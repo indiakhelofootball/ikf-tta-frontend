@@ -299,7 +299,7 @@ function CityCard({ city, onEdit, onDelete, onReverify }) {
       >
         <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6" fontWeight={600}>Delete Trial City?</Typography>
-          <IconButton onClick={() => setDeleteDialogOpen(false)} size="small">
+          <IconButton onClick={() => setDeleteDialogOpen(false)} size="small" aria-label="Close">
             <CloseIcon />
           </IconButton>
         </DialogTitle>
@@ -365,7 +365,7 @@ function CityCard({ city, onEdit, onDelete, onReverify }) {
             <VerifiedIcon color="info" />
             <Typography variant="h6" fontWeight={600}>Reverify Trial City Details</Typography>
           </Stack>
-          <IconButton onClick={() => setReverifyDialogOpen(false)} size="small">
+          <IconButton onClick={() => setReverifyDialogOpen(false)} size="small" aria-label="Close">
             <CloseIcon />
           </IconButton>
         </DialogTitle>

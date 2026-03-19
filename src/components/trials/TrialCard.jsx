@@ -6,7 +6,6 @@ import {
   Card, CardContent, Typography, Stack, Box, Button, Divider,
 } from '@mui/material';
 import {
-  Edit as EditIcon,
   Delete as DeleteIcon,
   ArrowForward as ArrowIcon,
 } from '@mui/icons-material';
@@ -49,15 +48,11 @@ function TrialCard({ trial, onEdit, onDelete }) {
         {/* Project identity */}
         <Box sx={{ mb: 3 }}>
           <Typography sx={{
-            fontSize: '1.2rem', fontWeight: 700,
-            fontFamily: '"SF Mono", "Fira Code", monospace',
-            color: '#1d1d1f', letterSpacing: '0.01em', mb: 0.5,
+            fontSize: '1.15rem', fontWeight: 600,
+            fontFamily: '"Georgia", "Times New Roman", serif',
+            color: '#4c1d95', letterSpacing: '0.01em', mb: 0.5,
           }}>
-            {trial.trialCode || trial.trialName}
-          </Typography>
-          <Typography sx={{ fontSize: '0.875rem', color: '#6e6e73', fontWeight: 500 }}>
-            {trial.season}
-            {trial.trialType ? ` · ${trial.trialType}` : ''}
+            {trial.trialType || trial.trialName}{trial.season ? ` — ${trial.season}` : ''}
           </Typography>
         </Box>
 
@@ -125,19 +120,6 @@ function TrialCard({ trial, onEdit, onDelete }) {
             }}
           >
             Open
-          </Button>
-          <Button
-            variant="contained" size="small"
-            startIcon={<EditIcon sx={{ fontSize: '0.95rem' }} />}
-            onClick={() => onEdit(trial)}
-            sx={{
-              flex: 1, bgcolor: '#FDE68A', color: '#111827',
-              fontWeight: 600, borderRadius: 2, textTransform: 'none', fontSize: '0.85rem',
-              boxShadow: 'none',
-              '&:hover': { bgcolor: '#FCD34D', boxShadow: 'none' },
-            }}
-          >
-            Edit
           </Button>
           <Button
             variant="outlined" size="small" color="error"

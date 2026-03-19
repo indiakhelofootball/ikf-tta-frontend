@@ -1,0 +1,634 @@
+// src/components/workorders/WorkOrderModal.jsx
+
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  Box, Typography, TextField, Button, IconButton, Divider,
+  ToggleButton, ToggleButtonGroup,
+  Alert, CircularProgress, Autocomplete, Checkbox, FormControlLabel,
+  Select, MenuItem, FormControl,
+} from '@mui/material';
+import {
+  Close as CloseIcon,
+  Repeat as PeriodicIcon,
+  PushPin as FixedIcon,
+  InfoOutlined as InfoIcon,
+  FilterList as FilterIcon,
+} from '@mui/icons-material';
+import { generateWorkOrderNumber } from './workOrderData';
+import { getVendorTypeNames, getEntityTypeNames } from '../../utils/adminStorage';
+
+/* ── Design tokens ── */
+const cardSx = {
+  bgcolor: 'white',
+  border: '1px solid #e5e7eb',
+  borderRadius: '14px',
+  p: { xs: 2.5, sm: 3 },
+  mb: 2.5,
+};
+
+const labelSx = {
+  fontSize: '0.78rem',
+  fontWeight: 600,
+  color: '#334155',
+  mb: 0.5,
+  display: 'block',
+};
+
+const secHeaderSx = {
+  color: '#5B63D3',
+  fontWeight: 700,
+  mb: 2.5,
+  mt: 0,
+  textTransform: 'uppercase',
+  letterSpacing: '0.5px',
+  fontSize: '0.82rem',
+};
+
+const inputSx = { '& .MuiOutlinedInput-root': { borderRadius: 1.5 } };
+
+const autocompleteSlotProps = {
+  popper: { sx: { zIndex: 1500 }, placement: 'bottom-start',
+    modifiers: [{ name: 'flip', enabled: false }] },
+  paper: { sx: { mt: 0.5, boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+    borderRadius: 2, minWidth: 300,
+    '& .MuiAutocomplete-listbox': { padding: 0, maxHeight: 260 } } },
+};
+
+/** Extract numeric TDS rate from tdsType string like "TDS @ 2% (Sec 194C)" → 2 */
+function parseTdsRate(tdsType) {
+  if (!tdsType || tdsType === 'None') return 0;
+  const match = tdsType.match(/(\d+(?:\.\d+)?)\s*%/);
+  return match ? parseFloat(match[1]) : 0;
+}
+
+const EMPTY_FORM = {
+  workOrderNumber: '',
+  type: 'Fixed',
+  vendorId: '',
+  serviceDescription: '',
+  amount: '',
+  amountPerPeriod: '',
+  numberOfPeriods: '',
+};
+
+function WorkOrderModal({ open, onClose, onSave, workOrder, saving, allVendors = [], preSelectedVendor, allWorkOrders = [] }) {
+  const isEdit = Boolean(workOrder);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [selectedVendor, setSelectedVendor] = useState(null);
+  const [confirmed, setConfirmed] = useState(false);
+  const [errors, setErrors] = useState({});
+
+  // — search state —
+  const [searchServiceType, setSearchServiceType] = useState('');
+  const [searchEntityType, setSearchEntityType] = useState('');
+
+  useEffect(() => {
+    if (open) {
+      if (workOrder) {
+        setForm({ ...EMPTY_FORM, ...workOrder });
+        // Try to find live vendor, otherwise use the snapshot stored in the work order
+        const v = allVendors.find((x) => (x._id || x.id) === workOrder.vendorId) || workOrder;
+        setSelectedVendor(v);
+      } else if (preSelectedVendor) {
+        const vendorId = preSelectedVendor._id || preSelectedVendor.id;
+        const woNum = generateWorkOrderNumber(preSelectedVendor.vendorType, preSelectedVendor.vendorName, allWorkOrders);
+        setForm({ ...EMPTY_FORM, vendorId, workOrderNumber: woNum });
+        setSelectedVendor(preSelectedVendor);
+        setSearchServiceType('');
+        setSearchEntityType('');
+      } else {
+        setForm({ ...EMPTY_FORM });
+        setSelectedVendor(null);
+        setSearchServiceType('');
+        setSearchEntityType('');
+      }
+      setConfirmed(false);
+      setErrors({});
+    }
+  }, [open, workOrder, allVendors, preSelectedVendor]);
+
+  /* ── Search filter logic ── */
+  const serviceTypeOptions = useMemo(() => getVendorTypeNames(), []);
+  const entityTypeOptions = useMemo(() => getEntityTypeNames(), []);
+
+  const filteredVendors = useMemo(() => {
+    let pool = [...allVendors];
+    if (searchServiceType) pool = pool.filter(v => v.vendorType === searchServiceType);
+    if (searchEntityType) pool = pool.filter(v => v.companyType === searchEntityType);
+    return pool;
+  }, [allVendors, searchServiceType, searchEntityType]);
+
+  const handleServiceTypeChange = (val) => {
+    setSearchServiceType(val);
+    setSearchEntityType('');
+    setSelectedVendor(null);
+  };
+
+  const handleEntityTypeChange = (val) => {
+    setSearchEntityType(val);
+    setSelectedVendor(null);
+  };
+
+  const handleVendorSelect = (_, vendor) => {
+    if (!vendor) {
+      setSelectedVendor(null);
+      setForm((p) => ({ ...p, vendorId: '', workOrderNumber: '' }));
+      return;
+    }
+    setSelectedVendor(vendor);
+    const woNum = isEdit ? form.workOrderNumber : generateWorkOrderNumber(vendor.vendorType, vendor.vendorName, allWorkOrders);
+    setForm((p) => ({ ...p, vendorId: vendor._id || vendor.id, workOrderNumber: woNum }));
+    if (errors.vendorId) setErrors((prev) => ({ ...prev, vendorId: '' }));
+  };
+
+  const set = (field, value) => {
+    setForm((p) => ({ ...p, [field]: value }));
+    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: '' }));
+    if (field === 'amountPerPeriod' || field === 'numberOfPeriods') {
+      setConfirmed(false);
+    }
+  };
+
+  const setType = (_, val) => {
+    if (!val) return;
+    setForm((p) => ({ ...p, type: val }));
+    setConfirmed(false);
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next.amount;
+      delete next.amountPerPeriod;
+      delete next.numberOfPeriods;
+      delete next.confirmed;
+      return next;
+    });
+  };
+
+  const periodicTotal =
+    form.type === 'Periodic' && form.amountPerPeriod && form.numberOfPeriods
+      ? Number(form.amountPerPeriod) * Number(form.numberOfPeriods)
+      : 0;
+
+  const fmtINR = (n) =>
+    new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n || 0);
+
+  const validate = () => {
+    const newErrors = {};
+    if (!form.vendorId) newErrors.vendorId = 'Select a vendor first';
+    if (!form.serviceDescription.trim()) newErrors.serviceDescription = 'Description is required';
+    if (form.type === 'Fixed') {
+      if (!form.amount || Number(form.amount) <= 0) newErrors.amount = 'Amount must be greater than 0';
+    } else {
+      if (!form.amountPerPeriod || Number(form.amountPerPeriod) <= 0)
+        newErrors.amountPerPeriod = 'Amount per period is required';
+      if (!form.numberOfPeriods || Number(form.numberOfPeriods) <= 0)
+        newErrors.numberOfPeriods = 'Number of periods is required';
+      if (periodicTotal > 0 && !confirmed)
+        newErrors.confirmed = 'Please confirm the total before saving';
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSave = () => {
+    if (!validate()) return;
+    const totalAmount = form.type === 'Periodic'
+      ? periodicTotal
+      : Number(form.amount);
+
+    // Save A-to-Z vendor details for future template generation
+    const v = selectedVendor || {};
+    const payload = {
+      workOrderNumber: form.workOrderNumber,
+      vendorId: form.vendorId,
+      // Vendor identity
+      vendorName: v.vendorName || '',
+      vendorType: v.vendorType || '',
+      companyType: v.companyType || '',
+      contactPerson: v.contactPerson || '',
+      phone: v.phone || '',
+      email: v.email || '',
+      address: v.address || '',
+      contactPinCode: v.contactPinCode || '',
+      // Compliance
+      panNumber: v.panNumber || '',
+      gstNumber: v.gstNumber || '',
+      tdsType: v.tdsType || '',
+      tdsRate: parseTdsRate(v.tdsType),
+      // Bank details
+      bankName: v.bankName || '',
+      accountNumber: v.accountNumber || '',
+      ifscCode: v.ifscCode || '',
+      accountType: v.accountType || '',
+      bankPinCode: v.bankPinCode || '',
+      // WO fields
+      type: form.type,
+      amount: totalAmount,
+      serviceDescription: form.serviceDescription,
+      status: 'Issued',
+      ...(form.type === 'Periodic' && {
+        amountPerPeriod: Number(form.amountPerPeriod),
+        numberOfPeriods: Number(form.numberOfPeriods),
+        paidPeriods: form.paidPeriods || [],
+      }),
+      ...(form.type === 'Fixed' && {
+        paidGrossAmount: form.paidGrossAmount || 0,
+      }),
+    };
+    onSave(payload);
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="md"
+      fullWidth
+      PaperProps={{ sx: { borderRadius: 2.5, maxHeight: '90vh', bgcolor: '#f8fafc' } }}
+    >
+      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1, bgcolor: '#f8fafc' }}>
+        <Box>
+          <Typography variant="h6" fontWeight={700} sx={{ color: '#1e293b' }}>
+            {isEdit ? 'Edit Work Order' : 'New Work Order'}
+          </Typography>
+          {!isEdit && !selectedVendor && (
+            <Typography variant="caption" color="text.secondary">
+              Step 1: Search and select a vendor to create a work order
+            </Typography>
+          )}
+        </Box>
+        <IconButton size="small" onClick={onClose}><CloseIcon /></IconButton>
+      </DialogTitle>
+
+      <Divider />
+
+      <DialogContent sx={{ pt: 3, bgcolor: '#f8fafc' }}>
+
+        {/* ── 1. VENDOR SEARCH — only in Add mode ── */}
+        {!isEdit && <Box sx={cardSx}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 2 }}>
+            <FilterIcon sx={{ fontSize: 16, color: '#5B63D3' }} />
+            <Typography variant="caption" sx={{
+              fontWeight: 700, color: '#5B63D3', fontSize: '0.7rem',
+              letterSpacing: '0.5px', textTransform: 'uppercase',
+            }}>
+              Find Vendor
+            </Typography>
+          </Box>
+
+          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+            {/* Row 1: Service Type | Entity Type */}
+            <FormControl fullWidth size="small">
+              <Typography component="label" sx={labelSx}>Service Type</Typography>
+              <Select
+                value={searchServiceType}
+                onChange={(e) => handleServiceTypeChange(e.target.value)}
+                displayEmpty
+                renderValue={(val) => val || <em style={{ color: '#94a3b8' }}>All service types</em>}
+                sx={{ borderRadius: 1.5 }}
+              >
+                <MenuItem value=""><em>All service types</em></MenuItem>
+                {serviceTypeOptions.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}
+              </Select>
+            </FormControl>
+
+            <FormControl fullWidth size="small">
+              <Typography component="label" sx={labelSx}>Entity Type</Typography>
+              <Select
+                value={searchEntityType}
+                onChange={(e) => handleEntityTypeChange(e.target.value)}
+                displayEmpty
+                renderValue={(val) => val || <em style={{ color: '#94a3b8' }}>All entity types</em>}
+                sx={{ borderRadius: 1.5 }}
+              >
+                <MenuItem value=""><em>All entity types</em></MenuItem>
+                {entityTypeOptions.map(t => <MenuItem key={t} value={t} sx={{ fontSize: '0.85rem' }}>{t}</MenuItem>)}
+              </Select>
+            </FormControl>
+
+            {/* Row 2: Vendor Name (full width) */}
+            <Box sx={{ gridColumn: '1 / -1' }}>
+              <Typography component="label" sx={labelSx}>Vendor Name *</Typography>
+              <Autocomplete
+                options={filteredVendors}
+                getOptionLabel={(opt) => opt.vendorName || ''}
+                isOptionEqualToValue={(opt, val) => (opt._id || opt.id) === (val._id || val.id)}
+                filterOptions={(options, { inputValue }) =>
+                  inputValue.trim() === ''
+                    ? options
+                    : options.filter((o) => {
+                        const q = inputValue.toLowerCase();
+                        return (
+                          o.vendorName?.toLowerCase().includes(q) ||
+                          o.contactPerson?.toLowerCase().includes(q)
+                        );
+                      })
+                }
+                value={selectedVendor}
+                onChange={handleVendorSelect}
+                noOptionsText="No vendor found — ask admin to add them first"
+                renderOption={(props, option) => {
+                  const { key, ...otherProps } = props;
+                  return (
+                    <Box component="li" key={option._id || option.id} {...otherProps}
+                      sx={{ py: 1.25, px: 2, borderBottom: '1px solid #f3f4f6',
+                        '&:hover': { backgroundColor: '#f5f3ff !important' } }}>
+                      <Box>
+                        <Typography variant="body2" fontWeight={700}>{option.vendorName}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {option.vendorType}
+                          {option.companyType ? ` · ${option.companyType}` : ''}
+                          {option.state ? ` · ${option.state}` : ''}
+                          {option.city ? `, ${option.city}` : ''}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  );
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    size="small"
+                    placeholder="Type to search vendor name..."
+                    error={!!errors.vendorId}
+                    helperText={errors.vendorId}
+                    sx={inputSx}
+                  />
+                )}
+                slotProps={autocompleteSlotProps}
+              />
+            </Box>
+          </Box>
+        </Box>}
+
+        {selectedVendor && (
+          <>
+            {/* ── WO NUMBER ── */}
+            {form.workOrderNumber && (
+              <Box sx={{ ...cardSx, bgcolor: '#eef2ff', border: '1px solid #a5b4fc', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Box>
+                  <Typography variant="caption" sx={{ fontWeight: 700, color: '#64748b', fontSize: '0.68rem', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+                    Work Order Number
+                  </Typography>
+                  <Typography variant="h6" fontWeight={800} sx={{ color: '#4338ca', fontFamily: 'monospace', letterSpacing: '0.05em' }}>
+                    {form.workOrderNumber}
+                  </Typography>
+                </Box>
+                <Typography variant="caption" sx={{ color: '#64748b', maxWidth: 200, textAlign: 'right' }}>
+                  Auto-generated from service type + vendor name
+                </Typography>
+              </Box>
+            )}
+
+            {/* ── 2. TYPE TOGGLE ── */}
+            <Box sx={cardSx}>
+              <Typography sx={secHeaderSx}>Work Order Type</Typography>
+              <ToggleButtonGroup
+                value={form.type}
+                exclusive
+                onChange={setType}
+                fullWidth
+                size="small"
+                sx={{ '& .MuiToggleButton-root': { borderRadius: 1.5, textTransform: 'none', fontWeight: 600, py: 1.25 } }}
+              >
+                <ToggleButton
+                  value="Fixed"
+                  sx={{ '&.Mui-selected': { bgcolor: '#eef2ff', color: '#4338ca', borderColor: '#a5b4fc' } }}
+                >
+                  <FixedIcon fontSize="small" sx={{ mr: 1 }} /> One Time
+                </ToggleButton>
+                <ToggleButton
+                  value="Periodic"
+                  sx={{ '&.Mui-selected': { bgcolor: '#f0fdf4', color: '#16a34a', borderColor: '#86efac' } }}
+                >
+                  <PeriodicIcon fontSize="small" sx={{ mr: 1 }} /> Periodic
+                </ToggleButton>
+              </ToggleButtonGroup>
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                {form.type === 'Fixed'
+                  ? 'Single fixed amount — total is the amount you enter.'
+                  : 'Multiple payments — total = amount per period × number of periods.'}
+              </Typography>
+            </Box>
+
+            {/* ── 3. AMOUNT ── */}
+            <Box sx={cardSx}>
+              <Typography sx={secHeaderSx}>
+                {form.type === 'Fixed' ? 'Amount' : 'Periodic Amount'}
+              </Typography>
+
+              {form.type === 'Fixed' ? (
+                <Box>
+                  <Typography component="label" sx={labelSx}>Total Amount (₹) *</Typography>
+                  <TextField
+                    size="small" fullWidth type="number" sx={inputSx}
+                    placeholder="e.g. 100000"
+                    inputProps={{ min: 1 }}
+                    value={form.amount}
+                    onChange={(e) => set('amount', e.target.value)}
+                    error={!!errors.amount}
+                    helperText={errors.amount}
+                  />
+                </Box>
+              ) : (
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2.5 }}>
+                  <Box>
+                    <Typography component="label" sx={labelSx}>Amount / Period (₹) *</Typography>
+                    <TextField
+                      size="small" fullWidth type="number" sx={inputSx}
+                      placeholder="e.g. 15000"
+                      inputProps={{ min: 1 }}
+                      value={form.amountPerPeriod}
+                      onChange={(e) => set('amountPerPeriod', e.target.value)}
+                      error={!!errors.amountPerPeriod}
+                      helperText={errors.amountPerPeriod}
+                    />
+                  </Box>
+                  <Box>
+                    <Typography component="label" sx={labelSx}>No. of Periods *</Typography>
+                    <TextField
+                      size="small" fullWidth type="number" sx={inputSx}
+                      placeholder="e.g. 6"
+                      inputProps={{ min: 1 }}
+                      value={form.numberOfPeriods}
+                      onChange={(e) => set('numberOfPeriods', e.target.value)}
+                      error={!!errors.numberOfPeriods}
+                      helperText={errors.numberOfPeriods}
+                    />
+                  </Box>
+                </Box>
+              )}
+            </Box>
+
+            {/* ── 4. CONFIRM TOTAL (Periodic only) ── */}
+            {form.type === 'Periodic' && periodicTotal > 0 && (
+              <Box sx={cardSx}>
+                <Alert
+                  icon={<InfoIcon fontSize="small" />}
+                  severity="info"
+                  sx={{ borderRadius: 1.5, mb: 1.5 }}
+                >
+                  <Typography variant="body2" fontWeight={700}>
+                    {fmtINR(form.amountPerPeriod)} × {form.numberOfPeriods} periods
+                    {' = '}
+                    <span style={{ fontSize: '1.1rem', color: '#0369a1' }}>{fmtINR(periodicTotal)}</span>
+                    {' total'}
+                  </Typography>
+                </Alert>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={confirmed}
+                      onChange={(e) => {
+                        setConfirmed(e.target.checked);
+                        if (errors.confirmed) setErrors((prev) => ({ ...prev, confirmed: '' }));
+                      }}
+                      sx={{ color: errors.confirmed ? '#dc2626' : undefined }}
+                    />
+                  }
+                  label={
+                    <Typography variant="body2" fontWeight={600} sx={{ color: errors.confirmed ? '#dc2626' : '#334155' }}>
+                      I confirm this total is correct
+                    </Typography>
+                  }
+                />
+                {errors.confirmed && (
+                  <Typography variant="caption" sx={{ color: '#dc2626', ml: 4 }}>
+                    {errors.confirmed}
+                  </Typography>
+                )}
+              </Box>
+            )}
+
+            {/* ── 5. DESCRIPTION ── */}
+            <Box sx={cardSx}>
+              <Typography sx={secHeaderSx}>Description</Typography>
+              <Box>
+                <Typography component="label" sx={labelSx}>Work Order Description *</Typography>
+                <TextField
+                  size="small" fullWidth multiline minRows={3} sx={inputSx}
+                  placeholder={`Describe the specific work for ${selectedVendor.vendorName}...`}
+                  value={form.serviceDescription}
+                  onChange={(e) => {
+                    setForm((p) => ({ ...p, serviceDescription: e.target.value }));
+                    if (errors.serviceDescription) setErrors((prev) => ({ ...prev, serviceDescription: '' }));
+                  }}
+                  error={!!errors.serviceDescription}
+                  helperText={errors.serviceDescription}
+                />
+              </Box>
+            </Box>
+
+            {/* ── 6. VENDOR DETAILS ── */}
+            <Box sx={{ ...cardSx, bgcolor: '#fffbeb', border: '1px solid #fde68a', mb: 0 }}>
+              <Typography sx={{ ...secHeaderSx, color: '#92400e' }}>Vendor Details</Typography>
+
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1.5, mb: 2 }}>
+                <Box>
+                  <Typography component="label" sx={{ ...labelSx, color: '#92400e' }}>Vendor Name</Typography>
+                  <Typography variant="body2" fontWeight={700}>{selectedVendor.vendorName}</Typography>
+                </Box>
+                {selectedVendor.panNumber && (
+                  <Box>
+                    <Typography component="label" sx={{ ...labelSx, color: '#92400e' }}>PAN</Typography>
+                    <Box sx={{
+                      display: 'inline-block', px: 1, py: 0.2,
+                      bgcolor: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 1,
+                      fontFamily: 'monospace', fontSize: '0.78rem', fontWeight: 700,
+                      color: '#c2410c', letterSpacing: '0.08em',
+                    }}>
+                      {selectedVendor.panNumber.toUpperCase()}
+                    </Box>
+                  </Box>
+                )}
+                <Box>
+                  <Typography component="label" sx={{ ...labelSx, color: '#92400e' }}>TDS Type</Typography>
+                  <Typography variant="body2" fontWeight={600}>{selectedVendor.tdsType || 'None'}</Typography>
+                </Box>
+              </Box>
+
+              {/* Bank Details */}
+              {(selectedVendor.bankName || selectedVendor.accountNumber) && (
+                <>
+                  <Divider sx={{ mb: 2, borderColor: '#fde68a' }} />
+                  <Typography variant="caption" fontWeight={700} sx={{ color: '#92400e', display: 'block', mb: 1.5 }}>
+                    Bank Details
+                  </Typography>
+                  <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1.5 }}>
+                    {selectedVendor.bankName && (
+                      <Box>
+                        <Typography component="label" sx={{ ...labelSx, color: '#92400e' }}>Bank</Typography>
+                        <Typography variant="body2" fontWeight={600}>{selectedVendor.bankName}</Typography>
+                      </Box>
+                    )}
+                    {selectedVendor.accountNumber && (
+                      <Box>
+                        <Typography component="label" sx={{ ...labelSx, color: '#92400e' }}>Account Number</Typography>
+                        <Typography variant="body2" fontWeight={600} sx={{ fontFamily: 'monospace' }}>
+                          {selectedVendor.accountNumber}
+                        </Typography>
+                      </Box>
+                    )}
+                    {selectedVendor.ifscCode && (
+                      <Box>
+                        <Typography component="label" sx={{ ...labelSx, color: '#92400e' }}>IFSC Code</Typography>
+                        <Typography variant="body2" fontWeight={600} sx={{ fontFamily: 'monospace' }}>
+                          {selectedVendor.ifscCode}
+                        </Typography>
+                      </Box>
+                    )}
+                  </Box>
+                </>
+              )}
+            </Box>
+          </>
+        )}
+
+        {/* Placeholder when no vendor selected */}
+        {!selectedVendor && !errors.vendorId && (
+          <Box sx={{
+            textAlign: 'center', py: 4, bgcolor: '#f8fafc',
+            border: '1px dashed #cbd5e1', borderRadius: 2,
+          }}>
+            <Typography variant="body2" color="text.secondary">
+              Select a vendor above to continue
+            </Typography>
+          </Box>
+        )}
+
+      </DialogContent>
+
+      <Divider />
+
+      <DialogActions sx={{ px: 3, py: 2, bgcolor: '#f8fafc' }}>
+        <Button
+          onClick={onClose}
+          variant="outlined"
+          sx={{
+            textTransform: 'none', fontWeight: 600, borderColor: '#e2e8f0',
+            color: '#475569', borderRadius: 1.5, px: 3,
+            '&:hover': { borderColor: '#94a3b8', bgcolor: '#f8fafc' },
+          }}
+        >
+          Cancel
+        </Button>
+        <Button
+          onClick={handleSave}
+          variant="contained"
+          disabled={saving}
+          startIcon={saving ? <CircularProgress size={16} color="inherit" /> : null}
+          sx={{
+            textTransform: 'none', fontWeight: 600, bgcolor: '#FDE68A',
+            color: '#1e293b', borderRadius: 1.5, px: 4, boxShadow: 'none',
+            '&:hover': { bgcolor: '#FCD34D', boxShadow: 'none' },
+            '&:disabled': { bgcolor: '#f1f5f9', color: '#94a3b8' },
+          }}
+        >
+          {saving ? 'Saving...' : isEdit ? 'Update Work Order' : 'Save Work Order'}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+export default WorkOrderModal;

@@ -82,7 +82,7 @@ function TrialEditModal({ open, onClose, trial, onSave }) {
             <span style={{ color: '#1d1d1f', fontFamily: 'monospace' }}>{projectLabel}</span>
           </Typography>
         </Box>
-        <IconButton onClick={onClose} size="small" disabled={saving}
+        <IconButton onClick={onClose} size="small" disabled={saving} aria-label="Close"
           sx={{ color: '#666', '&:hover': { bgcolor: '#f5f5f7' } }}>
           <CloseIcon />
         </IconButton>
