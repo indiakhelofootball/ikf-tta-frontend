@@ -1,12 +1,12 @@
 // src/components/payments/PaymentRequestModal.jsx
 // 3-step Payment Request flow
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Box, Typography, TextField, Button, IconButton, Divider,
   Stack, Grid, Chip, Alert, Stepper, Step, StepLabel,
-  FormControl, Select, MenuItem, Paper, Autocomplete,
+  FormControl, Select, MenuItem, Paper, Autocomplete, InputAdornment,
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -16,27 +16,46 @@ import {
   ArrowForward as NextIcon,
   ArrowBack as BackIcon,
   Send as SendIcon,
-  Save as SaveIcon,
   Warning as WarnIcon,
   CheckCircle as DoneIcon,
   FilterList as FilterIcon,
+  Search as SearchIcon,
 } from '@mui/icons-material';
-import { getVendorWOs, getWORemainingGross, isWOFullyPaid, getPeriodLabel, loadWorkOrders, saveWorkOrders } from '../workorders/workOrderData';
+import { getWORemainingGross, isWOFullyPaid, getPeriodLabel } from '../workorders/workOrderData';
 import { generatePRNumber } from './paymentData';
+import { workOrdersAPI, paymentRequestsAPI } from '../../services/api';
 
 const STEPS = ['Vendor & Work Order', 'Payment Amount', 'Preview & Submit'];
 
 const fieldSx = { '& .MuiOutlinedInput-root': { borderRadius: 1.5 } };
 const labelSx = {
-  fontWeight: 700, color: '#64748b', fontSize: '0.68rem',
+  fontWeight: 700, color: '#94a3b8', fontSize: '0.82rem',
   letterSpacing: '0.5px', textTransform: 'uppercase', mb: 1, display: 'block',
 };
 const sectionSx = {
-  p: 2, bgcolor: '#f8fafc', borderRadius: 2, border: '1px solid #e2e8f0', mb: 2,
+  p: 2.5, bgcolor: '#f8fafc', borderRadius: 2, border: '1px solid #e2e8f0', mb: 2.5,
+};
+
+/** Same pattern as WorkOrderModal vendor Autocomplete — InputProps wiring is required for correct Popper anchor. */
+const paymentVendorAutocompleteSlotProps = {
+  popper: {
+    sx: { zIndex: 20000 },
+    placement: 'bottom-start',
+    modifiers: [{ name: 'flip', enabled: false }],
+  },
+  paper: {
+    sx: {
+      mt: 0.5,
+      boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+      borderRadius: 2,
+      minWidth: 300,
+      '& .MuiAutocomplete-listbox': { padding: 0, maxHeight: 260 },
+    },
+  },
 };
 
 const fmtINR = (n) =>
-  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n || 0);
+  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(parseFloat(n) || 0);
 
 /* ── WO status banner ── */
 function WOStatusBanner({ vendorWOs, selectedWO, onSelectWO, onCreateWO }) {
@@ -74,7 +93,7 @@ function WOStatusBanner({ vendorWOs, selectedWO, onSelectWO, onCreateWO }) {
       )}
       {activeWOs.map((wo) => {
         const remaining = getWORemainingGross(wo);
-        const paidGross = (wo.amount || 0) - remaining;
+        const paidGross = (parseFloat(wo.amount) || 0) - remaining;
         const isSelected = selectedWO?.id === wo.id;
         return (
           <Paper key={wo.id} variant="outlined" onClick={() => onSelectWO(wo)}
@@ -90,7 +109,7 @@ function WOStatusBanner({ vendorWOs, selectedWO, onSelectWO, onCreateWO }) {
                 <Stack direction="row" spacing={1} alignItems="center">
                   <Typography variant="body2" fontWeight={700}>{wo.workOrderNumber}</Typography>
                   <Chip label={wo.type} size="small"
-                    sx={{ bgcolor: wo.type === 'Periodic' ? '#f0fdf4' : '#eef2ff', color: wo.type === 'Periodic' ? '#16a34a' : '#4338ca', fontSize: '0.65rem', height: 16 }} />
+                    sx={{ bgcolor: wo.type === 'Periodic' ? '#f0fdf4' : '#eef2ff', color: wo.type === 'Periodic' ? '#16a34a' : '#4338ca', fontSize: '0.78rem', height: 22 }} />
                 </Stack>
                 <Typography variant="caption" color="text.secondary">{wo.projectRef}</Typography>
               </Box>
@@ -112,7 +131,7 @@ function WOStatusBanner({ vendorWOs, selectedWO, onSelectWO, onCreateWO }) {
               <Box sx={{ mt: 0.5, height: 4, bgcolor: '#e2e8f0', borderRadius: 2 }}>
                 <Box sx={{
                   height: '100%', borderRadius: 2, bgcolor: '#16a34a',
-                  width: `${Math.min(100, (paidGross / (wo.amount || 1)) * 100)}%`,
+                  width: `${Math.min(100, (paidGross / (parseFloat(wo.amount) || 1)) * 100)}%`,
                 }} />
               </Box>
             </Box>
@@ -124,9 +143,17 @@ function WOStatusBanner({ vendorWOs, selectedWO, onSelectWO, onCreateWO }) {
 }
 
 /* ── Main Modal ── */
-function PaymentRequestModal({ open, onClose, onSave, onNavigateToWO, allVendors = [] }) {
+function PaymentRequestModal({
+  open,
+  onClose,
+  onSave,
+  onNavigateToWO,
+  allVendors = [],
+  prefillContext = null,
+}) {
   const [step, setStep] = useState(0);
   const [selectedVendor, setSelectedVendor] = useState(null);
+  const [vendorInputValue, setVendorInputValue] = useState('');
   const [vendorWOs, setVendorWOs] = useState([]);
   const [selectedWO, setSelectedWO] = useState(null);
   const [prNumber, setPrNumber] = useState('');
@@ -140,25 +167,119 @@ function PaymentRequestModal({ open, onClose, onSave, onNavigateToWO, allVendors
   const [grossAmount, setGrossAmount] = useState('');
   const [invoiceDate, setInvoiceDate] = useState('');
   const [notes, setNotes] = useState('');
-  const [status, setStatus] = useState('Draft');
 
-  // Reset on open
+  /** Avoid re-applying WO prefill when allVendors reference changes while modal is open */
+  const prefillAppliedForWoId = useRef(null);
+
+  // Reset whenever modal opens (clean slate)
   useEffect(() => {
-    if (open) {
-      setPrNumber(generatePRNumber());
-      setStep(0);
-      setSearchServiceType('');
-      setSearchEntityType('');
-      setSelectedVendor(null);
-      setVendorWOs([]);
-      setSelectedWO(null);
-      setSelectedPeriod('');
-      setGrossAmount('');
-      setInvoiceDate('');
-      setNotes('');
-      setStatus('Draft');
+    if (!open) {
+      prefillAppliedForWoId.current = null;
+      return;
     }
+    prefillAppliedForWoId.current = null;
+    setPrNumber(generatePRNumber());
+    setStep(0);
+    setSearchServiceType('');
+    setSearchEntityType('');
+    setSelectedVendor(null);
+    setVendorWOs([]);
+    setSelectedWO(null);
+    setSelectedPeriod('');
+    setGrossAmount('');
+    setInvoiceDate('');
+    setNotes('');
+    setVendorInputValue('');
   }, [open]);
+
+  // Work Orders → Raise Payment: skip vendor step with pre-selected vendor + WO
+  useEffect(() => {
+    if (!open || !prefillContext?.workOrder) return;
+
+    const woId = prefillContext.workOrder.id ?? prefillContext.workOrder._id;
+    if (prefillAppliedForWoId.current === String(woId)) return;
+
+    const vendor =
+      prefillContext.vendor ||
+      allVendors.find(
+        (v) =>
+          (v.id ?? v._id) ===
+          (prefillContext.vendorId ?? prefillContext.workOrder.vendorId)
+      );
+    if (!vendor) return;
+
+    prefillAppliedForWoId.current = String(woId);
+
+    const vendorId = vendor.id ?? vendor._id;
+    const woRaw = prefillContext.workOrder;
+
+    setSelectedVendor(vendor);
+    setSearchServiceType(vendor.vendorType || '');
+    setSearchEntityType(vendor.companyType || '');
+    setVendorInputValue(vendor.vendorName || '');
+
+    let cancelled = false;
+    workOrdersAPI
+      .getAll({ vendor: vendorId })
+      .then((res) => {
+        if (cancelled) return;
+        const list = res.workOrders || [];
+        const merged =
+          list.find(
+            (w) => w.id === woRaw.id || String(w.id) === String(woRaw.id)
+          ) || woRaw;
+        const finalList = list.length ? list : [merged];
+        setVendorWOs(finalList);
+        setSelectedWO(merged);
+
+        const remaining = getWORemainingGross(merged);
+        const today = new Date().toISOString().slice(0, 10);
+        setInvoiceDate(today);
+
+        if (merged.type === 'Periodic') {
+          const avail = Array.from(
+            { length: merged.numberOfPeriods || 0 },
+            (_, i) => i + 1
+          ).filter((p) => !(merged.paidPeriods || []).includes(p));
+          if (avail.length === 1) {
+            const p = avail[0];
+            setSelectedPeriod(p);
+            setGrossAmount(String(merged.amountPerPeriod || ''));
+          } else {
+            setSelectedPeriod('');
+            setGrossAmount('');
+          }
+        } else {
+          setGrossAmount(remaining > 0 ? String(remaining) : '');
+        }
+        setStep(1);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        // API failed — use the prefill WO data we already have
+        setVendorWOs([woRaw]);
+        setSelectedWO(woRaw);
+        const remaining = getWORemainingGross(woRaw);
+        setInvoiceDate(new Date().toISOString().slice(0, 10));
+        if (woRaw.type === 'Periodic') {
+          const avail = Array.from(
+            { length: woRaw.numberOfPeriods || 0 },
+            (_, i) => i + 1
+          ).filter((p) => !(woRaw.paidPeriods || []).includes(p));
+          if (avail.length === 1) {
+            const p = avail[0];
+            setSelectedPeriod(p);
+            setGrossAmount(String(woRaw.amountPerPeriod || ''));
+          }
+        } else {
+          setGrossAmount(remaining > 0 ? String(remaining) : '');
+        }
+        setStep(1);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, prefillContext, allVendors]);
 
   /* ── 3-step search filter logic ── */
   const serviceTypeOptions = useMemo(() => {
@@ -207,10 +328,17 @@ function PaymentRequestModal({ open, onClose, onSave, onNavigateToWO, allVendors
     setSelectedWO(null);
     setSelectedPeriod('');
     setGrossAmount('');
-    const wos = getVendorWOs(vendor._id || vendor.id);
-    setVendorWOs(wos);
-    const active = wos.filter((wo) => !isWOFullyPaid(wo));
-    if (active.length === 1) setSelectedWO(active[0]);
+    const vendorId = vendor._id || vendor.id;
+    workOrdersAPI.getAll({ vendor: vendorId })
+      .then((res) => {
+        const list = res.workOrders || [];
+        setVendorWOs(list);
+        const active = list.filter((wo) => !isWOFullyPaid(wo));
+        if (active.length === 1) setSelectedWO(active[0]);
+      })
+      .catch(() => {
+        setVendorWOs([]);
+      });
   };
 
   const handleSelectWO = (wo) => {
@@ -226,8 +354,8 @@ function PaymentRequestModal({ open, onClose, onSave, onNavigateToWO, allVendors
   };
 
   // Derived financials
-  const gross = Number(grossAmount) || 0;
-  const tdsRate = selectedVendor ? (selectedWO?.tdsRate || 0) : 0;
+  const gross = parseFloat(grossAmount) || 0;
+  const tdsRate = parseFloat(selectedWO?.tdsRate) || 0;
   const tdsAmount = Math.round(gross * tdsRate / 100);
   const netAmount = gross - tdsAmount;
 
@@ -240,56 +368,65 @@ function PaymentRequestModal({ open, onClose, onSave, onNavigateToWO, allVendors
   const remaining = selectedWO ? getWORemainingGross(selectedWO) : 0;
 
   const canGoStep2 = selectedVendor && selectedWO && !isWOFullyPaid(selectedWO);
-  const canGoStep3 = gross > 0 && invoiceDate && gross <= remaining;
+  const periodicNeedsPeriod =
+    selectedWO?.type === 'Periodic' && (selectedPeriod === '' || selectedPeriod == null);
+  const canGoStep3 =
+    gross > 0 &&
+    invoiceDate &&
+    gross <= remaining &&
+    !periodicNeedsPeriod;
 
-  const handleSubmit = (sendToAccounts) => {
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    // POST body must match integration tests (test-e2e-flow.js): backend auto-generates unique
+    // request_number — do not send requestNumber or status (avoids UNIQUE collisions / serializer issues).
+    if (selectedWO.type === 'Periodic' && (selectedPeriod === '' || selectedPeriod == null)) {
+      return;
+    }
     const pr = {
-      id: prNumber,
-      workOrderNumber: selectedWO.workOrderNumber,
-      workOrderId: selectedWO.id,
+      workOrderId: selectedWO.id || selectedWO._id,
       vendorId: selectedVendor.id || selectedVendor._id,
-      vendorName: selectedVendor.vendorName,
-      vendorType: selectedVendor.vendorType,
-      panNumber: selectedVendor.panNumber,
-      gstNumber: selectedVendor.gstNumber,
-      tdsType: selectedVendor.tdsType,
-      bankName: selectedVendor.bankName,
-      accountNumber: selectedVendor.accountNumber,
-      ifscCode: selectedVendor.ifscCode,
-      accountType: selectedVendor.accountType,
-      woType: selectedWO.type,
-      periodLabel: selectedWO.type === 'Periodic' ? getPeriodLabel(selectedWO, selectedPeriod) : null,
-      periodNumber: selectedWO.type === 'Periodic' ? selectedPeriod : null,
+      periodLabel: selectedWO.type === 'Periodic' ? getPeriodLabel(selectedWO, selectedPeriod) : '',
+      periodNumber: selectedWO.type === 'Periodic' ? Number(selectedPeriod) : null,
       grossAmount: gross,
       tdsRate,
-      tdsAmount,
-      netAmount,
       invoiceDate,
       notes,
-      status: sendToAccounts ? 'Sent to Accounts' : 'Draft',
-      createdAt: new Date().toISOString(),
     };
 
-    // Update WO balance in localStorage
-    const allWOs = loadWorkOrders();
-    const updatedWOs = allWOs.map(wo => {
-      if (wo.id !== selectedWO.id) return wo;
-      if (wo.type === 'Fixed') {
-        return { ...wo, paidGrossAmount: (wo.paidGrossAmount || 0) + gross };
-      }
-      if (wo.type === 'Periodic' && selectedPeriod) {
-        return { ...wo, paidPeriods: [...(wo.paidPeriods || []), selectedPeriod] };
-      }
-      return wo;
-    });
-    saveWorkOrders(updatedWOs);
+    setSubmitting(true);
+    try {
+      // Call parent onSave (which calls the API)
+      await onSave(pr);
 
-    onSave(pr);
+      // Sync work orders from API to keep localStorage in sync with backend
+      syncWorkOrdersFromAPI();
+    } catch {
+      // onSave handles its own errors and shows toast
+    } finally {
+      setSubmitting(false);
+    }
   };
 
+  // No-op — localStorage sync removed, API is source of truth
+  const syncWorkOrdersFromAPI = () => {};
+
+  // disableEnforceFocus: listbox is portaled to document.body; default Modal trap blocks clicks/focus on it.
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth
-      PaperProps={{ sx: { borderRadius: 2.5 } }}>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="md"
+      fullWidth
+      disableEnforceFocus
+      PaperProps={{
+        sx: {
+          borderRadius: 2.5,
+          // Step 0: vendor Autocomplete listbox must not be clipped by Paper overflow
+          ...(step === 0 ? { overflow: 'visible' } : {}),
+        },
+      }}>
       <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
         <Box>
           <Typography variant="h6" fontWeight={700} sx={{ color: '#1e293b' }}>
@@ -322,7 +459,14 @@ function PaymentRequestModal({ open, onClose, onSave, onNavigateToWO, allVendors
 
       <Divider />
 
-      <DialogContent sx={{ pt: 2.5, minHeight: 340 }}>
+      <DialogContent
+        sx={{
+          pt: 2.5,
+          minHeight: 340,
+          overflowX: 'hidden',
+          overflowY: step === 0 ? 'visible' : 'auto',
+        }}
+      >
 
         {/* ══ STEP 0: Vendor & Work Order ══ */}
         {step === 0 && (
@@ -341,7 +485,7 @@ function PaymentRequestModal({ open, onClose, onSave, onNavigateToWO, allVendors
               {/* Row 1: Service Type | Entity Type */}
               <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 2 }}>
                 <Box>
-                  <Typography variant="caption" sx={{ mb: 0.5, fontWeight: 600, color: '#334155', fontSize: '0.8rem', display: 'block' }}>
+                  <Typography variant="caption" sx={{ mb: 0.5, fontWeight: 600, color: '#64748b', fontSize: '0.8rem', display: 'block' }}>
                     Service Type
                   </Typography>
                   <FormControl fullWidth size="small">
@@ -354,7 +498,7 @@ function PaymentRequestModal({ open, onClose, onSave, onNavigateToWO, allVendors
                   </FormControl>
                 </Box>
                 <Box>
-                  <Typography variant="caption" sx={{ mb: 0.5, fontWeight: 600, color: '#334155', fontSize: '0.8rem', display: 'block' }}>
+                  <Typography variant="caption" sx={{ mb: 0.5, fontWeight: 600, color: '#64748b', fontSize: '0.8rem', display: 'block' }}>
                     Entity Type
                   </Typography>
                   <FormControl fullWidth size="small">
@@ -370,27 +514,25 @@ function PaymentRequestModal({ open, onClose, onSave, onNavigateToWO, allVendors
 
               {/* Row 2: Vendor Name (full width) */}
               <Box>
-                <Typography variant="caption" sx={{ mb: 0.5, fontWeight: 600, color: '#334155', fontSize: '0.8rem', display: 'block' }}>
+                <Typography variant="caption" sx={{ mb: 0.5, fontWeight: 600, color: '#64748b', fontSize: '0.8rem', display: 'block' }}>
                   Vendor Name *
                 </Typography>
                 <Autocomplete
                   options={filteredVendors}
                   getOptionLabel={(opt) => opt.vendorName || ''}
                   isOptionEqualToValue={(opt, val) => (opt._id || opt.id) === (val._id || val.id)}
-                  filterOptions={(options, { inputValue }) =>
-                    inputValue.trim() === ''
-                      ? options
-                      : options.filter((o) => {
-                          const q = inputValue.toLowerCase();
-                          return (
-                            o.vendorName?.toLowerCase().includes(q) ||
-                            o.entityName?.toLowerCase().includes(q) ||
-                            o.contactPerson?.toLowerCase().includes(q)
-                          );
-                        })
-                  }
+                  filterOptions={(options, { inputValue }) => {
+                    if (inputValue.trim() === '') return options;
+                    const q = inputValue.toLowerCase();
+                    return options.filter((o) =>
+                      o.vendorName?.toLowerCase().includes(q) ||
+                      o.entityName?.toLowerCase().includes(q) ||
+                      o.contactPerson?.toLowerCase().includes(q)
+                    );
+                  }}
                   value={selectedVendor}
                   onChange={handleVendorSelect}
+                  onInputChange={(_, val) => setVendorInputValue(val)}
                   noOptionsText="No vendor found — ask admin to add them first"
                   renderOption={(props, option) => {
                     const { key, ...otherProps } = props;
@@ -411,9 +553,25 @@ function PaymentRequestModal({ open, onClose, onSave, onNavigateToWO, allVendors
                     );
                   }}
                   renderInput={(params) => (
-                    <TextField {...params} size="small" placeholder="Type to search vendor name..." sx={fieldSx} />
+                    <TextField
+                      {...params}
+                      size="small"
+                      placeholder="Type to search vendor name..."
+                      sx={fieldSx}
+                      InputProps={{
+                        ...params.InputProps,
+                        startAdornment: (
+                          <>
+                            <InputAdornment position="start">
+                              <SearchIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                            </InputAdornment>
+                            {params.InputProps?.startAdornment}
+                          </>
+                        ),
+                      }}
+                    />
                   )}
-                  slotProps={{ popper: { sx: { zIndex: 1500 } } }}
+                  slotProps={paymentVendorAutocompleteSlotProps}
                 />
               </Box>
             </Box>
@@ -533,7 +691,7 @@ function PaymentRequestModal({ open, onClose, onSave, onNavigateToWO, allVendors
                     </Stack>
                     <Stack direction="row" justifyContent="space-between">
                       <Typography variant="body2" sx={{ color: '#dc2626' }}>
-                        TDS Deduction ({tdsRate}% — {selectedVendor?.tdsType !== 'None' ? selectedVendor?.tdsType : 'No TDS'})
+                        TDS Deduction ({tdsRate}%{selectedWO?.tdsComment ? ` — ${selectedWO.tdsComment}` : ''})
                       </Typography>
                       <Typography variant="body2" fontWeight={700} sx={{ color: '#dc2626' }}>
                         − {fmtINR(tdsAmount)}
@@ -743,26 +901,17 @@ function PaymentRequestModal({ open, onClose, onSave, onNavigateToWO, allVendors
           )}
 
           {step === 2 && (
-            <Stack direction="row" spacing={1.5}>
-              <Button variant="outlined" startIcon={<SaveIcon />}
-                onClick={() => handleSubmit(false)}
-                sx={{
-                  textTransform: 'none', fontWeight: 600, borderRadius: 1.5,
-                  borderColor: '#e2e8f0', color: '#475569',
-                  '&:hover': { borderColor: '#94a3b8' },
-                }}>
-                Save Draft
-              </Button>
-              <Button variant="contained" startIcon={<SendIcon />}
-                onClick={() => handleSubmit(true)}
-                sx={{
-                  textTransform: 'none', fontWeight: 600, bgcolor: '#FDE68A',
-                  color: '#1e293b', borderRadius: 1.5, px: 3, boxShadow: 'none',
-                  '&:hover': { bgcolor: '#FCD34D', boxShadow: 'none' },
-                }}>
-                Send to Accounts
-              </Button>
-            </Stack>
+            <Button variant="contained" startIcon={<SendIcon />}
+              onClick={() => handleSubmit()}
+              disabled={submitting || !canGoStep3}
+              sx={{
+                textTransform: 'none', fontWeight: 600, bgcolor: '#FDE68A',
+                color: '#1e293b', borderRadius: 1.5, px: 3, boxShadow: 'none',
+                '&:hover': { bgcolor: '#FCD34D', boxShadow: 'none' },
+                '&:disabled': { bgcolor: '#f1f5f9', color: '#94a3b8' },
+              }}>
+              {submitting ? 'Raising...' : 'Raise Payment'}
+            </Button>
           )}
         </Box>
       </DialogActions>

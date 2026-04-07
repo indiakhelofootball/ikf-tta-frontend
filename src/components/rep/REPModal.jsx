@@ -1,5 +1,5 @@
-// src/components/rep/REPModal.jsx - WITH IMPROVED ERROR HANDLING
-import React, { useState, useEffect, useMemo } from 'react';
+// src/components/rep/REPModal.jsx — Restructured for REP (org) + CityAssignment split
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -15,8 +15,7 @@ import {
   Autocomplete,
   Alert,
   Stack,
-  Checkbox,
-  FormControlLabel,
+  Divider,
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -24,56 +23,75 @@ import {
   CloudUpload as UploadIcon,
   Delete as DeleteIcon,
   InsertDriveFile as FileIcon,
+  Add as AddIcon,
 } from '@mui/icons-material';
 import { State, City } from 'country-state-city';
 import { trialsAPI, repAPI } from '../../services/api';
-import Divider from '@mui/material/Divider';
+
+// Set of "state|city" keys for cities already assigned to a REP
+let _repAssignedCities = new Set();
+
+// ── Autocomplete helpers ──
+function smartFilterOptions(options, state, getLabelFn = (o) => (typeof o === 'string' ? o : o?.name || '')) {
+  const input = state.inputValue.toLowerCase();
+  if (!input) return options;
+  const filtered = options.filter(o => getLabelFn(o).toLowerCase().includes(input));
+  filtered.sort((a, b) => {
+    const aName = getLabelFn(a).toLowerCase();
+    const bName = getLabelFn(b).toLowerCase();
+    const aStarts = aName.startsWith(input) ? 0 : 1;
+    const bStarts = bName.startsWith(input) ? 0 : 1;
+    if (aStarts !== bStarts) return aStarts - bStarts;
+    return aName.localeCompare(bName);
+  });
+  return filtered;
+}
+
+function HighlightMatch({ text, query }) {
+  if (!query) return text;
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return text;
+  return (
+    <>
+      {text.substring(0, idx)}
+      <span style={{ backgroundColor: '#FDE68A', borderRadius: 2, padding: '0 1px' }}>
+        {text.substring(idx, idx + query.length)}
+      </span>
+      {text.substring(idx + query.length)}
+    </>
+  );
+}
 
 function REPModal({ open, onClose, onSave, editingREP }) {
   const isEditMode = !!editingREP;
 
   const indianStates = useMemo(() => {
-    return State.getStatesOfCountry('IN').map(state => ({
-      name: state.name,
-      isoCode: state.isoCode,
-    }));
+    return State.getStatesOfCountry('IN').map(s => ({ name: s.name, isoCode: s.isoCode }));
   }, []);
 
-  const [trialCitiesByState, setTrialCitiesByState] = useState({});
-
-  const [formData, setFormData] = useState({
-    repName: '',
-    state: '',
-    stateCode: '',
-    city: '',
-    season: '',
-    region: '',
-    status: 'Active',
-    contactName: '',
-    phone: '',
-    email: '',
-    backupContactName: '',
-    backupPhone: '',
-    backupEmail: '',
-    courierPinCode: '',
-    courierDistrict: '',
-    courierState: '',
-    courierSubArea: '',
-    courierAddress: '',
-    courierLandmark: '',
-    courierAdditionalInfo: '',
-    physicalAddress: '',
-    googleMapLink: '',
-    pinCode: '',
-    groundLocation: '',
-    groundPinCode: '',
+  // ── Org-level form state ──
+  const [orgData, setOrgData] = useState({
+    repName: '', season: '',
+    contactName: '', phone: '', email: '',
+    backupContactName: '', backupPhone: '', backupEmail: '',
+    website: '', websiteNA: false,
+    facebook: '', facebookNA: false,
+    instagram: '', instagramNA: false,
+    telegram: '', telegramNA: false,
     mouStatus: '',
-    website: '',     websiteNA: false,
-    facebook: '',    facebookNA: false,
-    twitter: '',     twitterNA: false,
-    telegram: '',    telegramNA: false,
   });
 
+  // ── City-specific assignment state (Add mode) ──
+  const [assignmentData, setAssignmentData] = useState({
+    state: '', city: '', region: '',
+    courierAcceptingName: '', courierAcceptingPhone: '',
+    courierPinCode: '', courierAddress: '', courierAdditionalInfo: '',
+    physicalAddress: '', groundLocation: '', googleMapLink: '',
+    pinCode: '', groundPinCode: '', reportingTime: '',
+    groundContactName: '', groundContactPhone: '',
+  });
+
+  // File state
   const [mouDocument, setMouDocument] = useState(null);
   const [mouDocumentPreview, setMouDocumentPreview] = useState(null);
   const [repLogo, setRepLogo] = useState(null);
@@ -82,62 +100,53 @@ function REPModal({ open, onClose, onSave, editingREP }) {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [fileError, setFileError] = useState('');
-  const [locationFocused, setLocationFocused] = useState(false);
-  const [courierFocused, setCourierFocused] = useState(false);
 
-  // ── Courier PIN lookup ────────────────────────────────────────────
+  // Autocomplete input tracking
+  const [stateInputValue, setStateInputValue] = useState('');
+  const [cityInputValue, setCityInputValue] = useState('');
+
+  // Courier PIN lookup
   const [courierAreas, setCourierAreas] = useState([]);
   const [courierPinLoading, setCourierPinLoading] = useState(false);
+  const [courierPinError, setCourierPinError] = useState('');
+  const courierPinAbortRef = useRef(null);
+  const [courierDistrict, setCourierDistrict] = useState('');
+  const [courierState, setCourierState] = useState('');
+  const [courierSubArea, setCourierSubArea] = useState('');
 
-
-  // ── Lookup state (Add mode only) ──────────────────────────────────
+  // ── Lookup state (Add mode) ──
   const [allTrials, setAllTrials] = useState([]);
-  const [allReps, setAllReps] = useState([]);
   const [lookupProject, setLookupProject] = useState('');
   const [lookupStateObj, setLookupStateObj] = useState(null);
   const [lookupCityObj, setLookupCityObj] = useState(null);
   const [lookupAvailCities, setLookupAvailCities] = useState([]);
-  const [lookupLoading, setLookupLoading] = useState(false);
-  // scenario: null | 1 (rep found) | 2 (no rep, city in project) | 3 (city not in project)
-  const [scenario, setScenario] = useState(null);
-  const [foundRep, setFoundRep] = useState(null);
+  const [lookupStateInput, setLookupStateInput] = useState('');
+  const [lookupCityInput, setLookupCityInput] = useState('');
+  const [trialCitiesByState, setTrialCitiesByState] = useState({});
+
+  // REP name search (Add mode)
+  const [existingRep, setExistingRep] = useState(null); // found existing org
+  const [repNameSearchDone, setRepNameSearchDone] = useState(false);
+  const repNameTimerRef = useRef(null);
+
   // Scenario 3 — add city to project
   const [addCityMonth, setAddCityMonth] = useState('');
   const [addCityDate, setAddCityDate] = useState('');
   const [addCitySaving, setAddCitySaving] = useState(false);
-  const [cityJustAdded, setCityJustAdded] = useState(false);
-  // Other projects that share the same city (shown as checkboxes in Scenario 2)
-  const [otherProjectsForCity, setOtherProjectsForCity] = useState([]);
-  const [selectedOtherProjectIds, setSelectedOtherProjectIds] = useState([]);
 
-  // Load trials + reps for lookup when modal opens
-  useEffect(() => {
-    if (!open) return;
-    setLookupProject('');
-    setLookupStateObj(null);
-    setLookupCityObj(null);
-    setLookupAvailCities([]);
-    setScenario(null);
-    setFoundRep(null);
-    setCityJustAdded(false);
-    setOtherProjectsForCity([]);
-    setSelectedOtherProjectIds([]);
-    setAddCityMonth('July');
-    setAddCityDate(`${new Date().getFullYear()}-07-10`);
-    Promise.all([
-      trialsAPI.getAll({ limit: 200 }),
-      repAPI.getAll(),
-    ]).then(([trialRes, repRes]) => {
-      const trials = trialRes.trials || [];
-      setAllTrials(trials);
-      setAllReps(repRes.reps || []);
-    }).catch(() => {});
-  }, [open]);
+  // Check if selected city is in the project
+  const [cityInProject, setCityInProject] = useState(false);
 
+  // Edit mode — assignment editing
+  const [editAssignmentId, setEditAssignmentId] = useState(null);
+  const [addingNewAssignment, setAddingNewAssignment] = useState(false);
+
+  // Load trials + existing REP assigned cities when modal opens
   useEffect(() => {
     if (!open) return;
     trialsAPI.getAll({ limit: 200 }).then((res) => {
       const trials = res.trials || [];
+      setAllTrials(trials);
       const byState = {};
       for (const trial of trials) {
         for (const city of trial.assignedCities || []) {
@@ -153,197 +162,158 @@ function REPModal({ open, onClose, onSave, editingREP }) {
       }
       setTrialCitiesByState(result);
     }).catch(() => {});
+
+    // Fetch all REPs to know which cities are already assigned
+    repAPI.getAll({ limit: 1000 }).then((res) => {
+      const assigned = new Set();
+      for (const rep of res.reps || []) {
+        for (const a of rep.cityAssignments || []) {
+          if (a.state && a.city) assigned.add(`${a.state.toLowerCase()}|${a.city.toLowerCase()}`);
+        }
+      }
+      _repAssignedCities = assigned;
+    }).catch(() => {});
   }, [open]);
 
+  // Reset on open
   useEffect(() => {
-    if (open) {
-      if (editingREP) {
-        const stateObj = indianStates.find(s => s.name === editingREP.state);
-        setFormData({
-          repName: editingREP.repName || '',
-          state: editingREP.state || '',
-          stateCode: stateObj?.isoCode || '',
-          city: editingREP.city || '',
-          season: editingREP.season || '',
-          region: editingREP.region || '',
-          status: editingREP.status || 'Active',
-          contactName: editingREP.contactName || '',
-          phone: editingREP.phone || '',
-          email: editingREP.email || '',
-          backupContactName: editingREP.backupContactName || '',
-          backupPhone: editingREP.backupPhone || '',
-          backupEmail: editingREP.backupEmail || '',
-          courierPinCode: editingREP.courierPinCode || '',
-          courierDistrict: editingREP.courierDistrict || '',
-          courierState: editingREP.courierState || '',
-          courierSubArea: editingREP.courierSubArea || '',
-          courierAddress: editingREP.courierAddress || '',
-          courierLandmark: editingREP.courierLandmark || '',
-          courierAdditionalInfo: editingREP.courierAdditionalInfo || '',
-          physicalAddress: editingREP.physicalAddress || '',
-          googleMapLink: editingREP.googleMapLink || '',
-          pinCode: editingREP.pinCode || '',
-          groundLocation: editingREP.groundLocation || '',
-          groundPinCode: editingREP.groundPinCode || '',
-          mouStatus: editingREP.mouStatus || '',
-          website: editingREP.website || '',     websiteNA: !!editingREP.websiteNA,
-          facebook: editingREP.facebook || '',   facebookNA: !!editingREP.facebookNA,
-          twitter: editingREP.twitter || '',     twitterNA: !!editingREP.twitterNA,
-          telegram: editingREP.telegram || '',   telegramNA: !!editingREP.telegramNA,
-        });
-        
-        if (editingREP.mouDocumentUrl) {
-          setMouDocumentPreview(editingREP.mouDocumentUrl);
-        }
-        if (editingREP.repLogoUrl) {
-          setRepLogoPreview(editingREP.repLogoUrl);
-        }
-      } else {
-        setFormData({
-          repName: '',
-          state: '',
-          stateCode: '',
-          city: '',
-          season: '',
-          region: '',
-          status: 'Active',
-          contactName: '',
-          phone: '',
-          email: '',
-          backupContactName: '',
-          backupPhone: '',
-          backupEmail: '',
-          courierPinCode: '',
-          courierDistrict: '',
-          courierState: '',
-          courierSubArea: '',
-          courierAddress: '',
-          courierLandmark: '',
-          courierAdditionalInfo: '',
-          physicalAddress: '',
-          googleMapLink: '',
-          pinCode: '',
-          groundLocation: '',
-          groundPinCode: '',
-          mouStatus: '',
-          website: '',     websiteNA: false,
-          facebook: '',    facebookNA: false,
-          twitter: '',     twitterNA: false,
-          telegram: '',    telegramNA: false,
-        });
-        setMouDocument(null);
-        setMouDocumentPreview(null);
-        setRepLogo(null);
-        setRepLogoPreview(null);
-      }
-      setErrors({});
-      setFileError('');
-      setCourierAreas([]);
-      setCourierPinLoading(false);
-    }
-  }, [open, editingREP, indianStates]);
+    if (!open) return;
 
-  const handleStateChange = (event, newValue) => {
-    if (newValue) {
-      setFormData(prev => ({
-        ...prev,
-        state: newValue.name,
-        stateCode: newValue.isoCode,
-        city: '',
-      }));
+    if (editingREP) {
+      setOrgData({
+        repName: editingREP.repName || '',
+        season: editingREP.season || '',
+        contactName: editingREP.contactName || '',
+        phone: editingREP.phone || '',
+        email: editingREP.email || '',
+        backupContactName: editingREP.backupContactName || '',
+        backupPhone: editingREP.backupPhone || '',
+        backupEmail: editingREP.backupEmail || '',
+        website: editingREP.website || '', websiteNA: !!editingREP.websiteNA,
+        facebook: editingREP.facebook || '', facebookNA: !!editingREP.facebookNA,
+        instagram: editingREP.instagram || '', instagramNA: !!editingREP.instagramNA,
+        telegram: editingREP.telegram || '', telegramNA: !!editingREP.telegramNA,
+        mouStatus: editingREP.mouStatus || '',
+      });
+      if (editingREP.mouDocumentUrl) setMouDocumentPreview(editingREP.mouDocumentUrl);
+      if (editingREP.repLogoUrl) setRepLogoPreview(editingREP.repLogoUrl);
     } else {
-      setFormData(prev => ({
-        ...prev,
-        state: '',
-        stateCode: '',
-        city: '',
-      }));
+      setOrgData({
+        repName: '', season: '',
+        contactName: '', phone: '', email: '',
+        backupContactName: '', backupPhone: '', backupEmail: '',
+        website: '', websiteNA: false, facebook: '', facebookNA: false,
+        instagram: '', instagramNA: false, telegram: '', telegramNA: false,
+        mouStatus: '',
+      });
+      setMouDocument(null); setMouDocumentPreview(null);
+      setRepLogo(null); setRepLogoPreview(null);
     }
-    
-    if (errors.state) {
-      setErrors(prev => ({ ...prev, state: '' }));
-    }
-  };
 
-  const handleChange = (field) => (event) => {
+    setAssignmentData({
+      state: '', city: '', region: '',
+      courierAcceptingName: '', courierAcceptingPhone: '',
+      courierPinCode: '', courierAddress: '', courierAdditionalInfo: '',
+      physicalAddress: '', groundLocation: '', googleMapLink: '',
+      pinCode: '', groundPinCode: '', reportingTime: '',
+      groundContactName: '', groundContactPhone: '',
+    });
+    setErrors({});
+    setFileError('');
+    setCourierAreas([]);
+    setCourierPinLoading(false);
+    setCourierPinError('');
+    setCourierDistrict(''); setCourierState(''); setCourierSubArea('');
+    setLookupProject('');
+    setLookupStateObj(null);
+    setLookupCityObj(null);
+    setLookupAvailCities([]);
+    setExistingRep(null);
+    setRepNameSearchDone(false);
+    setCityInProject(false);
+    setAddCityMonth('July');
+    setAddCityDate(`${new Date().getFullYear()}-07-10`);
+    setEditAssignmentId(null);
+    setAddingNewAssignment(false);
+  }, [open, editingREP]);
+
+  // ── Handlers ──
+  const handleOrgChange = (field) => (event) => {
     const value = event.target.type === 'checkbox' ? event.target.checked : event.target.value;
-    
-    setFormData(prev => ({
-      ...prev,
-      [field]: value,
-    }));
-
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
-    }
+    setOrgData(prev => ({ ...prev, [field]: value }));
+    if (errors[field]) setErrors(prev => ({ ...prev, [field]: '' }));
   };
 
-  const handleCityChange = (event, newValue) => {
-    setFormData(prev => ({
-      ...prev,
-      city: newValue || '',
-    }));
-    
-    if (errors.city) {
-      setErrors(prev => ({ ...prev, city: '' }));
-    }
+  const handleAssignmentChange = (field) => (event) => {
+    const value = event.target.value;
+    setAssignmentData(prev => ({ ...prev, [field]: value }));
+    if (errors[field]) setErrors(prev => ({ ...prev, [field]: '' }));
   };
 
-  // ── Lookup logic ─────────────────────────────────────────────────
-  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-
-  const runLookup = (projectVal, stateObj, cityObj) => {
-    if (!stateObj || !cityObj) { setScenario(null); return; }
-    const cityName = cityObj.name.toLowerCase();
-    const stateName = stateObj.name.toLowerCase();
-
-    // Check for existing REP
-    const rep = allReps.find(
-      r => r.city?.toLowerCase() === cityName && r.state?.toLowerCase() === stateName
-    );
-    if (rep) {
-      setFoundRep(rep);
-      setScenario(1);
-      setOtherProjectsForCity([]);
-      setSelectedOtherProjectIds([]);
+  // ── REP name debounced search (Add mode) ──
+  const searchRepByName = (name) => {
+    if (repNameTimerRef.current) clearTimeout(repNameTimerRef.current);
+    if (!name || name.trim().length < 2) {
+      setExistingRep(null);
+      setRepNameSearchDone(false);
       return;
     }
+    repNameTimerRef.current = setTimeout(async () => {
+      try {
+        const res = await repAPI.getAll({ search: name.trim(), limit: 10 });
+        const match = (res.reps || []).find(
+          r => r.repName.toLowerCase() === name.trim().toLowerCase()
+        );
+        if (match) {
+          setExistingRep(match);
+          // Pre-fill org fields from existing REP (read-only)
+          setOrgData(prev => ({
+            ...prev,
+            contactName: match.contactName || prev.contactName,
+            phone: match.phone || prev.phone,
+            email: match.email || prev.email,
+            backupContactName: match.backupContactName || prev.backupContactName,
+            backupPhone: match.backupPhone || prev.backupPhone,
+            backupEmail: match.backupEmail || prev.backupEmail,
+            season: match.season || prev.season,
+            mouStatus: match.mouStatus || prev.mouStatus,
+            website: match.website || prev.website, websiteNA: match.websiteNA ?? prev.websiteNA,
+            facebook: match.facebook || prev.facebook, facebookNA: match.facebookNA ?? prev.facebookNA,
+            instagram: match.instagram || prev.instagram, instagramNA: match.instagramNA ?? prev.instagramNA,
+            telegram: match.telegram || prev.telegram, telegramNA: match.telegramNA ?? prev.telegramNA,
+          }));
+        } else {
+          setExistingRep(null);
+        }
+        setRepNameSearchDone(true);
+      } catch {
+        setRepNameSearchDone(true);
+      }
+    }, 500);
+  };
 
-    // Check if city is in the selected project
-    const projectsToCheck = projectVal === ''
-      ? allTrials
-      : allTrials.filter(t => String(t.id) === String(projectVal));
-
-    const cityInProject = projectsToCheck.some(t =>
+  // ── Lookup: check if city is in selected project ──
+  const checkCityInProject = (projectVal, stateObj, cityObj) => {
+    if (!stateObj || !cityObj) { setCityInProject(false); return false; }
+    const cityName = cityObj.name.toLowerCase();
+    const stateName = stateObj.name.toLowerCase();
+    const projectsToCheck = projectVal
+      ? allTrials.filter(t => String(t.id) === String(projectVal))
+      : allTrials;
+    const found = projectsToCheck.some(t =>
       (t.assignedCities || []).some(
         c => c.cityName?.toLowerCase() === cityName && c.state?.toLowerCase() === stateName
       )
     );
-
-    setFoundRep(null);
-    if (cityInProject) {
-      // Find other projects (not the currently selected one) that also have this city
-      const others = allTrials.filter(t => {
-        if (projectVal !== '' && String(t.id) === String(projectVal)) return false;
-        return (t.assignedCities || []).some(
-          c => c.cityName?.toLowerCase() === cityName && c.state?.toLowerCase() === stateName
-        );
-      });
-      setOtherProjectsForCity(others);
-      setSelectedOtherProjectIds(others.map(t => String(t.id)));
-      // Populate formData city/state from lookup so REP saves with correct values
-      setFormData(prev => ({
+    setCityInProject(found);
+    if (found) {
+      setAssignmentData(prev => ({
         ...prev,
         state: stateObj.name,
-        stateCode: stateObj.isoCode,
         city: cityObj.name,
       }));
-      setScenario(2);
-    } else {
-      setOtherProjectsForCity([]);
-      setSelectedOtherProjectIds([]);
-      setScenario(3);
     }
+    return found;
   };
 
   const handleAddCityToProject = async () => {
@@ -358,40 +328,21 @@ function REPModal({ open, onClose, onSave, editingREP }) {
         trialRegion: lookupCityObj.name,
         confirmed: false,
         tentativeMonth: addCityMonth || null,
-        tentativeDate: addCityDate || (addCityMonth ? (() => { const idx = ['January','February','March','April','May','June','July','August','September','October','November','December'].indexOf(addCityMonth); return `${new Date().getFullYear()}-${String(idx+1).padStart(2,'0')}-10`; })() : null),
+        tentativeDate: addCityDate || null,
         code: `IKF-${lookupStateObj.isoCode}-${lookupCityObj.name.substring(0,3).toUpperCase()}-${String((project.assignedCities||[]).length+1).padStart(3,'0')}`,
       };
       await trialsAPI.update(project.id, {
         ...project,
         assignedCities: [...(project.assignedCities || []), newCity],
       });
-      // Refresh trials list and move to scenario 2
       const res = await trialsAPI.getAll({ limit: 200 });
-      const freshTrials = res.trials || [];
-      setAllTrials(freshTrials);
-
-      // Check if this city also exists in other projects (using fresh data)
-      const cName = lookupCityObj.name.toLowerCase();
-      const sName = lookupStateObj.name.toLowerCase();
-      const others = freshTrials.filter(t => {
-        if (String(t.id) === String(lookupProject)) return false;
-        return (t.assignedCities || []).some(
-          c => c.cityName?.toLowerCase() === cName && c.state?.toLowerCase() === sName
-        );
-      });
-      setOtherProjectsForCity(others);
-      setSelectedOtherProjectIds(others.map(t => String(t.id)));
-      // Populate formData city/state from lookup
-      setFormData(prev => ({
+      setAllTrials(res.trials || []);
+      setCityInProject(true);
+      setAssignmentData(prev => ({
         ...prev,
         state: lookupStateObj.name,
-        stateCode: lookupStateObj.isoCode,
         city: lookupCityObj.name,
       }));
-      setScenario(2);
-      setCityJustAdded(true);
-      setAddCityMonth('July');
-      setAddCityDate(`${new Date().getFullYear()}-07-10`);
     } catch {
       setFileError('Failed to add city to project');
     } finally {
@@ -399,229 +350,196 @@ function REPModal({ open, onClose, onSave, editingREP }) {
     }
   };
 
-  // IMPROVED: File upload handlers with better error handling
-  const handleMouDocumentUpload = (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setFileError(''); // Clear previous errors
-
-    // Validate file type
-    const validTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-    if (!validTypes.includes(file.type)) {
-      setFileError('MoU document must be PDF or DOC format');
-      event.target.value = '';
-      return;
-    }
-
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      setFileError('MoU document must be less than 5MB');
-      event.target.value = '';
-      return;
-    }
-
-    setMouDocument(file);
-    setMouDocumentPreview(file.name);
-    event.target.value = '';
-  };
-
-  const handleRepLogoUpload = (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setFileError(''); // Clear previous errors
-
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      setFileError('REP logo must be an image file (PNG, JPG, etc.)');
-      event.target.value = '';
-      return;
-    }
-
-    // Validate file size (max 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      setFileError('REP logo must be less than 2MB');
-      event.target.value = '';
-      return;
-    }
-
-    setRepLogo(file);
-    
-    // Create preview URL
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setRepLogoPreview(reader.result);
-    };
-    reader.onerror = () => {
-      setFileError('Failed to read image file');
-    };
-    reader.readAsDataURL(file);
-    event.target.value = '';
-  };
-
-  const handleRemoveMouDocument = () => {
-    setMouDocument(null);
-    setMouDocumentPreview(null);
-    setFileError('');
-  };
-
-  const handleRemoveRepLogo = () => {
-    setRepLogo(null);
-    setRepLogoPreview(null);
-    setFileError('');
-  };
-
-
+  // ── Courier PIN lookup ──
   const lookupCourierPin = async (pin) => {
+    if (courierPinAbortRef.current) courierPinAbortRef.current.abort();
     if (pin.length !== 6 || !/^\d{6}$/.test(pin)) {
-      setCourierAreas([]);
-      setFormData(prev => ({ ...prev, courierDistrict: '', courierState: '', courierSubArea: '' }));
+      setCourierAreas([]); setCourierPinError('');
+      setCourierDistrict(''); setCourierState(''); setCourierSubArea('');
       return;
     }
-    setCourierPinLoading(true);
+    const controller = new AbortController();
+    courierPinAbortRef.current = controller;
+    setCourierPinLoading(true); setCourierPinError('');
     try {
-      const res = await fetch(`https://api.postalpincode.in/pincode/${pin}`);
+      const res = await fetch(`https://api.postalpincode.in/pincode/${pin}`, { signal: controller.signal });
       const json = await res.json();
       const record = json?.[0];
       if (record?.Status === 'Success' && record.PostOffice?.length > 0) {
         const first = record.PostOffice[0];
         const areas = record.PostOffice.map(po => po.Name);
-        setCourierAreas(areas);
-        setFormData(prev => ({
-          ...prev,
-          courierDistrict: first.District || '',
-          courierState: first.State || '',
-          courierSubArea: areas[0] || '',
-        }));
+        setCourierAreas(areas); setCourierPinError('');
+        setCourierDistrict(first.District || '');
+        setCourierState(first.State || '');
+        setCourierSubArea(areas[0] || '');
       } else {
-        setCourierAreas([]);
-        setFormData(prev => ({ ...prev, courierDistrict: '', courierState: '', courierSubArea: '' }));
+        setCourierAreas([]); setCourierPinError('Invalid PIN code — no location found');
+        setCourierDistrict(''); setCourierState(''); setCourierSubArea('');
       }
-    } catch {
-      setCourierAreas([]);
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        setCourierAreas([]); setCourierPinError('Could not verify PIN code');
+      }
     } finally {
       setCourierPinLoading(false);
     }
   };
 
+  // ── File handlers ──
+  const handleMouDocumentUpload = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setFileError('');
+    const validTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    if (!validTypes.includes(file.type)) { setFileError('MoU document must be PDF or DOC format'); event.target.value = ''; return; }
+    if (file.size > 5 * 1024 * 1024) { setFileError('MoU document must be less than 5MB'); event.target.value = ''; return; }
+    setMouDocument(file); setMouDocumentPreview(file.name); event.target.value = '';
+  };
+
+  const handleRepLogoUpload = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setFileError('');
+    if (!file.type.startsWith('image/')) { setFileError('REP logo must be an image file'); event.target.value = ''; return; }
+    if (file.size > 2 * 1024 * 1024) { setFileError('REP logo must be less than 2MB'); event.target.value = ''; return; }
+    setRepLogo(file);
+    const reader = new FileReader();
+    reader.onloadend = () => setRepLogoPreview(reader.result);
+    reader.readAsDataURL(file);
+    event.target.value = '';
+  };
+
+  // ── Validation ──
   const validate = () => {
     const newErrors = {};
-    
-    if (!formData.repName.trim()) {
-      newErrors.repName = 'REP Name is required';
+    if (!orgData.repName.trim()) newErrors.repName = 'REP Name is required';
+    if (orgData.phone) {
+      const d = orgData.phone.replace(/\D/g, '');
+      if (d.length !== 10) newErrors.phone = 'Must be exactly 10 digits (e.g. 9876543210)';
+      else if (!/^[6-9]\d{9}$/.test(d)) newErrors.phone = 'Must start with 6-9 (e.g. 9876543210)';
     }
-    
-    if (!formData.state.trim()) {
-      newErrors.state = 'State is required';
+    if (orgData.backupPhone) {
+      const d = orgData.backupPhone.replace(/\D/g, '');
+      if (d.length !== 10) newErrors.backupPhone = 'Must be exactly 10 digits (e.g. 9876543210)';
+      else if (!/^[6-9]\d{9}$/.test(d)) newErrors.backupPhone = 'Must start with 6-9 (e.g. 9876543210)';
     }
-    
-    if (!formData.city.trim()) {
-      newErrors.city = 'City is required';
-    }
+    if (orgData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(orgData.email)) newErrors.email = 'Invalid email format (e.g. name@example.com)';
+    if (orgData.backupEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(orgData.backupEmail)) newErrors.backupEmail = 'Invalid email format (e.g. name@example.com)';
 
-    // Phone validation (Indian mobile: starts with 6-9, 10 digits)
-    if (formData.phone) {
-      const phoneDigits = formData.phone.replace(/\D/g, '');
-      if (phoneDigits.length !== 10) {
-        newErrors.phone = 'Phone must be exactly 10 digits';
-      } else if (!/^[6-9]\d{9}$/.test(phoneDigits)) {
-        newErrors.phone = 'Invalid Indian phone number (must start with 6-9)';
+    if (orgData.website && !orgData.websiteNA && !/^https?:\/\/.+/.test(orgData.website.trim())) newErrors.website = 'Must start with http:// or https://';
+    if (orgData.facebook && !orgData.facebookNA && !/^https?:\/\/.+/.test(orgData.facebook.trim())) newErrors.facebook = 'Must start with http:// or https://';
+    if (orgData.instagram && !orgData.instagramNA && !/^https?:\/\/.+/.test(orgData.instagram.trim())) newErrors.instagram = 'Must start with http:// or https://';
+
+    // Assignment validation (Add mode only, if filling assignment)
+    if (!isEditMode && cityInProject) {
+      if (assignmentData.pinCode && !/^[1-9][0-9]{5}$/.test(assignmentData.pinCode.trim())) {
+        newErrors.pinCode = 'Must be 6 digits starting with 1-9 (e.g. 400001)';
+      }
+      if (assignmentData.courierAcceptingPhone) {
+        const d = assignmentData.courierAcceptingPhone.replace(/\D/g, '');
+        if (d.length !== 10) newErrors.courierAcceptingPhone = 'Must be exactly 10 digits (e.g. 9876543210)';
+        else if (!/^[6-9]\d{9}$/.test(d)) newErrors.courierAcceptingPhone = 'Must start with 6-9 (e.g. 9876543210)';
+      }
+      if (assignmentData.groundContactPhone) {
+        const d = assignmentData.groundContactPhone.replace(/\D/g, '');
+        if (d.length > 0 && d.length !== 10) newErrors.groundContactPhone = 'Must be exactly 10 digits (e.g. 9876543210)';
+        else if (d.length === 10 && !/^[6-9]\d{9}$/.test(d)) newErrors.groundContactPhone = 'Must start with 6-9 (e.g. 9876543210)';
+      }
+      if (assignmentData.googleMapLink && !/^https?:\/\/.+/.test(assignmentData.googleMapLink.trim())) {
+        newErrors.googleMapLink = 'Must start with http:// or https://';
       }
     }
-
-    // Backup phone validation
-    if (formData.backupPhone) {
-      const bpDigits = formData.backupPhone.replace(/\D/g, '');
-      if (bpDigits.length !== 10) {
-        newErrors.backupPhone = 'Backup phone must be exactly 10 digits';
-      } else if (!/^[6-9]\d{9}$/.test(bpDigits)) {
-        newErrors.backupPhone = 'Invalid Indian phone number (must start with 6-9)';
-      }
-    }
-
-    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Invalid email format';
-    }
-
-
-
-    // PIN code validation
-    if (formData.pinCode && formData.pinCode.trim()) {
-      if (!/^[1-9][0-9]{5}$/.test(formData.pinCode.trim())) {
-        newErrors.pinCode = 'Invalid PIN code (must be 6 digits)';
-      }
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
+  // ── Save ──
   const handleSave = async () => {
-    // Clear previous file errors
     setFileError('');
-
-    // Validate form
-    if (!validate()) {
-      return;
-    }
-
+    if (!validate()) return;
     setSaving(true);
-
     try {
-      const repData = { ...formData };
-      delete repData.stateCode;
+      if (isEditMode) {
+        // Edit mode: update org fields only
+        const repData = { ...orgData };
+        if (mouDocument) { repData.mouDocumentName = mouDocument.name; repData.mouDocumentUrl = mouDocumentPreview; }
+        if (repLogo) { repData.repLogoName = repLogo.name; repData.repLogoUrl = repLogoPreview; }
+        await onSave(repData);
+      } else {
+        // Add mode: org + assignment
+        const repData = { ...orgData };
+        if (mouDocument) { repData.mouDocumentName = mouDocument.name; repData.mouDocumentUrl = mouDocumentPreview; }
+        if (repLogo) { repData.repLogoName = repLogo.name; repData.repLogoUrl = repLogoPreview; }
 
-      // Add file data
-      if (mouDocument) {
-        repData.mouDocumentName = mouDocument.name;
-        repData.mouDocumentUrl = mouDocumentPreview;
-      }
-      if (repLogo) {
-        repData.repLogoName = repLogo.name;
-        repData.repLogoUrl = repLogoPreview;
-      }
-      // Build trial IDs to assign: primary lookup project + checked other projects
-      const trialIds = [
-        ...(lookupProject && lookupProject !== '' ? [Number(lookupProject)] : []),
-        ...selectedOtherProjectIds.map(Number),
-      ];
-      if (trialIds.length > 0) {
-        repData.trialIds = [...new Set(trialIds)]; // deduplicate
-      }
+        // Build trial IDs
+        const trialIds = lookupProject ? [Number(lookupProject)] : [];
+        if (trialIds.length > 0) repData.trialIds = trialIds;
 
-      // Call parent save function
-      await onSave(repData);
-      
-      // Success! Reset file states
-      setMouDocument(null);
-      setMouDocumentPreview(null);
-      setRepLogo(null);
-      setRepLogoPreview(null);
-      setSelectedOtherProjectIds([]);
+        // Include assignment data if city was selected
+        if (assignmentData.city && assignmentData.state) {
+          repData.cityAssignment = { ...assignmentData };
+        }
+
+        await onSave(repData);
+      }
+      setMouDocument(null); setMouDocumentPreview(null);
+      setRepLogo(null); setRepLogoPreview(null);
       setFileError('');
-
-      // Note: onClose() is called by parent after success toast
     } catch (error) {
-      console.error('Error saving REP:', error);
-      
-      // Show error in modal
-      setFileError(
-        error.message || 
-        'Failed to save REP. Please try again.'
-      );
-      
-      // Don't close modal - let user retry
-      throw error; // Re-throw so parent knows it failed
+      setFileError(error.message || 'Failed to save REP. Please try again.');
+      throw error;
     } finally {
       setSaving(false);
     }
   };
 
-  const seasons = ['Season 5', 'Season 6'];
+  // ── Add assignment to existing REP (Edit mode) ──
+  const handleAddAssignment = async () => {
+    if (!assignmentData.city || !assignmentData.state || !lookupProject) return;
+    setSaving(true);
+    try {
+      await repAPI.addAssignment(editingREP.id, {
+        trialId: Number(lookupProject),
+        ...assignmentData,
+      });
+      setAddingNewAssignment(false);
+      setAssignmentData({
+        state: '', city: '', region: '',
+        courierAcceptingName: '', courierAcceptingPhone: '',
+        courierPinCode: '', courierAddress: '', courierAdditionalInfo: '',
+        physicalAddress: '', groundLocation: '', googleMapLink: '',
+        pinCode: '', groundPinCode: '', reportingTime: '',
+        groundContactName: '', groundContactPhone: '',
+      });
+      setLookupProject('');
+      setLookupStateObj(null);
+      setLookupCityObj(null);
+      // Refresh parent
+      onClose();
+      window.location.reload(); // simple refresh to reload data
+    } catch (error) {
+      setFileError(error.message || 'Failed to add assignment');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteAssignment = async (assignmentId) => {
+    if (!editingREP) return;
+    try {
+      await repAPI.deleteAssignment(editingREP.id, assignmentId);
+      onClose();
+      window.location.reload();
+    } catch (error) {
+      setFileError(error.message || 'Failed to delete assignment');
+    }
+  };
+
+  // ── Computed ──
   const mouStatuses = ['Signed', 'Pending', 'Not Required'];
-  const availableCities = trialCitiesByState[formData.state] || [];
-  const selectedState = indianStates.find(s => s.isoCode === formData.stateCode) || null;
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const canFillForm = isEditMode || cityInProject;
+  const existingAssignments = editingREP?.cityAssignments || [];
 
   const labelSx = { fontSize: '0.875rem', fontWeight: 600, color: '#374151', mb: 1, display: 'block' };
   const secHeaderSx = {
@@ -636,32 +554,12 @@ function REPModal({ open, onClose, onSave, editingREP }) {
     bgcolor: 'white', border: '1px solid #e5e7eb',
     borderRadius: '14px', p: { xs: 2.5, sm: 3 }, mb: 2.5,
   };
-  const grid2 = {
-    display: 'grid',
-    gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-    gap: 2.5,
-  };
+  const grid2 = { display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2.5 };
 
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      maxWidth="md"
-      fullWidth
-      PaperProps={{
-        sx: {
-          borderRadius: 2,
-          maxHeight: '90vh',
-          bgcolor: '#f8fafc',
-        }
-      }}
-    >
-      <DialogTitle sx={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center',
-        pb: 2,
-      }}>
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth
+      PaperProps={{ sx: { borderRadius: 2, maxHeight: '90vh', bgcolor: '#f8fafc' } }}>
+      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 2 }}>
         <Typography variant="h6" fontWeight={600}>
           {isEditMode ? 'Edit REP' : 'Add REP'}
         </Typography>
@@ -672,28 +570,25 @@ function REPModal({ open, onClose, onSave, editingREP }) {
 
       <DialogContent>
         <Box sx={{ pt: 1 }}>
-          
-          {/* Error Alert - NEW */}
+
           {fileError && (
             <Alert severity="error" sx={{ mb: 3 }} onClose={() => setFileError('')}>
               {fileError}
             </Alert>
           )}
 
-          {/* ── Lookup section (Add mode only) ── */}
+          {/* ── LOOKUP SECTION (Add mode) ── */}
           {!isEditMode && (
             <Box sx={{ mb: 3 }}>
-              {/* Project + City + State row */}
               <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr 1fr' }, gap: 2, mb: 2 }}>
                 <Box>
                   <Typography variant="caption" sx={{ mb: 0.5, display: 'block', fontWeight: 500 }}>Project</Typography>
-                  <TextField
-                    select fullWidth
-                    value={lookupProject}
+                  <TextField select fullWidth size="small" value={lookupProject}
                     onChange={(e) => {
                       setLookupProject(e.target.value);
-                      runLookup(e.target.value, lookupStateObj, lookupCityObj);
+                      checkCityInProject(e.target.value, lookupStateObj, lookupCityObj);
                     }}
+                    SelectProps={{ displayEmpty: true }}
                   >
                     <MenuItem value="" disabled sx={{ color: '#aaa' }}>Select a project</MenuItem>
                     {allTrials.map(t => (
@@ -705,28 +600,43 @@ function REPModal({ open, onClose, onSave, editingREP }) {
                 </Box>
                 <Box>
                   <Typography variant="caption" sx={{ mb: 0.5, display: 'block', fontWeight: 500 }}>State</Typography>
-                  <Autocomplete
-                    size="small"
-                    options={indianStates}
-                    getOptionLabel={(o) => o.name || ''}
-                    value={lookupStateObj}
+                  <Autocomplete size="small" options={indianStates}
+                    getOptionLabel={(o) => o.name || ''} value={lookupStateObj}
+                    inputValue={lookupStateInput} onInputChange={(_, v) => setLookupStateInput(v)}
+                    filterOptions={(opts, state) => smartFilterOptions(opts, state)}
                     onChange={(_, val) => {
                       setLookupStateObj(val);
                       setLookupCityObj(null);
+                      setCityInProject(false);
                       if (val) {
                         const libCities = City.getCitiesOfState('IN', val.isoCode);
                         const libNames = new Set(libCities.map(c => c.name.toLowerCase()));
-                        // Add project sub-cities that aren't already in the library list
                         const projectCities = (trialCitiesByState[val.name] || [])
                           .filter(name => !libNames.has(name.toLowerCase()))
                           .map(name => ({ name, isProjectCity: true }));
-                        const merged = [...libCities, ...projectCities]
-                          .sort((a, b) => a.name.localeCompare(b.name));
-                        setLookupAvailCities(merged);
+                        const stateLower = val.name.toLowerCase();
+                        const allCities = [...libCities, ...projectCities].map(c => ({
+                          ...c,
+                          _assigned: _repAssignedCities.has(`${stateLower}|${c.name.toLowerCase()}`),
+                        }));
+                        // Unassigned cities first, then assigned — alphabetical within each group
+                        allCities.sort((a, b) => {
+                          if (a._assigned !== b._assigned) return a._assigned ? 1 : -1;
+                          return a.name.localeCompare(b.name);
+                        });
+                        setLookupAvailCities(allCities);
                       } else {
                         setLookupAvailCities([]);
                       }
-                      setScenario(null);
+                    }}
+                    renderOption={(props, option) => {
+                      const { key, ...otherProps } = props;
+                      return (
+                        <Box component="li" key={option.isoCode} {...otherProps}
+                          sx={{ py: 1, px: 2, fontSize: '0.88rem', borderBottom: '1px solid #f3f4f6', '&:hover': { backgroundColor: '#f0f9ff !important' } }}>
+                          <HighlightMatch text={option.name} query={lookupStateInput} />
+                        </Box>
+                      );
                     }}
                     renderInput={(params) => <TextField {...params} placeholder="Select state" />}
                     isOptionEqualToValue={(o, v) => o.isoCode === v.isoCode}
@@ -735,30 +645,29 @@ function REPModal({ open, onClose, onSave, editingREP }) {
                 </Box>
                 <Box>
                   <Typography variant="caption" sx={{ mb: 0.5, display: 'block', fontWeight: 500 }}>City</Typography>
-                  <Autocomplete
-                    size="small"
-                    options={lookupAvailCities}
-                    getOptionLabel={(o) => o.name || ''}
-                    value={lookupCityObj}
+                  <Autocomplete size="small" options={lookupAvailCities}
+                    getOptionLabel={(o) => o.name || ''} value={lookupCityObj}
                     disabled={!lookupStateObj}
+                    inputValue={lookupCityInput} onInputChange={(_, v) => setLookupCityInput(v)}
+                    filterOptions={(opts, state) => smartFilterOptions(opts, state)}
                     onChange={(_, val) => {
                       setLookupCityObj(val);
-                      runLookup(lookupProject, lookupStateObj, val);
+                      checkCityInProject(lookupProject, lookupStateObj, val);
                     }}
                     renderOption={(props, option) => {
                       const { key, ...otherProps } = props;
                       return (
                         <Box component="li" key={option.name} {...otherProps}
-                          sx={{ py: 1, px: 2, fontSize: '0.88rem', borderBottom: '1px solid #f3f4f6',
-                            '&:hover': { backgroundColor: '#f0f9ff !important' },
-                            display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          {option.name}
-                          {option.isProjectCity && (
-                            <Typography sx={{ fontSize: '0.68rem', color: '#3B82F6', fontWeight: 600,
-                              bgcolor: '#dbeafe', px: 0.75, py: 0.1, borderRadius: 1, ml: 1 }}>
-                              Project
-                            </Typography>
-                          )}
+                          sx={{ py: 1, px: 2, fontSize: '0.88rem', borderBottom: '1px solid #f3f4f6', '&:hover': { backgroundColor: '#f0f9ff !important' }, display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: option._assigned ? 0.55 : 1 }}>
+                          <HighlightMatch text={option.name} query={lookupCityInput} />
+                          <Box sx={{ display: 'flex', gap: 0.5 }}>
+                            {option._assigned && (
+                              <Typography sx={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 600, ml: 1 }}>ASSIGNED</Typography>
+                            )}
+                            {option.isProjectCity && (
+                              <Typography sx={{ fontSize: '0.68rem', color: '#3B82F6', fontWeight: 600, bgcolor: '#dbeafe', px: 0.75, py: 0.1, borderRadius: 1, ml: 1 }}>Project</Typography>
+                            )}
+                          </Box>
                         </Box>
                       );
                     }}
@@ -769,80 +678,57 @@ function REPModal({ open, onClose, onSave, editingREP }) {
                 </Box>
               </Box>
 
-              {/* Scenario results */}
-              {scenario === 1 && (
-                <Box sx={{ p: 2, borderRadius: '10px', bgcolor: '#f0fdf4', border: '1px solid #bbf7d0' }}>
-                  <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#166534', textTransform: 'uppercase', letterSpacing: '0.06em', mb: 0.5 }}>
-                    REP already assigned
-                  </Typography>
-                  <Typography sx={{ fontWeight: 700, fontSize: '0.95rem', color: '#1e293b' }}>{foundRep.repName}</Typography>
-                  <Typography sx={{ fontSize: '0.82rem', color: '#64748b', mt: 0.25 }}>
-                    {foundRep.city}{foundRep.region && foundRep.region !== foundRep.city ? ` · ${foundRep.region}` : ''} · {foundRep.state}
-                  </Typography>
-                  {foundRep.contactName && (
-                    <Typography sx={{ fontSize: '0.82rem', color: '#94a3b8', mt: 0.25 }}>{foundRep.contactName}</Typography>
-                  )}
-                </Box>
-              )}
-
-              {scenario === 2 && !cityJustAdded && (
-                <Box sx={{ p: 2, borderRadius: '10px', bgcolor: '#eef2ff', border: '1px solid #c7d2fe', mb: 1.5 }}>
-                  <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: '#4338ca', mb: 0.25 }}>
-                    No REP found
-                  </Typography>
-                  <Typography sx={{ fontSize: '0.78rem', color: '#6366f1' }}>
-                    Fill the form below to add one.
-                  </Typography>
-                </Box>
-              )}
-
-              {scenario === 2 && cityJustAdded && (
-                <Box sx={{ p: 2, borderRadius: '10px', bgcolor: '#f0fdf4', border: '1px solid #bbf7d0', mb: 1.5 }}>
-                  <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: '#166534', mb: 0.25 }}>
-                    City added successfully
-                  </Typography>
-                  <Typography sx={{ fontSize: '0.78rem', color: '#16a34a' }}>
-                    Now add REP for this location below.
-                  </Typography>
-                </Box>
-              )}
-
-
-              {scenario === 3 && (
-                <Box sx={{ p: 2.5, borderRadius: '12px', bgcolor: '#fffbeb', border: '1px solid #fde68a' }}>
-                  <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.06em', mb: 1 }}>
-                    City not in project — add it first
-                  </Typography>
-                  <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 1.5 }}>
-                    <Box>
-                      <Typography variant="caption" sx={{ mb: 0.5, display: 'block', fontWeight: 500 }}>Month</Typography>
-                      <TextField
-                        select fullWidth
-                        value={addCityMonth}
-                        onChange={(e) => setAddCityMonth(e.target.value)}
-                        SelectProps={{ displayEmpty: true }}
-                      >
-                        <MenuItem value="">Select month</MenuItem>
-                        {months.map(m => <MenuItem key={m} value={m}>{m}</MenuItem>)}
-                      </TextField>
-                    </Box>
-                    <Box>
-                      <Typography variant="caption" sx={{ mb: 0.5, display: 'block', fontWeight: 500 }}>Date</Typography>
-                      <TextField
-                        fullWidth type="date"
-                        value={addCityDate}
-                        onChange={(e) => setAddCityDate(e.target.value)}
-                      />
-                    </Box>
+              {/* Status messages */}
+              <Box sx={{ minHeight: lookupCityObj ? '40px' : 0 }}>
+                {lookupCityObj && lookupStateObj && cityInProject && (
+                  <Box sx={{ p: 2, borderRadius: '10px', bgcolor: '#eef2ff', border: '1px solid #c7d2fe' }}>
+                    <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: '#4338ca', mb: 0.25 }}>
+                      Trial city confirmed — {lookupCityObj.name} is part of the project
+                    </Typography>
+                    <Typography sx={{ fontSize: '0.78rem', color: '#6366f1' }}>
+                      Continue to fill REP details below.
+                    </Typography>
                   </Box>
-                  <Button
-                    variant="contained" size="small" fullWidth
-                    disabled={addCitySaving || lookupProject === ''}
-                    onClick={handleAddCityToProject}
-                    sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 600, bgcolor: '#d97706', '&:hover': { bgcolor: '#b45309' } }}
-                  >
-                    {addCitySaving ? 'Adding...' : lookupProject === '' ? 'Select a specific project first' : `Add ${lookupCityObj?.name || 'city'} to project`}
-                  </Button>
+                )}
+
+                {lookupCityObj && lookupStateObj && !cityInProject && lookupProject && (
+                  <Box sx={{ p: 2.5, borderRadius: '12px', bgcolor: '#fffbeb', border: '1px solid #fde68a' }}>
+                    <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.06em', mb: 1 }}>
+                      City not in project — add it first
+                    </Typography>
+                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 1.5 }}>
+                      <Box>
+                        <Typography variant="caption" sx={{ mb: 0.5, display: 'block', fontWeight: 500 }}>Month</Typography>
+                        <TextField select fullWidth size="small" value={addCityMonth} onChange={(e) => setAddCityMonth(e.target.value)}>
+                          <MenuItem value="">Select month</MenuItem>
+                          {months.map(m => <MenuItem key={m} value={m}>{m}</MenuItem>)}
+                        </TextField>
+                      </Box>
+                      <Box>
+                        <Typography variant="caption" sx={{ mb: 0.5, display: 'block', fontWeight: 500 }}>Date</Typography>
+                        <TextField fullWidth type="date" size="small" value={addCityDate} onChange={(e) => setAddCityDate(e.target.value)} />
+                      </Box>
+                    </Box>
+                    <Button variant="contained" size="small" fullWidth
+                      disabled={addCitySaving}
+                      onClick={handleAddCityToProject}
+                      sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 600, bgcolor: '#d97706', '&:hover': { bgcolor: '#b45309' } }}>
+                      {addCitySaving ? 'Adding...' : `Add ${lookupCityObj?.name || 'city'} to project`}
+                    </Button>
+                  </Box>
+                )}
+              </Box>
+
+              {/* Existing REP match banner */}
+              {existingRep && repNameSearchDone && (
+                <Box sx={{ mt: 2, p: 2, borderRadius: '10px', bgcolor: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                  <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#166534', textTransform: 'uppercase', letterSpacing: '0.06em', mb: 0.5 }}>
+                    REP organization already exists
+                  </Typography>
+                  <Typography sx={{ fontWeight: 700, fontSize: '0.95rem', color: '#1e293b' }}>{existingRep.repName}</Typography>
+                  <Typography sx={{ fontSize: '0.82rem', color: '#64748b', mt: 0.25 }}>
+                    Org details will be reused. Fill the city-specific fields below.
+                  </Typography>
                 </Box>
               )}
 
@@ -850,265 +736,305 @@ function REPModal({ open, onClose, onSave, editingREP }) {
             </Box>
           )}
 
-          {/* ── BASIC INFORMATION ── */}
+          {/* ── BASIC INFORMATION (Org-level) ── */}
           <Box sx={cardSx}>
             <Typography sx={secHeaderSx}>Basic Information</Typography>
             <Box sx={grid2}>
               <Box>
                 <Typography sx={labelSx}>REP Name <span style={{ color: '#ef4444' }}>*</span></Typography>
-                <TextField fullWidth
-                  placeholder="e.g., Sports Academy Mumbai"
-                  value={formData.repName}
-                  onChange={handleChange('repName')}
+                <TextField fullWidth placeholder="e.g., RUFC"
+                  value={orgData.repName}
+                  onChange={(e) => {
+                    handleOrgChange('repName')(e);
+                    if (!isEditMode) searchRepByName(e.target.value);
+                  }}
                   error={!!errors.repName} helperText={errors.repName}
-                  disabled={saving || (!isEditMode && scenario !== 2)}
+                  disabled={saving || (!isEditMode && !cityInProject)}
+                  InputProps={{ readOnly: !isEditMode && !!existingRep }}
                 />
               </Box>
             </Box>
           </Box>
 
-          {/* ── REGION (Edit mode only — in Add mode state/city come from lookup) ── */}
-          {isEditMode && (
+          {/* ── EXISTING ASSIGNMENTS (Edit mode) ── */}
+          {isEditMode && existingAssignments.length > 0 && (
             <Box sx={cardSx}>
-              <Typography sx={secHeaderSx}>Trial Location</Typography>
-              <Box sx={grid2}>
+              <Typography sx={secHeaderSx}>Assigned Trials ({existingAssignments.length})</Typography>
+              <Stack spacing={1.5}>
+                {existingAssignments.map(a => (
+                  <Box key={a.id} sx={{ p: 2, bgcolor: '#f8fafc', border: '1px solid #e5e7eb', borderRadius: '10px' }}>
+                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                      <Box>
+                        <Typography sx={{ fontSize: '0.88rem', fontWeight: 700, color: '#1e293b' }}>
+                          {[a.trialSeason, a.trialType, a.city].filter(Boolean).join(' | ')}
+                        </Typography>
+                        <Typography sx={{ fontSize: '0.75rem', color: '#64748b' }}>
+                          {a.state}{a.region ? ` · ${a.region}` : ''}
+                        </Typography>
+                      </Box>
+                      <IconButton size="small" color="error" onClick={() => handleDeleteAssignment(a.id)}
+                        sx={{ '&:hover': { bgcolor: '#fee2e2' } }}>
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Stack>
+                  </Box>
+                ))}
+              </Stack>
+
+              {!addingNewAssignment && (
+                <Button startIcon={<AddIcon />} size="small" onClick={() => setAddingNewAssignment(true)}
+                  sx={{ mt: 2, textTransform: 'none', fontWeight: 600 }}>
+                  Assign New Trial
+                </Button>
+              )}
+            </Box>
+          )}
+
+          {/* ── NEW ASSIGNMENT FORM (Edit mode — add assignment) ── */}
+          {isEditMode && addingNewAssignment && (
+            <Box sx={cardSx}>
+              <Typography sx={secHeaderSx}>Assign New Trial</Typography>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr 1fr' }, gap: 2, mb: 2 }}>
                 <Box>
-                  <Typography sx={labelSx}>State <span style={{ color: '#ef4444' }}>*</span></Typography>
-                  <Autocomplete
-                    value={selectedState}
-                    onChange={handleStateChange}
-                    options={indianStates}
-                    getOptionLabel={(option) => option?.name || ''}
-                    isOptionEqualToValue={(option, value) => option?.isoCode === value?.isoCode}
-                    disabled={saving}
-                    openOnFocus
-                    renderOption={(props, option) => {
-                      const { key, ...otherProps } = props;
-                      return (
-                        <Box component="li" key={option.isoCode} {...otherProps}
-                          sx={{ py: 1.5, px: 2, fontSize: '0.95rem', borderBottom: '1px solid #f3f4f6',
-                            '&:hover': { backgroundColor: '#f0f9ff !important' } }}>
-                          {option.name}
-                        </Box>
-                      );
+                  <Typography sx={labelSx}>Project</Typography>
+                  <TextField select fullWidth size="small" value={lookupProject}
+                    onChange={(e) => setLookupProject(e.target.value)}>
+                    <MenuItem value="" disabled>Select project</MenuItem>
+                    {allTrials.map(t => (
+                      <MenuItem key={t.id} value={String(t.id)}>
+                        {t.trialType || t.trialName}{t.season ? ` — ${t.season}` : ''}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Box>
+                <Box>
+                  <Typography sx={labelSx}>State</Typography>
+                  <Autocomplete size="small" options={indianStates}
+                    getOptionLabel={(o) => o.name || ''} value={lookupStateObj}
+                    inputValue={stateInputValue} onInputChange={(_, v) => setStateInputValue(v)}
+                    filterOptions={(opts, state) => smartFilterOptions(opts, state)}
+                    onChange={(_, val) => {
+                      setLookupStateObj(val);
+                      setLookupCityObj(null);
+                      if (val) {
+                        const libCities = City.getCitiesOfState('IN', val.isoCode);
+                        const stateLower = val.name.toLowerCase();
+                        const allCities = libCities.map(c => ({
+                          ...c,
+                          _assigned: _repAssignedCities.has(`${stateLower}|${c.name.toLowerCase()}`),
+                        }));
+                        allCities.sort((a, b) => {
+                          if (a._assigned !== b._assigned) return a._assigned ? 1 : -1;
+                          return a.name.localeCompare(b.name);
+                        });
+                        setLookupAvailCities(allCities);
+                      } else {
+                        setLookupAvailCities([]);
+                      }
+                      setAssignmentData(prev => ({ ...prev, state: val?.name || '', city: '' }));
                     }}
-                    renderInput={(params) => (
-                      <TextField {...params} placeholder="Search state..."
-                        error={!!errors.state} helperText={errors.state} />
-                    )}
-                    slotProps={{
-                      popper: { sx: { zIndex: 1500 }, placement: 'bottom-start',
-                        modifiers: [{ name: 'flip', enabled: false }] },
-                      paper: { sx: { mt: 0.5, boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-                        borderRadius: 2, minWidth: 300,
-                        '& .MuiAutocomplete-listbox': { padding: 0, maxHeight: 260 } } },
-                    }}
+                    renderInput={(params) => <TextField {...params} placeholder="Select state" />}
+                    isOptionEqualToValue={(o, v) => o.isoCode === v.isoCode}
                   />
                 </Box>
                 <Box>
-                  <Typography sx={labelSx}>Assign Trial City <span style={{ color: '#ef4444' }}>*</span></Typography>
-                  <Autocomplete
-                    value={formData.city || null}
-                    onChange={handleCityChange}
-                    options={availableCities}
-                    disabled={!formData.state || saving}
-                    openOnFocus
-                    noOptionsText={formData.state ? 'No trial cities for this state' : 'Select state first'}
+                  <Typography sx={labelSx}>City</Typography>
+                  <Autocomplete size="small" options={lookupAvailCities}
+                    getOptionLabel={(o) => o.name || ''} value={lookupCityObj}
+                    disabled={!lookupStateObj}
+                    inputValue={cityInputValue} onInputChange={(_, v) => setCityInputValue(v)}
+                    filterOptions={(opts, state) => smartFilterOptions(opts, state)}
+                    onChange={(_, val) => {
+                      setLookupCityObj(val);
+                      setAssignmentData(prev => ({ ...prev, city: val?.name || '' }));
+                    }}
                     renderOption={(props, option) => {
                       const { key, ...otherProps } = props;
                       return (
-                        <Box component="li" key={option} {...otherProps}
-                          sx={{ py: 1.5, px: 2, fontSize: '0.95rem', borderBottom: '1px solid #f3f4f6',
-                            '&:hover': { backgroundColor: '#f0f9ff !important' } }}>
-                          {option}
+                        <Box component="li" key={option.name} {...otherProps}
+                          sx={{ py: 1, px: 2, fontSize: '0.88rem', borderBottom: '1px solid #f3f4f6', '&:hover': { backgroundColor: '#f0f9ff !important' }, opacity: option._assigned ? 0.55 : 1 }}>
+                          <HighlightMatch text={option.name} query={cityInputValue} />
+                          {option._assigned && (
+                            <Typography component="span" sx={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 600, ml: 1 }}>ASSIGNED</Typography>
+                          )}
                         </Box>
                       );
                     }}
-                    renderInput={(params) => (
-                      <TextField {...params}
-                        placeholder={formData.state ? 'Select city...' : 'Select state first'}
-                        error={!!errors.city} helperText={errors.city}
-                      />
-                    )}
-                    slotProps={{
-                      popper: { sx: { zIndex: 1500 }, placement: 'bottom-start' },
-                      paper: { sx: { mt: 0.5, boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-                        borderRadius: 2, '& .MuiAutocomplete-listbox': { padding: 0, maxHeight: 260 } } },
-                    }}
+                    renderInput={(params) => <TextField {...params} placeholder="Select city" />}
+                    isOptionEqualToValue={(o, v) => o.name === v.name}
                   />
+                </Box>
+              </Box>
+
+              {/* City-specific fields for new assignment */}
+              {assignmentData.city && assignmentData.state && (
+                <>
+                  {renderCourierSection(assignmentData, handleAssignmentChange, saving, courierPinCode => {
+                    handleAssignmentChange('courierPinCode')({ target: { value: courierPinCode } });
+                    lookupCourierPin(courierPinCode);
+                  }, courierPinLoading, courierPinError, courierAreas, courierDistrict, courierState, courierSubArea, setCourierSubArea, labelSx)}
+                  {renderGroundSection(assignmentData, handleAssignmentChange, saving, labelSx, secHeaderSx, errors)}
+                </>
+              )}
+
+              <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+                <Button variant="contained" size="small" onClick={handleAddAssignment}
+                  disabled={saving || !assignmentData.city || !lookupProject}
+                  sx={{ bgcolor: '#FBB040', '&:hover': { bgcolor: '#E89F2C' }, fontWeight: 600 }}>
+                  {saving ? 'Saving...' : 'Save Assignment'}
+                </Button>
+                <Button size="small" onClick={() => setAddingNewAssignment(false)} disabled={saving}>
+                  Cancel
+                </Button>
+              </Stack>
+            </Box>
+          )}
+
+          {/* ── COURIER ADDRESS (Add mode only) ── */}
+          {!isEditMode && (
+            <Box sx={cardSx}>
+              <Typography sx={secHeaderSx}>Courier Address</Typography>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2.5, mb: 2.5 }}>
+                <Box>
+                  <Typography sx={labelSx}>Accepting Person Name</Typography>
+                  <TextField fullWidth placeholder="e.g., Ramesh Kumar"
+                    value={assignmentData.courierAcceptingName}
+                    onChange={handleAssignmentChange('courierAcceptingName')}
+                    disabled={saving || !canFillForm} helperText="Person who receives the courier" />
+                </Box>
+                <Box>
+                  <Typography sx={labelSx}>Accepting Person Phone</Typography>
+                  <TextField fullWidth placeholder="9876543210"
+                    value={assignmentData.courierAcceptingPhone}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                      handleAssignmentChange('courierAcceptingPhone')({ target: { value: val } });
+                    }}
+                    inputProps={{ maxLength: 10 }}
+                    error={!!errors.courierAcceptingPhone} helperText={errors.courierAcceptingPhone || '10-digit mobile number'}
+                    disabled={saving || !canFillForm} />
+                </Box>
+              </Box>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '150px 1fr 1fr' }, gap: 2.5 }}>
+                <Box>
+                  <Typography sx={labelSx}>PIN Code</Typography>
+                  <TextField fullWidth placeholder="400001"
+                    value={assignmentData.courierPinCode}
+                    inputProps={{ maxLength: 6 }}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      handleAssignmentChange('courierPinCode')({ target: { value: val } });
+                      lookupCourierPin(val);
+                    }}
+                    disabled={saving || !canFillForm}
+                    error={!!courierPinError}
+                    InputProps={{ endAdornment: courierPinLoading ? <CircularProgress size={16} sx={{ mr: 1 }} /> : null }}
+                    helperText={courierPinError || 'Auto-fills district & state'} />
+                </Box>
+                <Box>
+                  <Typography sx={labelSx}>District</Typography>
+                  <TextField fullWidth placeholder="Auto-filled" value={courierDistrict}
+                    InputProps={{ readOnly: true, sx: courierDistrict ? { bgcolor: '#f0fdf4', borderRadius: 1.5 } : {} }}
+                    disabled={saving || !canFillForm}
+                    helperText={courierDistrict ? 'Auto-filled' : ' '} />
+                </Box>
+                <Box>
+                  <Typography sx={labelSx}>State</Typography>
+                  <TextField fullWidth placeholder="Auto-filled" value={courierState}
+                    InputProps={{ readOnly: true, sx: courierState ? { bgcolor: '#f0fdf4', borderRadius: 1.5 } : {} }}
+                    disabled={saving || !canFillForm}
+                    helperText={courierState ? 'Auto-filled' : ' '} />
+                </Box>
+                {courierAreas.length > 0 && (
+                  <Box sx={{ gridColumn: '1 / -1' }}>
+                    <Typography sx={labelSx}>Sub Area / Locality</Typography>
+                    <TextField select fullWidth value={courierSubArea}
+                      onChange={(e) => setCourierSubArea(e.target.value)}
+                      disabled={saving || !canFillForm}>
+                      {courierAreas.map(area => <MenuItem key={area} value={area}>{area}</MenuItem>)}
+                    </TextField>
+                  </Box>
+                )}
+                <Box sx={{ gridColumn: '1 / -1' }}>
+                  <Typography sx={labelSx}>Flat / Door No. & Building</Typography>
+                  <TextField fullWidth placeholder="e.g., Flat 4B, Sunrise Apartments, MG Road"
+                    value={assignmentData.courierAddress}
+                    onChange={handleAssignmentChange('courierAddress')}
+                    disabled={saving || !canFillForm} />
+                </Box>
+                <Box sx={{ gridColumn: '1 / -1' }}>
+                  <Typography sx={labelSx}>Additional Info</Typography>
+                  <TextField fullWidth multiline minRows={2}
+                    placeholder="Any extra delivery instructions"
+                    value={assignmentData.courierAdditionalInfo}
+                    onChange={handleAssignmentChange('courierAdditionalInfo')}
+                    disabled={saving || !canFillForm} />
                 </Box>
               </Box>
             </Box>
           )}
 
-          {/* ── COURIER ADDRESS ── */}
-          <Box sx={cardSx}>
-            <Typography sx={secHeaderSx}>Courier Address</Typography>
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '150px 1fr 1fr' }, gap: 2.5 }}>
-              {/* Row 1 — PIN | District | State */}
-              <Box>
-                <Typography sx={labelSx}>PIN Code</Typography>
-                <TextField fullWidth
-                  placeholder="400001"
-                  value={formData.courierPinCode}
-                  inputProps={{ maxLength: 6 }}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/\D/g, '');
-                    handleChange('courierPinCode')({ target: { value: val } });
-                    lookupCourierPin(val);
-                  }}
-                  disabled={saving || (!isEditMode && scenario !== 2)}
-                  InputProps={{
-                    endAdornment: courierPinLoading
-                      ? <CircularProgress size={16} sx={{ mr: 1 }} />
-                      : null,
-                  }}
-                  helperText="Auto-fills district & state"
-                />
-              </Box>
-              <Box>
-                <Typography sx={labelSx}>District</Typography>
-                <TextField fullWidth
-                  placeholder="Auto-filled"
-                  value={formData.courierDistrict}
-                  onChange={handleChange('courierDistrict')}
-                  disabled={saving || (!isEditMode && scenario !== 2)}
-                  InputProps={{
-                    readOnly: !!formData.courierDistrict && courierAreas.length > 0,
-                    sx: formData.courierDistrict
-                      ? { bgcolor: '#f0fdf4', borderRadius: 1.5, '& .MuiOutlinedInput-notchedOutline': { borderColor: '#86efac' } }
-                      : { borderRadius: 1.5 },
-                  }}
-                  helperText={formData.courierDistrict ? '✓ Auto-filled' : ' '}
-                />
-              </Box>
-              <Box>
-                <Typography sx={labelSx}>State</Typography>
-                <TextField fullWidth
-                  placeholder="Auto-filled"
-                  value={formData.courierState}
-                  onChange={handleChange('courierState')}
-                  disabled={saving || (!isEditMode && scenario !== 2)}
-                  InputProps={{
-                    readOnly: !!formData.courierState && courierAreas.length > 0,
-                    sx: formData.courierState
-                      ? { bgcolor: '#f0fdf4', borderRadius: 1.5, '& .MuiOutlinedInput-notchedOutline': { borderColor: '#86efac' } }
-                      : { borderRadius: 1.5 },
-                  }}
-                  helperText={formData.courierState ? '✓ Auto-filled' : ' '}
-                />
-              </Box>
-              {/* Row 2 — Sub Area */}
-              <Box sx={{ gridColumn: '1 / -1' }}>
-                <Typography sx={labelSx}>
-                  Sub Area / Locality
-                  {courierAreas.length > 0 && (
-                    <Typography component="span" sx={{ fontSize: '0.75rem', fontWeight: 400, color: '#16a34a', ml: 1 }}>
-                      {courierAreas.length} areas found — pick yours
-                    </Typography>
-                  )}
-                </Typography>
-                {courierAreas.length > 0 ? (
-                  <TextField select fullWidth
-                    value={formData.courierSubArea}
-                    onChange={handleChange('courierSubArea')}
-                    disabled={saving || (!isEditMode && scenario !== 2)}
-                    helperText="Post office areas for this PIN"
-                  >
-                    {courierAreas.map(area => (
-                      <MenuItem key={area} value={area}>{area}</MenuItem>
-                    ))}
-                  </TextField>
-                ) : (
-                  <TextField fullWidth
-                    placeholder="e.g., Andheri West, Koramangala, Sector 18"
-                    value={formData.courierSubArea}
-                    onChange={handleChange('courierSubArea')}
-                    disabled={saving || (!isEditMode && scenario !== 2)}
-                    helperText="Neighbourhood / locality within the city"
-                  />
-                )}
-              </Box>
-              {/* Row 3 — Flat / Building */}
-              <Box sx={{ gridColumn: '1 / -1' }}>
-                <Typography sx={labelSx}>Flat / Door No. & Building</Typography>
-                <TextField fullWidth
-                  placeholder="e.g., Flat 4B, Sunrise Apartments, MG Road"
-                  value={formData.courierAddress}
-                  onChange={handleChange('courierAddress')}
-                  disabled={saving || (!isEditMode && scenario !== 2)}
-                  helperText="House / flat number, building name, street"
-                />
-              </Box>
-              {/* Row 4 — Landmark */}
-              <Box sx={{ gridColumn: '1 / -1' }}>
-                <Typography sx={labelSx}>Landmark</Typography>
-                <TextField fullWidth
-                  placeholder="e.g., Near City Mall, Opposite HDFC Bank, Behind Bus Stand"
-                  value={formData.courierLandmark}
-                  onChange={handleChange('courierLandmark')}
-                  disabled={saving || (!isEditMode && scenario !== 2)}
-                  helperText="A well-known nearby reference point for delivery"
-                />
-              </Box>
-              {/* Row 5 — Additional Info */}
-              <Box sx={{ gridColumn: '1 / -1' }}>
-                <Typography sx={labelSx}>Additional Info</Typography>
-                <TextField fullWidth multiline minRows={3}
-                  placeholder="Any extra delivery instructions, access details, alternate contact, etc."
-                  value={formData.courierAdditionalInfo}
-                  onChange={handleChange('courierAdditionalInfo')}
-                  disabled={saving || (!isEditMode && scenario !== 2)}
-                />
+          {/* ── TRIAL GROUND LOCATION (Add mode only) ── */}
+          {!isEditMode && (
+            <Box sx={cardSx}>
+              <Typography sx={secHeaderSx}>Trial Ground Location</Typography>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2.5 }}>
+                <Box>
+                  <Typography sx={labelSx}>Google Maps Link</Typography>
+                  <TextField fullWidth placeholder="https://maps.google.com/..."
+                    value={assignmentData.googleMapLink}
+                    onChange={handleAssignmentChange('googleMapLink')}
+                    error={!!errors.googleMapLink} helperText={errors.googleMapLink || 'Paste full Google Maps URL'}
+                    disabled={saving || !canFillForm} />
+                </Box>
+                <Box>
+                  <Typography sx={labelSx}>Pin Code</Typography>
+                  <TextField fullWidth placeholder="e.g., 400001"
+                    value={assignmentData.pinCode} inputProps={{ maxLength: 6 }}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      handleAssignmentChange('pinCode')({ target: { value: val } });
+                    }}
+                    error={!!errors.pinCode} helperText={errors.pinCode || '6-digit PIN (e.g. 400001)'}
+                    disabled={saving || !canFillForm} />
+                </Box>
+                <Box>
+                  <Typography sx={labelSx}>Reporting Time</Typography>
+                  <TextField fullWidth type="time" value={assignmentData.reportingTime}
+                    onChange={handleAssignmentChange('reportingTime')}
+                    disabled={saving || !canFillForm} InputLabelProps={{ shrink: true }} />
+                </Box>
+                <Box>
+                  <Typography sx={labelSx}>Ground Contact Person</Typography>
+                  <TextField fullWidth placeholder="e.g., Ramesh Kumar"
+                    value={assignmentData.groundContactName}
+                    onChange={handleAssignmentChange('groundContactName')}
+                    disabled={saving || !canFillForm} />
+                </Box>
+                <Box>
+                  <Typography sx={labelSx}>Ground Contact Number</Typography>
+                  <TextField fullWidth placeholder="9876543210"
+                    value={assignmentData.groundContactPhone} inputProps={{ maxLength: 10 }}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      handleAssignmentChange('groundContactPhone')({ target: { value: val } });
+                    }}
+                    error={!!errors.groundContactPhone} helperText={errors.groundContactPhone || '10-digit mobile (starts with 6-9)'}
+                    disabled={saving || !canFillForm} />
+                </Box>
+                <Box sx={{ gridColumn: '1 / -1' }}>
+                  <Typography sx={labelSx}>Ground Address</Typography>
+                  <TextField fullWidth multiline minRows={2}
+                    placeholder="Complete ground / stadium address"
+                    value={assignmentData.physicalAddress}
+                    onChange={handleAssignmentChange('physicalAddress')}
+                    disabled={saving || !canFillForm} />
+                </Box>
               </Box>
             </Box>
-          </Box>
+          )}
 
-          {/* ── TRIAL GROUND LOCATION ── */}
-          <Box sx={cardSx}>
-            <Typography sx={secHeaderSx}>Trial Ground Location</Typography>
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2.5 }}>
-              <Box>
-                <Typography sx={labelSx}>Google Maps Link</Typography>
-                <TextField fullWidth
-                  placeholder="https://maps.google.com/..."
-                  value={formData.googleMapLink}
-                  onChange={handleChange('googleMapLink')}
-                  error={!!errors.googleMapLink} helperText={errors.googleMapLink}
-                  disabled={saving || (!isEditMode && scenario !== 2)}
-                />
-              </Box>
-              <Box>
-                <Typography sx={labelSx}>Pin Code</Typography>
-                <TextField fullWidth placeholder="e.g., 400001"
-                  value={formData.pinCode}
-                  inputProps={{ maxLength: 6 }}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/\D/g, '');
-                    handleChange('pinCode')({ target: { value: val } });
-                  }}
-                  error={!!errors.pinCode}
-                  helperText={errors.pinCode}
-                  disabled={saving || (!isEditMode && scenario !== 2)}
-                />
-              </Box>
-              <Box sx={{ gridColumn: '1 / -1' }}>
-                <Typography sx={labelSx}>Ground Address</Typography>
-                <TextField fullWidth multiline
-                  minRows={locationFocused ? 4 : 2}
-                  placeholder="Complete ground / stadium address"
-                  value={formData.physicalAddress}
-                  onChange={handleChange('physicalAddress')}
-                  onFocus={() => setLocationFocused(true)}
-                  onBlur={() => setLocationFocused(false)}
-                  disabled={saving || (!isEditMode && scenario !== 2)}
-                  sx={{ transition: 'all 0.2s ease' }}
-                />
-              </Box>
-            </Box>
-          </Box>
-
-          {/* ── CONTACTS ── */}
+          {/* ── CONTACTS (Org-level) ── */}
           <Box sx={cardSx}>
             <Typography sx={secHeaderSx}>Contacts</Typography>
             <Typography sx={subLabelSx}>Primary</Typography>
@@ -1116,58 +1042,48 @@ function REPModal({ open, onClose, onSave, editingREP }) {
               <Box>
                 <Typography sx={labelSx}>Contact Name</Typography>
                 <TextField fullWidth placeholder="e.g., Rajesh Sharma"
-                  value={formData.contactName}
-                  onChange={handleChange('contactName')}
-                  disabled={saving || (!isEditMode && scenario !== 2)}
-                />
+                  value={orgData.contactName} onChange={handleOrgChange('contactName')}
+                  disabled={saving || !canFillForm || (!isEditMode && !!existingRep)} />
               </Box>
               <Box>
                 <Typography sx={labelSx}>Phone</Typography>
                 <TextField fullWidth placeholder="9876543210"
-                  value={formData.phone} onChange={handleChange('phone')}
-                  error={!!errors.phone} helperText={errors.phone}
-                  disabled={saving || (!isEditMode && scenario !== 2)}
-                />
+                  value={orgData.phone} onChange={handleOrgChange('phone')}
+                  error={!!errors.phone} helperText={errors.phone || '10-digit mobile (starts with 6-9)'}
+                  disabled={saving || !canFillForm || (!isEditMode && !!existingRep)} />
               </Box>
               <Box sx={{ gridColumn: { sm: '1 / 2' } }}>
                 <Typography sx={labelSx}>Email</Typography>
                 <TextField fullWidth type="email" placeholder="contact@example.com"
-                  value={formData.email} onChange={handleChange('email')}
-                  error={!!errors.email} helperText={errors.email}
-                  disabled={saving || (!isEditMode && scenario !== 2)}
-                />
+                  value={orgData.email} onChange={handleOrgChange('email')}
+                  error={!!errors.email} helperText={errors.email || 'e.g. contact@organization.com'}
+                  disabled={saving || !canFillForm || (!isEditMode && !!existingRep)} />
               </Box>
             </Box>
             <Divider sx={{ mb: 2.5 }} />
             <Typography sx={subLabelSx}>
-              Backup{' '}
-              <Typography component="span" sx={{ fontSize: '0.72rem', fontWeight: 400, color: '#9e9e9e', textTransform: 'none', letterSpacing: 0 }}>
-                (Optional)
-              </Typography>
+              Backup <Typography component="span" sx={{ fontSize: '0.72rem', fontWeight: 400, color: '#9e9e9e', textTransform: 'none', letterSpacing: 0 }}>(Optional)</Typography>
             </Typography>
             <Box sx={grid2}>
               <Box>
                 <Typography sx={labelSx}>Backup Contact Name</Typography>
                 <TextField fullWidth placeholder="Optional"
-                  value={formData.backupContactName}
-                  onChange={handleChange('backupContactName')}
-                  disabled={saving || (!isEditMode && scenario !== 2)}
-                />
+                  value={orgData.backupContactName} onChange={handleOrgChange('backupContactName')}
+                  disabled={saving || !canFillForm || (!isEditMode && !!existingRep)} />
               </Box>
               <Box>
                 <Typography sx={labelSx}>Backup Phone</Typography>
-                <TextField fullWidth placeholder="Optional"
-                  value={formData.backupPhone} onChange={handleChange('backupPhone')}
-                  error={!!errors.backupPhone} helperText={errors.backupPhone}
-                  disabled={saving || (!isEditMode && scenario !== 2)}
-                />
+                <TextField fullWidth placeholder="9876543210"
+                  value={orgData.backupPhone} onChange={handleOrgChange('backupPhone')}
+                  error={!!errors.backupPhone} helperText={errors.backupPhone || '10-digit mobile (starts with 6-9)'}
+                  disabled={saving || !canFillForm || (!isEditMode && !!existingRep)} />
               </Box>
               <Box sx={{ gridColumn: { sm: '1 / 2' } }}>
                 <Typography sx={labelSx}>Backup Email</Typography>
                 <TextField fullWidth type="email" placeholder="backup@example.com"
-                  value={formData.backupEmail} onChange={handleChange('backupEmail')}
-                  disabled={saving || (!isEditMode && scenario !== 2)}
-                />
+                  value={orgData.backupEmail} onChange={handleOrgChange('backupEmail')}
+                  error={!!errors.backupEmail} helperText={errors.backupEmail || 'e.g. backup@organization.com'}
+                  disabled={saving || !canFillForm || (!isEditMode && !!existingRep)} />
               </Box>
             </Box>
           </Box>
@@ -1180,8 +1096,7 @@ function REPModal({ open, onClose, onSave, editingREP }) {
                 <Typography sx={labelSx}>Signed MoU / Agreement</Typography>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                   <Button component="label" variant="outlined" startIcon={<UploadIcon />}
-                    sx={{ justifyContent: 'flex-start' }}
-                    disabled={saving || (!isEditMode && scenario !== 2)}>
+                    sx={{ justifyContent: 'flex-start' }} disabled={saving || !canFillForm}>
                     Choose File
                     <input type="file" hidden accept=".pdf,.doc,.docx" onChange={handleMouDocumentUpload} />
                   </Button>
@@ -1190,46 +1105,37 @@ function REPModal({ open, onClose, onSave, editingREP }) {
                       <FileIcon fontSize="small" color="primary" />
                       <Typography variant="caption" sx={{ flex: 1, fontSize: '0.75rem' }}>
                         {typeof mouDocumentPreview === 'string' && mouDocumentPreview.length > 30
-                          ? mouDocumentPreview.substring(0, 30) + '...'
-                          : mouDocumentPreview}
+                          ? mouDocumentPreview.substring(0, 30) + '...' : mouDocumentPreview}
                       </Typography>
-                      <IconButton size="small" onClick={handleRemoveMouDocument}
-                        disabled={saving || (!isEditMode && scenario !== 2)} aria-label="Remove MOU document">
+                      <IconButton size="small" onClick={() => { setMouDocument(null); setMouDocumentPreview(null); }}
+                        disabled={saving} aria-label="Remove MOU document">
                         <DeleteIcon fontSize="small" />
                       </IconButton>
                     </Stack>
                   )}
-                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-                    PDF/DOC, max 5MB
-                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>PDF/DOC, max 5MB</Typography>
                 </Box>
               </Box>
               <Box>
                 <Typography sx={labelSx}>REP Logo</Typography>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                   <Button component="label" variant="outlined" startIcon={<UploadIcon />}
-                    sx={{ justifyContent: 'flex-start' }}
-                    disabled={saving || (!isEditMode && scenario !== 2)}>
+                    sx={{ justifyContent: 'flex-start' }} disabled={saving || !canFillForm}>
                     Choose File
                     <input type="file" hidden accept="image/*" onChange={handleRepLogoUpload} />
                   </Button>
                   {repLogoPreview && (
                     <Box sx={{ position: 'relative', width: '100%' }}>
                       <Box component="img" src={repLogoPreview} alt="REP Logo Preview"
-                        sx={{ width: '100%', height: 80, objectFit: 'contain',
-                          border: '1px solid #e5e7eb', borderRadius: 1, p: 1, bgcolor: '#f9fafb' }}
-                      />
-                      <IconButton size="small" onClick={handleRemoveRepLogo}
-                        disabled={saving || (!isEditMode && scenario !== 2)}
-                        aria-label="Remove REP logo"
+                        sx={{ width: '100%', height: 80, objectFit: 'contain', border: '1px solid #e5e7eb', borderRadius: 1, p: 1, bgcolor: '#f9fafb' }} />
+                      <IconButton size="small" onClick={() => { setRepLogo(null); setRepLogoPreview(null); }}
+                        disabled={saving} aria-label="Remove REP logo"
                         sx={{ position: 'absolute', top: 4, right: 4, bgcolor: 'white', '&:hover': { bgcolor: '#fee2e2' } }}>
                         <DeleteIcon fontSize="small" color="error" />
                       </IconButton>
                     </Box>
                   )}
-                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-                    PNG/JPG, max 2MB
-                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>PNG/JPG, max 2MB</Typography>
                 </Box>
               </Box>
             </Box>
@@ -1241,12 +1147,10 @@ function REPModal({ open, onClose, onSave, editingREP }) {
             <Box sx={grid2}>
               <Box>
                 <Typography sx={labelSx}>MoU Status</Typography>
-                <TextField select fullWidth
-                  value={formData.mouStatus} onChange={handleChange('mouStatus')}
-                  disabled={saving || (!isEditMode && scenario !== 2)}
-                >
+                <TextField select fullWidth value={orgData.mouStatus} onChange={handleOrgChange('mouStatus')}
+                  disabled={saving || !canFillForm || (!isEditMode && !!existingRep)}>
                   <MenuItem value=""><em>Select</em></MenuItem>
-                  {mouStatuses.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+                  {mouStatuses.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
                 </TextField>
               </Box>
             </Box>
@@ -1257,151 +1161,119 @@ function REPModal({ open, onClose, onSave, editingREP }) {
             <Typography sx={secHeaderSx}>Online Presence</Typography>
             <Box sx={grid2}>
               {[
-                { field: 'website',  naField: 'websiteNA',  label: 'Website',  placeholder: 'https://www.example.com' },
-                { field: 'facebook', naField: 'facebookNA', label: 'Facebook', placeholder: 'https://facebook.com/page' },
-                { field: 'twitter',  naField: 'twitterNA',  label: 'Twitter',  placeholder: 'https://twitter.com/handle' },
-                { field: 'telegram', naField: 'telegramNA', label: 'Telegram', placeholder: 'https://t.me/channel or @handle' },
-              ].map(({ field, naField, label, placeholder }) => (
+                { field: 'website',   label: 'Website',   placeholder: 'https://www.example.com',      hint: 'Full URL with https://' },
+                { field: 'facebook',  label: 'Facebook',  placeholder: 'https://facebook.com/page',    hint: 'Facebook page URL' },
+                { field: 'instagram', label: 'Instagram', placeholder: 'https://instagram.com/handle', hint: 'Instagram profile URL' },
+                { field: 'telegram',  label: 'Telegram',  placeholder: 'https://t.me/channel',         hint: 'Telegram channel/group link' },
+              ].map(({ field, label, placeholder, hint }) => (
                 <Box key={field}>
-                  <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-                    <Typography sx={{ ...labelSx, mb: 0 }}>{label}</Typography>
-                    <FormControlLabel
-                      control={
-                        <Checkbox size="small" checked={formData[naField]} onChange={handleChange(naField)}
-                          disabled={saving || (!isEditMode && scenario !== 2)} sx={{ p: 0.5 }} />
-                      }
-                      label={<Typography sx={{ fontSize: '0.78rem', color: '#9e9e9e' }}>N/A</Typography>}
-                      sx={{ m: 0, gap: 0.5 }}
-                    />
-                  </Stack>
-                  <TextField fullWidth
-                    placeholder={formData[naField] ? 'Not Available' : placeholder}
-                    value={formData[naField] ? '' : formData[field]}
-                    onChange={handleChange(field)}
-                    disabled={saving || formData[naField]}
-                    sx={{ '& .MuiOutlinedInput-root': { bgcolor: formData[naField] ? '#f5f5f5' : 'white' } }}
-                  />
+                  <Typography sx={labelSx}>{label}</Typography>
+                  <TextField fullWidth placeholder={placeholder}
+                    value={orgData[field]} onChange={handleOrgChange(field)}
+                    error={!!errors[field]} helperText={errors[field] || hint}
+                    disabled={saving || !canFillForm || (!isEditMode && !!existingRep)} />
                 </Box>
               ))}
             </Box>
           </Box>
 
         </Box>
-
-        {/* ── ALSO ASSIGN TO OTHER PROJECTS ── */}
-        {!isEditMode && scenario === 2 && otherProjectsForCity.length > 0 && (
-          <Box sx={{ mt: 3 }}>
-            <Divider sx={{ mb: 3 }}>
-              <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', px: 1 }}>
-                Also Save For
-              </Typography>
-            </Divider>
-            <Box sx={{ p: 3, borderRadius: '14px', bgcolor: '#f5f3ff', border: '1px solid #ddd6fe' }}>
-              <Stack direction="row" spacing={1.5} alignItems="flex-start" sx={{ mb: 2 }}>
-                <Box sx={{ width: 36, height: 36, borderRadius: '10px', bgcolor: '#ede9fe', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <Typography sx={{ fontSize: '1.1rem' }}>📋</Typography>
-                </Box>
-                <Box>
-                  <Typography sx={{ fontSize: '0.95rem', fontWeight: 700, color: '#4c1d95', mb: 0.25 }}>
-                    This city exists in other projects too
-                  </Typography>
-                  <Typography sx={{ fontSize: '0.82rem', color: '#7c3aed', lineHeight: 1.5 }}>
-                    The REP you filled above will also be saved for the projects below. Uncheck any you want to skip.
-                  </Typography>
-                </Box>
-              </Stack>
-
-              <Stack spacing={0.5}>
-                {otherProjectsForCity.map(t => (
-                  <Box
-                    key={t.id}
-                    onClick={() => {
-                      setSelectedOtherProjectIds(prev =>
-                        prev.includes(String(t.id))
-                          ? prev.filter(id => id !== String(t.id))
-                          : [...prev, String(t.id)]
-                      );
-                    }}
-                    sx={{
-                      display: 'flex', alignItems: 'center', gap: 1.5,
-                      p: 1.5, borderRadius: '10px', cursor: 'pointer',
-                      bgcolor: selectedOtherProjectIds.includes(String(t.id)) ? '#ede9fe' : 'white',
-                      border: '1px solid',
-                      borderColor: selectedOtherProjectIds.includes(String(t.id)) ? '#a78bfa' : '#e5e7eb',
-                      transition: 'all 0.15s ease',
-                      '&:hover': { borderColor: '#a78bfa', bgcolor: '#f5f3ff' },
-                    }}
-                  >
-                    <Checkbox
-                      size="small"
-                      checked={selectedOtherProjectIds.includes(String(t.id))}
-                      onChange={() => {}}
-                      sx={{ p: 0, '&.Mui-checked': { color: '#7c3aed' } }}
-                    />
-                    <Box sx={{ flex: 1 }}>
-                      <Typography sx={{ fontSize: '0.88rem', fontWeight: 600, color: '#1e293b' }}>
-                        {t.trialType || t.trialName}
-                      </Typography>
-                      {t.season && (
-                        <Typography sx={{ fontSize: '0.75rem', color: '#64748b' }}>
-                          {t.season}
-                        </Typography>
-                      )}
-                    </Box>
-                    {selectedOtherProjectIds.includes(String(t.id)) && (
-                      <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: '#7c3aed', bgcolor: '#ede9fe', px: 1, py: 0.25, borderRadius: 5 }}>
-                        Will be saved
-                      </Typography>
-                    )}
-                  </Box>
-                ))}
-              </Stack>
-
-              <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid #ddd6fe', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography sx={{ fontSize: '0.82rem', color: '#6d28d9', fontWeight: 500 }}>
-                  {selectedOtherProjectIds.length > 0
-                    ? `This REP will be saved for ${selectedOtherProjectIds.length + 1} projects in total`
-                    : 'No additional projects selected'}
-                </Typography>
-                {selectedOtherProjectIds.length < otherProjectsForCity.length && (
-                  <Typography
-                    onClick={() => setSelectedOtherProjectIds(otherProjectsForCity.map(t => String(t.id)))}
-                    sx={{ fontSize: '0.78rem', color: '#7c3aed', fontWeight: 600, cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
-                  >
-                    Select all
-                  </Typography>
-                )}
-              </Box>
-            </Box>
-          </Box>
-        )}
-
       </DialogContent>
 
       <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button onClick={onClose} disabled={saving} sx={{ color: 'text.secondary' }}>
-          Cancel
-        </Button>
-        <Button
-          variant="contained"
+        <Button onClick={onClose} disabled={saving} sx={{ color: 'text.secondary' }}>Cancel</Button>
+        <Button variant="contained"
           startIcon={saving ? <CircularProgress size={16} color="inherit" /> : <SaveIcon />}
           onClick={handleSave}
-          disabled={saving || (!isEditMode && scenario !== 2)}
-          sx={{
-            minWidth: 100,
-            bgcolor: '#FBB040',
-            color: '#1e293b',
-            boxShadow: 'none',
-            '&:hover': {
-              bgcolor: '#FBB040',
-              boxShadow: 'none',
-            }
-          }}
-        >
+          disabled={saving || (!isEditMode && !cityInProject)}
+          sx={{ minWidth: 100, bgcolor: '#FBB040', color: '#1e293b', boxShadow: 'none', '&:hover': { bgcolor: '#FBB040', boxShadow: 'none' } }}>
           {saving ? 'Saving...' : 'Save'}
         </Button>
       </DialogActions>
     </Dialog>
+  );
+}
+
+// Helper render functions for reuse in Edit mode's "add assignment" form
+function renderCourierSection(data, onChange, saving, onPinChange, pinLoading, pinError, areas, district, state, subArea, setSubArea, labelSx) {
+  return (
+    <Box sx={{ mt: 2 }}>
+      <Typography sx={{ color: '#3B82F6', fontWeight: 700, mb: 2, textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '0.82rem' }}>
+        Courier Address
+      </Typography>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+        <Box>
+          <Typography sx={labelSx}>Accepting Person</Typography>
+          <TextField fullWidth size="small" value={data.courierAcceptingName}
+            onChange={onChange('courierAcceptingName')} disabled={saving}
+            helperText="Person who receives the courier" />
+        </Box>
+        <Box>
+          <Typography sx={labelSx}>Accepting Phone</Typography>
+          <TextField fullWidth size="small" value={data.courierAcceptingPhone}
+            onChange={(e) => onChange('courierAcceptingPhone')({ target: { value: e.target.value.replace(/\D/g, '').slice(0,10) } })}
+            disabled={saving}
+            helperText="10-digit mobile (starts with 6-9)" />
+        </Box>
+        <Box>
+          <Typography sx={labelSx}>PIN Code</Typography>
+          <TextField fullWidth size="small" value={data.courierPinCode}
+            inputProps={{ maxLength: 6 }}
+            onChange={(e) => onPinChange(e.target.value.replace(/\D/g, ''))}
+            disabled={saving} error={!!pinError}
+            InputProps={{ endAdornment: pinLoading ? <CircularProgress size={16} /> : null }}
+            helperText={pinError || 'Auto-fills district & state'} />
+        </Box>
+        <Box sx={{ gridColumn: '1 / -1' }}>
+          <Typography sx={labelSx}>Address</Typography>
+          <TextField fullWidth size="small" value={data.courierAddress}
+            onChange={onChange('courierAddress')} disabled={saving}
+            helperText="Flat / Door No., Building, Street" />
+        </Box>
+      </Box>
+    </Box>
+  );
+}
+
+function renderGroundSection(data, onChange, saving, labelSx, secHeaderSx, errors) {
+  return (
+    <Box sx={{ mt: 2 }}>
+      <Typography sx={secHeaderSx}>Trial Ground Location</Typography>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+        <Box>
+          <Typography sx={labelSx}>Google Maps Link</Typography>
+          <TextField fullWidth size="small" value={data.googleMapLink}
+            onChange={onChange('googleMapLink')} disabled={saving}
+            error={!!errors?.googleMapLink} helperText={errors?.googleMapLink || 'Paste full Google Maps URL'} />
+        </Box>
+        <Box>
+          <Typography sx={labelSx}>Pin Code</Typography>
+          <TextField fullWidth size="small" value={data.pinCode}
+            inputProps={{ maxLength: 6 }}
+            onChange={(e) => onChange('pinCode')({ target: { value: e.target.value.replace(/\D/g, '') } })}
+            disabled={saving} error={!!errors?.pinCode} helperText={errors?.pinCode || '6-digit PIN (e.g. 400001)'} />
+        </Box>
+        <Box>
+          <Typography sx={labelSx}>Ground Contact</Typography>
+          <TextField fullWidth size="small" value={data.groundContactName}
+            onChange={onChange('groundContactName')} disabled={saving}
+            helperText="Person at the ground venue" />
+        </Box>
+        <Box>
+          <Typography sx={labelSx}>Ground Phone</Typography>
+          <TextField fullWidth size="small" value={data.groundContactPhone}
+            onChange={(e) => onChange('groundContactPhone')({ target: { value: e.target.value.replace(/\D/g, '').slice(0,10) } })}
+            disabled={saving} error={!!errors?.groundContactPhone}
+            helperText={errors?.groundContactPhone || '10-digit mobile (starts with 6-9)'} />
+        </Box>
+        <Box sx={{ gridColumn: '1 / -1' }}>
+          <Typography sx={labelSx}>Ground Address</Typography>
+          <TextField fullWidth size="small" multiline minRows={2} value={data.physicalAddress}
+            onChange={onChange('physicalAddress')} disabled={saving}
+            helperText="Complete ground / stadium address" />
+        </Box>
+      </Box>
+    </Box>
   );
 }
 

@@ -16,6 +16,7 @@ import {
   ChevronRight as CollapseIcon,
   Folder as ProjectIcon,
   Store as VendorIcon,
+  AccountBalance as BankingIcon,
 } from '@mui/icons-material';
 import {
   getProjectNames, saveProjectNames,
@@ -23,6 +24,9 @@ import {
   getVendorTypes, saveVendorTypes,
   getEntityTypes, saveEntityTypes,
   getVendorNames, saveVendorNames,
+  getBankNames, saveBankNames,
+  getAccountTypes, saveAccountTypes,
+  refreshAllFromAPI,
 } from '../../utils/adminStorage';
 
 const fieldSx = {
@@ -168,7 +172,7 @@ function OptionPanel({ title, subtitle, items, onSave }) {
 
       {/* Add new */}
       <Box sx={{ px: 3.5, pb: 3 }}>
-        <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.06em', mb: 1.5 }}>
+        <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', mb: 1.5 }}>
           Add New
         </Typography>
         {dupeError && (
@@ -295,7 +299,7 @@ function VendorNamePanel({ items, onSave, serviceTypes, entityTypes }) {
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, p: 2, border: '1px solid #e0e0e0', borderRadius: '12px', bgcolor: '#fafafa' }}>
                     <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
                       <FormControl fullWidth size="small">
-                        <Typography variant="caption" sx={{ fontWeight: 600, color: '#475569', fontSize: '0.72rem', mb: 0.5 }}>Service Type</Typography>
+                        <Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b', fontSize: '0.72rem', mb: 0.5 }}>Service Type</Typography>
                         <Select value={editServiceType} onChange={(e) => { setEditServiceType(e.target.value); setDupeError(''); }}
                           displayEmpty renderValue={(v) => v || <em style={{ color: '#94a3b8' }}>Any</em>}
                           sx={selectSx} MenuProps={menuMaxH}>
@@ -304,7 +308,7 @@ function VendorNamePanel({ items, onSave, serviceTypes, entityTypes }) {
                         </Select>
                       </FormControl>
                       <FormControl fullWidth size="small">
-                        <Typography variant="caption" sx={{ fontWeight: 600, color: '#475569', fontSize: '0.72rem', mb: 0.5 }}>Entity Type</Typography>
+                        <Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b', fontSize: '0.72rem', mb: 0.5 }}>Entity Type</Typography>
                         <Select value={editEntityType} onChange={(e) => { setEditEntityType(e.target.value); setDupeError(''); }}
                           displayEmpty renderValue={(v) => v || <em style={{ color: '#94a3b8' }}>Any</em>}
                           sx={selectSx} MenuProps={menuMaxH}>
@@ -384,7 +388,7 @@ function VendorNamePanel({ items, onSave, serviceTypes, entityTypes }) {
 
       {/* Add new */}
       <Box sx={{ px: 3.5, pb: 3 }}>
-        <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.06em', mb: 1.5 }}>
+        <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', mb: 1.5 }}>
           Add New Vendor Name
         </Typography>
         {dupeError && (
@@ -392,7 +396,7 @@ function VendorNamePanel({ items, onSave, serviceTypes, entityTypes }) {
         )}
         <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5, mb: 1.5 }}>
           <FormControl fullWidth size="small">
-            <Typography variant="caption" sx={{ fontWeight: 600, color: '#475569', fontSize: '0.72rem', mb: 0.5 }}>Service Type</Typography>
+            <Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b', fontSize: '0.72rem', mb: 0.5 }}>Service Type</Typography>
             <Select value={newServiceType} onChange={(e) => setNewServiceType(e.target.value)}
               displayEmpty renderValue={(v) => v || <em style={{ color: '#94a3b8' }}>Any (all service types)</em>}
               sx={{ borderRadius: '12px', fontSize: '0.85rem' }} MenuProps={menuMaxH}>
@@ -401,7 +405,7 @@ function VendorNamePanel({ items, onSave, serviceTypes, entityTypes }) {
             </Select>
           </FormControl>
           <FormControl fullWidth size="small">
-            <Typography variant="caption" sx={{ fontWeight: 600, color: '#475569', fontSize: '0.72rem', mb: 0.5 }}>Entity Type</Typography>
+            <Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b', fontSize: '0.72rem', mb: 0.5 }}>Entity Type</Typography>
             <Select value={newEntityType} onChange={(e) => setNewEntityType(e.target.value)}
               displayEmpty renderValue={(v) => v || <em style={{ color: '#94a3b8' }}>Any (all entity types)</em>}
               sx={{ borderRadius: '12px', fontSize: '0.85rem' }} MenuProps={menuMaxH}>
@@ -476,13 +480,29 @@ export default function AdminPage() {
   const [vendorTypes, setVendorTypes] = useState([]);
   const [entityTypes, setEntityTypes] = useState([]);
   const [vendorNames, setVendorNames] = useState([]);
+  const [bankNames, setBankNames] = useState([]);
+  const [accountTypes, setAccountTypes] = useState([]);
 
   useEffect(() => {
+    // Load defaults immediately, then fetch from API
     setProjectNames(getProjectNames());
     setSeasons(getSeasons());
     setVendorTypes(getVendorTypes());
     setEntityTypes(getEntityTypes());
     setVendorNames(getVendorNames());
+    setBankNames(getBankNames());
+    setAccountTypes(getAccountTypes());
+
+    // Fetch latest from API and refresh state
+    refreshAllFromAPI().then(() => {
+      setProjectNames(getProjectNames());
+      setSeasons(getSeasons());
+      setVendorTypes(getVendorTypes());
+      setEntityTypes(getEntityTypes());
+      setVendorNames(getVendorNames());
+      setBankNames(getBankNames());
+      setAccountTypes(getAccountTypes());
+    }).catch(() => {});
   }, []);
 
   return (
@@ -545,6 +565,27 @@ export default function AdminPage() {
               onSave={(updated) => { setVendorNames(updated); saveVendorNames(updated); }}
               serviceTypes={vendorTypes.map(v => v.name)}
               entityTypes={entityTypes.map(v => v.name)}
+            />
+          </SectionGroup>
+
+          {/* ── BANKING section ── */}
+          <SectionGroup
+            icon={<BankingIcon sx={{ fontSize: 20, color: '#0ea5e9' }} />}
+            label="Banking"
+            color="#0ea5e9"
+            defaultOpen={false}
+          >
+            <OptionPanel
+              title="Bank Names"
+              subtitle="Banks available in the Bank Name dropdown when adding vendor bank details."
+              items={bankNames}
+              onSave={(updated) => { setBankNames(updated); saveBankNames(updated); }}
+            />
+            <OptionPanel
+              title="Account Types"
+              subtitle="Account types available in the Account Type dropdown (e.g. Savings, Current, Overdraft)."
+              items={accountTypes}
+              onSave={(updated) => { setAccountTypes(updated); saveAccountTypes(updated); }}
             />
           </SectionGroup>
         </Stack>

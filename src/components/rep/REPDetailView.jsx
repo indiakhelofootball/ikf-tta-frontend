@@ -97,18 +97,17 @@ function Field({ label, value, mono = false, full = false, children }) {
 function REPDetailView({ rep, open, onClose, onEdit }) {
   if (!rep) return null;
 
-  const totalTrials = rep.assignedTrials?.length || rep.numberOfTrials || 0;
+  const assignments = rep.cityAssignments || [];
+  const totalAssignments = assignments.length;
 
   const onlineFields = [
     { key: 'website',  naKey: 'websiteNA',  label: 'Website' },
     { key: 'facebook', naKey: 'facebookNA', label: 'Facebook' },
-    { key: 'twitter',  naKey: 'twitterNA',  label: 'Twitter' },
+    { key: 'instagram', naKey: 'instagramNA', label: 'Instagram' },
     { key: 'telegram', naKey: 'telegramNA', label: 'Telegram' },
   ].filter(f => rep[f.key] || rep[f.naKey]);
 
   const hasBackup = rep.backupContactName || rep.backupPhone || rep.backupEmail;
-  const hasCourier = rep.courierPinCode || rep.courierAddress || rep.courierDistrict;
-  const hasGroundLocation = rep.physicalAddress || rep.googleMapLink || rep.pinCode;
   const hasDocs = rep.mouDocumentUrl || rep.repLogoUrl;
 
   return (
@@ -129,23 +128,18 @@ function REPDetailView({ rep, open, onClose, onEdit }) {
             {rep.repName}
           </Typography>
           <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.5, flexWrap: 'wrap', gap: 0.5 }}>
-            <Typography variant="body2" color="text.secondary">
-              {rep.city}{rep.state ? `, ${rep.state}` : ''}
-            </Typography>
-            <Chip
-              label={rep.status || 'Active'}
-              size="small"
-              sx={{
-                fontSize: '0.7rem', fontWeight: 600, height: 20,
-                bgcolor: rep.status === 'Inactive' ? '#fee2e2' : '#dcfce7',
-                color: rep.status === 'Inactive' ? '#dc2626' : '#16a34a',
-              }}
-            />
-            {totalTrials > 0 && (
+            {totalAssignments > 0 && (
               <Chip
-                label={`${totalTrials} trial${totalTrials !== 1 ? 's' : ''}`}
+                label={`${totalAssignments} assignment${totalAssignments !== 1 ? 's' : ''}`}
                 size="small"
                 sx={{ fontSize: '0.7rem', fontWeight: 600, height: 20, bgcolor: '#dbeafe', color: '#1d4ed8' }}
+              />
+            )}
+            {rep.numberOfCities > 0 && (
+              <Chip
+                label={`${rep.numberOfCities} ${rep.numberOfCities !== 1 ? 'cities' : 'city'}`}
+                size="small"
+                sx={{ fontSize: '0.7rem', fontWeight: 600, height: 20, bgcolor: '#dcfce7', color: '#16a34a' }}
               />
             )}
           </Stack>
@@ -166,96 +160,75 @@ function REPDetailView({ rep, open, onClose, onEdit }) {
         {/* ── BASIC INFORMATION ── */}
         <Box sx={cardSx}>
           <Typography sx={sectionHeaderSx}>Basic Information</Typography>
-          <Box sx={grid3}>
-            <Field label="REP Name" value={rep.repName} />
-            <Field label="Season" value={rep.season} />
-            <Field label="Status">
-              <Chip
-                label={rep.status || 'Active'}
-                size="small"
-                sx={{
-                  fontWeight: 600,
-                  bgcolor: rep.status === 'Inactive' ? '#fee2e2' : '#dcfce7',
-                  color: rep.status === 'Inactive' ? '#dc2626' : '#16a34a',
-                }}
-              />
-            </Field>
-          </Box>
-        </Box>
-
-        {/* ── TRIAL LOCATION ── */}
-        <Box sx={cardSx}>
-          <Typography sx={sectionHeaderSx}>Trial Location</Typography>
           <Box sx={grid2}>
-            <Field label="State" value={rep.state} />
-            <Field label="Assigned Trial City" value={rep.city} />
-            {rep.region && <Field label="Trial Location" value={rep.region} />}
+            <Field label="REP Name" value={rep.repName} />
           </Box>
         </Box>
 
-        {/* ── TRIAL GROUND LOCATION ── */}
-        {hasGroundLocation && (
-          <Box sx={cardSx}>
-            <Typography sx={sectionHeaderSx}>Trial Ground Location</Typography>
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
-              {rep.googleMapLink && (
-                <Box>
-                  <Typography sx={labelSx}>Google Maps Link</Typography>
-                  <Box
-                    component="a"
-                    href={rep.googleMapLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    sx={{
-                      display: 'inline-flex', alignItems: 'center', gap: 0.5,
-                      fontSize: '0.85rem', color: '#3B82F6', fontWeight: 500,
-                      textDecoration: 'none', '&:hover': { textDecoration: 'underline' },
-                    }}
-                  >
-                    Open in Maps <OpenInNewIcon sx={{ fontSize: 14 }} />
+        {/* ── CITY ASSIGNMENTS ── */}
+        <Box sx={cardSx}>
+          <Typography sx={sectionHeaderSx}>
+            Assigned Trials {totalAssignments > 0 && `(${totalAssignments})`}
+          </Typography>
+          {assignments.length > 0 ? (
+            <Stack spacing={2}>
+              {assignments.map((a) => (
+                <Box key={a.id} sx={{ p: 2, bgcolor: '#f8fafc', border: '1px solid #e5e7eb', borderRadius: '10px' }}>
+                  <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
+                    <Typography sx={{ fontSize: '0.88rem', fontWeight: 700, color: '#1e293b' }}>
+                      {[a.trialSeason, a.trialType, a.city].filter(Boolean).join(' | ')}
+                    </Typography>
+                    {a.trialType && (
+                      <Chip label={a.trialType} size="small" sx={{ fontSize: '0.7rem', fontWeight: 500, bgcolor: '#dbeafe', color: '#1d4ed8' }} />
+                    )}
+                  </Stack>
+                  <Box sx={grid2}>
+                    <Field label="City" value={a.city} />
+                    <Field label="State" value={a.state} />
+                    {a.region && <Field label="Region" value={a.region} />}
                   </Box>
+                  {(a.googleMapLink || a.pinCode || a.groundContactName || a.physicalAddress) && (
+                    <Box sx={{ mt: 1.5 }}>
+                      <Typography sx={subLabelSx}>Ground Location</Typography>
+                      <Box sx={grid2}>
+                        {a.googleMapLink && (
+                          <Box>
+                            <Typography sx={labelSx}>Google Maps Link</Typography>
+                            <Box component="a" href={a.googleMapLink} target="_blank" rel="noopener noreferrer"
+                              sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, fontSize: '0.85rem', color: '#3B82F6', fontWeight: 500, textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+                              Open in Maps <OpenInNewIcon sx={{ fontSize: 14 }} />
+                            </Box>
+                          </Box>
+                        )}
+                        <Field label="Pin Code" value={a.pinCode} />
+                        <Field label="Reporting Time" value={a.reportingTime} />
+                        <Field label="Ground Contact" value={a.groundContactName} />
+                        <Field label="Ground Phone" value={a.groundContactPhone} />
+                        {a.physicalAddress && <Field label="Address" value={a.physicalAddress} full />}
+                      </Box>
+                    </Box>
+                  )}
+                  {(a.courierPinCode || a.courierAddress || a.courierAcceptingName) && (
+                    <Box sx={{ mt: 1.5 }}>
+                      <Typography sx={subLabelSx}>Courier Address</Typography>
+                      <Box sx={grid2}>
+                        <Field label="PIN Code" value={a.courierPinCode} />
+                        <Field label="Accepting Person" value={a.courierAcceptingName} />
+                        <Field label="Accepting Phone" value={a.courierAcceptingPhone} />
+                        {a.courierAddress && <Field label="Address" value={a.courierAddress} full />}
+                        {a.courierAdditionalInfo && <Field label="Additional Info" value={a.courierAdditionalInfo} full />}
+                      </Box>
+                    </Box>
+                  )}
                 </Box>
-              )}
-              <Field label="Pin Code" value={rep.pinCode} />
-              {rep.physicalAddress && (
-                <Box sx={{ gridColumn: '1 / -1' }}>
-                  <Typography sx={labelSx}>Ground Address</Typography>
-                  <Typography sx={{ ...valueSx, whiteSpace: 'pre-line' }}>{rep.physicalAddress}</Typography>
-                </Box>
-              )}
+              ))}
+            </Stack>
+          ) : (
+            <Box sx={{ textAlign: 'center', py: 3, bgcolor: '#f9fafb', borderRadius: 2, border: '1px dashed #e5e7eb' }}>
+              <Typography variant="body2" color="text.secondary">No city assignments yet</Typography>
             </Box>
-          </Box>
-        )}
-
-        {/* ── COURIER ADDRESS ── */}
-        {hasCourier && (
-          <Box sx={cardSx}>
-            <Typography sx={sectionHeaderSx}>Courier Address</Typography>
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '150px 1fr 1fr' }, gap: 2 }}>
-              <Field label="PIN Code" value={rep.courierPinCode} />
-              <Field label="District" value={rep.courierDistrict} />
-              <Field label="State" value={rep.courierState} />
-              {rep.courierSubArea && (
-                <Box sx={{ gridColumn: '1 / -1' }}>
-                  <Typography sx={labelSx}>Sub Area / Locality</Typography>
-                  <Typography sx={valueSx}>{rep.courierSubArea}</Typography>
-                </Box>
-              )}
-              {rep.courierAddress && (
-                <Box sx={{ gridColumn: '1 / -1' }}>
-                  <Typography sx={labelSx}>Flat / Door No. & Building</Typography>
-                  <Typography sx={valueSx}>{rep.courierAddress}</Typography>
-                </Box>
-              )}
-              {rep.courierLandmark && (
-                <Box sx={{ gridColumn: '1 / -1' }}>
-                  <Typography sx={labelSx}>Landmark</Typography>
-                  <Typography sx={valueSx}>{rep.courierLandmark}</Typography>
-                </Box>
-              )}
-            </Box>
-          </Box>
-        )}
+          )}
+        </Box>
 
         {/* ── CONTACTS ── */}
         <Box sx={cardSx}>
@@ -289,19 +262,26 @@ function REPDetailView({ rep, open, onClose, onEdit }) {
               {rep.mouDocumentUrl && (
                 <Box>
                   <Typography sx={labelSx}>Signed MoU / Agreement</Typography>
-                  <Box
-                    component="a"
-                    href={rep.mouDocumentUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    sx={{
-                      display: 'inline-flex', alignItems: 'center', gap: 0.75,
-                      fontSize: '0.85rem', color: '#3B82F6', fontWeight: 500,
-                      textDecoration: 'none', '&:hover': { textDecoration: 'underline' },
-                    }}
-                  >
-                    <FileIcon fontSize="small" /> View Document
-                  </Box>
+                  {/^https?:\/\//.test(rep.mouDocumentUrl) ? (
+                    <Box
+                      component="a"
+                      href={rep.mouDocumentUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      sx={{
+                        display: 'inline-flex', alignItems: 'center', gap: 0.75,
+                        fontSize: '0.85rem', color: '#3B82F6', fontWeight: 500,
+                        textDecoration: 'none', '&:hover': { textDecoration: 'underline' },
+                      }}
+                    >
+                      <FileIcon fontSize="small" /> View Document
+                    </Box>
+                  ) : (
+                    <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, fontSize: '0.85rem', color: '#475569', fontWeight: 500 }}>
+                      <FileIcon fontSize="small" /> {rep.mouDocumentUrl}
+                    </Box>
+                  )}
                 </Box>
               )}
               {rep.repLogoUrl && (
@@ -379,49 +359,6 @@ function REPDetailView({ rep, open, onClose, onEdit }) {
           </Box>
         )}
 
-        {/* ── ASSIGNED TRIALS ── */}
-        <Box sx={{ ...cardSx, mb: 0 }}>
-          <Typography sx={sectionHeaderSx}>
-            Assigned Trials {totalTrials > 0 && `(${totalTrials})`}
-          </Typography>
-          {rep.assignedTrials && rep.assignedTrials.length > 0 ? (
-            <Stack spacing={1}>
-              {rep.assignedTrials.map((trial) => (
-                <Box key={trial.id} sx={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  p: 1.5, bgcolor: '#f8fafc', border: '1px solid #e5e7eb', borderRadius: '8px',
-                }}>
-                  <Box>
-                    <Typography sx={{ fontSize: '0.88rem', fontWeight: 600, color: '#1e293b' }}>
-                      {trial.trialName}
-                    </Typography>
-                    {trial.season && (
-                      <Typography sx={{ fontSize: '0.75rem', color: '#64748b' }}>
-                        {trial.season}
-                      </Typography>
-                    )}
-                  </Box>
-                  {trial.trialType && (
-                    <Chip
-                      label={trial.trialType}
-                      size="small"
-                      sx={{ fontSize: '0.7rem', fontWeight: 500, bgcolor: '#dbeafe', color: '#1d4ed8' }}
-                    />
-                  )}
-                </Box>
-              ))}
-            </Stack>
-          ) : (
-            <Box sx={{
-              textAlign: 'center', py: 3,
-              bgcolor: '#f9fafb', borderRadius: 2, border: '1px dashed #e5e7eb',
-            }}>
-              <Typography variant="body2" color="text.secondary">
-                No trials assigned yet
-              </Typography>
-            </Box>
-          )}
-        </Box>
 
       </DialogContent>
 
