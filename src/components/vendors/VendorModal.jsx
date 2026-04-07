@@ -16,10 +16,8 @@ import {
   FilterList as FilterIcon,
 } from '@mui/icons-material';
 import { vendorsAPI } from '../../services/api';
-import { getVendorTypeNames, getEntityTypeNames, getFilteredVendorNames } from '../../utils/adminStorage';
+import { getVendorTypeNames, getEntityTypeNames, getFilteredVendorNames, getBankNamesList, getAccountTypesList } from '../../utils/adminStorage';
 import { getStateFromPinCode, getCitiesForState, INDIAN_STATES } from '../../utils/pinCodeToState';
-
-const ACCOUNT_TYPES = ['Savings', 'Current', 'Overdraft', 'Cash Credit', 'Fixed Deposit'];
 
 const initialFormData = {
   vendorName: '', vendorType: '', companyType: '',
@@ -36,7 +34,7 @@ const sectionSx = {
   color: '#5B63D3', fontWeight: 700, mb: 2,
   textTransform: 'uppercase', letterSpacing: '0.8px', fontSize: '0.75rem',
 };
-const fLabelSx = { mb: 0.5, display: 'block', fontWeight: 600, color: '#334155', fontSize: '0.8rem' };
+const fLabelSx = { mb: 0.5, display: 'block', fontWeight: 600, color: '#64748b', fontSize: '0.8rem' };
 const fLabelDisabledSx = { ...fLabelSx, color: '#94a3b8' };
 const disabledSx = { opacity: 0.45, pointerEvents: 'none', filter: 'grayscale(30%)' };
 const inputSx = { '& .MuiOutlinedInput-root': { borderRadius: 1.5 } };
@@ -59,16 +57,13 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
   const [panCardImage, setPanCardImage] = useState(null);
   const [panCardImagePreview, setPanCardImagePreview] = useState(null);
   const [fileError, setFileError] = useState('');
-  const [banks, setBanks] = useState([]);
   const [confirmedVendorName, setConfirmedVendorName] = useState('');
 
   const formActive = isEdit || !!confirmedVendorName;
   const lSx = formActive ? fLabelSx : fLabelDisabledSx;
 
-  /* ── Init ── */
-  useEffect(() => {
-    vendorsAPI.getBanks().then(r => setBanks(r.banks || [])).catch(() => {});
-  }, []);
+  const banks = getBankNamesList();
+  const accountTypeOptions = getAccountTypesList();
 
   useEffect(() => {
     if (open) {
@@ -157,7 +152,11 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
   /* ── Form handlers ── */
   const handleChange = (field) => (e) => {
     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
-    setFormData(prev => ({ ...prev, [field]: value }));
+    const update = { [field]: value };
+    // Auto-uncheck verified if the number is cleared
+    if (field === 'gstNumber' && !value.trim()) update.gstVerified = false;
+    if (field === 'panNumber' && !value.trim()) update.panVerified = false;
+    setFormData(prev => ({ ...prev, ...update }));
     if (errors[field]) setErrors(prev => ({ ...prev, [field]: '' }));
   };
 
@@ -181,8 +180,7 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
     if (!formData.contactPerson.trim()) e.contactPerson = 'Contact person is required';
     if (!formData.phone.trim()) e.phone = 'Phone is required';
     else { const d = formData.phone.replace(/\D/g, ''); if (d.length !== 10) e.phone = 'Phone must be exactly 10 digits'; else if (!/^[6-9]/.test(d)) e.phone = 'Phone must start with 6-9'; }
-    if (!formData.email.trim()) e.email = 'Email is required';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) e.email = 'Enter a valid email';
+    if (formData.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) e.email = 'Enter a valid email';
     if (formData.ifscCode.trim() && !/^[A-Z]{4}0[A-Z0-9]{6}$/i.test(formData.ifscCode.trim())) e.ifscCode = 'Invalid IFSC format (e.g. SBIN0001234)';
     if (formData.contactPinCode.trim() && !/^[1-9][0-9]{5}$/.test(formData.contactPinCode.trim())) e.contactPinCode = 'Invalid PIN code (must be 6 digits)';
     if (formData.bankPinCode.trim() && !/^[1-9][0-9]{5}$/.test(formData.bankPinCode.trim())) e.bankPinCode = 'Invalid PIN code (must be 6 digits)';
@@ -197,7 +195,7 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
       vendorName: isEdit ? formData.vendorName : confirmedVendorName,
       vendorType: isEdit ? formData.vendorType : searchServiceType,
       companyType: isEdit ? formData.companyType : searchEntityType,
-      status: vendor?.status || selectedVendor?.status || 'Pending',
+      status: 'Verified',
     };
     if (panCardImage) { data.panCardImageName = panCardImage.name; data.panCardImageUrl = panCardImagePreview; }
     const vendorId = vendor?._id || vendor?.id || selectedVendor?._id || selectedVendor?.id;
@@ -433,14 +431,14 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
               </Box>
             </Box>
             <Box>
-              <FormControlLabel disabled={!formActive}
+              <FormControlLabel disabled={!formActive || !formData.gstNumber.trim()}
                 control={<Checkbox checked={formData.gstVerified} onChange={handleChange('gstVerified')} sx={{ '&.Mui-checked': { color: '#5B63D3' } }} />}
-                label={<Typography variant="body2" fontWeight={500}>GST Verified</Typography>} />
+                label={<Typography variant="body2" fontWeight={500} sx={{ color: formData.gstNumber.trim() ? '#334155' : '#cbd5e1' }}>GST Verified</Typography>} />
             </Box>
             <Box>
-              <FormControlLabel disabled={!formActive}
+              <FormControlLabel disabled={!formActive || !formData.panNumber.trim()}
                 control={<Checkbox checked={formData.panVerified} onChange={handleChange('panVerified')} sx={{ '&.Mui-checked': { color: '#5B63D3' } }} />}
-                label={<Typography variant="body2" fontWeight={500}>PAN Verified</Typography>} />
+                label={<Typography variant="body2" fontWeight={500} sx={{ color: formData.panNumber.trim() ? '#334155' : '#cbd5e1' }}>PAN Verified</Typography>} />
             </Box>
           </Box>
 
@@ -498,7 +496,14 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
 
           {/* ── BANK DETAILS ── */}
           <Typography variant="subtitle2" sx={sectionSx}>
-            BANK DETAILS {formData.panNumber && `(PAN: ${formData.panNumber.toUpperCase()})`}
+            BANK DETAILS{formData.panNumber && (
+              <Typography component="span" sx={{
+                fontWeight: 600, fontSize: '0.85rem', color: '#334155',
+                textTransform: 'none', letterSpacing: 0, ml: 1
+              }}>
+                — linked to PAN {formData.panNumber.toUpperCase()}
+              </Typography>
+            )}
           </Typography>
           <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
             <Box>
@@ -517,7 +522,7 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
                   renderValue={(v) => v || <em style={{ color: '#94a3b8' }}>Select account type</em>}
                   sx={selectSx}>
                   <MenuItem value=""><em>None</em></MenuItem>
-                  {ACCOUNT_TYPES.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}
+                  {accountTypeOptions.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}
                 </Select>
               </FormControl>
             </Box>
