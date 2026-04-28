@@ -48,7 +48,11 @@ class APIService {
     const contentType = response.headers.get('content-type') || '';
     if (!contentType.includes('application/json')) {
       if (!response.ok) {
-        throw new Error(`Server error (${response.status}): endpoint may not exist or server needs restart`);
+        throw new Error(
+          `Server error (${response.status}): the API returned a non-JSON response ` +
+            `(often an unhandled exception — check Django logs). Confirm the URL matches ` +
+            `REACT_APP_API_URL and the backend process is running.`
+        );
       }
       return null;
     }
@@ -109,11 +113,54 @@ class APIService {
    * Login — POST /auth/login
    */
   async login(email, password) {
-    const response = await this.request('/auth/login/', {
+    // Skip the request() helper — login must never send a stale token in the
+    // Authorization header, as DRF will reject the request before it reaches
+    // the credential-checking logic and return 401.
+    const res = await fetch(`${API_BASE_URL}/auth/login/`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     });
-    return response;
+
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      throw new Error(`Server error (${res.status}): non-JSON response from login endpoint`);
+    }
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      let message = data.message || data.detail;
+      if (!message) {
+        const firstKey = Object.keys(data).find(k => Array.isArray(data[k]));
+        message = firstKey ? `${firstKey}: ${data[firstKey][0]}` : 'Invalid credentials';
+      }
+      throw new Error(message);
+    }
+
+    return data;
+  }
+
+  async requestOTP(phone) {
+    const res = await fetch(`${API_BASE_URL}/auth/otp/request/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to send OTP');
+    return data;
+  }
+
+  async verifyOTP(phone, code) {
+    const res = await fetch(`${API_BASE_URL}/auth/otp/verify/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone, code }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'OTP verification failed');
+    return data;
   }
 
   /**
@@ -218,7 +265,6 @@ export const trialsAPI = {
 export const repAPI = {
   getAll: async (filters = {}) => {
     const params = new URLSearchParams();
-    if (filters.status && filters.status !== 'all') params.append('status', filters.status);
     if (filters.city && filters.city !== 'all') params.append('city', filters.city);
     if (filters.region && filters.region !== 'all') params.append('region', filters.region);
     if (filters.search) params.append('search', filters.search);
@@ -251,15 +297,29 @@ export const repAPI = {
     return apiService.request(`/reps/${id}/`, { method: 'DELETE' });
   },
 
-  assignTrials: async (repId, trialIds) => {
-    return apiService.request(`/reps/${repId}/`, {
-      method: 'PATCH',
-      body: JSON.stringify({ trialIds }),
+  search: async (query) => {
+    return apiService.request(`/reps/?search=${encodeURIComponent(query)}`);
+  },
+
+  // Assignment management
+  addAssignment: async (repId, assignmentData) => {
+    return apiService.request(`/reps/${repId}/assignments/`, {
+      method: 'POST',
+      body: JSON.stringify(assignmentData),
     });
   },
 
-  search: async (query) => {
-    return apiService.request(`/reps/?search=${encodeURIComponent(query)}`);
+  updateAssignment: async (repId, assignmentId, data) => {
+    return apiService.request(`/reps/${repId}/assignments/${assignmentId}/`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  deleteAssignment: async (repId, assignmentId) => {
+    return apiService.request(`/reps/${repId}/assignments/${assignmentId}/`, {
+      method: 'DELETE',
+    });
   },
 };
 
@@ -390,5 +450,258 @@ export const paymentsAPI = {
 
   delete: async (id) => {
     return apiService.request(`/payments/${id}/`, { method: 'DELETE' });
+  },
+};
+
+// ============================================
+// CONFIG API (Admin dropdown options)
+// ============================================
+export const configAPI = {
+  getAll: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.category) params.append('category', filters.category);
+    if (filters.active) params.append('active', filters.active);
+    if (filters.search) params.append('search', filters.search);
+    const qs = params.toString();
+    return apiService.request(`/config/${qs ? `?${qs}` : ''}`);
+  },
+
+  getByCategory: async (category) => {
+    return apiService.request(`/config/?category=${category}&active=true`);
+  },
+
+  create: async (data) => {
+    return apiService.request('/config/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  update: async (id, data) => {
+    return apiService.request(`/config/${id}/`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  delete: async (id) => {
+    return apiService.request(`/config/${id}/`, { method: 'DELETE' });
+  },
+
+  bulk: async (items) => {
+    return apiService.request('/config/bulk/', {
+      method: 'POST',
+      body: JSON.stringify({ items }),
+    });
+  },
+
+  getCategories: async () => {
+    return apiService.request('/config-categories/');
+  },
+};
+
+// ============================================
+// WORK ORDERS API
+// ============================================
+export const workOrdersAPI = {
+  getAll: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.vendor) params.append('vendor', filters.vendor);
+    if (filters.type) params.append('type', filters.type);
+    if (filters.status) params.append('status', filters.status);
+    if (filters.search) params.append('search', filters.search);
+    if (filters.sort) params.append('sort', filters.sort);
+    if (filters.page) params.append('page', filters.page);
+    if (filters.limit) params.append('limit', filters.limit);
+    const qs = params.toString();
+    return apiService.request(`/work-orders/${qs ? `?${qs}` : ''}`);
+  },
+
+  getById: async (id) => {
+    return apiService.request(`/work-orders/${id}/`);
+  },
+
+  create: async (data) => {
+    return apiService.request('/work-orders/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  update: async (id, data) => {
+    return apiService.request(`/work-orders/${id}/`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  delete: async (id) => {
+    return apiService.request(`/work-orders/${id}/`, { method: 'DELETE' });
+  },
+};
+
+// ============================================
+// PAYMENT REQUESTS API
+// ============================================
+export const paymentRequestsAPI = {
+  getAll: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.vendor) params.append('vendor', filters.vendor);
+    if (filters.workOrder) params.append('workOrder', filters.workOrder);
+    if (filters.search) params.append('search', filters.search);
+    if (filters.sort) params.append('sort', filters.sort);
+    if (filters.page) params.append('page', filters.page);
+    if (filters.limit) params.append('limit', filters.limit);
+    const qs = params.toString();
+    return apiService.request(`/payment-requests/${qs ? `?${qs}` : ''}`);
+  },
+
+  getById: async (id) => {
+    return apiService.request(`/payment-requests/${id}/`);
+  },
+
+  create: async (data) => {
+    return apiService.request('/payment-requests/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  update: async (id, data) => {
+    return apiService.request(`/payment-requests/${id}/`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  patch: async (id, data) => {
+    return apiService.request(`/payment-requests/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+
+  delete: async (id) => {
+    return apiService.request(`/payment-requests/${id}/`, { method: 'DELETE' });
+  },
+};
+
+// ============================================
+// Payment Batches API
+// ============================================
+export const paymentBatchesAPI = {
+  getAll: async () => {
+    return apiService.request('/payment-batches/');
+  },
+
+  create: async (data) => {
+    return apiService.request('/payment-batches/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+};
+
+// ============================================
+// TDS API
+// ============================================
+export const tdsAPI = {
+  getAll: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.status) params.append('status', filters.status);
+    if (filters.month) params.append('month', filters.month);
+    if (filters.vendor) params.append('vendor', filters.vendor);
+    const qs = params.toString();
+    return apiService.request(`/tds/${qs ? `?${qs}` : ''}`);
+  },
+
+  getSummary: async (month) => {
+    const qs = month ? `?month=${encodeURIComponent(month)}` : '';
+    return apiService.request(`/tds/summary/${qs}`);
+  },
+
+  markDeposited: async (month) => {
+    return apiService.request('/tds/mark_deposited/', {
+      method: 'POST',
+      body: JSON.stringify({ month }),
+    });
+  },
+};
+
+// ============================================
+// COURIER API
+// ============================================
+export const courierAPI = {
+  getAll: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.status) params.append('status', filters.status);
+    if (filters.trial) params.append('trial', filters.trial);
+    if (filters.city) params.append('city', filters.city);
+    const qs = params.toString();
+    return apiService.request(`/courier/shipments/${qs ? `?${qs}` : ''}`);
+  },
+
+  getById: async (id) => {
+    return apiService.request(`/courier/shipments/${id}/`);
+  },
+
+  create: async (data) => {
+    return apiService.request('/courier/shipments/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  update: async (id, data) => {
+    return apiService.request(`/courier/shipments/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+
+  delete: async (id) => {
+    return apiService.request(`/courier/shipments/${id}/`, { method: 'DELETE' });
+  },
+
+  dispatch: async (id, data) => {
+    return apiService.request(`/courier/shipments/${id}/dispatch/`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  transit: async (id, note = '') => {
+    return apiService.request(`/courier/shipments/${id}/transit/`, {
+      method: 'POST',
+      body: JSON.stringify({ note }),
+    });
+  },
+
+  deliver: async (id, data) => {
+    return apiService.request(`/courier/shipments/${id}/deliver/`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  return: async (id, note = '') => {
+    return apiService.request(`/courier/shipments/${id}/return/`, {
+      method: 'POST',
+      body: JSON.stringify({ note }),
+    });
+  },
+
+  lost: async (id, note = '') => {
+    return apiService.request(`/courier/shipments/${id}/lost/`, {
+      method: 'POST',
+      body: JSON.stringify({ note }),
+    });
+  },
+
+  updateItem: async (shipmentId, itemId, data) => {
+    return apiService.request(`/courier/shipments/${shipmentId}/items/${itemId}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
   },
 };

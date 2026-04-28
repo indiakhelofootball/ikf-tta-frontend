@@ -23,6 +23,8 @@ import { WorkOrderManagementPage } from "./components/workorders";
 import { BankManagementPage } from "./components/bank";
 import { ProfilePage } from "./components/profile";
 import AdminPage from "./components/admin/AdminPage";
+import SocialMediaReport from "./components/reports/SocialMediaReport";
+import CourierManagementPage from "./components/courier/CourierManagementPage";
 
 // Import error handling components
 import ErrorFallback from "./components/error/ErrorFallback";
@@ -127,6 +129,16 @@ function App() {
             <Route path="/bank-tds" element={
               <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
                 <BankManagementPage />
+              </RoleBasedRoute>
+            } />
+            <Route path="/reports/social-media" element={
+              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+                <SocialMediaReport />
+              </RoleBasedRoute>
+            } />
+            <Route path="/courier" element={
+              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+                <CourierManagementPage />
               </RoleBasedRoute>
             } />
             <Route path="/profile" element={<ProfilePage />} />

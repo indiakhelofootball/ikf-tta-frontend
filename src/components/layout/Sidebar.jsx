@@ -13,6 +13,8 @@ import {
   ChevronRight as ChevronRightIcon,
   Assignment as WorkOrderIcon,
   AccountBalance as BankIcon,
+  Assessment as ReportsIcon,
+  LocalShipping as CourierIcon,
 } from "@mui/icons-material";
 import { useAuth } from "../../auth/AuthContext";
 import { ROLES } from "../../auth/roles";
@@ -32,6 +34,8 @@ export default function Sidebar({ collapsed, onToggle }) {
   const canAccessWorkOrders =
     user?.role === ROLES.SUPER_ADMIN || user?.role === ROLES.ADMIN;
   const canAccessBank =
+    user?.role === ROLES.SUPER_ADMIN || user?.role === ROLES.ADMIN;
+  const canAccessReports =
     user?.role === ROLES.SUPER_ADMIN || user?.role === ROLES.ADMIN;
 
   const linkClass = ({ isActive }) =>
@@ -92,6 +96,7 @@ export default function Sidebar({ collapsed, onToggle }) {
       {/* Navigation */}
       <nav className="sidebar-nav">
         <NavItem to="/dashboard" icon={<DashboardIcon fontSize="small" />} label="Dashboard" />
+        {canAccessTrialManagement && <NavItem to="/admin" icon={<SettingsIcon fontSize="small" />} label="Admin" />}
         {canAccessTrialManagement && <NavItem to="/trials/create" icon={<AddIcon fontSize="small" />} label="Project Setup" />}
         {canAccessTrialManagement && <NavItem to="/trials" icon={<EmojiEventsIcon fontSize="small" />} label="Projects" end />}
         {canAccessREPManagement && <NavItem to="/rep-management" icon={<BusinessIcon fontSize="small" />} label="REP Management" />}
@@ -99,7 +104,8 @@ export default function Sidebar({ collapsed, onToggle }) {
         {canAccessWorkOrders && <NavItem to="/work-orders" icon={<WorkOrderIcon fontSize="small" />} label="Work Orders" />}
         {canAccessPayments && <NavItem to="/payments" icon={<PaymentIcon fontSize="small" />} label="Payments" />}
         {canAccessBank && <NavItem to="/bank-tds" icon={<BankIcon fontSize="small" />} label="Banking" />}
-        {canAccessTrialManagement && <NavItem to="/admin" icon={<SettingsIcon fontSize="small" />} label="Admin" />}
+        {canAccessReports && <NavItem to="/reports/social-media" icon={<ReportsIcon fontSize="small" />} label="Reports" />}
+        {canAccessReports && <NavItem to="/courier" icon={<CourierIcon fontSize="small" />} label="Courier" />}
       </nav>
     </aside>
   );
