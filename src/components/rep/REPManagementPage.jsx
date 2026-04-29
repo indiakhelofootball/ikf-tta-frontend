@@ -72,9 +72,7 @@ function REPManagementPage() {
   const [sortBy, setSortBy] = useState('repName');
   const [sortOrder, setSortOrder] = useState('asc');
   const [filterTrialName, setFilterTrialName] = useState('');
-  const [filterPeriod, setFilterPeriod] = useState('');
   const [filterCity, setFilterCity] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
 
   // Bulk upload state
   const [bulkMenuAnchor, setBulkMenuAnchor] = useState(null);
@@ -97,12 +95,12 @@ function REPManagementPage() {
 
   useEffect(() => {
     filterAndSortREPs();
-  }, [reps, searchQuery, sortBy, sortOrder, filterTrialName, filterPeriod, filterCity, filterStatus]);
+  }, [reps, searchQuery, sortBy, sortOrder, filterTrialName, filterCity]);
 
   const loadREPs = async () => {
     try {
       setLoading(true);
-      const response = await repAPI.getAll();
+      const response = await repAPI.getAll({ limit: 100 });
       setReps(response.reps || []);
     } catch (error) {
       console.error('Load error:', error);
@@ -120,35 +118,29 @@ function REPManagementPage() {
       const q = searchQuery.toLowerCase();
       filtered = filtered.filter(r =>
         r.repName?.toLowerCase().includes(q) ||
-        r.city?.toLowerCase().includes(q) ||
-        r.state?.toLowerCase().includes(q) ||
-        r.assignedTrials?.some(t => t.trialName?.toLowerCase().includes(q))
+        r.contactName?.toLowerCase().includes(q) ||
+        r.cityAssignments?.some(a =>
+          a.city?.toLowerCase().includes(q) ||
+          a.state?.toLowerCase().includes(q) ||
+          a.trialName?.toLowerCase().includes(q)
+        )
       );
     }
 
     // Trial name filter
     if (filterTrialName) {
       filtered = filtered.filter(r =>
-        r.assignedTrials?.some(t => t.trialName === filterTrialName)
-      );
-    }
-
-    // Period filter
-    if (filterPeriod) {
-      filtered = filtered.filter(r =>
-        r.assignedTrials?.some(t => t.period === filterPeriod)
+        r.cityAssignments?.some(a => a.trialName === filterTrialName)
       );
     }
 
     // City filter
     if (filterCity) {
-      filtered = filtered.filter(r => r.city === filterCity);
+      filtered = filtered.filter(r =>
+        r.cityAssignments?.some(a => a.city === filterCity)
+      );
     }
 
-    // Status filter
-    if (filterStatus) {
-      filtered = filtered.filter(r => r.status === filterStatus);
-    }
 
     // Sorting
     filtered.sort((a, b) => {
@@ -159,22 +151,13 @@ function REPManagementPage() {
           aVal = a.repName?.toLowerCase() || '';
           bVal = b.repName?.toLowerCase() || '';
           break;
-        case 'city':
-          aVal = a.city?.toLowerCase() || '';
-          bVal = b.city?.toLowerCase() || '';
+        case 'cities':
+          aVal = a.numberOfCities || 0;
+          bVal = b.numberOfCities || 0;
           break;
-        case 'noOfTrials':
-          aVal = a.assignedTrials?.length || 0;
-          bVal = b.assignedTrials?.length || 0;
-          break;
-        case 'status':
-          aVal = a.status?.toLowerCase() || '';
-          bVal = b.status?.toLowerCase() || '';
-          break;
-        case 'thisWeek':
-          // Sort by trials happening this week
-          aVal = a.assignedTrials?.filter(t => t.period === 'This Week').length || 0;
-          bVal = b.assignedTrials?.filter(t => t.period === 'This Week').length || 0;
+        case 'assignments':
+          aVal = a.cityAssignments?.length || 0;
+          bVal = b.cityAssignments?.length || 0;
           break;
         default:
           aVal = a.repName?.toLowerCase() || '';
@@ -257,9 +240,7 @@ function REPManagementPage() {
 
   const handleClearFilters = () => {
     setFilterTrialName('');
-    setFilterPeriod('');
     setFilterCity('');
-    setFilterStatus('');
     setFilterMenuAnchor(null);
   };
 
@@ -270,8 +251,8 @@ function REPManagementPage() {
 
   const handleDownloadTemplate = () => {
     const template = [
-      ['repName', 'state', 'city', 'phone', 'email', 'contactName', 'pinCode', 'physicalAddress'],
-      ['Sports Academy Mumbai', 'Maharashtra', 'Mumbai', '9876543210', 'contact@academy.com', 'Rajesh Sharma', '400001', '123 Sports Complex'],
+      ['repName', 'phone', 'email', 'contactName'],
+      ['Sports Academy Mumbai', '9876543210', 'contact@academy.com', 'Rajesh Sharma'],
     ];
     const csv = template.map(r => r.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -297,18 +278,14 @@ function REPManagementPage() {
       const row = {};
       headers.forEach((h, idx) => row[h] = values[idx] || '');
 
-      if (!row.repname || !row.state || !row.city) {
-        errors.push(`Row ${i + 1}: repName, state & city are required`);
+      if (!row.repname) {
+        errors.push(`Row ${i + 1}: repName is required`);
       } else {
         data.push({
           repName: row.repname,
-          state: row.state,
-          city: row.city,
           phone: row.phone || '',
           email: row.email || '',
           contactName: row.contactname || '',
-          pinCode: row.pincode || '',
-          physicalAddress: row.physicaladdress || '',
           status: 'pending',
         });
       }
@@ -343,18 +320,16 @@ function REPManagementPage() {
     for (let i = 0; i < bulkData.length; i++) {
       const repData = bulkData[i];
 
-      // Check for duplicates
+      // Check for duplicates by org name
       const alreadyExists = reps.some(
-        r =>
-          r.repName?.toLowerCase() === repData.repName.toLowerCase() &&
-          r.city?.toLowerCase() === repData.city.toLowerCase()
+        r => r.repName?.toLowerCase() === repData.repName.toLowerCase()
       );
 
       if (alreadyExists) {
         results.push({
           ...repData,
           status: 'error',
-          error: 'REP already exists in this city',
+          error: 'REP already exists',
         });
         setBulkProgress(((i + 1) / total) * 100);
         continue;
@@ -394,17 +369,17 @@ function REPManagementPage() {
   };
 
   // Get unique values for filters
-  const uniqueTrialNames = [...new Set(reps.flatMap(r => r.assignedTrials?.map(t => t.trialName) || []))];
-  const uniqueCities = [...new Set(reps.map(r => r.city).filter(Boolean))];
-  const uniqueStatuses = ['Active', 'Inactive'];
-  const periods = ['This Week', 'Next Week', 'This Month', 'Next Month'];
+  const uniqueTrialNames = [...new Set(reps.flatMap(r => r.cityAssignments?.map(a => a.trialName) || []))].filter(Boolean);
+  const uniqueCities = [...new Set(reps.flatMap(r => r.cityAssignments?.map(a => a.city) || []))].filter(Boolean);
 
   /* ---------------- SUMMARY STATS ---------------- */
 
   const totalREPs = reps.length;
-  const activeREPs = reps.filter(r => r.status === 'Active').length;
-  const thisWeekTrials = reps.reduce((sum, r) => 
-    sum + (r.assignedTrials?.filter(t => t.period === 'This Week').length || 0), 0
+  const totalCities = new Set(
+    reps.flatMap(r => r.cityAssignments?.map(a => a.city) || [])
+  ).size;
+  const totalAssignments = reps.reduce(
+    (sum, r) => sum + (r.cityAssignments?.length || 0), 0
   );
 
   /* ---------------- UI ---------------- */
@@ -482,10 +457,10 @@ function REPManagementPage() {
             <Card>
               <CardContent>
                 <Stack direction="row" spacing={2} alignItems="center">
-                  <CheckIcon sx={{ fontSize: 40, color: '#22C55E' }} />
+                  <LocationCityIcon sx={{ fontSize: 40, color: '#22C55E' }} />
                   <Box>
-                    <Typography variant="h4" fontWeight={700}>{activeREPs}</Typography>
-                    <Typography variant="body2" color="text.secondary">Active REPs</Typography>
+                    <Typography variant="h4" fontWeight={700}>{totalCities}</Typography>
+                    <Typography variant="body2" color="text.secondary">Cities</Typography>
                   </Box>
                 </Stack>
               </CardContent>
@@ -497,8 +472,8 @@ function REPManagementPage() {
                 <Stack direction="row" spacing={2} alignItems="center">
                   <CalendarIcon sx={{ fontSize: 40, color: '#F59E0B' }} />
                   <Box>
-                    <Typography variant="h4" fontWeight={700}>{thisWeekTrials}</Typography>
-                    <Typography variant="body2" color="text.secondary">Trials This Week</Typography>
+                    <Typography variant="h4" fontWeight={700}>{totalAssignments}</Typography>
+                    <Typography variant="body2" color="text.secondary">Total Assignments</Typography>
                   </Box>
                 </Stack>
               </CardContent>
@@ -558,7 +533,7 @@ function REPManagementPage() {
             sx={{ minWidth: 120 }}
           >
             Filter
-            {(filterTrialName || filterPeriod || filterCity || filterStatus) && (
+            {(filterTrialName || filterCity) && (
               <Chip 
                 label="Active" 
                 size="small" 
@@ -574,17 +549,11 @@ function REPManagementPage() {
           <MenuItem onClick={() => handleSort('repName')}>
             REP Name {sortBy === 'repName' && `(${sortOrder === 'asc' ? 'A-Z' : 'Z-A'})`}
           </MenuItem>
-          <MenuItem onClick={() => handleSort('city')}>
-            City {sortBy === 'city' && `(${sortOrder === 'asc' ? 'A-Z' : 'Z-A'})`}
+          <MenuItem onClick={() => handleSort('cities')}>
+            Cities {sortBy === 'cities' && `(${sortOrder === 'asc' ? 'Low-High' : 'High-Low'})`}
           </MenuItem>
-          <MenuItem onClick={() => handleSort('noOfTrials')}>
-            No. of Trials {sortBy === 'noOfTrials' && `(${sortOrder === 'asc' ? 'Low-High' : 'High-Low'})`}
-          </MenuItem>
-          <MenuItem onClick={() => handleSort('thisWeek')}>
-            This Week Trials {sortBy === 'thisWeek' && `(${sortOrder === 'asc' ? 'Low-High' : 'High-Low'})`}
-          </MenuItem>
-          <MenuItem onClick={() => handleSort('status')}>
-            Status {sortBy === 'status' && `(${sortOrder === 'asc' ? 'A-Z' : 'Z-A'})`}
+          <MenuItem onClick={() => handleSort('assignments')}>
+            Assignments {sortBy === 'assignments' && `(${sortOrder === 'asc' ? 'Low-High' : 'High-Low'})`}
           </MenuItem>
         </Menu>
 
@@ -612,20 +581,6 @@ function REPManagementPage() {
           </FormControl>
 
           <FormControl fullWidth size="small" sx={{ mb: 2 }}>
-            <InputLabel>Period</InputLabel>
-            <Select
-              value={filterPeriod}
-              onChange={(e) => setFilterPeriod(e.target.value)}
-              label="Period"
-            >
-              <MenuItem value="">All</MenuItem>
-              {periods.map(period => (
-                <MenuItem key={period} value={period}>{period}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <FormControl fullWidth size="small" sx={{ mb: 2 }}>
             <InputLabel>City</InputLabel>
             <Select
               value={filterCity}
@@ -639,21 +594,7 @@ function REPManagementPage() {
             </Select>
           </FormControl>
 
-          <FormControl fullWidth size="small" sx={{ mb: 2 }}>
-            <InputLabel>Status</InputLabel>
-            <Select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              label="Status"
-            >
-              <MenuItem value="">All</MenuItem>
-              {uniqueStatuses.map(status => (
-                <MenuItem key={status} value={status}>{status}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <Button 
+          <Button
             fullWidth 
             variant="outlined" 
             onClick={handleClearFilters}
@@ -710,8 +651,8 @@ function REPManagementPage() {
               No REPs found
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              {searchQuery || filterTrialName || filterPeriod || filterCity || filterStatus
-                ? 'Try adjusting your search or filters' 
+              {searchQuery || filterTrialName || filterCity
+                ? 'Try adjusting your search or filters'
                 : 'Add your first REP to get started'}
             </Typography>
           </Box>
@@ -764,8 +705,8 @@ function REPManagementPage() {
                   <TableRow sx={{ bgcolor: '#f8fafc' }}>
                     <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>REP Name</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>City</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>State</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Contact</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Phone</TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>Result</TableCell>
                   </TableRow>
                 </TableHead>
@@ -778,8 +719,8 @@ function REPManagementPage() {
                         {r.status === 'pending' && <Typography variant="caption">Pending</Typography>}
                       </TableCell>
                       <TableCell>{r.repName}</TableCell>
-                      <TableCell>{r.city}</TableCell>
-                      <TableCell>{r.state}</TableCell>
+                      <TableCell>{r.contactName}</TableCell>
+                      <TableCell>{r.phone}</TableCell>
                       <TableCell>
                         <Typography variant="caption" color={r.error ? 'error' : 'text.secondary'}>
                           {r.error || (r.status === 'success' ? 'Added' : '-')}

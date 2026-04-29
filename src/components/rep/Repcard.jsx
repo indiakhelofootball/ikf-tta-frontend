@@ -20,11 +20,7 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Visibility as ViewIcon,
-  Phone as PhoneIcon,
-  Email as EmailIcon,
-  LocationCity as LocationCityIcon,
   Business as BusinessIcon,
-  CalendarToday as CalendarIcon,
   Close as CloseIcon,
 } from '@mui/icons-material';
 
@@ -48,9 +44,9 @@ function REPCard({ rep, onEdit, onDelete, onViewDetails }) {
     onDelete(rep);
   };
 
-  const totalTrials = rep.assignedTrials?.length || 0;
-  const activeTrials = rep.assignedTrials?.filter(t => t.status === 'Active').length || 0;
-  const thisWeekTrials = rep.assignedTrials?.filter(t => t.period === 'This Week').length || 0;
+  const assignments = rep.cityAssignments || [];
+  const uniqueCities = [...new Set(assignments.map(a => a.city).filter(Boolean))];
+  const totalAssignments = assignments.length;
 
   return (
     <>
@@ -86,53 +82,53 @@ function REPCard({ rep, onEdit, onDelete, onViewDetails }) {
             </Typography>
           </Box>
 
-          {/* Location Info */}
-          <Stack spacing={1.5} sx={{ mb: 2 }}>
-            <Stack direction="row" spacing={1.5} alignItems="center">
-              <LocationCityIcon fontSize="small" sx={{ color: '#6366f1', flexShrink: 0 }} />
+          {/* Contact */}
+          {rep.contactName && (
+            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2 }}>
+              <BusinessIcon fontSize="small" sx={{ color: '#10b981', flexShrink: 0 }} />
               <Typography variant="body2" color="text.secondary">
-                {rep.city}, {rep.state}
+                {rep.contactName}
               </Typography>
             </Stack>
+          )}
 
-            {rep.contactName && (
-              <Stack direction="row" spacing={1.5} alignItems="center">
-                <BusinessIcon fontSize="small" sx={{ color: '#10b981', flexShrink: 0 }} />
-                <Typography variant="body2" color="text.secondary">
-                  {rep.contactName}
-                </Typography>
-              </Stack>
-            )}
-
-          </Stack>
-
-          {/* Trial Stats */}
-          <Box 
-            sx={{ 
+          {/* Assigned Projects */}
+          <Box
+            sx={{
               mt: 'auto',
-              p: 2, 
-              bgcolor: '#f8fafc', 
+              p: 2,
+              bgcolor: '#f8fafc',
               borderRadius: 2,
             }}
           >
-            <Stack direction="row" spacing={3} justifyContent="space-between">
-              <Box>
-                <Typography variant="h5" fontWeight={700} color="primary">
-                  {totalTrials}
+            {totalAssignments > 0 ? (
+              <Stack spacing={1}>
+                <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Assigned Trials ({totalAssignments})
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  Total Trials
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="h5" fontWeight={700} color="success.main">
-                  {activeTrials}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  Active
-                </Typography>
-              </Box>
-            </Stack>
+                <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap', gap: 0.5 }}>
+                  {assignments.slice(0, 4).map(a => (
+                    <Chip
+                      key={a.id}
+                      label={[a.trialSeason, a.trialType, a.city].filter(Boolean).join(' | ')}
+                      size="small"
+                      sx={{ fontSize: '0.72rem', fontWeight: 600, bgcolor: '#dbeafe', color: '#1d4ed8', height: 22 }}
+                    />
+                  ))}
+                  {assignments.length > 4 && (
+                    <Chip
+                      label={`+${assignments.length - 4} more`}
+                      size="small"
+                      sx={{ fontSize: '0.72rem', fontWeight: 600, bgcolor: '#f1f5f9', color: '#64748b', height: 22 }}
+                    />
+                  )}
+                </Stack>
+              </Stack>
+            ) : (
+              <Typography variant="caption" color="text.secondary">
+                No assignments
+              </Typography>
+            )}
           </Box>
         </CardContent>
 
@@ -198,7 +194,7 @@ function REPCard({ rep, onEdit, onDelete, onViewDetails }) {
 
         <DialogContent>
           <Alert severity="warning" sx={{ mb: 3 }}>
-            This action cannot be undone. All trial assignments will be removed.
+            This action cannot be undone. All city assignments will be removed.
           </Alert>
 
           <Box sx={{ mb: 3, p: 2, bgcolor: '#f8fafc', borderRadius: 2 }}>
@@ -206,10 +202,10 @@ function REPCard({ rep, onEdit, onDelete, onViewDetails }) {
               <strong>REP Name:</strong> {rep.repName}
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-              <strong>City:</strong> {rep.city}, {rep.state}
+              <strong>Cities:</strong> {uniqueCities.join(', ') || 'None'}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              <strong>Assigned Trials:</strong> {totalTrials}
+              <strong>Assignments:</strong> {totalAssignments}
             </Typography>
           </Box>
 

@@ -24,6 +24,7 @@ import {
   Delete as DeleteIcon,
   InsertDriveFile as FileIcon,
   Add as AddIcon,
+  Edit as EditIcon,
 } from '@mui/icons-material';
 import { State, City } from 'country-state-city';
 import { trialsAPI, repAPI } from '../../services/api';
@@ -139,6 +140,14 @@ function REPModal({ open, onClose, onSave, editingREP }) {
 
   // Edit mode — assignment editing
   const [editAssignmentId, setEditAssignmentId] = useState(null);
+  const [editAssignmentData, setEditAssignmentData] = useState({});
+  const [editCourierAreas, setEditCourierAreas] = useState([]);
+  const [editCourierPinLoading, setEditCourierPinLoading] = useState(false);
+  const [editCourierPinError, setEditCourierPinError] = useState('');
+  const [editCourierDistrict, setEditCourierDistrict] = useState('');
+  const [editCourierState, setEditCourierState] = useState('');
+  const [editCourierSubArea, setEditCourierSubArea] = useState('');
+  const editCourierPinAbortRef = useRef(null);
   const [addingNewAssignment, setAddingNewAssignment] = useState(false);
 
   // Load trials + existing REP assigned cities when modal opens
@@ -535,6 +544,86 @@ function REPModal({ open, onClose, onSave, editingREP }) {
     }
   };
 
+  const openEditAssignment = (a) => {
+    setEditAssignmentId(a.id);
+    setEditAssignmentData({
+      city: a.city || '',
+      state: a.state || '',
+      courierAcceptingName: a.courierAcceptingName || '',
+      courierAcceptingPhone: a.courierAcceptingPhone || '',
+      courierPinCode: a.courierPinCode || '',
+      courierAddress: a.courierAddress || '',
+      courierAdditionalInfo: a.courierAdditionalInfo || '',
+      physicalAddress: a.physicalAddress || '',
+      googleMapLink: a.googleMapLink || '',
+      pinCode: a.pinCode || '',
+      groundContactName: a.groundContactName || '',
+      groundContactPhone: a.groundContactPhone || '',
+    });
+    setEditCourierAreas(a.courierSubArea ? [a.courierSubArea] : []);
+    setEditCourierDistrict(a.courierDistrict || '');
+    setEditCourierState(a.courierState || '');
+    setEditCourierSubArea(a.courierSubArea || '');
+  };
+
+  const lookupEditCourierPin = async (pin) => {
+    if (editCourierPinAbortRef.current) editCourierPinAbortRef.current.abort();
+    if (pin.length !== 6 || !/^\d{6}$/.test(pin)) {
+      setEditCourierAreas([]); setEditCourierPinError('');
+      setEditCourierDistrict(''); setEditCourierState(''); setEditCourierSubArea('');
+      return;
+    }
+    const controller = new AbortController();
+    editCourierPinAbortRef.current = controller;
+    setEditCourierPinLoading(true); setEditCourierPinError('');
+    try {
+      const res = await fetch(`https://api.postalpincode.in/pincode/${pin}`, { signal: controller.signal });
+      const data = await res.json();
+      const record = data[0];
+      if (record.Status === 'Success' && record.PostOffice?.length) {
+        const first = record.PostOffice[0];
+        const areas = record.PostOffice.map(po => po.Name);
+        setEditCourierAreas(areas); setEditCourierPinError('');
+        setEditCourierDistrict(first.District || '');
+        setEditCourierState(first.State || '');
+        setEditCourierSubArea(areas[0] || '');
+      } else {
+        setEditCourierAreas([]); setEditCourierPinError('Invalid PIN code — no location found');
+        setEditCourierDistrict(''); setEditCourierState(''); setEditCourierSubArea('');
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        setEditCourierAreas([]); setEditCourierPinError('Could not verify PIN code');
+      }
+    } finally {
+      setEditCourierPinLoading(false);
+    }
+  };
+
+  const handleEditAssignmentChange = (field) => (e) => {
+    setEditAssignmentData(prev => ({ ...prev, [field]: e.target.value }));
+  };
+
+  const handleUpdateAssignment = async () => {
+    if (!editingREP || !editAssignmentId) return;
+    setSaving(true);
+    try {
+      await repAPI.updateAssignment(editingREP.id, editAssignmentId, {
+        ...editAssignmentData,
+        courierDistrict: editCourierDistrict,
+        courierState: editCourierState,
+        courierSubArea: editCourierSubArea,
+      });
+      setEditAssignmentId(null);
+      onClose();
+      window.location.reload();
+    } catch (error) {
+      setFileError(error.message || 'Failed to update assignment');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // ── Computed ──
   const mouStatuses = ['Signed', 'Pending', 'Not Required'];
   const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -762,8 +851,9 @@ function REPModal({ open, onClose, onSave, editingREP }) {
               <Typography sx={secHeaderSx}>Assigned Trials ({existingAssignments.length})</Typography>
               <Stack spacing={1.5}>
                 {existingAssignments.map(a => (
-                  <Box key={a.id} sx={{ p: 2, bgcolor: '#f8fafc', border: '1px solid #e5e7eb', borderRadius: '10px' }}>
-                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                  <Box key={a.id} sx={{ border: '1px solid #e5e7eb', borderRadius: '10px', overflow: 'hidden' }}>
+                    <Stack direction="row" justifyContent="space-between" alignItems="center"
+                      sx={{ p: 2, bgcolor: editAssignmentId === a.id ? '#eff6ff' : '#f8fafc' }}>
                       <Box>
                         <Typography sx={{ fontSize: '0.88rem', fontWeight: 700, color: '#1e293b' }}>
                           {[a.trialSeason, a.trialType, a.city].filter(Boolean).join(' | ')}
@@ -772,11 +862,71 @@ function REPModal({ open, onClose, onSave, editingREP }) {
                           {a.state}{a.region ? ` · ${a.region}` : ''}
                         </Typography>
                       </Box>
-                      <IconButton size="small" color="error" onClick={() => handleDeleteAssignment(a.id)}
-                        sx={{ '&:hover': { bgcolor: '#fee2e2' } }}>
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
+                      <Stack direction="row" spacing={0.5}>
+                        <IconButton size="small"
+                          onClick={() => editAssignmentId === a.id ? setEditAssignmentId(null) : openEditAssignment(a)}
+                          sx={{ color: '#3B82F6', '&:hover': { bgcolor: '#dbeafe' } }}>
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton size="small" color="error" onClick={() => handleDeleteAssignment(a.id)}
+                          sx={{ '&:hover': { bgcolor: '#fee2e2' } }}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Stack>
                     </Stack>
+
+                    {editAssignmentId === a.id && (
+                      <Box sx={{ p: 2, borderTop: '1px solid #e5e7eb', bgcolor: 'white' }}>
+                        <Alert severity="warning" sx={{ mb: 2, fontSize: '0.8rem' }}>
+                          Editing City, State, District or Sub-Area on an existing assignment overrides the
+                          original record. Changing the City may cause a collision with another assignment for
+                          this REP, and historical data tied to this assignment will follow it. Proceed only
+                          if you know what you're doing.
+                        </Alert>
+                        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2, mb: 2 }}>
+                          <Box>
+                            <Typography sx={labelSx}>City</Typography>
+                            <TextField fullWidth size="small" value={editAssignmentData.city || ''}
+                              onChange={handleEditAssignmentChange('city')} disabled={saving} />
+                          </Box>
+                          <Box>
+                            <Typography sx={labelSx}>State</Typography>
+                            <TextField fullWidth size="small" value={editAssignmentData.state || ''}
+                              onChange={handleEditAssignmentChange('state')} disabled={saving} />
+                          </Box>
+                        </Box>
+                        {renderCourierSection(
+                          editAssignmentData,
+                          handleEditAssignmentChange,
+                          saving,
+                          (pin) => {
+                            handleEditAssignmentChange('courierPinCode')({ target: { value: pin } });
+                            lookupEditCourierPin(pin);
+                          },
+                          editCourierPinLoading,
+                          editCourierPinError,
+                          editCourierAreas,
+                          editCourierDistrict,
+                          editCourierState,
+                          editCourierSubArea,
+                          setEditCourierSubArea,
+                          labelSx,
+                          setEditCourierDistrict,
+                          setEditCourierState,
+                        )}
+                        {renderGroundSection(editAssignmentData, handleEditAssignmentChange, saving, labelSx, secHeaderSx, {})}
+                        <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+                          <Button variant="contained" size="small" onClick={handleUpdateAssignment}
+                            disabled={saving}
+                            sx={{ bgcolor: '#FBB040', '&:hover': { bgcolor: '#E89F2C' }, fontWeight: 600 }}>
+                            {saving ? 'Saving...' : 'Save Changes'}
+                          </Button>
+                          <Button size="small" onClick={() => setEditAssignmentId(null)} disabled={saving}>
+                            Cancel
+                          </Button>
+                        </Stack>
+                      </Box>
+                    )}
                   </Box>
                 ))}
               </Stack>
@@ -872,7 +1022,7 @@ function REPModal({ open, onClose, onSave, editingREP }) {
                   {renderCourierSection(assignmentData, handleAssignmentChange, saving, courierPinCode => {
                     handleAssignmentChange('courierPinCode')({ target: { value: courierPinCode } });
                     lookupCourierPin(courierPinCode);
-                  }, courierPinLoading, courierPinError, courierAreas, courierDistrict, courierState, courierSubArea, setCourierSubArea, labelSx)}
+                  }, courierPinLoading, courierPinError, courierAreas, courierDistrict, courierState, courierSubArea, setCourierSubArea, labelSx, setCourierDistrict, setCourierState)}
                   {renderGroundSection(assignmentData, handleAssignmentChange, saving, labelSx, secHeaderSx, errors)}
                 </>
               )}
@@ -1195,7 +1345,7 @@ function REPModal({ open, onClose, onSave, editingREP }) {
 }
 
 // Helper render functions for reuse in Edit mode's "add assignment" form
-function renderCourierSection(data, onChange, saving, onPinChange, pinLoading, pinError, areas, district, state, subArea, setSubArea, labelSx) {
+function renderCourierSection(data, onChange, saving, onPinChange, pinLoading, pinError, areas, district, state, subArea, setSubArea, labelSx, setDistrict, setState) {
   return (
     <Box sx={{ mt: 2 }}>
       <Typography sx={{ color: '#3B82F6', fontWeight: 700, mb: 2, textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '0.82rem' }}>
@@ -1229,6 +1379,29 @@ function renderCourierSection(data, onChange, saving, onPinChange, pinLoading, p
           <TextField fullWidth size="small" value={data.courierAddress}
             onChange={onChange('courierAddress')} disabled={saving}
             helperText="Flat / Door No., Building, Street" />
+        </Box>
+        <Box>
+          <Typography sx={labelSx}>District</Typography>
+          <TextField fullWidth size="small" value={district || ''}
+            onChange={(e) => typeof setDistrict === 'function' && setDistrict(e.target.value)}
+            disabled={saving} helperText="Auto-filled from PIN — editable" />
+        </Box>
+        <Box>
+          <Typography sx={labelSx}>State (Courier)</Typography>
+          <TextField fullWidth size="small" value={state || ''}
+            onChange={(e) => typeof setState === 'function' && setState(e.target.value)}
+            disabled={saving} helperText="Auto-filled from PIN — editable" />
+        </Box>
+        <Box sx={{ gridColumn: '1 / -1' }}>
+          <Typography sx={labelSx}>Sub-Area</Typography>
+          <Autocomplete freeSolo size="small"
+            options={areas || []}
+            value={subArea || ''}
+            onChange={(_, val) => setSubArea(val || '')}
+            onInputChange={(_, val) => setSubArea(val || '')}
+            disabled={saving}
+            renderInput={(params) => <TextField {...params} placeholder="Pick from PIN areas or type your own" />}
+          />
         </Box>
       </Box>
     </Box>
