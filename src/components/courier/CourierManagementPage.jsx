@@ -21,7 +21,7 @@ import {
   Phone as PhoneIcon,
 } from '@mui/icons-material';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { repAPI, courierAPI } from '../../services/api';
 
 const PREDEFINED_ITEMS = [
@@ -35,6 +35,22 @@ const PREDEFINED_ITEMS = [
 
 const PRODUCTION_STATUSES = ['Pending', 'Sent for Printing', 'Received from Printer'];
 const COURIERS = ['Blue Dart', 'DTDC', 'Delhivery', 'FedEx', 'India Post', 'Ekart', 'Professional Couriers', 'XpressBees'];
+
+const TRACKING_URLS = {
+  'Blue Dart':            awb => `https://www.bluedart.com/tracking?trackingId=${encodeURIComponent(awb)}`,
+  'DTDC':                 awb => `https://www.dtdc.in/tracking.asp?strCnno=${encodeURIComponent(awb)}`,
+  'Delhivery':            awb => `https://www.delhivery.com/tracking?awb=${encodeURIComponent(awb)}`,
+  'FedEx':                awb => `https://www.fedex.com/fedextrack/?trknbr=${encodeURIComponent(awb)}`,
+  'India Post':           ()  => `https://www.indiapost.gov.in/_layouts/15/dop.portal.tracking/trackconsignment.aspx`,
+  'Ekart':                awb => `https://ekartlogistics.com/track/${encodeURIComponent(awb)}`,
+  'Professional Couriers': awb => `https://www.tpcindia.com/Tracking2014.aspx?id=${encodeURIComponent(awb)}`,
+  'XpressBees':           awb => `https://www.xpressbees.com/track?awb=${encodeURIComponent(awb)}`,
+};
+function getTrackingUrl(courier, awb) {
+  if (!awb) return null;
+  const fn = TRACKING_URLS[courier];
+  return fn ? fn(awb) : null;
+}
 
 const STATUS_CONFIG = {
   Draft:        { color: 'default', label: 'Draft' },
@@ -97,7 +113,7 @@ function downloadPDF(shipment) {
     doc.text(`Trial: ${shipment.snapTrialName}${shipment.snapTrialDate ? ` (Trial Date: ${shipment.snapTrialDate})` : ''}`, 14, y); y += 6;
   }
 
-  doc.autoTable({
+  autoTable(doc, {
     startY: y + 4,
     head: [['#', 'Item', 'Qty', 'Custom', 'Production Status / Remarks']],
     body: (shipment.items || []).map((i, idx) => [
@@ -141,10 +157,23 @@ const STAT_COLORS = {
   success: { bg: '#dcfce7', fg: '#16a34a' },
 };
 
-function StatCard({ icon, label, value, color }) {
+function StatCard({ icon, label, value, color, active, onClick }) {
   const c = STAT_COLORS[color] || STAT_COLORS.grey;
   return (
-    <Box sx={{ bgcolor: '#fff', border: '1px solid #e5e7eb', borderRadius: '14px', p: 2, display: 'flex', alignItems: 'center', gap: 1.5, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+    <Box onClick={onClick}
+      sx={{
+        bgcolor: '#fff',
+        border: active ? `2px solid ${c.fg}` : '1px solid #e5e7eb',
+        borderRadius: '14px',
+        p: 2,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 1.5,
+        boxShadow: active ? `0 2px 10px ${c.fg}33` : '0 1px 4px rgba(0,0,0,0.04)',
+        cursor: onClick ? 'pointer' : 'default',
+        transition: 'all 0.15s ease',
+        '&:hover': onClick ? { borderColor: c.fg, boxShadow: `0 2px 10px ${c.fg}33`, transform: 'translateY(-1px)' } : {},
+      }}>
       <Box sx={{ width: 40, height: 40, borderRadius: '10px', bgcolor: c.bg, color: c.fg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
         {icon}
       </Box>
@@ -260,6 +289,7 @@ export default function CourierManagementPage() {
   const [deliveryWhatsapp, setDeliveryWhatsapp] = useState(false);
   const [deliveryPhone, setDeliveryPhone] = useState(false);
   const [deliveryNotes, setDeliveryNotes] = useState('');
+  const [deliveryImage, setDeliveryImage] = useState('');
 
   const selectedRep = reps.find(r => r.id === fRepId) || null;
   const selectedAsg = selectedRep?.cityAssignments?.find(a => a.id === fAsgId) || null;
@@ -269,10 +299,12 @@ export default function CourierManagementPage() {
       setLoading(true);
       try {
         const [repsData, shipmentsData] = await Promise.all([
-          repAPI.getAll({ limit: 1000 }),
+          repAPI.getAll({ limit: 100 }),
           courierAPI.getAll(),
         ]);
-        const repList = Array.isArray(repsData) ? repsData : (repsData.results || []);
+        const repList = Array.isArray(repsData)
+          ? repsData
+          : (repsData.reps || repsData.results || []);
         setReps(repList);
         setShipments(Array.isArray(shipmentsData) ? shipmentsData : (shipmentsData.results || []));
       } catch {
@@ -386,8 +418,18 @@ export default function CourierManagementPage() {
 
   function openDelivery(id) {
     setDeliveryId(id); setDeliveryReceivedBy('');
-    setDeliveryWhatsapp(false); setDeliveryPhone(false); setDeliveryNotes(''); setError('');
+    setDeliveryWhatsapp(false); setDeliveryPhone(false); setDeliveryNotes('');
+    setDeliveryImage(''); setError('');
     setDeliveryOpen(true);
+  }
+
+  function onDeliveryImageChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 4 * 1024 * 1024) { setError('Image too large (max 4MB).'); return; }
+    const reader = new FileReader();
+    reader.onload = ev => setDeliveryImage(ev.target.result);
+    reader.readAsDataURL(file);
   }
 
   async function saveDelivery() {
@@ -399,6 +441,7 @@ export default function CourierManagementPage() {
         deliveryVerifiedWhatsapp: deliveryWhatsapp,
         deliveryVerifiedPhone: deliveryPhone,
         deliveryNotes: deliveryNotes,
+        deliveryImageUrl: deliveryImage,
       });
       setShipments(prev => prev.map(s => s.id === deliveryId ? updated : s));
       setDeliveryOpen(false);
@@ -441,10 +484,17 @@ export default function CourierManagementPage() {
 
       {/* Stats */}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' }, gap: 1.5, mb: 3 }}>
-        <StatCard icon={<BoxIcon fontSize="small" />} label="Draft" value={stats.Draft} color="grey" />
-        <StatCard icon={<ShipIcon fontSize="small" />} label="Dispatched" value={stats.Dispatched} color="warning" />
-        <StatCard icon={<TransitIcon fontSize="small" />} label="In Transit" value={stats['In Transit']} color="info" />
-        <StatCard icon={<CheckIcon fontSize="small" />} label="Delivered" value={stats.Delivered} color="success" />
+        {[
+          { icon: <BoxIcon fontSize="small" />, label: 'Draft', key: 'Draft', color: 'grey' },
+          { icon: <ShipIcon fontSize="small" />, label: 'Dispatched', key: 'Dispatched', color: 'warning' },
+          { icon: <TransitIcon fontSize="small" />, label: 'In Transit', key: 'In Transit', color: 'info' },
+          { icon: <CheckIcon fontSize="small" />, label: 'Delivered', key: 'Delivered', color: 'success' },
+        ].map(card => (
+          <StatCard key={card.key}
+            icon={card.icon} label={card.label} value={stats[card.key]} color={card.color}
+            active={filterStatus === card.key}
+            onClick={() => setFilterStatus(prev => prev === card.key ? 'all' : card.key)} />
+        ))}
       </Box>
 
       {/* Filters */}
@@ -471,7 +521,7 @@ export default function CourierManagementPage() {
         <Table size="small">
           <TableHead>
             <TableRow sx={{ bgcolor: '#f5f5f7' }}>
-              {['', 'Shipment ID', 'REP', 'City', 'Trial Date', 'Items', 'AWB', 'Courier', 'Dispatch Date', 'Status', ''].map((h, i) => (
+              {['', 'REP', 'City', 'Trial Date', 'Items', 'AWB', 'Courier', 'Dispatch Date', 'Status', ''].map((h, i) => (
                 <TableCell key={i} sx={{ fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#64748b', py: 1.25 }}>{h}</TableCell>
               ))}
             </TableRow>
@@ -479,7 +529,7 @@ export default function CourierManagementPage() {
           <TableBody>
             {!filtered.length ? (
               <TableRow>
-                <TableCell colSpan={11} sx={{ textAlign: 'center', py: 6, color: '#94a3b8' }}>
+                <TableCell colSpan={10} sx={{ textAlign: 'center', py: 6, color: '#94a3b8' }}>
                   <BoxIcon sx={{ fontSize: 36, display: 'block', mx: 'auto', mb: 1, opacity: 0.4 }} />
                   No shipments found.
                 </TableCell>
@@ -495,7 +545,6 @@ export default function CourierManagementPage() {
                       </Tooltip>
                     )}
                   </TableCell>
-                  <TableCell sx={{ fontWeight: 700, fontSize: '0.82rem', color: '#1e293b' }}>{s.refNumber}</TableCell>
                   <TableCell sx={{ fontWeight: 600, fontSize: '0.82rem' }}>{s.snapRepName}</TableCell>
                   <TableCell sx={{ fontSize: '0.82rem', color: '#475569' }}>{s.snapCity}, {s.snapState}</TableCell>
                   <TableCell>
@@ -521,7 +570,17 @@ export default function CourierManagementPage() {
                     )}
                   </TableCell>
                   <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.82rem', fontWeight: 600 }}>
-                    {s.trackingNumber || <Typography component="span" sx={{ color: '#cbd5e1' }}>—</Typography>}
+                    {s.trackingNumber ? (() => {
+                      const url = getTrackingUrl(s.courierProvider, s.trackingNumber);
+                      return url ? (
+                        <Tooltip title={`Track on ${s.courierProvider}`}>
+                          <a href={url} target="_blank" rel="noopener noreferrer"
+                            style={{ color: '#3B82F6', textDecoration: 'none', borderBottom: '1px dashed #3B82F6' }}>
+                            {s.trackingNumber}
+                          </a>
+                        </Tooltip>
+                      ) : <span>{s.trackingNumber}</span>;
+                    })() : <Typography component="span" sx={{ color: '#cbd5e1' }}>—</Typography>}
                   </TableCell>
                   <TableCell sx={{ fontSize: '0.82rem' }}>{s.courierProvider || <Typography component="span" sx={{ color: '#cbd5e1' }}>—</Typography>}</TableCell>
                   <TableCell sx={{ fontSize: '0.82rem' }}>
@@ -774,6 +833,28 @@ export default function CourierManagementPage() {
                     </Stack>
                   } />
               </Stack>
+            </Box>
+            <Box>
+              <Typography sx={labelSx}>Proof of Delivery (image)</Typography>
+              {deliveryImage ? (
+                <Box sx={{ position: 'relative', display: 'inline-block', borderRadius: '10px', overflow: 'hidden', border: '1px solid #e5e7eb' }}>
+                  <Box component="img" src={deliveryImage} alt="proof"
+                    sx={{ display: 'block', maxWidth: '100%', maxHeight: 220 }} />
+                  <IconButton size="small" onClick={() => setDeliveryImage('')}
+                    sx={{ position: 'absolute', top: 4, right: 4, bgcolor: 'rgba(0,0,0,0.55)', color: '#fff', '&:hover': { bgcolor: 'rgba(0,0,0,0.75)' } }}>
+                    <CloseIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+              ) : (
+                <Button variant="outlined" component="label"
+                  sx={{ fontSize: '0.8rem', textTransform: 'none' }}>
+                  Upload screenshot / photo
+                  <input type="file" accept="image/*" hidden onChange={onDeliveryImageChange} />
+                </Button>
+              )}
+              <Typography sx={{ fontSize: '0.72rem', color: '#94a3b8', mt: 0.5 }}>
+                WhatsApp confirmation screenshot or photo of received package. Max 4MB.
+              </Typography>
             </Box>
             <Box>
               <Typography sx={labelSx}>Notes</Typography>
