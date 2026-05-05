@@ -22,18 +22,26 @@ import {
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
   History as HistoryIcon,
+  Download as DownloadIcon,
 } from '@mui/icons-material';
-import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 import PaymentRequestModal from './PaymentRequestModal';
 import PaymentDetailDialog from './PaymentDetailDialog';
 import { vendorsAPI, paymentRequestsAPI, paymentBatchesAPI } from '../../services/api';
+import { buildBlkpayWorkbook } from '../../utils/blkpayExcel';
+import { buildIciciXlsBuffer } from '../../utils/iciciExcel';
+import { buildFullDetailsWorkbook } from '../../utils/fullDetailsExcel';
 
 // localStorage batch cache removed — API is source of truth
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const fmtINR = (n) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(parseFloat(n) || 0);
+
+const fmtINRPlain = (n) =>
+  new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(parseFloat(n) || 0);
 
 const fmtDate = (d) => {
   if (!d) return '—';
@@ -67,107 +75,135 @@ function StatCard({ icon, value, label, color }) {
 }
 
 /* ── IDFC FIRST Bank Bulk Payment format (.xlsx) ── */
-/* Matches BLKPAY_PMR2L.xlsx template: Row 1 = headers (blue), Row 2 = instructions (light blue), Row 3+ = data */
-function downloadBankFormat(records) {
-  if (records.length === 0) return null;
-
-  const today = new Date();
-  const ddmmyyyy = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
-
-  /* Row 1 — Column headers (A1:O1, P1 is empty per template) */
-  const headers = [
-    'Beneficiary Name',
-    'Beneficiary Account Number',
-    'IFSC',
-    'Transaction Type',
-    'Debit Account Number',
-    'Transaction Date',
-    'Amount',
-    'Currency',
-    'Beneficiary Email ID',
-    'Remarks',
-    'Custom Header \u2013 1',
-    'Custom Header \u2013 2',
-    'Custom Header \u2013 3',
-    'Custom Header \u2013 4',
-    'Custom Header \u2013 5',
-    '',  // P1 empty — PAN header goes in P2 per template
-  ];
-
-  /* Row 2 — Field instructions / comments */
-  const instructions = [
-    'Enter beneficiary name.\nMANDATORY',
-    'Enter beneficiary account number. \nThis can be IDFC FIRST Bank account or other Bank account.\nMANDATORY',
-    'Enter beneficiary bank IFSC code. Required only for Inter bank (NEFT/RTGS) payment.',
-    'Enter payment type:\nIFT - Within Bank payment\nNEFT - Inter-Bank(NEFT) payment\nRTGS - Inter-Bank(RTGS) payment\nMANDATORY',
-    'Enter debit account number. This should be IDFC FIRST Bank account only. User should have access to do transaction on this account',
-    'Enter transaction value date. Should be today\'s date or future date.\nMANDATORY\nDD/MM/YYYY format',
-    'Enter payment amount.\nMANDATORY',
-    'Enter transaction currency. Should be INR only.\nMANDATORY',
-    'Enter beneficiary email id\nOPTIONAL',
-    'Enter remarks\nOPTIONAL',
-    'Credit Advice:\nEnter Custom Info -1\nNote: Header label is editable in Row 1\nOPTIONAL',
-    'Credit Advice:\nEnter Custom Info -2\nNote: Header label is editable in Row 1\nOPTIONAL',
-    'Credit Advice:\nEnter Custom Info -3\nNote: Header label is editable in Row 1\nOPTIONAL',
-    'Credit Advice:\nEnter Custom Info -4\nNote: Header label is editable in Row 1\nOPTIONAL',
-    'Credit Advice:\nEnter Custom Info -5\nNote: Header label is editable in Row 1\nOPTIONAL',
-    'PAN',  // P2 has the PAN label per template
-  ];
-
-  /* Row 3+ — Payment data */
-  const dataRows = records.map((r) => [
-    r.vendorName || '',
-    r.accountNumber || '',
-    r.ifscCode || '',
-    'NEFT',
-    '',           // Debit account — user fills in
-    ddmmyyyy,
-    r.netAmount || 0,
-    'INR',
-    r.email || '',
-    `${r.id} | ${r.workOrderNumber}`,
-    '',
-    '',
-    '',
-    '',
-    '',
-    r.panNumber || '',
-  ]);
-
-  const ws = XLSX.utils.aoa_to_sheet([headers, instructions, ...dataRows]);
-
-  /* Column widths matching BLKPAY_PMR2L.xlsx */
-  ws['!cols'] = [
-    { wch: 22 }, { wch: 25 }, { wch: 21 }, { wch: 18 },
-    { wch: 18 }, { wch: 16 }, { wch: 13 }, { wch: 14 },
-    { wch: 28 }, { wch: 23 }, { wch: 23 }, { wch: 23 },
-    { wch: 23 }, { wch: 23 }, { wch: 23 }, { wch: 9 },
-  ];
-
-  /* Row heights matching template: Row 1 = 38px, Row 2 = 110px */
-  ws['!rows'] = [{ hpx: 38 }, { hpx: 110 }];
-
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
-
-  /* Write to blob and trigger download + auto-open */
-  const fileName = `BLKPAY_TTA_${new Date().toISOString().slice(0, 10)}.xlsx`;
-  const wbOut = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-  const blob = new Blob([wbOut], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+/* Matches BLKPAY_070426.xlsx — see src/utils/blkpayExcel.js + blkpayExcel.test.js */
+async function triggerXlsxDownload(wb, fileName) {
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   const url = URL.createObjectURL(blob);
-
-  // Download the file
   const a = document.createElement('a');
   a.href = url;
   a.download = fileName;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 
-  // Try to auto-open in Excel (browser will show open/save prompt)
-  try { window.open(url, '_blank'); } catch {}
+async function downloadBankFormat(records, bank) {
+  if (records.length === 0) return null;
 
-  return fileName;
+  const today = new Date().toISOString().slice(0, 10);
+  if (bank === 'ICICI') {
+    const { buffer, dateStr } = await buildIciciXlsBuffer(records);
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `NPAB_FMT_${dateStr}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    await triggerXlsxDownload(buildFullDetailsWorkbook(records), `PAYMENT_DETAILS_TTA_${today}.xlsx`);
+    return `NPAB_FMT_${dateStr}.xlsx`;
+  } else {
+    const bankWorkbook = buildBlkpayWorkbook(records);
+    const fileName = `IDFC_BLKPAY_TTA_${today}.xlsx`;
+    await triggerXlsxDownload(bankWorkbook, fileName);
+    await triggerXlsxDownload(buildFullDetailsWorkbook(records), `PAYMENT_DETAILS_TTA_${today}.xlsx`);
+    return fileName;
+  }
+}
+
+/* ── PDF receipt for past batches ── */
+function downloadBatchPDF(batch) {
+  const doc = new jsPDF('landscape', 'mm', 'a4');
+  const pageW = doc.internal.pageSize.getWidth();
+
+  // Header
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text('India Khelo Football', 14, 18);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100);
+  doc.text('Payment Batch Summary', 14, 24);
+
+  // Batch info
+  doc.setFontSize(9);
+  doc.setTextColor(60);
+  const sentDate = batch.sentAt
+    ? new Date(batch.sentAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : '—';
+  doc.text(`Batch: ${batch.fileName || batch.batchNumber || '—'}`, 14, 32);
+  doc.text(`Sent on: ${sentDate}`, 14, 37);
+  doc.text(`Total Payments: ${batch.payments.length}`, 14, 42);
+
+  // Summary boxes — right aligned
+  const summaryY = 32;
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(30);
+  doc.text(`Gross: ${fmtINR(batch.totalGross)}`, pageW - 14, summaryY, { align: 'right' });
+  doc.setTextColor(200, 0, 0);
+  doc.text(`TDS: ${fmtINR(batch.totalTds)}`, pageW - 14, summaryY + 5, { align: 'right' });
+  doc.setTextColor(0, 128, 0);
+  doc.text(`Net Payable: ${fmtINR(batch.totalNet)}`, pageW - 14, summaryY + 10, { align: 'right' });
+
+  // Table
+  const rows = batch.payments.map((r, i) => [
+    i + 1,
+    r.requestNumber || r.id,
+    r.workOrderNumber || '—',
+    r.vendorName || '—',
+    r.vendorType || '—',
+    fmtINRPlain(r.grossAmount),
+    `${r.tdsRate || 0}%`,
+    fmtINRPlain(r.tdsAmount),
+    fmtINRPlain(r.netAmount),
+    r.invoiceDate ? new Date(r.invoiceDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—',
+  ]);
+
+  autoTable(doc, {
+    startY: 48,
+    head: [['#', 'Request ID', 'Work Order', 'Vendor', 'Type', 'Gross', 'TDS %', 'TDS Amt', 'Net Amount', 'Invoice Date']],
+    body: rows,
+    styles: { fontSize: 8, cellPadding: 2.5 },
+    headStyles: { fillColor: [91, 99, 211], textColor: 255, fontStyle: 'bold', fontSize: 8 },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+    columnStyles: {
+      0: { cellWidth: 8, halign: 'center' },
+      5: { halign: 'right' },
+      6: { halign: 'center' },
+      7: { halign: 'right' },
+      8: { halign: 'right', fontStyle: 'bold' },
+    },
+    // Totals footer
+    didDrawPage: () => {
+      const finalY = doc.lastAutoTable.finalY + 4;
+      doc.setDrawColor(200);
+      doc.line(14, finalY, pageW - 14, finalY);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30);
+      doc.text('Totals:', 14, finalY + 6);
+      doc.text(`Gross: ${fmtINR(batch.totalGross)}`, 80, finalY + 6);
+      doc.setTextColor(200, 0, 0);
+      doc.text(`TDS: ${fmtINR(batch.totalTds)}`, 140, finalY + 6);
+      doc.setTextColor(0, 128, 0);
+      doc.text(`Net: ${fmtINR(batch.totalNet)}`, 200, finalY + 6);
+    },
+  });
+
+  // Footer
+  const pageH = doc.internal.pageSize.getHeight();
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(150);
+  doc.text('Generated by TTA - India Khelo Football', 14, pageH - 8);
+  doc.text(`Printed: ${new Date().toLocaleString('en-IN')}`, pageW - 14, pageH - 8, { align: 'right' });
+
+  const pdfName = `Payment_Batch_${batch.fileName?.replace('.xlsx', '') || batch.batchNumber || 'summary'}.pdf`;
+  doc.save(pdfName);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -184,6 +220,7 @@ function PaymentManagementPage() {
   const [detailMode, setDetailMode] = useState('view');
   const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
   const [exportModal, setExportModal] = useState({ open: false, fileName: '', count: 0 });
+  const [bankPicker, setBankPicker] = useState({ open: false });
   const [sentBatches, setSentBatches] = useState([]);
   const [pastExpanded, setPastExpanded] = useState(false);
   const [expandedBatchId, setExpandedBatchId] = useState(null);
@@ -306,12 +343,17 @@ function PaymentManagementPage() {
     }
   };
 
-  const handleSendToPayment = async () => {
+  const handleSendToPayment = () => {
     if (filtered.length === 0) {
       showToast('No payment requests to send', 'warning');
       return;
     }
-    const fileName = downloadBankFormat(filtered);
+    setBankPicker({ open: true });
+  };
+
+  const handleBankChosen = async (bank) => {
+    setBankPicker({ open: false });
+    const fileName = await downloadBankFormat(filtered, bank);
     if (!fileName) return;
 
     // Try creating batch on backend
@@ -612,6 +654,17 @@ function PaymentManagementPage() {
                               {fmtINR(batch.totalTds)}
                             </Typography>
                           </Box>
+                          <Tooltip title="Download PDF summary">
+                            <IconButton size="small"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                downloadBatchPDF(batch);
+                              }}
+                              sx={{ color: '#dc2626', border: '1px solid #fecaca', borderRadius: '8px',
+                                '&:hover': { bgcolor: '#fef2f2', borderColor: '#dc2626' } }}>
+                              <DownloadIcon sx={{ fontSize: 18 }} />
+                            </IconButton>
+                          </Tooltip>
                           {isExpanded ? <ExpandLessIcon sx={{ color: '#94a3b8' }} /> : <ExpandMoreIcon sx={{ color: '#94a3b8' }} />}
                         </Stack>
                       </Box>
@@ -710,6 +763,55 @@ function PaymentManagementPage() {
         onUpdate={handlePaymentUpdate}
         mode={detailMode}
       />
+
+      {/* Bank picker — shown before generating the payment file */}
+      <Dialog
+        open={bankPicker.open}
+        onClose={() => setBankPicker({ open: false })}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 2.5 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 700, color: '#1e293b' }}>
+          Choose payment bank
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ color: '#64748b', mb: 2 }}>
+            Which account will these {filtered.length} payment{filtered.length !== 1 ? 's' : ''} be processed through?
+          </Typography>
+          <Stack spacing={1.5}>
+            <Button
+              variant="outlined"
+              size="large"
+              onClick={() => handleBankChosen('IDFC')}
+              sx={{ justifyContent: 'flex-start', textTransform: 'none', py: 1.5 }}
+            >
+              <Box sx={{ textAlign: 'left' }}>
+                <Typography fontWeight={600}>IDFC FIRST Bank</Typography>
+                <Typography variant="caption" sx={{ color: '#64748b' }}>
+                  A/C 10064068880 — IDFC BLKPAY format
+                </Typography>
+              </Box>
+            </Button>
+            <Button
+              variant="outlined"
+              size="large"
+              onClick={() => handleBankChosen('ICICI')}
+              sx={{ justifyContent: 'flex-start', textTransform: 'none', py: 1.5 }}
+            >
+              <Box sx={{ textAlign: 'left' }}>
+                <Typography fontWeight={600}>ICICI Bank</Typography>
+                <Typography variant="caption" sx={{ color: '#64748b' }}>
+                  A/C 092701004321 — ICICI Converter template
+                </Typography>
+              </Box>
+            </Button>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBankPicker({ open: false })}>Cancel</Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Export Info Modal — shown after Send to Payment */}
       <Dialog

@@ -7,15 +7,20 @@ import {
 import {
   Visibility as ViewIcon, Edit as EditIcon, Delete as DeleteIcon,
   Repeat as PeriodicIcon, PushPin as FixedIcon,
+  Payment as PaymentIcon, PictureAsPdf as PdfIcon,
+  ErrorOutline as BouncedIcon, Restore as ResolveIcon,
 } from '@mui/icons-material';
-import { WO_STATUS_COLORS } from './workOrderData';
+import { WO_STATUS_COLORS, isWOFullyPaid } from './workOrderData';
 
-function WorkOrderCard({ workOrder, onView, onEdit, onDelete }) {
+function WorkOrderCard({ workOrder, onView, onEdit, onDelete, onRaisePayment, onResolveBounced, onDownloadPDF, isPast }) {
+  const fullyPaid = isWOFullyPaid(workOrder);
+  const bouncedCount = parseInt(workOrder.bouncedPaymentCount || 0, 10);
+  const hasBounced = bouncedCount > 0;
   const statusStyle = WO_STATUS_COLORS[workOrder.status] || WO_STATUS_COLORS.Issued;
   const isPeriodic = workOrder.type === 'Periodic';
 
   const fmtINR = (n) =>
-    new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n || 0);
+    new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(parseFloat(n) || 0);
 
   return (
     <Card variant="outlined" sx={{
@@ -39,7 +44,7 @@ function WorkOrderCard({ workOrder, onView, onEdit, onDelete }) {
                   bgcolor: isPeriodic ? '#f0fdf4' : '#eef2ff',
                   color: isPeriodic ? '#16a34a' : '#4338ca',
                   border: `1px solid ${isPeriodic ? '#86efac' : '#a5b4fc'}`,
-                  fontWeight: 600, fontSize: '0.65rem', height: 18,
+                  fontWeight: 600, fontSize: '0.82rem', height: 22,
                 }}
               />
             </Stack>
@@ -47,16 +52,29 @@ function WorkOrderCard({ workOrder, onView, onEdit, onDelete }) {
               {workOrder.vendorName}
             </Typography>
             {(workOrder.vendorType || workOrder.companyType) && (
-              <Typography variant="caption" sx={{ color: '#64748b', display: 'block' }}>
+              <Typography variant="caption" sx={{ color: '#94a3b8', display: 'block' }}>
                 {workOrder.vendorType}
                 {workOrder.companyType ? ` · ${workOrder.companyType}` : ''}
               </Typography>
             )}
           </Box>
-          <Chip label={workOrder.status} size="small" sx={{
-            bgcolor: statusStyle.bg, color: statusStyle.color,
-            border: `1px solid ${statusStyle.border}`, fontWeight: 600, fontSize: '0.7rem',
-          }} />
+          <Stack direction="column" alignItems="flex-end" spacing={0.5}>
+            <Chip label={workOrder.status} size="small" sx={{
+              bgcolor: statusStyle.bg, color: statusStyle.color,
+              border: `1px solid ${statusStyle.border}`, fontWeight: 600, fontSize: '0.8rem',
+            }} />
+            {hasBounced && (
+              <Chip
+                icon={<BouncedIcon sx={{ fontSize: '14px !important', color: '#dc2626 !important' }} />}
+                label={`Bounced ${bouncedCount > 1 ? `(${bouncedCount})` : ''}`}
+                size="small"
+                sx={{
+                  bgcolor: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca',
+                  fontWeight: 700, fontSize: '0.78rem',
+                }}
+              />
+            )}
+          </Stack>
         </Stack>
 
         {/* Total amount + created date */}
@@ -71,6 +89,13 @@ function WorkOrderCard({ workOrder, onView, onEdit, onDelete }) {
           )}
         </Stack>
 
+        {/* TDS info */}
+        {parseFloat(workOrder.tdsRate) > 0 && (
+          <Typography variant="caption" sx={{ color: '#dc2626', fontWeight: 600, display: 'block', mb: 0.5 }}>
+            TDS: {workOrder.tdsRate}%{workOrder.tdsComment ? ` (${workOrder.tdsComment})` : ''}
+          </Typography>
+        )}
+
         {/* Periodic info box */}
         {isPeriodic && (
           <Box sx={{ mb: 1.5, px: 1.5, py: 0.75, bgcolor: '#f0fdf4', borderRadius: 1, border: '1px solid #bbf7d0' }}>
@@ -83,12 +108,12 @@ function WorkOrderCard({ workOrder, onView, onEdit, onDelete }) {
           </Box>
         )}
 
-        {/* Actions */}
-        <Stack direction="row" spacing={1}>
+        {/* Actions — Row 1 */}
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
           <Button size="small" variant="outlined" startIcon={<ViewIcon fontSize="small" />}
             onClick={() => onView(workOrder)}
             sx={{
-              textTransform: 'none', fontWeight: 600, fontSize: '0.78rem',
+              textTransform: 'none', fontWeight: 600, fontSize: '0.82rem',
               borderColor: '#e2e8f0', color: '#475569', borderRadius: 1.5,
               '&:hover': { borderColor: '#94a3b8', bgcolor: '#f8fafc' },
             }}>
@@ -97,22 +122,74 @@ function WorkOrderCard({ workOrder, onView, onEdit, onDelete }) {
           <Button size="small" variant="contained" startIcon={<EditIcon fontSize="small" />}
             onClick={() => onEdit(workOrder)}
             sx={{
-              textTransform: 'none', fontWeight: 600, fontSize: '0.78rem',
+              textTransform: 'none', fontWeight: 600, fontSize: '0.82rem',
               bgcolor: '#FDE68A', color: '#1e293b', borderRadius: 1.5,
               boxShadow: 'none', '&:hover': { bgcolor: '#FCD34D', boxShadow: 'none' },
             }}>
             Edit
           </Button>
-          <Button size="small" variant="outlined" startIcon={<DeleteIcon fontSize="small" />}
-            onClick={() => onDelete(workOrder)}
-            sx={{
-              textTransform: 'none', fontWeight: 600, fontSize: '0.78rem',
-              borderColor: '#fecaca', color: '#dc2626', borderRadius: 1.5,
-              '&:hover': { borderColor: '#dc2626', bgcolor: '#fef2f2' },
-            }}>
-            Delete
-          </Button>
+          {!isPast && (
+            <Button size="small" variant="outlined" startIcon={<DeleteIcon fontSize="small" />}
+              onClick={() => onDelete(workOrder)}
+              sx={{
+                textTransform: 'none', fontWeight: 600, fontSize: '0.82rem',
+                borderColor: '#fecaca', color: '#dc2626', borderRadius: 1.5,
+                '&:hover': { borderColor: '#dc2626', bgcolor: '#fef2f2' },
+              }}>
+              Delete
+            </Button>
+          )}
+          {onDownloadPDF && (
+            <Button size="small" variant="outlined" startIcon={<PdfIcon fontSize="small" />}
+              onClick={() => onDownloadPDF(workOrder)}
+              sx={{
+                textTransform: 'none', fontWeight: 600, fontSize: '0.82rem',
+                borderColor: '#e2e8f0', color: '#7c3aed', borderRadius: 1.5,
+                '&:hover': { borderColor: '#7c3aed', bgcolor: '#f5f3ff' },
+              }}>
+              PDF
+            </Button>
+          )}
         </Stack>
+        {/* Actions — Row 2 */}
+        {!isPast && (hasBounced ? onResolveBounced : onRaisePayment) && (
+          <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+            {hasBounced ? (
+              <Button
+                size="small"
+                variant="contained"
+                startIcon={<ResolveIcon fontSize="small" />}
+                onClick={() => onResolveBounced(workOrder)}
+                title="Discard the bounced payment record and close this work order"
+                sx={{
+                  textTransform: 'none', fontWeight: 700, fontSize: '0.82rem',
+                  bgcolor: '#dc2626', color: '#fff', borderRadius: 1.5, boxShadow: 'none',
+                  '&:hover': { bgcolor: '#b91c1c', boxShadow: 'none' },
+                }}
+              >
+                Resolve
+              </Button>
+            ) : (
+              <Button
+                size="small"
+                variant="outlined"
+                color="success"
+                startIcon={<PaymentIcon fontSize="small" />}
+                disabled={fullyPaid}
+                title={fullyPaid ? 'Work order is fully paid' : 'Open Raise Payment with this work order'}
+                onClick={() => onRaisePayment(workOrder)}
+                sx={{
+                  textTransform: 'none', fontWeight: 600, fontSize: '0.82rem',
+                  borderColor: '#bbf7d0', color: '#15803d', borderRadius: 1.5,
+                  '&:hover': { borderColor: '#86efac', bgcolor: '#f0fdf4' },
+                  '&.Mui-disabled': { borderColor: '#e2e8f0', color: '#94a3b8' },
+                }}
+              >
+                Raise Payment
+              </Button>
+            )}
+          </Stack>
+        )}
       </CardContent>
     </Card>
   );

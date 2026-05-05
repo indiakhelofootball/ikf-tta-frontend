@@ -538,6 +538,10 @@ export const workOrdersAPI = {
   delete: async (id) => {
     return apiService.request(`/work-orders/${id}/`, { method: 'DELETE' });
   },
+
+  resolveBounced: async (id) => {
+    return apiService.request(`/work-orders/${id}/resolve-bounced/`, { method: 'POST' });
+  },
 };
 
 // ============================================
