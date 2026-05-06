@@ -34,7 +34,7 @@ const PREDEFINED_ITEMS = [
 ];
 
 const PRODUCTION_STATUSES = ['Pending', 'Sent for Printing', 'Received from Printer'];
-const COURIERS = ['Blue Dart', 'DTDC', 'Delhivery', 'FedEx', 'India Post', 'Ekart', 'Professional Couriers', 'XpressBees'];
+const COURIERS = ['Blue Dart', 'DTDC', 'Delhivery', 'FedEx', 'India Post', 'Ekart', 'Professional Couriers', 'XpressBees', 'Other'];
 
 const TRACKING_URLS = {
   'Blue Dart':            awb => `https://www.bluedart.com/tracking?trackingId=${encodeURIComponent(awb)}`,
@@ -279,6 +279,7 @@ export default function CourierManagementPage() {
   const [dispOpen, setDispOpen] = useState(false);
   const [dispId, setDispId] = useState(null);
   const [dispCourier, setDispCourier] = useState('');
+  const [dispCourierOther, setDispCourierOther] = useState('');
   const [dispAwb, setDispAwb] = useState('');
   const [dispNotes, setDispNotes] = useState('');
 
@@ -290,6 +291,11 @@ export default function CourierManagementPage() {
   const [deliveryPhone, setDeliveryPhone] = useState(false);
   const [deliveryNotes, setDeliveryNotes] = useState('');
   const [deliveryImage, setDeliveryImage] = useState('');
+
+  // return confirm
+  const [returnOpen, setReturnOpen] = useState(false);
+  const [returnId, setReturnId] = useState(null);
+  const [returnNote, setReturnNote] = useState('');
 
   const selectedRep = reps.find(r => r.id === fRepId) || null;
   const selectedAsg = selectedRep?.cityAssignments?.find(a => a.id === fAsgId) || null;
@@ -393,17 +399,18 @@ export default function CourierManagementPage() {
   }
 
   function openDispatch(id) {
-    setDispId(id); setDispCourier(''); setDispAwb(''); setDispNotes(''); setError('');
+    setDispId(id); setDispCourier(''); setDispCourierOther(''); setDispAwb(''); setDispNotes(''); setError('');
     setDispOpen(true);
   }
 
   async function saveDispatch() {
-    if (!dispCourier || !dispAwb) return;
+    const finalCourier = dispCourier === 'Other' ? dispCourierOther.trim() : dispCourier;
+    if (!finalCourier || !dispAwb) return;
     setSaving(true);
     setError('');
     try {
       const updated = await courierAPI.dispatch(dispId, {
-        courierProvider: dispCourier,
+        courierProvider: finalCourier,
         trackingNumber: dispAwb,
         dispatchNotes: dispNotes,
       });
@@ -447,6 +454,21 @@ export default function CourierManagementPage() {
       setDeliveryOpen(false);
     } catch (e) {
       setError(e.message || 'Failed to mark delivered.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function saveReturn() {
+    setSaving(true);
+    setError('');
+    try {
+      const updated = await courierAPI.return(returnId, returnNote);
+      setShipments(prev => prev.map(s => s.id === returnId ? updated : s));
+      setReturnOpen(false);
+      setReturnNote('');
+    } catch (e) {
+      setError(e.message || 'Failed to mark as returned.');
     } finally {
       setSaving(false);
     }
@@ -619,6 +641,11 @@ export default function CourierManagementPage() {
                             sx={{ fontSize: '0.72rem', py: 0.3, px: 1, minWidth: 'auto' }}>
                             Delivered
                           </Button>
+                          <Button size="small" variant="outlined" color="error"
+                            onClick={() => { setReturnId(s.id); setReturnNote(''); setReturnOpen(true); }}
+                            sx={{ fontSize: '0.72rem', py: 0.3, px: 1, minWidth: 'auto' }}>
+                            Returned
+                          </Button>
                         </>
                       )}
                       {s.status === 'Delivered' && (
@@ -770,6 +797,15 @@ export default function CourierManagementPage() {
                 <MenuItem value="" disabled sx={{ color: '#94a3b8' }}>— Select courier —</MenuItem>
                 {COURIERS.map(c => <MenuItem key={c} value={c}>{c}</MenuItem>)}
               </TextField>
+              {dispCourier === 'Other' && (
+                <TextField
+                  fullWidth size="small" sx={{ mt: 1.25 }}
+                  value={dispCourierOther}
+                  onChange={e => setDispCourierOther(e.target.value)}
+                  placeholder="Enter courier company name"
+                  autoFocus
+                />
+              )}
             </Box>
             <Box>
               <Typography sx={labelSx}>AWB / Tracking ID <span style={{ color: '#ef4444' }}>*</span></Typography>
@@ -785,7 +821,7 @@ export default function CourierManagementPage() {
         <DialogActions sx={{ px: 3, py: 1.5, borderTop: '1px solid #e5e7eb', bgcolor: '#f8fafc' }}>
           <Button onClick={() => setDispOpen(false)} sx={{ color: '#64748b' }}>Cancel</Button>
           <Button variant="contained" onClick={saveDispatch}
-            disabled={saving || !dispCourier || !dispAwb}
+            disabled={saving || !dispAwb || !dispCourier || (dispCourier === 'Other' && !dispCourierOther.trim())}
             sx={{ bgcolor: '#FDE68A', color: '#1e293b', fontWeight: 700, boxShadow: 'none', '&:hover': { bgcolor: '#FCD34D', boxShadow: 'none' } }}>
             {saving ? <CircularProgress size={18} sx={{ color: '#92400e' }} /> : 'Dispatch'}
           </Button>
@@ -868,6 +904,34 @@ export default function CourierManagementPage() {
           <Button variant="contained" color="success" onClick={saveDelivery}
             disabled={saving}>
             {saving ? <CircularProgress size={18} /> : 'Mark Delivered'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* RETURN CONFIRM DIALOG */}
+      <Dialog open={returnOpen} onClose={() => setReturnOpen(false)} maxWidth="xs" fullWidth
+        slotProps={{ paper: { sx: { borderRadius: '16px' } } }}>
+        <DialogTitle sx={{ pb: 1.5, borderBottom: '1px solid #e5e7eb' }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Typography sx={{ fontWeight: 700, fontSize: '1.05rem' }}>Mark as Returned</Typography>
+            <IconButton size="small" onClick={() => setReturnOpen(false)}><CloseIcon fontSize="small" /></IconButton>
+          </Stack>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2.5 }}>
+          {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+          <Typography sx={{ fontSize: '0.85rem', color: '#64748b', mb: 2 }}>
+            This marks the shipment as returned by the courier. The shipment can be re-dispatched by creating a new shipment.
+          </Typography>
+          <Box>
+            <Typography sx={labelSx}>Note (optional)</Typography>
+            <TextField fullWidth size="small" multiline minRows={2} value={returnNote}
+              onChange={e => setReturnNote(e.target.value)} placeholder="Reason for return, courier note, etc." />
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 1.5, borderTop: '1px solid #e5e7eb', bgcolor: '#f8fafc' }}>
+          <Button onClick={() => setReturnOpen(false)} sx={{ color: '#64748b' }}>Cancel</Button>
+          <Button variant="contained" color="error" onClick={saveReturn} disabled={saving}>
+            {saving ? <CircularProgress size={18} /> : 'Mark Returned'}
           </Button>
         </DialogActions>
       </Dialog>
