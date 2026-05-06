@@ -287,18 +287,18 @@ function WorkOrderManagementPage() {
     }
   };
 
-  const handleResolveBounced = async (wo) => {
+  const handleRemoveBounced = async (wo) => {
     const msg =
-      `Resolve bounced payments on ${wo.workOrderNumber}?\n\n` +
-      `This will permanently discard ${wo.bouncedPaymentCount} bounced payment record(s) ` +
-      `and move this work order to Past Work Orders (Cancelled). This cannot be undone.`;
+      `Remove ${wo.workOrderNumber} permanently?\n\n` +
+      `This will delete the work order AND its ${wo.bouncedPaymentCount} bounced payment record(s). ` +
+      `This cannot be undone.`;
     if (!window.confirm(msg)) return;
     try {
       await workOrdersAPI.resolveBounced(wo.id || wo._id);
-      showToast('Bounced payments discarded; work order closed');
+      showToast('Work order and bounced payments removed');
       fetchWorkOrders();
     } catch (err) {
-      showToast(err.message || 'Failed to resolve bounced payments.', 'error');
+      showToast(err.message || 'Failed to remove work order.', 'error');
     }
   };
 
@@ -547,7 +547,8 @@ function WorkOrderManagementPage() {
                         onView={(w) => setDetailWO(w)}
                         onEdit={handleEdit}
                         onDelete={handleDelete}
-                        onResolveBounced={handleResolveBounced}
+                        onRaisePayment={handleRaisePayment}
+                        onRemoveBounced={handleRemoveBounced}
                         onDownloadPDF={downloadWOPdf}
                       />
                     </Grid>
