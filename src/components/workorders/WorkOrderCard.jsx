@@ -12,7 +12,7 @@ import {
 } from '@mui/icons-material';
 import { WO_STATUS_COLORS, isWOFullyPaid } from './workOrderData';
 
-function WorkOrderCard({ workOrder, onView, onEdit, onDelete, onRaisePayment, onResolveBounced, onDownloadPDF, isPast }) {
+function WorkOrderCard({ workOrder, onView, onEdit, onDelete, onRaisePayment, onRemoveBounced, onDownloadPDF, isPast }) {
   const fullyPaid = isWOFullyPaid(workOrder);
   const bouncedCount = parseInt(workOrder.bouncedPaymentCount || 0, 10);
   const hasBounced = bouncedCount > 0;
@@ -152,24 +152,9 @@ function WorkOrderCard({ workOrder, onView, onEdit, onDelete, onRaisePayment, on
           )}
         </Stack>
         {/* Actions — Row 2 */}
-        {!isPast && (hasBounced ? onResolveBounced : onRaisePayment) && (
+        {!isPast && (
           <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-            {hasBounced ? (
-              <Button
-                size="small"
-                variant="contained"
-                startIcon={<ResolveIcon fontSize="small" />}
-                onClick={() => onResolveBounced(workOrder)}
-                title="Discard the bounced payment record and close this work order"
-                sx={{
-                  textTransform: 'none', fontWeight: 700, fontSize: '0.82rem',
-                  bgcolor: '#dc2626', color: '#fff', borderRadius: 1.5, boxShadow: 'none',
-                  '&:hover': { bgcolor: '#b91c1c', boxShadow: 'none' },
-                }}
-              >
-                Resolve
-              </Button>
-            ) : (
+            {onRaisePayment && (
               <Button
                 size="small"
                 variant="outlined"
@@ -186,6 +171,22 @@ function WorkOrderCard({ workOrder, onView, onEdit, onDelete, onRaisePayment, on
                 }}
               >
                 Raise Payment
+              </Button>
+            )}
+            {hasBounced && onRemoveBounced && (
+              <Button
+                size="small"
+                variant="contained"
+                startIcon={<ResolveIcon fontSize="small" />}
+                onClick={() => onRemoveBounced(workOrder)}
+                title="Permanently delete this work order and its bounced payment records"
+                sx={{
+                  textTransform: 'none', fontWeight: 700, fontSize: '0.82rem',
+                  bgcolor: '#dc2626', color: '#fff', borderRadius: 1.5, boxShadow: 'none',
+                  '&:hover': { bgcolor: '#b91c1c', boxShadow: 'none' },
+                }}
+              >
+                Remove
               </Button>
             )}
           </Stack>
