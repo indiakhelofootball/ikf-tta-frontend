@@ -13,8 +13,6 @@ import {
   Alert,
   CircularProgress,
   Chip,
-  Card,
-  CardContent,
   Grid,
   Menu,
   MenuItem,
@@ -25,16 +23,15 @@ import {
   FilterList as FilterIcon,
   Sort as SortIcon,
   Store as StoreIcon,
-  CheckCircle as VerifiedIcon,
-  Pending as PendingIcon,
 } from '@mui/icons-material';
 
 import VendorCard from './VendorCard';
 import VendorModal from './VendorModal';
 import VendorBulkModal from './VendorBulkModal';
 import VendorDetailView from './VendorDetailView';
+import VendorStatementDialog from './VendorStatementDialog';
 import { vendorsAPI } from '../../services/api';
-import { VENDOR_STATUSES, SORT_OPTIONS } from './vendorConstants';
+import { SORT_OPTIONS } from './vendorConstants';
 
 function VendorManagementPage() {
   const [vendors, setVendors] = useState([]);
@@ -49,10 +46,10 @@ function VendorManagementPage() {
   const [detailVendor, setDetailVendor] = useState(null);
   const [saving, setSaving] = useState(false);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
+  const [statementVendor, setStatementVendor] = useState(null);
 
   // Filters
   const [filterType, setFilterType] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
   const [sortBy, setSortBy] = useState('latest');
 
   // Menu anchors
@@ -67,7 +64,7 @@ function VendorManagementPage() {
 
   useEffect(() => {
     filterAndSort();
-  }, [vendors, searchQuery, sortBy, filterType, filterStatus]);
+  }, [vendors, searchQuery, sortBy, filterType]);
 
   const loadVendors = async () => {
     try {
@@ -102,9 +99,6 @@ function VendorManagementPage() {
 
     if (filterType) {
       filtered = filtered.filter((v) => v.vendorType === filterType);
-    }
-    if (filterStatus) {
-      filtered = filtered.filter((v) => v.status === filterStatus);
     }
 
     // Sort
@@ -167,37 +161,25 @@ function VendorManagementPage() {
     }
   };
 
-  const handleVerify = async (vendor) => {
+  const handleDelete = async (vendor) => {
+    if (!window.confirm(`Delete vendor "${vendor.vendorName}"? This cannot be undone.`)) return;
     try {
-      await vendorsAPI.update(vendor._id || vendor.id, { ...vendor, status: 'Verified' });
-      showToast(`${vendor.vendorName} has been verified`);
+      await vendorsAPI.delete(vendor._id || vendor.id);
+      showToast(`${vendor.vendorName} deleted`);
       loadVendors();
     } catch (error) {
-      console.error('Verify error:', error);
-      showToast('Failed to verify vendor', 'error');
+      console.error('Delete error:', error);
+      showToast(error.message || 'Failed to delete vendor', 'error');
     }
   };
 
   const clearFilters = () => {
     setFilterType('');
-    setFilterStatus('');
     setSearchQuery('');
     setSortBy('latest');
   };
 
-  const hasFilters = filterType || filterStatus || searchQuery;
-
-  /* ============ STATS ============ */
-
-  const totalVendors = vendors.length;
-  const verifiedCount = vendors.filter((v) => v.status === 'Verified' || v.status === 'Active').length;
-  const pendingCount = vendors.filter((v) => v.status === 'Pending').length;
-
-  const statCards = [
-    { label: 'Total Vendors', value: totalVendors, icon: <StoreIcon />, color: '#5B63D3' },
-    { label: 'Verified / Active', value: verifiedCount, icon: <VerifiedIcon />, color: '#22c55e' },
-    { label: 'Pending', value: pendingCount, icon: <PendingIcon />, color: '#f59e0b' },
-  ];
+  const hasFilters = filterType || searchQuery;
 
   /* ============ RENDER ============ */
 
@@ -211,7 +193,7 @@ function VendorManagementPage() {
               Vendor Management
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Manage vendor profiles, documents, and verification status.
+              Manage vendor profiles and documents.
             </Typography>
           </Box>
           <Stack direction="row" spacing={1.5} sx={{ mt: { xs: 2, sm: 0 } }}>
@@ -249,34 +231,6 @@ function VendorManagementPage() {
             </Button>
           </Stack>
         </Stack>
-
-        {/* Stats */}
-        <Grid container spacing={2.5} sx={{ mb: 4 }}>
-          {statCards.map((stat) => (
-            <Grid item xs={12} sm={4} key={stat.label}>
-              <Card
-                variant="outlined"
-                sx={{ borderRadius: 2, borderColor: '#e2e8f0', '&:hover': { borderColor: '#cbd5e1' } }}
-              >
-                <CardContent sx={{ py: 2, px: 2.5, '&:last-child': { pb: 2 } }}>
-                  <Stack direction="row" justifyContent="space-between" alignItems="center">
-                    <Box>
-                      <Typography variant="caption" color="text.secondary" fontWeight={500}>
-                        {stat.label}
-                      </Typography>
-                      <Typography variant="h5" fontWeight={700} sx={{ color: stat.color }}>
-                        {stat.value}
-                      </Typography>
-                    </Box>
-                    <Box sx={{ color: stat.color, opacity: 0.3, '& svg': { fontSize: 40 } }}>
-                      {stat.icon}
-                    </Box>
-                  </Stack>
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
 
         {/* Search & Filters */}
         <Stack
@@ -341,19 +295,6 @@ function VendorManagementPage() {
                   {t}
                 </MenuItem>
               ))}
-              <MenuItem disabled sx={{ fontSize: '0.75rem', fontWeight: 600, color: '#94a3b8', mt: 1 }}>
-                BY STATUS
-              </MenuItem>
-              {VENDOR_STATUSES.map((s) => (
-                <MenuItem
-                  key={s}
-                  selected={filterStatus === s}
-                  onClick={() => { setFilterStatus(filterStatus === s ? '' : s); setFilterMenuAnchor(null); }}
-                  sx={{ fontSize: '0.85rem' }}
-                >
-                  {s}
-                </MenuItem>
-              ))}
             </Menu>
 
             {/* Sort */}
@@ -401,14 +342,6 @@ function VendorManagementPage() {
                 label={`Type: ${filterType}`}
                 size="small"
                 onDelete={() => setFilterType('')}
-                sx={{ bgcolor: '#eef2ff', color: '#4f46e5', fontWeight: 500 }}
-              />
-            )}
-            {filterStatus && (
-              <Chip
-                label={`Status: ${filterStatus}`}
-                size="small"
-                onDelete={() => setFilterStatus('')}
                 sx={{ bgcolor: '#eef2ff', color: '#4f46e5', fontWeight: 500 }}
               />
             )}
@@ -479,7 +412,8 @@ function VendorManagementPage() {
                     vendor={vendor}
                     onEdit={handleEdit}
                     onViewDetails={(v) => setDetailVendor(v)}
-                    onVerify={handleVerify}
+                    onDelete={handleDelete}
+                    onViewStatement={(v) => setStatementVendor(v)}
                   />
                 </Grid>
               ))}
@@ -509,6 +443,12 @@ function VendorManagementPage() {
         open={bulkModalOpen}
         onClose={() => setBulkModalOpen(false)}
         onBulkComplete={handleBulkComplete}
+      />
+
+      <VendorStatementDialog
+        open={!!statementVendor}
+        onClose={() => setStatementVendor(null)}
+        vendor={statementVendor}
       />
 
       {/* Toast */}

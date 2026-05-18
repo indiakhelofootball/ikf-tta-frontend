@@ -11,7 +11,7 @@ import {
 } from '@mui/icons-material';
 
 const captionSx = {
-  fontSize: '0.65rem',
+  fontSize: '0.78rem',
   textTransform: 'uppercase',
   letterSpacing: '0.06em',
   color: '#86868b',

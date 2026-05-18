@@ -19,13 +19,16 @@ const fmtINR = (n) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n || 0);
 
 const sectionSx = {
-  p: 2, bgcolor: '#f8fafc', borderRadius: 2, border: '1px solid #e2e8f0', mb: 2,
+  p: 2.5, bgcolor: '#f8fafc', borderRadius: 2, border: '1px solid #e2e8f0', mb: 2.5,
 };
 
 const labelSx = {
-  fontWeight: 700, color: '#64748b', fontSize: '0.68rem',
+  fontWeight: 700, color: '#94a3b8', fontSize: '0.8rem',
   letterSpacing: '0.5px', textTransform: 'uppercase', mb: 1, display: 'block',
 };
+
+const captionSx = { display: 'block', color: '#94a3b8', fontSize: '0.82rem', mb: 0.25 };
+const valSx = { color: '#334155', lineHeight: 1.6 };
 
 function PaymentDetailDialog({ open, onClose, payment, onUpdate, mode: initialMode = 'view' }) {
   const [mode, setMode] = useState(initialMode);
@@ -59,7 +62,7 @@ function PaymentDetailDialog({ open, onClose, payment, onUpdate, mode: initialMo
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth
       PaperProps={{ sx: { borderRadius: 2.5 } }}>
 
       <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
@@ -87,38 +90,38 @@ function PaymentDetailDialog({ open, onClose, payment, onUpdate, mode: initialMo
         {/* Request Details */}
         <Typography sx={labelSx}>Request Details</Typography>
         <Box sx={sectionSx}>
-          <Grid container spacing={1.5}>
+          <Grid container spacing={2}>
             <Grid item xs={6}>
-              <Typography variant="caption" color="text.secondary">Request ID</Typography>
-              <Typography variant="body2" fontWeight={700} sx={{ color: '#5B63D3' }}>{payment.id}</Typography>
+              <Typography variant="caption" sx={captionSx}>Request ID</Typography>
+              <Typography variant="body2" fontWeight={700} sx={{ color: '#5B63D3', lineHeight: 1.6 }}>{payment.id}</Typography>
             </Grid>
             <Grid item xs={6}>
-              <Typography variant="caption" color="text.secondary">Invoice Date</Typography>
+              <Typography variant="caption" sx={captionSx}>Invoice Date</Typography>
               {mode === 'edit' ? (
                 <TextField size="small" type="date" fullWidth value={editInvoiceDate}
                   onChange={(e) => setEditInvoiceDate(e.target.value)}
                   InputLabelProps={{ shrink: true }}
                   sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }} />
               ) : (
-                <Typography variant="body2" fontWeight={600}>{payment.invoiceDate || '—'}</Typography>
+                <Typography variant="body2" fontWeight={600} sx={valSx}>{payment.invoiceDate || '—'}</Typography>
               )}
             </Grid>
             <Grid item xs={6}>
-              <Typography variant="caption" color="text.secondary">Work Order</Typography>
-              <Typography variant="body2" fontWeight={600}>{payment.workOrderNumber}</Typography>
+              <Typography variant="caption" sx={captionSx}>Work Order</Typography>
+              <Typography variant="body2" fontWeight={600} sx={valSx}>{payment.workOrderNumber}</Typography>
             </Grid>
             <Grid item xs={6}>
-              <Typography variant="caption" color="text.secondary">WO Type</Typography>
-              <Typography variant="body2" fontWeight={600}>{payment.woType}</Typography>
+              <Typography variant="caption" sx={captionSx}>WO Type</Typography>
+              <Typography variant="body2" fontWeight={600} sx={valSx}>{payment.woType}</Typography>
             </Grid>
             {payment.periodLabel && (
               <Grid item xs={12}>
-                <Typography variant="caption" color="text.secondary">Period</Typography>
-                <Typography variant="body2" fontWeight={600}>{payment.periodLabel}</Typography>
+                <Typography variant="caption" sx={captionSx}>Period</Typography>
+                <Typography variant="body2" fontWeight={600} sx={valSx}>{payment.periodLabel}</Typography>
               </Grid>
             )}
             <Grid item xs={6}>
-              <Typography variant="caption" color="text.secondary">Status</Typography>
+              <Typography variant="caption" sx={captionSx}>Status</Typography>
               {mode === 'edit' ? (
                 <FormControl fullWidth size="small">
                   <Select value={editStatus} onChange={(e) => setEditStatus(e.target.value)}
@@ -129,13 +132,13 @@ function PaymentDetailDialog({ open, onClose, payment, onUpdate, mode: initialMo
               ) : (
                 <Chip label={payment.status} size="small" sx={{
                   bgcolor: statusStyle.bg, color: statusStyle.color,
-                  border: `1px solid ${statusStyle.border}`, fontWeight: 600, fontSize: '0.7rem',
+                  border: `1px solid ${statusStyle.border}`, fontWeight: 600, fontSize: '0.7rem', mt: 0.25,
                 }} />
               )}
             </Grid>
             <Grid item xs={6}>
-              <Typography variant="caption" color="text.secondary">Created</Typography>
-              <Typography variant="body2" fontWeight={600}>
+              <Typography variant="caption" sx={captionSx}>Created</Typography>
+              <Typography variant="body2" fontWeight={600} sx={valSx}>
                 {payment.createdAt ? new Date(payment.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
               </Typography>
             </Grid>
@@ -145,24 +148,24 @@ function PaymentDetailDialog({ open, onClose, payment, onUpdate, mode: initialMo
         {/* Vendor */}
         <Typography sx={labelSx}>Vendor</Typography>
         <Box sx={sectionSx}>
-          <Grid container spacing={1.5}>
+          <Grid container spacing={2}>
             <Grid item xs={6}>
-              <Typography variant="caption" color="text.secondary">Vendor Name</Typography>
-              <Typography variant="body2" fontWeight={700}>{payment.vendorName}</Typography>
+              <Typography variant="caption" sx={captionSx}>Vendor Name</Typography>
+              <Typography variant="body2" fontWeight={700} sx={valSx}>{payment.vendorName}</Typography>
             </Grid>
             <Grid item xs={6}>
-              <Typography variant="caption" color="text.secondary">Service Type</Typography>
-              <Typography variant="body2" fontWeight={600}>{payment.vendorType}</Typography>
+              <Typography variant="caption" sx={captionSx}>Service Type</Typography>
+              <Typography variant="body2" fontWeight={600} sx={valSx}>{payment.vendorType}</Typography>
             </Grid>
             <Grid item xs={6}>
-              <Typography variant="caption" color="text.secondary">PAN Number</Typography>
-              <Typography variant="body2" fontWeight={600} sx={{ fontFamily: 'monospace' }}>
+              <Typography variant="caption" sx={captionSx}>PAN Number</Typography>
+              <Typography variant="body2" fontWeight={600} sx={{ ...valSx, fontFamily: 'monospace' }}>
                 {payment.panNumber || '—'}
               </Typography>
             </Grid>
             <Grid item xs={6}>
-              <Typography variant="caption" color="text.secondary">GST Number</Typography>
-              <Typography variant="body2" fontWeight={600} sx={{ fontFamily: 'monospace' }}>
+              <Typography variant="caption" sx={captionSx}>GST Number</Typography>
+              <Typography variant="body2" fontWeight={600} sx={{ ...valSx, fontFamily: 'monospace' }}>
                 {payment.gstNumber || '—'}
               </Typography>
             </Grid>
@@ -171,29 +174,29 @@ function PaymentDetailDialog({ open, onClose, payment, onUpdate, mode: initialMo
             <>
               <Divider sx={{ my: 1.5 }} />
               <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 1 }}>
-                <BankIcon sx={{ fontSize: 13, color: '#64748b' }} />
-                <Typography variant="caption" fontWeight={700} color="text.secondary">
+                <BankIcon sx={{ fontSize: 13, color: '#94a3b8' }} />
+                <Typography variant="caption" fontWeight={700} sx={{ color: '#94a3b8' }}>
                   Bank Details
                 </Typography>
               </Stack>
-              <Grid container spacing={1.5}>
+              <Grid container spacing={2}>
                 <Grid item xs={6}>
-                  <Typography variant="caption" color="text.secondary">Bank</Typography>
-                  <Typography variant="body2" fontWeight={600}>{payment.bankName || '—'}</Typography>
+                  <Typography variant="caption" sx={captionSx}>Bank</Typography>
+                  <Typography variant="body2" fontWeight={600} sx={valSx}>{payment.bankName || '—'}</Typography>
                 </Grid>
                 <Grid item xs={6}>
-                  <Typography variant="caption" color="text.secondary">Account Type</Typography>
-                  <Typography variant="body2" fontWeight={600}>{payment.accountType || '—'}</Typography>
+                  <Typography variant="caption" sx={captionSx}>Account Type</Typography>
+                  <Typography variant="body2" fontWeight={600} sx={valSx}>{payment.accountType || '—'}</Typography>
                 </Grid>
                 <Grid item xs={6}>
-                  <Typography variant="caption" color="text.secondary">Account Number</Typography>
-                  <Typography variant="body2" fontWeight={600} sx={{ fontFamily: 'monospace' }}>
+                  <Typography variant="caption" sx={captionSx}>Account Number</Typography>
+                  <Typography variant="body2" fontWeight={600} sx={{ ...valSx, fontFamily: 'monospace' }}>
                     {payment.accountNumber || '—'}
                   </Typography>
                 </Grid>
                 <Grid item xs={6}>
-                  <Typography variant="caption" color="text.secondary">IFSC Code</Typography>
-                  <Typography variant="body2" fontWeight={600} sx={{ fontFamily: 'monospace' }}>
+                  <Typography variant="caption" sx={captionSx}>IFSC Code</Typography>
+                  <Typography variant="body2" fontWeight={600} sx={{ ...valSx, fontFamily: 'monospace' }}>
                     {payment.ifscCode || '—'}
                   </Typography>
                 </Grid>

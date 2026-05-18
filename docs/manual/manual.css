@@ -1,0 +1,187 @@
+/* TTA System Manual — print stylesheet
+   Applied by Pandoc when generating the PDF. */
+
+@page {
+  size: A4;
+  margin: 22mm 20mm 24mm 20mm;
+}
+
+html, body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-size: 11pt;
+  line-height: 1.55;
+  color: oklch(0.22 0.02 250);
+  background: #fff;
+}
+
+body {
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Headings */
+
+h1 {
+  font-size: 22pt;
+  font-weight: 700;
+  color: oklch(0.18 0.02 250);
+  margin: 0 0 16pt 0;
+  padding-bottom: 8pt;
+  border-bottom: 2pt solid oklch(0.85 0.02 250);
+  page-break-before: always;
+  page-break-after: avoid;
+}
+
+h1:first-of-type {
+  page-break-before: auto;
+}
+
+h2 {
+  font-size: 14pt;
+  font-weight: 700;
+  color: oklch(0.30 0.02 250);
+  margin: 22pt 0 8pt 0;
+  page-break-after: avoid;
+}
+
+h3 {
+  font-size: 12pt;
+  font-weight: 700;
+  color: oklch(0.32 0.05 270);
+  margin: 16pt 0 6pt 0;
+  page-break-after: avoid;
+}
+
+h4 {
+  font-size: 11pt;
+  font-weight: 700;
+  color: oklch(0.32 0.02 250);
+  margin: 12pt 0 4pt 0;
+  page-break-after: avoid;
+}
+
+/* Paragraphs and lists */
+
+p {
+  margin: 0 0 8pt 0;
+}
+
+ul, ol {
+  margin: 6pt 0 10pt 0;
+  padding-left: 22pt;
+}
+
+ul li, ol li {
+  margin: 0 0 4pt 0;
+}
+
+ul {
+  list-style-type: none;
+}
+
+ul li::before {
+  content: "—";
+  display: inline-block;
+  width: 14pt;
+  margin-left: -14pt;
+  color: oklch(0.55 0.05 270);
+}
+
+ol li::marker {
+  font-weight: 600;
+  color: oklch(0.32 0.05 270);
+}
+
+/* Avoid orphan/widow steps */
+li {
+  page-break-inside: avoid;
+}
+
+/* Inline code and emphasis */
+
+code {
+  font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+  font-size: 0.92em;
+  background: oklch(0.96 0.01 250);
+  padding: 1pt 4pt;
+  border-radius: 3pt;
+  color: oklch(0.30 0.05 280);
+}
+
+strong {
+  font-weight: 700;
+  color: oklch(0.18 0.02 250);
+}
+
+/* Tables */
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 8pt 0 14pt 0;
+  page-break-inside: avoid;
+}
+
+th, td {
+  border: 0.5pt solid oklch(0.82 0.02 250);
+  padding: 5pt 8pt;
+  text-align: left;
+  vertical-align: top;
+  font-size: 10.5pt;
+}
+
+th {
+  background: oklch(0.96 0.01 250);
+  font-weight: 700;
+  color: oklch(0.25 0.02 250);
+}
+
+/* Blockquote — used as callout box */
+
+blockquote {
+  margin: 10pt 0;
+  padding: 8pt 12pt;
+  border-left: 3pt solid oklch(0.60 0.10 270);
+  background: oklch(0.97 0.01 270);
+  color: oklch(0.28 0.03 270);
+  page-break-inside: avoid;
+}
+
+blockquote p {
+  margin: 0;
+}
+
+/* Horizontal rule between sub-sections inside a chapter */
+
+hr {
+  border: none;
+  border-top: 0.5pt solid oklch(0.88 0.02 250);
+  margin: 16pt 0;
+}
+
+/* Links */
+
+a {
+  color: oklch(0.40 0.10 270);
+  text-decoration: none;
+}
+
+/* Cover title (if a chapter starts the doc) */
+
+.cover {
+  text-align: center;
+  margin-top: 60mm;
+}
+
+.cover h1 {
+  font-size: 32pt;
+  border: none;
+  page-break-before: auto;
+}
+
+.cover .subtitle {
+  font-size: 14pt;
+  color: oklch(0.45 0.02 250);
+  margin-top: 6pt;
+}

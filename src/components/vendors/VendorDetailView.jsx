@@ -17,18 +17,14 @@ import {
 } from '@mui/material';
 import {
   Close as CloseIcon,
-  CheckCircle as CheckCircleIcon,
-  Pending as PendingIcon,
   Edit as EditIcon,
   InsertDriveFile as FileIcon,
 } from '@mui/icons-material';
-import { VENDOR_STATUS_COLORS } from './vendorConstants';
 
 function VendorDetailView({ open, onClose, vendor, onEdit }) {
   if (!vendor) return null;
 
   const isRep = vendor.isRepSourced;
-  const statusStyle = VENDOR_STATUS_COLORS[vendor.status] || VENDOR_STATUS_COLORS.Pending;
 
   const sectionSx = {
     p: 2.5,
@@ -40,26 +36,15 @@ function VendorDetailView({ open, onClose, vendor, onEdit }) {
 
   const sectionLabelSx = {
     fontWeight: 700,
-    color: '#64748b',
-    fontSize: '0.7rem',
+    color: '#94a3b8',
+    fontSize: '0.82rem',
     letterSpacing: '0.5px',
     textTransform: 'uppercase',
     mb: 1.5,
   };
 
-  const getDocChip = (label, value, verified) => (
-    <Stack direction="row" spacing={1} alignItems="center">
-      {verified ? (
-        <CheckCircleIcon sx={{ fontSize: 18, color: '#22c55e' }} />
-      ) : (
-        <PendingIcon sx={{ fontSize: 18, color: '#f59e0b' }} />
-      )}
-      <Box>
-        <Typography variant="caption" color="text.secondary">{label}</Typography>
-        <Typography variant="body2" fontWeight={600}>{value || 'N/A'}</Typography>
-      </Box>
-    </Stack>
-  );
+  const captionSx = { display: 'block', color: '#94a3b8', fontSize: '0.82rem', mb: 0.25 };
+  const valueSx = { color: '#334155', lineHeight: 1.6 };
 
   const isPanCardPdf = vendor.panCardImageUrl && !vendor.panCardImageUrl.startsWith('data:image');
 
@@ -67,27 +52,14 @@ function VendorDetailView({ open, onClose, vendor, onEdit }) {
     <Dialog
       open={open}
       onClose={onClose}
-      maxWidth="sm"
+      maxWidth="md"
       fullWidth
       PaperProps={{ sx: { borderRadius: 2.5 } }}
     >
       <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
-        <Stack direction="row" spacing={1.5} alignItems="center">
-          <Typography variant="h6" fontWeight={700} sx={{ color: '#1e293b' }}>
-            {vendor.vendorName}
-          </Typography>
-          <Chip
-            label={vendor.status}
-            size="small"
-            sx={{
-              bgcolor: statusStyle.bg,
-              color: statusStyle.color,
-              border: `1px solid ${statusStyle.border}`,
-              fontWeight: 600,
-              fontSize: '0.7rem',
-            }}
-          />
-        </Stack>
+        <Typography variant="h6" fontWeight={700} sx={{ color: '#1e293b' }}>
+          {vendor.vendorName}
+        </Typography>
         <IconButton size="small" onClick={onClose}>
           <CloseIcon />
         </IconButton>
@@ -99,108 +71,118 @@ function VendorDetailView({ open, onClose, vendor, onEdit }) {
         {/* Basic Info */}
         <Typography variant="caption" sx={sectionLabelSx}>Basic Information</Typography>
         <Box sx={sectionSx}>
-          <Grid container spacing={2}>
+          <Grid container spacing={2.5}>
             <Grid item xs={6}>
-              <Typography variant="caption" color="text.secondary">Vendor Name</Typography>
-              <Typography variant="body2" fontWeight={600}>{vendor.vendorName}</Typography>
+              <Typography variant="caption" sx={captionSx}>Vendor Name</Typography>
+              <Typography variant="body2" fontWeight={600} sx={valueSx}>{vendor.vendorName}</Typography>
             </Grid>
             <Grid item xs={6}>
-              <Typography variant="caption" color="text.secondary">Service Type</Typography>
+              <Typography variant="caption" sx={captionSx}>Service Type</Typography>
               <Chip
                 label={vendor.vendorType || 'N/A'}
                 size="small"
                 variant="outlined"
-                sx={{ fontWeight: 500, borderColor: '#5B63D3', color: '#5B63D3' }}
+                sx={{ fontWeight: 500, borderColor: '#5B63D3', color: '#5B63D3', mt: 0.25 }}
               />
             </Grid>
             {vendor.companyType && (
               <Grid item xs={6}>
-                <Typography variant="caption" color="text.secondary">Company Type</Typography>
-                <Typography variant="body2" fontWeight={600}>{vendor.companyType}</Typography>
+                <Typography variant="caption" sx={captionSx}>Company Type</Typography>
+                <Typography variant="body2" fontWeight={600} sx={valueSx}>{vendor.companyType}</Typography>
               </Grid>
             )}
             {vendor.entityName && (
               <Grid item xs={6}>
-                <Typography variant="caption" color="text.secondary">Entity Name</Typography>
-                <Typography variant="body2" fontWeight={600}>{vendor.entityName}</Typography>
+                <Typography variant="caption" sx={captionSx}>Entity Name</Typography>
+                <Typography variant="body2" fontWeight={600} sx={valueSx}>{vendor.entityName}</Typography>
               </Grid>
             )}
           </Grid>
         </Box>
 
         {/* Documents */}
-        <Typography variant="caption" sx={sectionLabelSx}>Document Verification</Typography>
-        <Box sx={sectionSx}>
-          <Grid container spacing={2}>
-            <Grid item xs={6}>
-              {getDocChip('GST Number', vendor.gstNumber, vendor.gstVerified)}
-            </Grid>
-            <Grid item xs={6}>
-              {getDocChip('PAN Number', vendor.panNumber, vendor.panVerified)}
-            </Grid>
-            {vendor.tdsType && vendor.tdsType !== 'None' && (
-              <Grid item xs={12}>
-                <Typography variant="caption" color="text.secondary">TDS Type</Typography>
-                <Typography variant="body2" fontWeight={600}>{vendor.tdsType}</Typography>
-              </Grid>
-            )}
-            {vendor.panCardImageUrl && (
-              <Grid item xs={12}>
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-                  PAN Card
-                </Typography>
-                {isPanCardPdf ? (
-                  <Stack direction="row" spacing={1} alignItems="center"
-                    sx={{ p: 1, bgcolor: '#f0f9ff', borderRadius: 1, maxWidth: 260 }}>
-                    <FileIcon fontSize="small" color="primary" />
-                    <Typography variant="caption" sx={{ fontSize: '0.75rem' }}>
-                      {vendor.panCardImageUrl.length > 30
-                        ? vendor.panCardImageUrl.substring(0, 30) + '...'
-                        : vendor.panCardImageUrl}
+        {(vendor.gstNumber || vendor.panNumber || vendor.tdsType) && (
+          <>
+            <Typography variant="caption" sx={sectionLabelSx}>Documents</Typography>
+            <Box sx={sectionSx}>
+              <Grid container spacing={2.5}>
+                {vendor.gstNumber && (
+                  <Grid item xs={6}>
+                    <Typography variant="caption" sx={captionSx}>GST Number</Typography>
+                    <Typography variant="body2" fontWeight={600} sx={{ ...valueSx, fontFamily: 'monospace' }}>{vendor.gstNumber}</Typography>
+                  </Grid>
+                )}
+                {vendor.panNumber && (
+                  <Grid item xs={6}>
+                    <Typography variant="caption" sx={captionSx}>PAN Number</Typography>
+                    <Typography variant="body2" fontWeight={600} sx={{ ...valueSx, fontFamily: 'monospace' }}>{vendor.panNumber}</Typography>
+                  </Grid>
+                )}
+                {vendor.tdsType && vendor.tdsType !== 'None' && (
+                  <Grid item xs={12}>
+                    <Typography variant="caption" sx={captionSx}>TDS Type</Typography>
+                    <Typography variant="body2" fontWeight={600} sx={valueSx}>{vendor.tdsType}</Typography>
+                  </Grid>
+                )}
+                {vendor.panCardImageUrl && (
+                  <Grid item xs={12}>
+                    <Typography variant="caption" sx={{ ...captionSx, mb: 0.5 }}>
+                      PAN Card
                     </Typography>
-                  </Stack>
-                ) : (
-                  <Box
-                    component="img"
-                    src={vendor.panCardImageUrl}
-                    alt="PAN Card"
-                    sx={{
-                      width: 200, height: 100, objectFit: 'cover',
-                      border: '1px solid #e5e7eb', borderRadius: 1.5,
-                    }}
-                  />
+                    {isPanCardPdf ? (
+                      <Stack direction="row" spacing={1} alignItems="center"
+                        sx={{ p: 1, bgcolor: '#f0f9ff', borderRadius: 1, maxWidth: 260 }}>
+                        <FileIcon fontSize="small" color="primary" />
+                        <Typography variant="caption" sx={{ fontSize: '0.75rem' }}>
+                          {vendor.panCardImageUrl.length > 30
+                            ? vendor.panCardImageUrl.substring(0, 30) + '...'
+                            : vendor.panCardImageUrl}
+                        </Typography>
+                      </Stack>
+                    ) : (
+                      <Box
+                        component="img"
+                        src={vendor.panCardImageUrl}
+                        alt="PAN Card"
+                        sx={{
+                          width: 200, height: 100, objectFit: 'cover',
+                          border: '1px solid #e5e7eb', borderRadius: 1.5,
+                        }}
+                      />
+                    )}
+                  </Grid>
                 )}
               </Grid>
-            )}
-          </Grid>
-        </Box>
+            </Box>
+          </>
+        )}
 
         {/* Contact */}
         <Typography variant="caption" sx={sectionLabelSx}>Contact Details</Typography>
         <Box sx={sectionSx}>
-          <Grid container spacing={2}>
+          <Grid container spacing={2.5}>
             <Grid item xs={6}>
-              <Typography variant="caption" color="text.secondary">Contact Person</Typography>
-              <Typography variant="body2" fontWeight={600}>{vendor.contactPerson || 'N/A'}</Typography>
+              <Typography variant="caption" sx={captionSx}>Contact Person</Typography>
+              <Typography variant="body2" fontWeight={600} sx={valueSx}>{vendor.contactPerson || 'N/A'}</Typography>
             </Grid>
             <Grid item xs={6}>
-              <Typography variant="caption" color="text.secondary">Phone</Typography>
-              <Typography variant="body2" fontWeight={600}>{vendor.phone || 'N/A'}</Typography>
+              <Typography variant="caption" sx={captionSx}>Phone</Typography>
+              <Typography variant="body2" fontWeight={600} sx={valueSx}>{vendor.phone || 'N/A'}</Typography>
             </Grid>
             <Grid item xs={12}>
-              <Typography variant="caption" color="text.secondary">Email</Typography>
-              <Typography variant="body2" fontWeight={600}>{vendor.email || 'N/A'}</Typography>
+              <Typography variant="caption" sx={captionSx}>Email</Typography>
+              <Typography variant="body2" fontWeight={600} sx={valueSx}>{vendor.email || 'N/A'}</Typography>
             </Grid>
             {vendor.address && (
               <Grid item xs={12}>
-                <Typography variant="caption" color="text.secondary">Address</Typography>
-                <Typography variant="body2">{vendor.address}</Typography>
+                <Typography variant="caption" sx={captionSx}>Address</Typography>
+                <Typography variant="body2" sx={{ ...valueSx, fontWeight: 400 }}>{vendor.address}</Typography>
               </Grid>
             )}
             {vendor.contactPinCode && (
               <Grid item xs={6}>
-                <Typography variant="caption" color="text.secondary">Pin Code</Typography>
-                <Typography variant="body2" fontWeight={600}>{vendor.contactPinCode}</Typography>
+                <Typography variant="caption" sx={captionSx}>Pin Code</Typography>
+                <Typography variant="body2" fontWeight={600} sx={valueSx}>{vendor.contactPinCode}</Typography>
               </Grid>
             )}
           </Grid>
@@ -213,35 +195,39 @@ function VendorDetailView({ open, onClose, vendor, onEdit }) {
               Bank Details {vendor.panNumber && `(PAN: ${vendor.panNumber})`}
             </Typography>
             <Box sx={sectionSx}>
-              <Grid container spacing={2}>
+              <Grid container spacing={2.5}>
                 <Grid item xs={6}>
-                  <Typography variant="caption" color="text.secondary">Bank Name</Typography>
-                  <Typography variant="body2" fontWeight={600}>{vendor.bankName || 'N/A'}</Typography>
+                  <Typography variant="caption" sx={captionSx}>Bank Name</Typography>
+                  <Typography variant="body2" fontWeight={600} sx={valueSx}>{vendor.bankName || 'N/A'}</Typography>
                 </Grid>
                 {vendor.accountType && (
                   <Grid item xs={6}>
-                    <Typography variant="caption" color="text.secondary">Account Type</Typography>
-                    <Typography variant="body2" fontWeight={600}>{vendor.accountType}</Typography>
+                    <Typography variant="caption" sx={captionSx}>Account Type</Typography>
+                    <Typography variant="body2" fontWeight={600} sx={valueSx}>{vendor.accountType}</Typography>
                   </Grid>
                 )}
                 <Grid item xs={6}>
-                  <Typography variant="caption" color="text.secondary">Account Number</Typography>
-                  <Typography variant="body2" fontWeight={600}>{vendor.accountNumber || 'N/A'}</Typography>
+                  <Typography variant="caption" sx={captionSx}>Account Holder Name</Typography>
+                  <Typography variant="body2" fontWeight={600} sx={valueSx}>{vendor.accountHolderName || 'N/A'}</Typography>
                 </Grid>
                 <Grid item xs={6}>
-                  <Typography variant="caption" color="text.secondary">IFSC Code</Typography>
-                  <Typography variant="body2" fontWeight={600}>{vendor.ifscCode || 'N/A'}</Typography>
+                  <Typography variant="caption" sx={captionSx}>Account Number</Typography>
+                  <Typography variant="body2" fontWeight={600} sx={valueSx}>{vendor.accountNumber || 'N/A'}</Typography>
+                </Grid>
+                <Grid item xs={6}>
+                  <Typography variant="caption" sx={captionSx}>IFSC Code</Typography>
+                  <Typography variant="body2" fontWeight={600} sx={valueSx}>{vendor.ifscCode || 'N/A'}</Typography>
                 </Grid>
                 {vendor.bankPinCode && (
                   <Grid item xs={6}>
-                    <Typography variant="caption" color="text.secondary">Branch Pin Code</Typography>
-                    <Typography variant="body2" fontWeight={600}>{vendor.bankPinCode}</Typography>
+                    <Typography variant="caption" sx={captionSx}>Branch Pin Code</Typography>
+                    <Typography variant="body2" fontWeight={600} sx={valueSx}>{vendor.bankPinCode}</Typography>
                   </Grid>
                 )}
                 {vendor.branchAddress && (
                   <Grid item xs={12}>
-                    <Typography variant="caption" color="text.secondary">Branch Address</Typography>
-                    <Typography variant="body2">{vendor.branchAddress}</Typography>
+                    <Typography variant="caption" sx={captionSx}>Branch Address</Typography>
+                    <Typography variant="body2" sx={{ ...valueSx, fontWeight: 400 }}>{vendor.branchAddress}</Typography>
                   </Grid>
                 )}
               </Grid>

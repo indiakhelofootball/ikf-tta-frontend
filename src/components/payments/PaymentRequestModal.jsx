@@ -359,6 +359,16 @@ function PaymentRequestModal({
   const tdsAmount = Math.round(gross * tdsRate / 100);
   const netAmount = gross - tdsAmount;
 
+  // Retry-of-bounced detection: same WO + matching period (Periodic) or any
+  // bounced PR (Fixed). Backend skips duplicate TDSRecord in this case — this
+  // flag drives the visual cue so the user knows TDS is not being re-deducted.
+  const isRetryOfBounced = !!selectedWO && (
+    selectedWO.type === 'Periodic'
+      ? selectedPeriod !== '' && selectedPeriod != null &&
+        (selectedWO.bouncedPeriods || []).map(Number).includes(Number(selectedPeriod))
+      : parseInt(selectedWO.bouncedPaymentCount || 0, 10) > 0
+  );
+
   // Periodic: available periods (not yet paid)
   const availablePeriods = selectedWO?.type === 'Periodic'
     ? Array.from({ length: selectedWO.numberOfPeriods }, (_, i) => i + 1)
@@ -678,11 +688,19 @@ function PaymentRequestModal({
                 </Grid>
               </Grid>
 
+              {/* Retry-of-bounced cue */}
+              {isRetryOfBounced && (
+                <Alert severity="info" sx={{ mt: 2, borderRadius: 1.5 }}>
+                  <strong>TDS already deducted</strong> on the earlier bounced payment for this {selectedWO?.type === 'Periodic' ? 'period' : 'work order'}.
+                  No new TDS will be recorded — you are re-raising the disbursement only. Please confirm.
+                </Alert>
+              )}
+
               {/* TDS breakdown */}
               {gross > 0 && (
                 <Box sx={{ mt: 2, p: 1.5, bgcolor: '#fff', borderRadius: 1.5, border: '1px solid #e2e8f0' }}>
                   <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-                    TDS BREAKDOWN
+                    TDS BREAKDOWN{isRetryOfBounced ? ' — already paid on bounced attempt' : ''}
                   </Typography>
                   <Stack spacing={0.75}>
                     <Stack direction="row" justifyContent="space-between">
@@ -820,6 +838,13 @@ function PaymentRequestModal({
                 </Grid>
               </Grid>
             </Box>
+
+            {/* Retry-of-bounced cue */}
+            {isRetryOfBounced && (
+              <Alert severity="info" sx={{ mb: 2, borderRadius: 1.5 }}>
+                <strong>TDS already deducted</strong> on the earlier bounced payment. No new TDS row will be created on submit — this is a re-raise of the same disbursement.
+              </Alert>
+            )}
 
             {/* Financial summary */}
             <Typography sx={labelSx}>Payment Summary</Typography>

@@ -1,7 +1,6 @@
 // src/components/vendors/VendorCard.jsx
 
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   Card,
   CardContent,
@@ -19,23 +18,13 @@ import {
   Phone as PhoneIcon,
   Email as EmailIcon,
   AccountBalance as BankIcon,
-  CheckCircle as CheckCircleIcon,
-  Pending as PendingIcon,
-  Assignment as WOIcon,
+  Delete as DeleteIcon,
+  ReceiptLong as StatementIcon,
+  CheckCircle as CheckIcon,
 } from '@mui/icons-material';
-import { VENDOR_STATUS_COLORS } from './vendorConstants';
+// vendorConstants no longer needed here
 
-function VendorCard({ vendor, onEdit, onViewDetails }) {
-  const navigate = useNavigate();
-  const statusStyle = VENDOR_STATUS_COLORS[vendor.status] || VENDOR_STATUS_COLORS.Pending;
-  const isVerified = vendor.status === 'Verified' || vendor.status === 'Active';
-
-  const getDocIcon = (verified) =>
-    verified ? (
-      <CheckCircleIcon sx={{ fontSize: 20, color: '#22c55e' }} />
-    ) : (
-      <PendingIcon sx={{ fontSize: 20, color: '#f59e0b' }} />
-    );
+function VendorCard({ vendor, onEdit, onViewDetails, onDelete, onViewStatement }) {
 
   return (
     <Card
@@ -51,26 +40,10 @@ function VendorCard({ vendor, onEdit, onViewDetails }) {
       }}
     >
       <CardContent sx={{ p: 2.5, flex: 1, display: 'flex', flexDirection: 'column' }}>
-        {/* Header: Name + Status */}
-        <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 1.5 }}>
-          <Typography variant="subtitle1" fontWeight={700} sx={{ color: '#1e293b', lineHeight: 1.3 }}>
-            {vendor.vendorName}
-          </Typography>
-          <Chip
-            label={vendor.status}
-            size="small"
-            sx={{
-              bgcolor: statusStyle.bg,
-              color: statusStyle.color,
-              border: `1px solid ${statusStyle.border}`,
-              fontWeight: 600,
-              fontSize: '0.7rem',
-              height: 24,
-              ml: 1,
-              flexShrink: 0,
-            }}
-          />
-        </Stack>
+        {/* Header: Name */}
+        <Typography variant="subtitle1" fontWeight={700} sx={{ color: '#1e293b', lineHeight: 1.3, mb: 1.5 }}>
+          {vendor.vendorName}
+        </Typography>
 
         {/* Vendor Type */}
         <Chip
@@ -81,63 +54,46 @@ function VendorCard({ vendor, onEdit, onViewDetails }) {
             alignSelf: 'flex-start',
             mb: 2,
             fontWeight: 500,
-            fontSize: '0.7rem',
+            fontSize: '0.8rem',
             borderColor: '#5B63D3',
             color: '#5B63D3',
-            height: 24,
+            height: 26,
           }}
         />
 
         {vendor.entityName && (
-          <Typography variant="caption" sx={{ color: '#64748b', display: 'block', mb: 1.5, mt: -1 }}>
+          <Typography variant="caption" sx={{ color: '#94a3b8', display: 'block', mb: 1.5, mt: -1 }}>
             {vendor.entityName}
           </Typography>
         )}
 
-        {/* Document Verification */}
-        <Typography variant="caption" sx={{ color: '#94a3b8', fontWeight: 600, letterSpacing: '0.5px', mb: 1, display: 'block' }}>
-          DOCUMENT VERIFICATION
-        </Typography>
-        <Stack direction="row" spacing={1.5} sx={{ mb: 2 }}>
-          <Box
-            sx={{
-              flex: 1,
-              p: 1.5,
-              borderRadius: 1.5,
-              border: '1px solid #e2e8f0',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-            }}
-          >
-            {getDocIcon(vendor.gstVerified)}
-            <Box>
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1 }}>GST</Typography>
-              <Typography variant="caption" fontWeight={700} sx={{ fontSize: '0.7rem' }}>
-                {vendor.gstNumber || 'N/A'}
-              </Typography>
-            </Box>
-          </Box>
-          <Box
-            sx={{
-              flex: 1,
-              p: 1.5,
-              borderRadius: 1.5,
-              border: '1px solid #e2e8f0',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-            }}
-          >
-            {getDocIcon(vendor.panVerified)}
-            <Box>
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1 }}>PAN</Typography>
-              <Typography variant="caption" fontWeight={700} sx={{ fontSize: '0.7rem' }}>
-                {vendor.panNumber || 'N/A'}
-              </Typography>
-            </Box>
-          </Box>
-        </Stack>
+        {/* PAN / GST */}
+        {(vendor.panNumber || vendor.gstNumber) && (
+          <Stack direction="row" spacing={2} sx={{ mb: 1.5 }}>
+            {vendor.panNumber && (
+              <Box>
+                <Stack direction="row" spacing={0.5} alignItems="center">
+                  <Typography variant="caption" sx={{ color: '#94a3b8', fontSize: '0.78rem', lineHeight: 1 }}>PAN</Typography>
+                  {vendor.panVerified && <CheckIcon sx={{ fontSize: 12, color: '#22c55e' }} />}
+                </Stack>
+                <Typography variant="caption" fontWeight={700} sx={{ fontSize: '0.82rem', color: '#334155', fontFamily: 'monospace' }}>
+                  {vendor.panNumber}
+                </Typography>
+              </Box>
+            )}
+            {vendor.gstNumber && (
+              <Box>
+                <Stack direction="row" spacing={0.5} alignItems="center">
+                  <Typography variant="caption" sx={{ color: '#94a3b8', fontSize: '0.78rem', lineHeight: 1 }}>GST</Typography>
+                  {vendor.gstVerified && <CheckIcon sx={{ fontSize: 12, color: '#22c55e' }} />}
+                </Stack>
+                <Typography variant="caption" fontWeight={700} sx={{ fontSize: '0.82rem', color: '#334155', fontFamily: 'monospace' }}>
+                  {vendor.gstNumber}
+                </Typography>
+              </Box>
+            )}
+          </Stack>
+        )}
 
         {/* Contact Info */}
         <Stack spacing={0.75} sx={{ mb: 2 }}>
@@ -168,25 +124,24 @@ function VendorCard({ vendor, onEdit, onViewDetails }) {
         <Box sx={{ mt: 'auto' }}>
           <Divider sx={{ mb: 2 }} />
 
-          {/* Actions */}
-          <Stack direction="row" spacing={1}>
+          {/* Actions — 2×2 grid */}
+          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
             <Button
               size="small"
               variant="outlined"
               startIcon={<ViewIcon fontSize="small" />}
               onClick={() => onViewDetails(vendor)}
               sx={{
-                flex: 1,
                 textTransform: 'none',
                 fontWeight: 600,
-                fontSize: '0.75rem',
+                fontSize: '0.82rem',
                 borderColor: '#e2e8f0',
                 color: '#475569',
                 borderRadius: 1.5,
                 '&:hover': { borderColor: '#94a3b8', bgcolor: '#f8fafc' },
               }}
             >
-              View Details
+              View
             </Button>
             <Button
               size="small"
@@ -194,10 +149,9 @@ function VendorCard({ vendor, onEdit, onViewDetails }) {
               startIcon={<EditIcon fontSize="small" />}
               onClick={() => onEdit(vendor)}
               sx={{
-                flex: 1,
                 textTransform: 'none',
                 fontWeight: 600,
-                fontSize: '0.75rem',
+                fontSize: '0.82rem',
                 borderColor: '#e2e8f0',
                 color: '#475569',
                 borderRadius: 1.5,
@@ -206,28 +160,43 @@ function VendorCard({ vendor, onEdit, onViewDetails }) {
             >
               Edit
             </Button>
-          </Stack>
-          {isVerified && (
+            {onViewStatement && (
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<StatementIcon fontSize="small" />}
+                onClick={() => onViewStatement(vendor)}
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  fontSize: '0.82rem',
+                  borderColor: '#e2e8f0',
+                  color: '#5B63D3',
+                  borderRadius: 1.5,
+                  '&:hover': { borderColor: '#5B63D3', bgcolor: '#eef2ff' },
+                }}
+              >
+                Statement
+              </Button>
+            )}
             <Button
               size="small"
-              fullWidth
               variant="outlined"
-              startIcon={<WOIcon fontSize="small" />}
-              onClick={() => navigate('/work-orders', { state: { vendor } })}
+              startIcon={<DeleteIcon fontSize="small" />}
+              onClick={() => onDelete(vendor)}
               sx={{
-                mt: 1,
                 textTransform: 'none',
                 fontWeight: 600,
-                fontSize: '0.75rem',
-                borderColor: '#5B63D3',
-                color: '#5B63D3',
+                fontSize: '0.82rem',
+                borderColor: '#fecaca',
+                color: '#dc2626',
                 borderRadius: 1.5,
-                '&:hover': { borderColor: '#4338ca', bgcolor: '#eef2ff' },
+                '&:hover': { borderColor: '#dc2626', bgcolor: '#fef2f2' },
               }}
             >
-              Create Work Order
+              Delete
             </Button>
-          )}
+          </Box>
         </Box>
       </CardContent>
     </Card>

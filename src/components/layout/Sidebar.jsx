@@ -104,7 +104,7 @@ export default function Sidebar({ collapsed, onToggle }) {
         {canAccessWorkOrders && <NavItem to="/work-orders" icon={<WorkOrderIcon fontSize="small" />} label="Work Orders" />}
         {canAccessPayments && <NavItem to="/payments" icon={<PaymentIcon fontSize="small" />} label="Payments" />}
         {canAccessBank && <NavItem to="/bank-tds" icon={<BankIcon fontSize="small" />} label="Banking" />}
-        {canAccessReports && <NavItem to="/reports/social-media" icon={<ReportsIcon fontSize="small" />} label="Reports" />}
+        {canAccessReports && <NavItem to="/reports" icon={<ReportsIcon fontSize="small" />} label="Reports" />}
         {canAccessReports && <NavItem to="/courier" icon={<CourierIcon fontSize="small" />} label="Courier" />}
       </nav>
     </aside>

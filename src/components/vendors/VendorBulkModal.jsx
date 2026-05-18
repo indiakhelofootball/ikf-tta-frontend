@@ -35,6 +35,7 @@ const emptyRow = () => ({
   address: '',
   contactPinCode: '',
   bankName: '',
+  accountHolderName: '',
   accountNumber: '',
   accountType: '',
   ifscCode: '',
@@ -46,7 +47,7 @@ const fieldLabelSx = {
   mb: 0.5,
   display: 'block',
   fontWeight: 600,
-  color: '#334155',
+  color: '#64748b',
   fontSize: '0.75rem',
 };
 

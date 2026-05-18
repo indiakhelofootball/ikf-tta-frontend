@@ -24,6 +24,10 @@ import { BankManagementPage } from "./components/bank";
 import { ProfilePage } from "./components/profile";
 import AdminPage from "./components/admin/AdminPage";
 import SocialMediaReport from "./components/reports/SocialMediaReport";
+import ReportsHub from "./components/reports/ReportsHub";
+import PaymentAuditReport from "./components/reports/PaymentAuditReport";
+import VendorAuditReport from "./components/reports/VendorAuditReport";
+import TrialSpendReport from "./components/reports/TrialSpendReport";
 import CourierManagementPage from "./components/courier/CourierManagementPage";
 
 // Import error handling components
@@ -129,6 +133,26 @@ function App() {
             <Route path="/bank-tds" element={
               <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
                 <BankManagementPage />
+              </RoleBasedRoute>
+            } />
+            <Route path="/reports" element={
+              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+                <ReportsHub />
+              </RoleBasedRoute>
+            } />
+            <Route path="/reports/payment-audit" element={
+              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+                <PaymentAuditReport />
+              </RoleBasedRoute>
+            } />
+            <Route path="/reports/vendor-audit" element={
+              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+                <VendorAuditReport />
+              </RoleBasedRoute>
+            } />
+            <Route path="/reports/trial-spend" element={
+              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+                <TrialSpendReport />
               </RoleBasedRoute>
             } />
             <Route path="/reports/social-media" element={

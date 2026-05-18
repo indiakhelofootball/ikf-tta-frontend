@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>India Khelo Football - Trial Tracking Application</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Login Page -->
+    <div id="login-page" class="page active">
+        <div class="login-container">
+            <div class="login-left">
+                <div class="login-brand">
+                    <span class="material-icons">sports_soccer</span>
+                    <h1>India Khelo Football</h1>
+                    <p>Trial Tracking Application</p>
+                </div>
+                <div class="login-features">
+                    <div class="feature-item">
+                        <span class="material-icons">groups</span>
+                        <span>Manage REPs across India</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="material-icons">assignment</span>
+                        <span>Track Work Orders & Vendors</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="material-icons">location_city</span>
+                        <span>Trial City Management</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="material-icons">payments</span>
+                        <span>Payment & Invoice Tracking</span>
+                    </div>
+                </div>
+            </div>
+            <div class="login-right">
+                <div class="login-card">
+                    <h2>Welcome Back</h2>
+                    <p class="login-subtitle">Sign in to continue</p>
+                    <form id="login-form" class="login-form">
+                        <div class="input-group">
+                            <span class="material-icons">email</span>
+                            <input type="email" id="email" placeholder="Email Address" required>
+                        </div>
+                        <div class="input-group">
+                            <span class="material-icons">lock</span>
+                            <input type="password" id="password" placeholder="Password" required>
+                        </div>
+                        <div class="input-group">
+                            <span class="material-icons">person</span>
+                            <select id="role" required>
+                                <option value="">Select Your Role</option>
+                                <option value="super_admin">Super Admin (Management)</option>
+                                <option value="trial_manager">Trial Manager (TM)</option>
+                                <option value="atm">Asst. Trial Manager (ATM)</option>
+                                <option value="bo_coordinator">Back Office Coordinator</option>
+                                <option value="scout">Scout</option>
+                                <option value="logistics">Logistics</option>
+                                <option value="accounts">Accounts</option>
+                                <option value="communication">Communication</option>
+                                <option value="rep">REP (External)</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn-primary btn-large">
+                            <span class="material-icons">login</span>
+                            Sign In
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application -->
+    <div id="app-container" class="app-container hidden">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <span class="material-icons logo">sports_soccer</span>
+                <div class="brand-text">
+                    <span class="brand-name">India Khelo</span>
+                    <span class="brand-subtitle">TTA System</span>
+                </div>
+            </div>
+            <div class="sidebar-menu">
+                <button class="menu-item active" data-page="dashboard">
+                    <span class="material-icons">dashboard</span>
+                    <span class="menu-text">Dashboard</span>
+                </button>
+                <button class="menu-item" data-page="rep">
+                    <span class="material-icons">groups</span>
+                    <span class="menu-text">REP Management</span>
+                </button>
+                <button class="menu-item" data-page="workorders">
+                    <span class="material-icons">assignment</span>
+                    <span class="menu-text">Work Orders</span>
+                </button>
+                <button class="menu-item" data-page="city">
+                    <span class="material-icons">location_city</span>
+                    <span class="menu-text">Trial Cities</span>
+                </button>
+                <button class="menu-item" data-page="payments">
+                    <span class="material-icons">payments</span>
+                    <span class="menu-text">Payments</span>
+                </button>
+                <button class="menu-item" data-page="vendors">
+                    <span class="material-icons">business</span>
+                    <span class="menu-text">Vendor Documents</span>
+                </button>
+                <button class="menu-item" data-page="scouts">
+                    <span class="material-icons">person_search</span>
+                    <span class="menu-text">Scouts Management</span>
+                </button>
+            </div>
+            <div class="sidebar-footer">
+                <button class="menu-item" id="logout-btn">
+                    <span class="material-icons">logout</span>
+                    <span class="menu-text">Logout</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Header -->
+            <header class="top-header">
+                <div class="header-left">
+                    <button class="icon-btn" id="sidebar-toggle">
+                        <span class="material-icons">menu</span>
+                    </button>
+                    <h1 class="page-title" id="page-title">Dashboard</h1>
+                </div>
+                <div class="header-right">
+                    <button class="icon-btn">
+                        <span class="material-icons">search</span>
+                    </button>
+                    <button class="icon-btn notification-btn">
+                        <span class="material-icons">notifications</span>
+                        <span class="notification-badge">3</span>
+                    </button>
+                    <div class="user-profile" id="user-profile">
+                        <div class="user-avatar">
+                            <span class="material-icons">person</span>
+                        </div>
+                        <div class="user-info">
+                            <span class="user-name" id="user-name">Admin</span>
+                            <span class="user-role" id="user-role-display">Super Admin</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Content Area -->
+            <div class="content-wrapper">
+                <!-- Dashboard Page -->
+                <section id="dashboard-page" class="content-page active">
+                    <div class="dashboard-grid">
+                        <!-- Quick Stats Row -->
+                        <div class="stats-row">
+                            <div class="stat-card gradient-purple">
+                                <div class="stat-icon">
+                                    <span class="material-icons">groups</span>
+                                </div>
+                                <div class="stat-content">
+                                    <span class="stat-value" id="stat-active-reps">4</span>
+                                    <span class="stat-label">Active REPs</span>
+                                </div>
+                                <div class="stat-trend up">
+                                    <span class="material-icons">trending_up</span>
+                                    <span>+2 this month</span>
+                                </div>
+                            </div>
+                            <div class="stat-card gradient-blue">
+                                <div class="stat-icon">
+                                    <span class="material-icons">assignment</span>
+                                </div>
+                                <div class="stat-content">
+                                    <span class="stat-value" id="stat-work-orders">5</span>
+                                    <span class="stat-label">Work Orders</span>
+                                </div>
+                                <div class="stat-trend up">
+                                    <span class="material-icons">trending_up</span>
+                                    <span>3 pending</span>
+                                </div>
+                            </div>
+                            <div class="stat-card gradient-green">
+                                <div class="stat-icon">
+                                    <span class="material-icons">location_city</span>
+                                </div>
+                                <div class="stat-content">
+                                    <span class="stat-value" id="stat-trial-cities">5</span>
+                                    <span class="stat-label">Trial Cities</span>
+                                </div>
+                                <div class="stat-trend">
+                                    <span class="material-icons">event</span>
+                                    <span>2 upcoming</span>
+                                </div>
+                            </div>
+                            <div class="stat-card gradient-orange">
+                                <div class="stat-icon">
+                                    <span class="material-icons">account_balance_wallet</span>
+                                </div>
+                                <div class="stat-content">
+                                    <span class="stat-value" id="stat-pending-amount">₹70K</span>
+                                    <span class="stat-label">Pending Payments</span>
+                                </div>
+                                <div class="stat-trend warning">
+                                    <span class="material-icons">warning</span>
+                                    <span>1 overdue</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Main Content Row -->
+                        <div class="dashboard-main">
+                            <!-- Quick Actions -->
+                            <div class="quick-actions-card">
+                                <h3>Quick Actions</h3>
+                                <div class="quick-actions-grid">
+                                    <button class="quick-action" onclick="openModal('rep', 'add')">
+                                        <span class="material-icons">person_add</span>
+                                        <span>Add REP</span>
+                                    </button>
+                                    <button class="quick-action" onclick="openModal('workorder', 'add')">
+                                        <span class="material-icons">add_task</span>
+                                        <span>New Work Order</span>
+                                    </button>
+                                    <button class="quick-action" onclick="openModal('city', 'add')">
+                                        <span class="material-icons">add_location</span>
+                                        <span>Add City</span>
+                                    </button>
+                                    <button class="quick-action" onclick="openModal('payment', 'add')">
+                                        <span class="material-icons">receipt_long</span>
+                                        <span>Raise Invoice</span>
+                                    </button>
+                                    <button class="quick-action highlight" onclick="handleNavigation('vendors')">
+                                        <span class="material-icons">business</span>
+                                        <span>Vendor Docs</span>
+                                    </button>
+                                    <button class="quick-action" onclick="handleNavigation('rep')">
+                                        <span class="material-icons">list</span>
+                                        <span>View All REPs</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Recent Activity -->
+                            <div class="activity-card">
+                                <div class="card-header">
+                                    <h3>Recent Activity</h3>
+                                    <button class="btn-text-small">View All</button>
+                                </div>
+                                <div class="activity-list" id="activity-list">
+                                    <!-- Activity items inserted by JS -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Bottom Row -->
+                        <div class="dashboard-bottom">
+                            <!-- Upcoming Trials -->
+                            <div class="upcoming-trials-card">
+                                <div class="card-header">
+                                    <h3>Upcoming Trials</h3>
+                                    <button class="btn-text-small" onclick="handleNavigation('city')">View All</button>
+                                </div>
+                                <div class="trials-list" id="upcoming-trials">
+                                    <!-- Trials inserted by JS -->
+                                </div>
+                            </div>
+
+                            <!-- Payment Status -->
+                            <div class="payment-status-card">
+                                <div class="card-header">
+                                    <h3>Payment Overview</h3>
+                                    <button class="btn-text-small" onclick="handleNavigation('payments')">View All</button>
+                                </div>
+                                <div class="payment-chart">
+                                    <div class="chart-ring">
+                                        <svg viewBox="0 0 36 36">
+                                            <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                            <path class="ring-progress paid" stroke-dasharray="40, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                        </svg>
+                                        <div class="chart-center">
+                                            <span class="chart-value">40%</span>
+                                            <span class="chart-label">Paid</span>
+                                        </div>
+                                    </div>
+                                    <div class="chart-legend">
+                                        <div class="legend-item">
+                                            <span class="legend-color paid"></span>
+                                            <span>Paid (₹70,000)</span>
+                                        </div>
+                                        <div class="legend-item">
+                                            <span class="legend-color pending"></span>
+                                            <span>Pending (₹50,000)</span>
+                                        </div>
+                                        <div class="legend-item">
+                                            <span class="legend-color overdue"></span>
+                                            <span>Overdue (₹35,000)</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Region Overview -->
+                            <div class="region-overview-card">
+                                <div class="card-header">
+                                    <h3>REPs by Region</h3>
+                                </div>
+                                <div class="region-bars">
+                                    <div class="region-bar">
+                                        <div class="region-info">
+                                            <span>North</span>
+                                            <span>1 REP</span>
+                                        </div>
+                                        <div class="bar-track"><div class="bar-fill" style="width: 25%"></div></div>
+                                    </div>
+                                    <div class="region-bar">
+                                        <div class="region-info">
+                                            <span>South</span>
+                                            <span>2 REPs</span>
+                                        </div>
+                                        <div class="bar-track"><div class="bar-fill" style="width: 50%"></div></div>
+                                    </div>
+                                    <div class="region-bar">
+                                        <div class="region-info">
+                                            <span>East</span>
+                                            <span>1 REP</span>
+                                        </div>
+                                        <div class="bar-track"><div class="bar-fill" style="width: 25%"></div></div>
+                                    </div>
+                                    <div class="region-bar">
+                                        <div class="region-info">
+                                            <span>West</span>
+                                            <span>1 REP</span>
+                                        </div>
+                                        <div class="bar-track"><div class="bar-fill" style="width: 25%"></div></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- REP Management Page -->
+                <section id="rep-page" class="content-page">
+                    <div class="page-actions">
+                        <div class="search-box">
+                            <span class="material-icons">search</span>
+                            <input type="text" id="rep-search" placeholder="Search REPs...">
+                        </div>
+                        <div class="filter-pills">
+                            <button class="pill active" data-filter="all">All</button>
+                            <button class="pill" data-filter="active">Active</button>
+                            <button class="pill" data-filter="inactive">Inactive</button>
+                        </div>
+                        <div class="action-buttons">
+                            <button class="btn-primary" onclick="openModal('rep', 'add')">
+                                <span class="material-icons">add</span>
+                                Add REP
+                            </button>
+                        </div>
+                    </div>
+                    <div class="data-table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>REP Details</th>
+                                    <th>Location</th>
+                                    <th>Contact</th>
+                                    <th>Legal Info</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rep-table-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Work Orders Page -->
+                <section id="workorders-page" class="content-page">
+                    <div class="page-actions">
+                        <div class="search-box">
+                            <span class="material-icons">search</span>
+                            <input type="text" id="workorder-search" placeholder="Search work orders...">
+                        </div>
+                        <div class="filter-pills">
+                            <button class="pill active" data-filter="all">All</button>
+                            <button class="pill" data-filter="created">Created</button>
+                            <button class="pill" data-filter="approved">Approved</button>
+                            <button class="pill" data-filter="closed">Closed</button>
+                        </div>
+                        <div class="action-buttons">
+                            <button class="btn-primary" onclick="openModal('workorder', 'add')">
+                                <span class="material-icons">add</span>
+                                New Work Order
+                            </button>
+                        </div>
+                    </div>
+                    <div class="data-table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Work Order</th>
+                                    <th>Vendor</th>
+                                    <th>Activity</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="workorder-table-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- City Management Page -->
+                <section id="city-page" class="content-page">
+                    <div class="page-actions">
+                        <div class="search-box">
+                            <span class="material-icons">search</span>
+                            <input type="text" id="city-search" placeholder="Search cities...">
+                        </div>
+                        <div class="filter-pills">
+                            <button class="pill active" data-filter="all">All</button>
+                            <button class="pill" data-filter="north">North</button>
+                            <button class="pill" data-filter="south">South</button>
+                            <button class="pill" data-filter="east">East</button>
+                            <button class="pill" data-filter="west">West</button>
+                        </div>
+                        <div class="action-buttons">
+                            <button class="btn-primary" onclick="openModal('city', 'add')">
+                                <span class="material-icons">add</span>
+                                Add City
+                            </button>
+                        </div>
+                    </div>
+                    <div class="cards-grid" id="city-cards"></div>
+                </section>
+
+                <!-- Payments Page -->
+                <section id="payments-page" class="content-page">
+                    <div class="payment-summary-row">
+                        <div class="summary-item">
+                            <span class="material-icons">account_balance_wallet</span>
+                            <div>
+                                <span class="summary-value" id="total-outstanding">₹1,40,000</span>
+                                <span class="summary-label">Total Outstanding</span>
+                            </div>
+                        </div>
+                        <div class="summary-item warning">
+                            <span class="material-icons">pending_actions</span>
+                            <div>
+                                <span class="summary-value" id="pending-amount">₹50,000</span>
+                                <span class="summary-label">Pending</span>
+                            </div>
+                        </div>
+                        <div class="summary-item danger">
+                            <span class="material-icons">error_outline</span>
+                            <div>
+                                <span class="summary-value" id="overdue-amount">₹35,000</span>
+                                <span class="summary-label">Overdue</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="page-actions">
+                        <div class="search-box">
+                            <span class="material-icons">search</span>
+                            <input type="text" id="payment-search" placeholder="Search payments...">
+                        </div>
+                        <div class="action-buttons">
+                            <button class="btn-primary" onclick="openModal('payment', 'add')">
+                                <span class="material-icons">receipt_long</span>
+                                Raise Invoice
+                            </button>
+                        </div>
+                    </div>
+                    <div class="data-table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Payment ID</th>
+                                    <th>Work Order</th>
+                                    <th>Vendor</th>
+                                    <th>Amount</th>
+                                    <th>Due Date</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="payments-table-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- SCOUTS MANAGEMENT PAGE -->
+<section id="scouts-page" class="content-page">
+  <div class="page-actions">
+    <div class="search-box">
+      <span class="material-icons">search</span>
+      <input type="text" id="scout-search" placeholder="Search trials by name, city, scout...">
+    </div>
+
+    <div class="filter-pills">
+      <button class="pill active" data-filter="all">All Trials</button>
+      <button class="pill" data-filter="not_assigned">Not Assigned</button>
+      <button class="pill" data-filter="primary_assigned">Primary Assigned</button>
+      <button class="pill" data-filter="both_assigned">Both Assigned</button>
+      <button class="pill" data-filter="confirmed">Confirmed</button>
+    </div>
+
+    <div class="action-buttons">
+      <button class="btn-secondary" onclick="viewAllScouts()">
+        <span class="material-icons">people</span>
+        View All Scouts
+      </button>
+    </div>
+  </div>
+
+  <div class="data-table-container">
+    <table class="data-table">
+      <thead>
+        <tr>
+    <th>Trial Name</th>
+    <th>City / Date</th>
+    <th>Scout Assignment Status</th>
+    <th>Scout</th>
+    <th> Scout</th>
+    <th>Reached?</th>
+    <th style="width:180px;">Actions</th>
+  </tr>
+      </thead>
+      <tbody id="scout-table-body"></tbody>
+    </table>
+  </div>
+</section>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal" id="modal">
+            <div class="modal-header">
+                <h3 id="modal-title">Modal Title</h3>
+                <button class="icon-btn" onclick="closeModal()">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+            <div class="modal-body" id="modal-content"></div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+                <button class="btn-primary" id="modal-save" onclick="handleModalSave()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation -->
+    <div class="modal-overlay" id="delete-modal-overlay">
+        <div class="modal modal-small">
+            <div class="modal-header">
+                <h3>Confirm Delete</h3>
+            </div>
+            <div class="modal-body">
+                <p id="delete-message">Are you sure you want to delete this item?</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+                <button class="btn-danger" onclick="confirmDelete()">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Snackbar -->
+    <div class="snackbar" id="snackbar">
+        <span class="material-icons" id="snackbar-icon">check_circle</span>
+        <span id="snackbar-text">Action completed</span>
+        <button class="snackbar-close" onclick="hideSnackbar()">
+            <span class="material-icons">close</span>
+        </button>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
