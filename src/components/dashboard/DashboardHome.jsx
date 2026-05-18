@@ -1,5 +1,5 @@
 // src/components/dashboard/DashboardHome.jsx
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Grid,
@@ -9,52 +9,85 @@ import {
   Button,
   Chip,
   Paper,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
 import {
   LocationCity,
   People,
   Assignment,
-  TrendingUp,
   ArrowForward as ArrowIcon,
-  PersonOutline,
-  EventAvailable,
-  CheckCircleOutline,
+  Store as StoreIcon,
+  Payment as PaymentIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../../auth/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { ROLES } from '../../auth/roles';
+import { trialsAPI, repAPI, vendorsAPI, workOrdersAPI, paymentRequestsAPI } from '../../services/api';
 
 export default function DashboardHome() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [statsError, setStatsError] = useState(false);
 
-  const getStats = () => {
-    if (user?.role === ROLES.SUPER_ADMIN) {
-      return [
-        { label: 'Total Users', value: '342', icon: People, color: '#FBBF24', bgColor: '#FEF3C7' },
-        { label: 'Active Trials', value: '2,547', icon: LocationCity, color: '#22C55E', bgColor: '#DCFCE7' },
-        { label: 'Work Orders', value: '1,234', icon: Assignment, color: '#3B82F6', bgColor: '#DBEAFE' },
-        { label: 'Total Revenue', value: '\u20B945.2L', icon: TrendingUp, color: '#10B981', bgColor: '#D1FAE5' },
-      ];
-    } else if (user?.role === ROLES.ADMIN) {
-      return [
-        { label: 'My REPs', value: '28', icon: People, color: '#FBBF24', bgColor: '#FEF3C7' },
-        { label: 'Active Trials', value: '856', icon: LocationCity, color: '#22C55E', bgColor: '#DCFCE7' },
-        { label: 'Pending Orders', value: '45', icon: Assignment, color: '#3B82F6', bgColor: '#DBEAFE' },
-        { label: 'Completion Rate', value: '87%', icon: TrendingUp, color: '#10B981', bgColor: '#D1FAE5' },
-      ];
-    } else {
-      return [
-        { label: 'My Trials', value: '12', icon: LocationCity, color: '#22C55E', bgColor: '#DCFCE7' },
-        { label: 'Total Players', value: '156', icon: PersonOutline, color: '#FBBF24', bgColor: '#FEF3C7' },
-        { label: 'This Week', value: '8', icon: EventAvailable, color: '#3B82F6', bgColor: '#DBEAFE' },
-        { label: 'Attendance', value: '92%', icon: CheckCircleOutline, color: '#10B981', bgColor: '#D1FAE5' },
-      ];
-    }
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const [trialsRes, repsRes, vendorsRes, workOrdersRes, paymentsRes] = await Promise.allSettled([
+          trialsAPI.getAll(),
+          repAPI.getAll(),
+          vendorsAPI.getAll({ limit: 1 }),
+          workOrdersAPI.getAll(),
+          paymentRequestsAPI.getAll(),
+        ]);
+
+        const trials = trialsRes.status === 'fulfilled' ? (trialsRes.value.trials || []) : [];
+        const reps = repsRes.status === 'fulfilled' ? (repsRes.value.reps || []) : [];
+        const vendors = vendorsRes.status === 'fulfilled' ? (vendorsRes.value.total || 0) : 0;
+        const workOrders = workOrdersRes.status === 'fulfilled' ? (workOrdersRes.value.workOrders || []) : [];
+        const payments = paymentsRes.status === 'fulfilled' ? (paymentsRes.value.paymentRequests || []) : [];
+
+        const activeTrials = trials.filter(t => t.status === 'Active' || t.status === 'Scheduled').length;
+        const activeWOs = workOrders.filter(w => w.status !== 'Cancelled' && w.status !== 'Completed').length;
+        const pendingPayments = payments.filter(p => p.status === 'Draft' || p.status === 'Sent to Accounts').length;
+
+        setStats({
+          totalTrials: trials.length,
+          activeTrials,
+          totalReps: reps.length,
+          totalVendors: vendors,
+          totalWorkOrders: workOrders.length,
+          activeWorkOrders: activeWOs,
+          totalPayments: payments.length,
+          pendingPayments,
+        });
+      } catch (err) {
+        console.error('[Dashboard] Failed to load stats:', err.message || err);
+        setStats(null);
+        setStatsError(true);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
+  const getStatCards = () => {
+    if (!stats) return [];
+    return [
+      { label: 'Projects', value: stats.totalTrials, sub: `${stats.activeTrials} active`, icon: LocationCity, color: '#22C55E', bgColor: '#DCFCE7' },
+      { label: 'REPs', value: stats.totalReps, sub: 'registered', icon: People, color: '#FBBF24', bgColor: '#FEF3C7' },
+      { label: 'Vendors', value: stats.totalVendors, sub: 'total', icon: StoreIcon, color: '#3B82F6', bgColor: '#DBEAFE' },
+      { label: 'Work Orders', value: stats.totalWorkOrders, sub: `${stats.activeWorkOrders} active`, icon: Assignment, color: '#8B5CF6', bgColor: '#EDE9FE' },
+      { label: 'Payment Requests', value: stats.totalPayments, sub: `${stats.pendingPayments} pending`, icon: PaymentIcon, color: '#F59E0B', bgColor: '#FEF3C7' },
+    ];
   };
 
-  const stats = getStats();
-  const isREP = user?.role === ROLES.REP;
+  const statCards = getStatCards();
+  const isAdmin = user?.role === ROLES.SUPER_ADMIN || user?.role === ROLES.ADMIN;
 
   return (
     <Box sx={{ maxWidth: 1400, mx: 'auto' }}>
@@ -70,8 +103,8 @@ export default function DashboardHome() {
             size="small"
             sx={{
               fontWeight: 700,
-              bgcolor: isREP ? '#DCFCE7' : '#FEF3C7',
-              color: isREP ? '#15803D' : '#B45309',
+              bgcolor: isAdmin ? '#FEF3C7' : '#DCFCE7',
+              color: isAdmin ? '#B45309' : '#15803D',
               fontSize: '0.8rem',
               borderRadius: 1.5,
             }}
@@ -79,92 +112,101 @@ export default function DashboardHome() {
         </Box>
       </Box>
 
-      {/* Stats Grid — Apple Widget Style */}
-      <Grid container spacing={3} sx={{ mb: 5 }}>
-        {stats.map((stat, index) => (
-          <Grid item xs={12} sm={6} lg={3} key={index}>
-            <Card
-              elevation={0}
-              sx={{
-                height: '100%',
-                border: '1px solid rgba(0,0,0,0.06)',
-                borderRadius: 4,
-                boxShadow: '0 2px 8px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02)',
-                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                position: 'relative',
-                overflow: 'hidden',
-                bgcolor: '#ffffff',
-                '&:hover': {
-                  transform: 'translateY(-2px)',
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
-                },
-                '&::before': {
-                  content: '""',
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  height: '3px',
-                  background: `linear-gradient(90deg, ${stat.color}, ${stat.color}CC)`,
-                }
-              }}
-            >
-              <CardContent sx={{ p: 3 }}>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 3 }}>
-                    <Box sx={{ flex: 1 }}>
-                      <Typography
-                        variant="caption"
+      {/* Stats Grid */}
+      {loading ? (
+        <Box sx={{ textAlign: 'center', py: 6 }}>
+          <CircularProgress size={40} sx={{ color: '#FBBF24' }} />
+        </Box>
+      ) : statsError ? (
+        <Alert severity="warning" sx={{ mb: 3, borderRadius: 3 }}>
+          Could not load dashboard stats. Check your connection or try refreshing.
+        </Alert>
+      ) : (
+        <Grid container spacing={3} sx={{ mb: 5 }}>
+          {statCards.map((stat, index) => (
+            <Grid item xs={12} sm={6} lg={3} key={index}>
+              <Card
+                elevation={0}
+                sx={{
+                  height: '100%',
+                  border: '1px solid rgba(0,0,0,0.06)',
+                  borderRadius: 4,
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02)',
+                  transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  bgcolor: '#ffffff',
+                  '&:hover': {
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+                  },
+                  '&::before': {
+                    content: '""',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: '3px',
+                    background: `linear-gradient(90deg, ${stat.color}, ${stat.color}CC)`,
+                  }
+                }}
+              >
+                <CardContent sx={{ p: 3 }}>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 3 }}>
+                      <Box sx={{ flex: 1 }}>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: '#86868b',
+                            fontWeight: 500,
+                            fontSize: '0.75rem',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em',
+                            display: 'block',
+                            mb: 1.5,
+                          }}
+                        >
+                          {stat.label}
+                        </Typography>
+                        <Typography
+                          variant="h3"
+                          fontWeight={700}
+                          sx={{
+                            color: '#1d1d1f',
+                            fontSize: '2rem',
+                            lineHeight: 1.2,
+                            letterSpacing: '-0.025em',
+                          }}
+                        >
+                          {stat.value}
+                        </Typography>
+                      </Box>
+                      <Box
                         sx={{
-                          color: '#86868b',
-                          fontWeight: 500,
-                          fontSize: '0.75rem',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.05em',
-                          display: 'block',
-                          mb: 1.5,
+                          width: 56,
+                          height: 56,
+                          borderRadius: 3,
+                          bgcolor: stat.bgColor,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
                         }}
                       >
-                        {stat.label}
-                      </Typography>
-                      <Typography
-                        variant="h3"
-                        fontWeight={700}
-                        sx={{
-                          color: '#1d1d1f',
-                          fontSize: '2rem',
-                          lineHeight: 1.2,
-                          letterSpacing: '-0.025em',
-                        }}
-                      >
-                        {stat.value}
-                      </Typography>
+                        <stat.icon sx={{ fontSize: 28, color: stat.color }} />
+                      </Box>
                     </Box>
-                    <Box
-                      sx={{
-                        width: 56,
-                        height: 56,
-                        borderRadius: 3,
-                        bgcolor: stat.bgColor,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
-                      }}
-                    >
-                      <stat.icon sx={{ fontSize: 28, color: stat.color }} />
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1 }}>
+                      <Typography variant="caption" sx={{ color: '#86868b' }}>{stat.sub}</Typography>
                     </Box>
                   </Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1 }}>
-                    <Typography variant="caption" sx={{ color: '#22C55E', fontWeight: 600 }}>+12%</Typography>
-                    <Typography variant="caption" sx={{ color: '#86868b' }}>from last month</Typography>
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      )}
 
       {/* Quick Actions */}
       <Paper
@@ -182,12 +224,13 @@ export default function DashboardHome() {
           Quick Actions
         </Typography>
 
-        {isREP && (
+        {isAdmin && (
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6} md={4}>
+            <Grid item xs={12} sm={6} md={3}>
               <Button
                 fullWidth variant="contained" size="large"
                 startIcon={<LocationCity />}
+                onClick={() => navigate('/trials/create')}
                 sx={{
                   py: 1.75, borderRadius: 2.5, textTransform: 'none', fontWeight: 700, fontSize: '0.9375rem',
                   background: 'linear-gradient(135deg, #22C55E 0%, #16A34A 100%)', color: 'white',
@@ -195,90 +238,103 @@ export default function DashboardHome() {
                   '&:hover': { background: 'linear-gradient(135deg, #16A34A 0%, #15803D 100%)', boxShadow: '0 10px 15px -3px rgba(34, 197, 94, 0.4)' },
                 }}
               >
-                View My Trials
+                New Project
               </Button>
             </Grid>
-            <Grid item xs={12} sm={6} md={4}>
+            <Grid item xs={12} sm={6} md={3}>
               <Button
                 fullWidth variant="outlined" size="large" endIcon={<ArrowIcon />}
+                onClick={() => navigate('/work-orders')}
                 sx={{
                   py: 1.75, borderRadius: 2.5, textTransform: 'none', fontWeight: 600, fontSize: '0.9375rem',
                   color: '#3B82F6', borderColor: '#3B82F6', borderWidth: 2,
                   '&:hover': { borderColor: '#2563EB', borderWidth: 2, bgcolor: '#EFF6FF' },
                 }}
               >
-                My Schedule
+                Work Orders
               </Button>
             </Grid>
-            <Grid item xs={12} sm={6} md={4}>
+            <Grid item xs={12} sm={6} md={3}>
               <Button
                 fullWidth variant="outlined" size="large" endIcon={<ArrowIcon />}
+                onClick={() => navigate('/vendors')}
                 sx={{
                   py: 1.75, borderRadius: 2.5, textTransform: 'none', fontWeight: 600, fontSize: '0.9375rem',
                   color: '#F59E0B', borderColor: '#F59E0B', borderWidth: 2,
                   '&:hover': { borderColor: '#D97706', borderWidth: 2, bgcolor: '#FFFBEB' },
                 }}
               >
-                Submit Report
+                Vendors
+              </Button>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Button
+                fullWidth variant="outlined" size="large" endIcon={<ArrowIcon />}
+                onClick={() => navigate('/payments')}
+                sx={{
+                  py: 1.75, borderRadius: 2.5, textTransform: 'none', fontWeight: 600, fontSize: '0.9375rem',
+                  color: '#8B5CF6', borderColor: '#8B5CF6', borderWidth: 2,
+                  '&:hover': { borderColor: '#7C3AED', borderWidth: 2, bgcolor: '#F5F3FF' },
+                }}
+              >
+                Payments
               </Button>
             </Grid>
           </Grid>
         )}
 
-        {!isREP && (
+        {!isAdmin && (
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6}>
               <Button
                 fullWidth variant="outlined" size="large" endIcon={<ArrowIcon />}
-                sx={{
-                  py: 1.75, borderRadius: 2.5, textTransform: 'none', fontWeight: 600, fontSize: '0.9375rem',
-                  color: '#3B82F6', borderColor: '#3B82F6', borderWidth: 2,
-                  '&:hover': { borderColor: '#2563EB', borderWidth: 2, bgcolor: '#EFF6FF' },
-                }}
-              >
-                View Work Orders
-              </Button>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Button
-                fullWidth variant="outlined" size="large" endIcon={<ArrowIcon />}
+                onClick={() => navigate('/trials')}
                 sx={{
                   py: 1.75, borderRadius: 2.5, textTransform: 'none', fontWeight: 600, fontSize: '0.9375rem',
                   color: '#22C55E', borderColor: '#22C55E', borderWidth: 2,
                   '&:hover': { borderColor: '#16A34A', borderWidth: 2, bgcolor: '#F0FDF4' },
                 }}
               >
-                Manage REPs
+                View My Trials
               </Button>
             </Grid>
           </Grid>
         )}
       </Paper>
 
-      {/* Recent Activity */}
-      <Paper
-        elevation={0}
-        sx={{
-          p: 4,
-          border: '1px solid rgba(0,0,0,0.06)',
-          borderRadius: 4,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02)',
-          bgcolor: '#ffffff',
-        }}
-      >
-        <Typography variant="h6" fontWeight={700} sx={{ mb: 3, color: '#1d1d1f', letterSpacing: '-0.025em' }}>
-          {isREP ? 'My Recent Activity' : 'Recent Activity'}
-        </Typography>
-        <Box sx={{ textAlign: 'center', py: 6, color: '#86868b' }}>
-          <Assignment sx={{ fontSize: 64, color: 'rgba(0,0,0,0.08)', mb: 2 }} />
-          <Typography variant="body1" sx={{ color: '#86868b' }}>
-            {isREP ? 'No recent activity in your trials' : 'No recent activity to display'}
+      {/* Reports & Assets */}
+      {isAdmin && (
+        <Paper
+          elevation={0}
+          sx={{
+            p: 4,
+            mb: 4,
+            border: '1px solid rgba(0,0,0,0.06)',
+            borderRadius: 4,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02)',
+            bgcolor: '#ffffff',
+          }}
+        >
+          <Typography variant="h6" fontWeight={700} sx={{ mb: 3, color: '#1d1d1f', letterSpacing: '-0.025em' }}>
+            Reports & Assets
           </Typography>
-          <Typography variant="body2" sx={{ mt: 0.5, color: '#86868b' }}>
-            {isREP ? 'Your trial activities will appear here' : 'Your recent actions will appear here'}
-          </Typography>
-        </Box>
-      </Paper>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} md={4}>
+              <Button
+                fullWidth variant="outlined" size="large" endIcon={<ArrowIcon />}
+                onClick={() => navigate('/reports/social-media')}
+                sx={{
+                  py: 1.75, borderRadius: 2.5, textTransform: 'none', fontWeight: 600, fontSize: '0.9375rem',
+                  color: '#EC4899', borderColor: '#EC4899', borderWidth: 2,
+                  '&:hover': { borderColor: '#DB2777', borderWidth: 2, bgcolor: '#FDF2F8' },
+                }}
+              >
+                Social Media Report
+              </Button>
+            </Grid>
+          </Grid>
+        </Paper>
+      )}
     </Box>
   );
 }

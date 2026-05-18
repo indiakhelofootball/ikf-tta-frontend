@@ -117,11 +117,11 @@ function TrialWizard() {
     try {
       const code = generateProjectCode(formData.projectName, formData.season, existingTrials);
       const existing = existingTrials.find(
-        t => t.trialCode === code || t.trialName === code
+        t => t.trialType === formData.projectName && t.season === formData.season
       );
 
       if (existing) {
-        showToast(`Project "${existing.trialType || existing.trialName}" already exists`, 'warning');
+        showToast(`A "${formData.projectName}" project for ${formData.season} already exists`, 'warning');
       } else {
         await trialsAPI.create({
           trialName: code,
@@ -156,9 +156,28 @@ function TrialWizard() {
   const renderStep1 = () => (
     <Box>
       <Typography sx={sectionTitleSx}>Project Setup</Typography>
-      <Typography variant="body2" sx={{ mb: 3.5, color: '#6e6e73', fontSize: '0.95rem' }}>
+      <Typography variant="body2" sx={{ mb: 2.5, color: '#6e6e73', fontSize: '0.95rem' }}>
         Select your project and season to get started.
       </Typography>
+
+      {/* ── Admin-only info banner ── */}
+      <Box sx={{
+        mb: 3.5,
+        p: 2,
+        borderRadius: '14px',
+        background: 'linear-gradient(135deg, #e0f2fe 0%, #e8eaf6 100%)',
+        border: '1px solid #b3d7f7',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 1.5,
+      }}>
+        <Typography sx={{ fontSize: '1.2rem', lineHeight: 1 }}>🔐</Typography>
+        <Typography sx={{ fontSize: '0.88rem', color: '#1e40af', fontWeight: 500, lineHeight: 1.5 }}>
+          New <strong>seasons</strong> and <strong>projects</strong> can only be created by admins from the{' '}
+          <span style={{ color: '#1d4ed8', fontWeight: 700 }}>Admin Panel</span>.
+          Contact your admin to add new options.
+        </Typography>
+      </Box>
 
       {/*
         CSS Grid — 3 rows × 2 columns

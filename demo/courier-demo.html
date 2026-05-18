@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>TTA — Courier Module</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+<style>
+:root{
+  --bg:#F9FAFB;
+  --paper:#FFFFFF;
+  --border:rgba(0,0,0,.06);
+  --text:#1d1d1f;
+  --muted:#6B7280;
+  --muted2:#9CA3AF;
+  --primary:#4F46E5;
+  --primary-dark:#4338CA;
+  --primary-soft:#E0E7FF;
+  --primary-softer:#EEF2FF;
+  --success:#22C55E;
+  --success-soft:#DCFCE7;
+  --success-text:#15803D;
+  --danger:#EF4444;
+  --danger-soft:#FEE2E2;
+  --danger-text:#991B1B;
+  --info:#3B82F6;
+  --info-soft:#DBEAFE;
+  --info-text:#1E40AF;
+  --warn:#F59E0B;
+  --warn-soft:#FEF3C7;
+  --warn-text:#B45309;
+  --grey100:#F3F4F6;
+  --grey200:#E5E7EB;
+  --grey600:#4B5563;
+  --grey700:#374151;
+  --grey800:#1F2937;
+  --shadow1:0 1px 2px rgba(0,0,0,.04);
+  --shadow2:0 2px 8px rgba(0,0,0,.04),0 1px 2px rgba(0,0,0,.02);
+  --shadow3:0 4px 12px rgba(0,0,0,.06);
+  --shadow4:0 8px 24px rgba(0,0,0,.08);
+  --shadow5:0 20px 60px rgba(0,0,0,.12);
+  --r:12px;
+  --r-sm:8px;
+  --r-lg:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--text);font-family:'Roboto',-apple-system,BlinkMacSystemFont,sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select,textarea{font-family:inherit;font-size:14px}
+
+/* ── Layout wrapper ── */
+.page{padding:24px;max-width:1200px;margin:0 auto}
+
+/* ── Section header ── */
+.sec-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.sec-head h2{font-size:22px;font-weight:700;letter-spacing:-.025em;color:var(--text)}
+.sec-head p{font-size:13px;color:var(--muted);margin-top:2px}
+
+/* ── Stat cards ── */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px}
+@media(max-width:720px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat{background:var(--paper);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px 18px;box-shadow:var(--shadow2);display:flex;align-items:center;gap:14px}
+.stat-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.stat-icon .material-icons{font-size:20px}
+.stat-icon.draft{background:var(--grey100);color:var(--muted)}
+.stat-icon.dispatched{background:var(--warn-soft);color:var(--warn)}
+.stat-icon.transit{background:var(--info-soft);color:var(--info)}
+.stat-icon.delivered{background:var(--success-soft);color:var(--success)}
+.stat-lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:2px}
+.stat-val{font-size:24px;font-weight:700;letter-spacing:-.025em;color:var(--text)}
+
+/* ── Table card ── */
+.card{background:var(--paper);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow2);overflow:hidden}
+.card-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.card-head h3{font-size:15px;font-weight:700;letter-spacing:-.01em}
+
+/* ── Toolbar ── */
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:14px 18px;border-bottom:1px solid var(--border)}
+.search-box{display:flex;align-items:center;gap:6px;border:1px solid var(--grey200);border-radius:var(--r);padding:8px 12px;background:var(--bg);flex:1;min-width:200px}
+.search-box input{border:none;background:transparent;outline:none;flex:1;font-size:13.5px;color:var(--text)}
+.search-box .material-icons{font-size:18px;color:var(--muted)}
+.pills{display:flex;gap:6px;flex-wrap:wrap}
+.pill{padding:6px 13px;border-radius:999px;border:1px solid var(--grey200);font-size:12.5px;font-weight:500;color:var(--muted);background:var(--paper);transition:.15s}
+.pill:hover{border-color:var(--primary);color:var(--primary-dark)}
+.pill.active{background:var(--primary-soft);color:var(--primary-dark);border-color:var(--primary);font-weight:600}
+
+/* ── Buttons ── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:var(--r);font-size:13.5px;font-weight:600;letter-spacing:-.01em;transition:.15s;white-space:nowrap}
+.btn .material-icons{font-size:17px}
+.btn-primary{background:var(--primary);color:#fff;border:1px solid transparent}
+.btn-primary:hover{background:var(--primary-dark);color:#fff}
+.btn-secondary{background:var(--paper);color:var(--grey700);border:1px solid var(--grey200)}
+.btn-secondary:hover{background:var(--bg);border-color:var(--grey700)}
+.btn-success{background:var(--success-soft);color:var(--success-text);border:1px solid transparent}
+.btn-success:hover{background:var(--success);color:#fff}
+.btn-danger{background:var(--danger-soft);color:var(--danger-text);border:1px solid transparent}
+.btn-danger:hover{background:var(--danger);color:#fff}
+.btn-info{background:var(--info-soft);color:var(--info-text);border:1px solid transparent}
+.btn-info:hover{background:var(--info);color:#fff}
+.btn-ghost{color:var(--muted);padding:6px;border-radius:var(--r-sm)}
+.btn-ghost:hover{background:var(--grey100);color:var(--text)}
+.btn-sm{padding:6px 11px;font-size:12px}
+
+/* ── Table ── */
+.tbl-wrap{overflow:auto}
+table{width:100%;border-collapse:collapse}
+th,td{padding:12px 16px;text-align:left;font-size:13px;border-bottom:1px solid var(--border);vertical-align:middle}
+th{background:#F5F5F7;color:var(--muted);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border)}
+tr:last-child td{border-bottom:none}
+tr.clickable{cursor:pointer;transition:.1s}
+tr.clickable:hover{background:#F9FAFB}
+
+/* ── Chips / badges ── */
+.chip{display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;font-size:11.5px;font-weight:600}
+.chip-draft{background:var(--grey100);color:var(--grey600)}
+.chip-dispatched{background:var(--warn-soft);color:var(--warn-text)}
+.chip-transit{background:var(--info-soft);color:var(--info-text)}
+.chip-delivered{background:var(--success-soft);color:var(--success-text)}
+.chip-returned{background:var(--danger-soft);color:var(--danger-text)}
+.chip-lost{background:var(--grey800);color:#fff}
+
+/* ── Modal ── */
+.overlay{position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;align-items:center;justify-content:center;z-index:100;padding:16px;backdrop-filter:blur(2px)}
+.overlay.show{display:flex}
+.modal{background:var(--paper);border-radius:20px;box-shadow:var(--shadow5);border:1px solid var(--border);width:100%;max-width:740px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden}
+.modal.sm{max-width:480px}
+.modal.lg{max-width:860px}
+.modal-head{padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.modal-head h3{font-size:17px;font-weight:700;letter-spacing:-.025em}
+.modal-head .sub{font-size:12.5px;color:var(--muted);margin-top:2px}
+.modal-body{padding:20px 24px;overflow:auto;flex:1}
+.modal-foot{padding:14px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;background:var(--bg)}
+.close-btn{padding:5px;border-radius:var(--r-sm);color:var(--muted)}
+.close-btn:hover{background:var(--grey100);color:var(--text)}
+
+/* ── Form ── */
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-row.cols3{grid-template-columns:1fr 1fr 1fr}
+.form-row.full{grid-template-columns:1fr}
+.field{display:flex;flex-direction:column;gap:5px}
+.field.span2{grid-column:span 2}
+.field label{font-size:12px;font-weight:600;color:var(--grey600);letter-spacing:.01em}
+.field label .req{color:var(--danger)}
+.field input,.field select,.field textarea{
+  padding:10px 12px;border:1.5px solid var(--grey200);border-radius:var(--r);
+  background:var(--paper);outline:none;color:var(--text);font-size:13.5px;transition:.15s
+}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(79,70,229,.18)}
+.field textarea{min-height:66px;resize:vertical}
+.field .hint{font-size:11.5px;color:var(--muted);margin-top:2px}
+
+.sec-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:18px 0 10px;padding-bottom:7px;border-bottom:1px dashed var(--border)}
+.sec-label:first-child{margin-top:0}
+
+/* Address card */
+.addr-card{background:var(--primary-softer);border:1.5px solid var(--primary);border-radius:var(--r);padding:14px;display:grid;gap:7px}
+.addr-row{display:flex;gap:8px;align-items:flex-start;font-size:13px}
+.addr-row .material-icons{font-size:15px;color:var(--primary-dark);margin-top:2px;flex-shrink:0}
+.addr-row b{font-weight:600}
+.addr-empty{color:var(--muted);font-size:13px;text-align:center;padding:14px;background:var(--bg);border:1.5px dashed var(--grey200);border-radius:var(--r)}
+
+/* Items editor */
+.items-header{display:grid;grid-template-columns:1fr 100px 1fr 36px;gap:8px;padding:6px 10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.item-row{display:grid;grid-template-columns:1fr 100px 1fr 36px;gap:8px;align-items:center;background:var(--bg);border-radius:var(--r-sm);padding:6px 10px;margin-bottom:6px}
+.item-row input,.item-row select{width:100%;padding:7px 10px;border:1.5px solid var(--grey200);border-radius:var(--r-sm);background:var(--paper);outline:none;font-size:13px}
+.item-row input:focus,.item-row select:focus{border-color:var(--primary-dark)}
+
+/* Detail view */
+.detail-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:16px}
+.detail-grid .full{grid-column:1/-1}
+.detail-card{background:var(--paper);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow2);overflow:hidden}
+.detail-card-head{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.detail-card-head h4{font-size:13.5px;font-weight:700;color:var(--text)}
+.detail-card-body{padding:16px}
+.kv{display:grid;grid-template-columns:130px 1fr;gap:8px 10px;font-size:13px}
+.kv dt{color:var(--muted);font-weight:500}
+.kv dd{font-weight:500;color:var(--text)}
+
+/* Timeline */
+.timeline{position:relative;padding-left:26px}
+.timeline::before{content:'';position:absolute;left:9px;top:8px;bottom:8px;width:2px;background:var(--grey200)}
+.tl-item{position:relative;padding-bottom:16px}
+.tl-item::before{content:'';position:absolute;left:-21px;top:5px;width:12px;height:12px;border-radius:50%;background:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+.tl-item.done::before{background:var(--success);box-shadow:0 0 0 3px var(--success-soft)}
+.tl-item:last-child{padding-bottom:0}
+.tl-title{font-size:13px;font-weight:700;color:var(--text)}
+.tl-meta{font-size:11.5px;color:var(--muted);margin-top:1px}
+.tl-note{font-size:12.5px;color:var(--grey700);margin-top:3px}
+
+/* Photo upload zone */
+.photo-zone{border:2px dashed var(--grey200);border-radius:var(--r);padding:20px;text-align:center;cursor:pointer;transition:.15s;background:var(--bg)}
+.photo-zone:hover{border-color:var(--primary-dark);background:var(--primary-softer)}
+.photo-zone .material-icons{font-size:32px;color:var(--muted);display:block;margin-bottom:8px}
+.photo-zone p{font-size:13px;color:var(--muted)}
+.photo-zone .sub{font-size:11.5px;margin-top:4px}
+.photo-preview{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;margin-top:12px}
+.photo-thumb{position:relative;border-radius:var(--r-sm);overflow:hidden;aspect-ratio:1;border:1px solid var(--border)}
+.photo-thumb img{width:100%;height:100%;object-fit:cover}
+.photo-thumb .rm{position:absolute;top:3px;right:3px;background:rgba(0,0,0,.5);color:#fff;border-radius:4px;padding:2px;font-size:14px;cursor:pointer;display:flex;line-height:1}
+.photo-capture-btn{display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:var(--r-sm);background:var(--info-soft);color:var(--info-text);font-size:12.5px;font-weight:600;cursor:pointer;border:none;font-family:inherit}
+.photo-capture-btn .material-icons{font-size:16px}
+.photo-actions{display:flex;gap:8px;margin-top:10px;justify-content:center;flex-wrap:wrap}
+
+/* Tracking ID box */
+.tracking-banner{background:var(--primary-softer);border:1.5px solid var(--primary);border-radius:var(--r);padding:14px 16px;display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.tracking-banner .material-icons{color:var(--primary-dark);font-size:22px}
+.tracking-banner .awb{font-size:18px;font-weight:700;letter-spacing:.04em;color:var(--text)}
+.tracking-banner .label{font-size:11.5px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+.tracking-banner .company{font-size:13px;color:var(--grey700);font-weight:500}
+
+/* Snack */
+.snack{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--grey800);color:#fff;padding:10px 18px;border-radius:var(--r);font-size:13px;display:none;z-index:300;box-shadow:var(--shadow4);display:none}
+.snack.show{display:block;animation:up .2s}
+@keyframes up{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
+
+/* Back bar */
+.back-bar{display:flex;align-items:center;gap:10px;margin-bottom:20px}
+.back-bar h2{font-size:20px;font-weight:700;letter-spacing:-.025em}
+.back-bar .actions{margin-left:auto;display:flex;gap:8px}
+
+/* Demo note */
+.demo-note{background:var(--primary-softer);border:1px solid var(--primary-soft);border-radius:var(--r);padding:9px 14px;font-size:12.5px;color:var(--primary-dark);display:flex;gap:8px;align-items:center;margin-bottom:20px}
+.demo-note .material-icons{font-size:16px}
+
+.inline{display:flex;gap:6px;align-items:center}
+.mt{margin-top:14px}
+.empty-row{text-align:center;padding:48px!important;color:var(--muted)}
+.empty-row .material-icons{font-size:36px;display:block;margin-bottom:8px;opacity:.4}
+</style>
+</head>
+<body>
+
+<div class="page" id="listPage">
+  <div class="demo-note"><span class="material-icons">science</span>Client prototype — data is mocked, nothing persists.</div>
+
+  <div class="sec-head">
+    <div>
+      <h2>Courier Management</h2>
+      <p>Track shipments dispatched to REPs across trial cities</p>
+    </div>
+    <button class="btn btn-primary" onclick="openShipModal()"><span class="material-icons">add</span>New Shipment</button>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-icon draft"><span class="material-icons">inventory_2</span></div><div><div class="stat-lbl">Draft</div><div class="stat-val" id="sDraft">0</div></div></div>
+    <div class="stat"><div class="stat-icon dispatched"><span class="material-icons">local_shipping</span></div><div><div class="stat-lbl">Dispatched</div><div class="stat-val" id="sDisp">0</div></div></div>
+    <div class="stat"><div class="stat-icon transit"><span class="material-icons">directions_bus</span></div><div><div class="stat-lbl">In Transit</div><div class="stat-val" id="sTran">0</div></div></div>
+    <div class="stat"><div class="stat-icon delivered"><span class="material-icons">check_circle</span></div><div><div class="stat-lbl">Delivered</div><div class="stat-val" id="sDeli">0</div></div></div>
+  </div>
+
+  <div class="card">
+    <div class="toolbar">
+      <div class="search-box">
+        <span class="material-icons">search</span>
+        <input id="q" placeholder="Search by ID, REP, AWB, city…" oninput="renderTable()" />
+      </div>
+      <div class="pills" id="pills">
+        <button class="pill active" data-f="all">All</button>
+        <button class="pill" data-f="Draft">Draft</button>
+        <button class="pill" data-f="Dispatched">Dispatched</button>
+        <button class="pill" data-f="In Transit">In Transit</button>
+        <button class="pill" data-f="Delivered">Delivered</button>
+        <button class="pill" data-f="Returned">Returned</button>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Shipment ID</th>
+            <th>Trial</th>
+            <th>REP / City</th>
+            <th>Items</th>
+            <th>Tracking ID (AWB)</th>
+            <th>Courier Co.</th>
+            <th>Dispatch Date</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Detail page -->
+<div class="page" id="detailPage" style="display:none"></div>
+
+<!-- ── NEW / EDIT SHIPMENT MODAL ── -->
+<div class="overlay" id="shipOverlay">
+  <div class="modal lg">
+    <div class="modal-head">
+      <div>
+        <h3 id="shipTitle">New Shipment</h3>
+        <div class="sub">Phase 1 — fill what you are sending and to whom</div>
+      </div>
+      <button class="close-btn" onclick="closeShipModal()"><span class="material-icons">close</span></button>
+    </div>
+    <div class="modal-body" id="shipBody"></div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeShipModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveShip()"><span class="material-icons">save</span>Save as Draft</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── DISPATCH MODAL ── -->
+<div class="overlay" id="dispOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <div><h3>Mark as Dispatched</h3><div class="sub">Phase 2 — enter courier &amp; tracking details</div></div>
+      <button class="close-btn" onclick="closeDisp()"><span class="material-icons">close</span></button>
+    </div>
+    <div class="modal-body" id="dispBody"></div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeDisp()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveDisp()"><span class="material-icons">local_shipping</span>Dispatch</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── STATUS UPDATE MODAL ── -->
+<div class="overlay" id="statOverlay">
+  <div class="modal sm">
+    <div class="modal-head">
+      <div><h3>Update Shipment Status</h3><div class="sub">Phase 3 — tracking update</div></div>
+      <button class="close-btn" onclick="closeStat()"><span class="material-icons">close</span></button>
+    </div>
+    <div class="modal-body" id="statBody"></div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeStat()">Cancel</button>
+      <button class="btn btn-success" onclick="saveStat()"><span class="material-icons">check_circle</span>Update</button>
+    </div>
+  </div>
+</div>
+
+<div class="snack" id="snack"></div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────────────
+
+const REPS = [
+  { id:'REP-001', name:'Sports Academy Mumbai',
+    assignments:[
+      { id:'RA-001-A', city:'Mumbai', state:'Maharashtra', courierAcceptingName:'Rajesh Sharma', courierPhone:'9876543210', courierAddress:'123 Sports Complex, Andheri West', courierPinCode:'400058', courierAdditionalInfo:'Gate 3 — ask for ground staff' },
+      { id:'RA-001-B', city:'Pune', state:'Maharashtra', courierAcceptingName:'Neha Patil', courierPhone:'9876500001', courierAddress:'Shivaji Stadium, Camp Area', courierPinCode:'411001', courierAdditionalInfo:'' }
+    ]},
+  { id:'REP-002', name:'Delhi Football Club',
+    assignments:[
+      { id:'RA-002-A', city:'New Delhi', state:'Delhi', courierAcceptingName:'Amit Kumar', courierPhone:'9876543211', courierAddress:'45 Sports Hub, Connaught Place', courierPinCode:'110001', courierAdditionalInfo:'Weekdays 10am–6pm only' }
+    ]},
+  { id:'REP-003', name:'Bangalore Sports Hub',
+    assignments:[
+      { id:'RA-003-A', city:'Bangalore', state:'Karnataka', courierAcceptingName:'Suresh Reddy', courierPhone:'9876543212', courierAddress:'78 Stadium Road, Indiranagar', courierPinCode:'560038', courierAdditionalInfo:'' },
+      { id:'RA-003-B', city:'Mysore', state:'Karnataka', courierAcceptingName:'Kiran BG', courierPhone:'9876500002', courierAddress:'Chamundi Sports Arena, Gokulam', courierPinCode:'570002', courierAdditionalInfo:'Coach Kiran only' }
+    ]},
+  { id:'REP-005', name:'Chennai Football Academy',
+    assignments:[
+      { id:'RA-005-A', city:'Chennai', state:'Tamil Nadu', courierAcceptingName:'Ramesh Iyer', courierPhone:'9876543214', courierAddress:'56 Marina Beach Road', courierPinCode:'600001', courierAdditionalInfo:'' }
+    ]}
+];
+
+const COURIERS = ['Blue Dart','DTDC','Delhivery','FedEx','India Post','Ekart','Professional Couriers','XpressBees'];
+
+const TRIALS = [
+  { id:'TR-2026-001', name:'IKF Season 6 — Regional Trials',     season:'Season 6' },
+  { id:'TR-2026-002', name:'IKF Season 6 — Open Selection',      season:'Season 6' },
+  { id:'TR-2026-003', name:'IKF U-17 National Camp',             season:'Season 6' },
+  { id:'TR-2026-004', name:'IKF Season 5 — Final Selection',     season:'Season 5' }
+];
+
+function snapAddr(repId, asgId){
+  const r = REPS.find(x=>x.id===repId);
+  const a = r.assignments.find(x=>x.id===asgId);
+  return { repName:r.name, city:a.city, state:a.state, recipientName:a.courierAcceptingName, recipientPhone:a.courierPhone, address:a.courierAddress, pinCode:a.courierPinCode, additionalInfo:a.courierAdditionalInfo };
+}
+
+function trialName(id){ const t = TRIALS.find(x=>x.id===id); return t ? t.name : '—'; }
+
+let shipments = [
+  { id:'CR-2026-0001', trialId:'TR-2026-001', repId:'REP-002', asgId:'RA-002-A', snap:snapAddr('REP-002','RA-002-A'),
+    items:[{name:'Jerseys — Red (Size M)',qty:22,remarks:''},{name:'Footballs — Size 5',qty:6,remarks:'Official match'},{name:'Marker Cones',qty:30,remarks:''}],
+    remarks:'Delhi regional trial — Batch 1', status:'Delivered',
+    courierCompany:'Blue Dart', awb:'BD-87432109', dispatchDate:'2026-04-18', expectedDate:'2026-04-20',
+    deliveredDate:'2026-04-20', receivedBy:'Amit Kumar', deliveryPhotos:[],
+    log:[{s:'Draft',at:'2026-04-17 10:12',by:'Ravi K.',note:'Created'},{s:'Dispatched',at:'2026-04-18 14:30',by:'Ravi K.',note:'AWB BD-87432109 — Blue Dart'},{s:'In Transit',at:'2026-04-19 09:00',by:'Auto',note:'Reached Delhi hub'},{s:'Delivered',at:'2026-04-20 11:45',by:'Ravi K.',note:'Received by Amit Kumar'}]},
+
+  { id:'CR-2026-0002', trialId:'TR-2026-002', repId:'REP-001', asgId:'RA-001-B', snap:snapAddr('REP-001','RA-001-B'),
+    items:[{name:'Training Bibs — Yellow',qty:20,remarks:''},{name:'First Aid Kit',qty:2,remarks:'Sealed, with inventory list'}],
+    remarks:'Pune trial prep', status:'In Transit',
+    courierCompany:'Delhivery', awb:'DL-22110044', dispatchDate:'2026-04-21', expectedDate:'2026-04-23',
+    deliveredDate:null, receivedBy:null, deliveryPhotos:[],
+    log:[{s:'Draft',at:'2026-04-20 16:10',by:'Ravi K.',note:'Created'},{s:'Dispatched',at:'2026-04-21 12:00',by:'Ravi K.',note:'AWB DL-22110044 — Delhivery'},{s:'In Transit',at:'2026-04-22 08:15',by:'Auto',note:'Reached Mumbai hub'}]},
+
+  { id:'CR-2026-0003', trialId:'TR-2026-003', repId:'REP-003', asgId:'RA-003-A', snap:snapAddr('REP-003','RA-003-A'),
+    items:[{name:'Banners — IKF Season 5',qty:4,remarks:'Rolled in tube'},{name:'Registration Forms',qty:200,remarks:''},{name:'Certificates (blank)',qty:150,remarks:''}],
+    remarks:'', status:'Dispatched',
+    courierCompany:'DTDC', awb:'DT-99887766', dispatchDate:'2026-04-22', expectedDate:'2026-04-25',
+    deliveredDate:null, receivedBy:null, deliveryPhotos:[],
+    log:[{s:'Draft',at:'2026-04-21 09:30',by:'Ravi K.',note:'Created'},{s:'Dispatched',at:'2026-04-22 15:20',by:'Ravi K.',note:'AWB DT-99887766 — DTDC'}]},
+
+  { id:'CR-2026-0004', trialId:'TR-2026-001', repId:'REP-005', asgId:'RA-005-A', snap:snapAddr('REP-005','RA-005-A'),
+    items:[{name:'Jerseys — Blue (Size S)',qty:25,remarks:''},{name:'Jerseys — Blue (Size M)',qty:25,remarks:''}],
+    remarks:'Awaiting final confirmation before dispatch', status:'Draft',
+    courierCompany:null, awb:null, dispatchDate:null, expectedDate:null,
+    deliveredDate:null, receivedBy:null, deliveryPhotos:[],
+    log:[{s:'Draft',at:'2026-04-23 10:00',by:'Ravi K.',note:'Created'}]}
+];
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let activeFilter = 'all';
+let editId = null;
+let fState = null;      // new/edit form
+let dState = null;      // dispatch form
+let stState = null;     // status update
+let capturedPhotos = []; // base64 photos for delivery proof
+
+// ── RENDER LIST ───────────────────────────────────────────────────────────────
+function renderStats(){
+  const c = s => shipments.filter(x=>x.status===s).length;
+  document.getElementById('sDraft').textContent = c('Draft');
+  document.getElementById('sDisp').textContent  = c('Dispatched');
+  document.getElementById('sTran').textContent  = c('In Transit');
+  document.getElementById('sDeli').textContent  = c('Delivered');
+}
+
+function renderTable(){
+  const q = (document.getElementById('q')?.value||'').toLowerCase();
+  const rows = shipments.filter(s=>{
+    if(activeFilter!=='all' && s.status!==activeFilter) return false;
+    if(!q) return true;
+    return [s.id, s.snap.repName, s.awb||'', s.snap.city, trialName(s.trialId)].join(' ').toLowerCase().includes(q);
+  });
+
+  const tbody = document.getElementById('tbody');
+  if(!rows.length){
+    tbody.innerHTML=`<tr><td colspan="9" class="empty-row"><span class="material-icons">inbox</span>No shipments found.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map(s=>`
+    <tr class="clickable" onclick="openDetail('${s.id}')">
+      <td><b>${s.id}</b></td>
+      <td><div style="font-weight:600">${trialName(s.trialId)}</div></td>
+      <td><div style="font-weight:600">${s.snap.repName}</div><div style="font-size:12px;color:var(--muted)">${s.snap.city}, ${s.snap.state}</div></td>
+      <td>${s.items.length} item${s.items.length!==1?'s':''} <span style="color:var(--muted);font-size:12px">(${s.items.reduce((a,b)=>a+Number(b.qty||0),0)} qty)</span></td>
+      <td>${s.awb?`<b style="font-family:monospace;letter-spacing:.04em">${s.awb}</b>`:'<span style="color:var(--muted2)">—</span>'}</td>
+      <td>${s.courierCompany||'<span style="color:var(--muted2)">—</span>'}</td>
+      <td>${s.dispatchDate||'<span style="color:var(--muted2)">—</span>'}</td>
+      <td>${chip(s.status)}</td>
+      <td onclick="event.stopPropagation()">
+        <div class="inline">
+          <button class="btn btn-ghost" onclick="openDetail('${s.id}')" title="View"><span class="material-icons">visibility</span></button>
+          ${s.status==='Draft'?`<button class="btn btn-ghost" onclick="openShipModal('${s.id}')" title="Edit"><span class="material-icons">edit</span></button>`:''}
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+function chip(s){
+  const m={'Draft':'chip-draft','Dispatched':'chip-dispatched','In Transit':'chip-transit','Delivered':'chip-delivered','Returned':'chip-returned','Lost':'chip-lost'};
+  return `<span class="chip ${m[s]||'chip-draft'}">${s}</span>`;
+}
+
+document.getElementById('pills').addEventListener('click',e=>{
+  const b=e.target.closest('.pill'); if(!b) return;
+  document.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
+  b.classList.add('active'); activeFilter=b.dataset.f; renderTable();
+});
+
+// ── SHIPMENT FORM (Phase 1) ───────────────────────────────────────────────────
+function openShipModal(id){
+  editId = id||null;
+  const ex = id?shipments.find(s=>s.id===id):null;
+  fState = ex ? { trialId:ex.trialId||'', repId:ex.repId, asgId:ex.asgId, items:ex.items.map(i=>({...i})), remarks:ex.remarks||'' }
+               : { trialId:'', repId:'', asgId:'', items:[{name:'',qty:'',remarks:''}], remarks:'' };
+  document.getElementById('shipTitle').textContent = ex?`Edit ${ex.id}`:'New Shipment';
+  renderShipBody();
+  document.getElementById('shipOverlay').classList.add('show');
+}
+function closeShipModal(){ document.getElementById('shipOverlay').classList.remove('show'); fState=editId=null; }
+
+function renderShipBody(){
+  const rep = REPS.find(r=>r.id===fState.repId);
+  document.getElementById('shipBody').innerHTML = `
+    <div class="sec-label">1 · Trial &amp; Destination</div>
+    <div class="form-row" style="margin-bottom:12px">
+      <div class="field span2">
+        <label>Trial <span class="req">*</span></label>
+        <select id="fTrial" onchange="fState.trialId=this.value">
+          <option value="">— Select Trial —</option>
+          ${TRIALS.map(t=>`<option value="${t.id}"${fState.trialId===t.id?' selected':''}>${t.name} · ${t.season}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="field">
+        <label>REP <span class="req">*</span></label>
+        <select id="fRep" onchange="onRepChange(this.value)">
+          <option value="">— Select REP —</option>
+          ${REPS.map(r=>`<option value="${r.id}"${fState.repId===r.id?' selected':''}>${r.name}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field">
+        <label>City Assignment <span class="req">*</span></label>
+        <select id="fAsg" onchange="onAsgChange(this.value)"${!rep?' disabled':''}>
+          <option value="">${rep?'— Select city —':'Pick a REP first'}</option>
+          ${rep?rep.assignments.map(a=>`<option value="${a.id}"${fState.asgId===a.id?' selected':''}>${a.city}, ${a.state}</option>`).join(''):''}
+        </select>
+      </div>
+    </div>
+    <div id="addrPreview" style="margin-top:12px">${renderAddrPreview()}</div>
+
+    <div class="sec-label">2 · What are you sending?</div>
+    <div style="font-size:12.5px;color:var(--muted);margin-bottom:10px">Item names are free-form — type exactly what you're packing.</div>
+    <div class="items-header">
+      <div>Item name</div><div>Qty</div><div>Remarks</div><div></div>
+    </div>
+    <div id="itemRows">${fState.items.map((it,i)=>itemRowHtml(it,i)).join('')}</div>
+    <button class="btn btn-secondary btn-sm mt" onclick="addItem()"><span class="material-icons">add</span>Add item</button>
+
+    <div class="sec-label">3 · Notes</div>
+    <div class="form-row full">
+      <div class="field">
+        <label>Remarks</label>
+        <textarea id="fRemarks" placeholder="Special handling, urgency notes…">${fState.remarks}</textarea>
+      </div>
+    </div>
+  `;
+  document.getElementById('fRemarks').addEventListener('input',e=>fState.remarks=e.target.value);
+}
+
+function itemRowHtml(it,i){
+  return `<div class="item-row" data-i="${i}">
+    <input value="${esc(it.name)}" placeholder="e.g. Jerseys Red M" oninput="fState.items[${i}].name=this.value" />
+    <input type="number" min="0" value="${it.qty}" oninput="fState.items[${i}].qty=this.value" />
+    <input value="${esc(it.remarks||'')}" placeholder="Optional" oninput="fState.items[${i}].remarks=this.value" />
+    <button class="btn btn-ghost" onclick="delItem(${i})" title="Remove row"><span class="material-icons" style="font-size:16px;color:var(--danger)">delete_outline</span></button>
+  </div>`;
+}
+
+function esc(s){ return (s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;') }
+function addItem(){ fState.items.push({name:'',qty:'',remarks:''}); document.getElementById('itemRows').insertAdjacentHTML('beforeend',itemRowHtml(fState.items.at(-1),fState.items.length-1)); }
+function delItem(i){
+  if(fState.items.length===1){ toast('At least one item required'); return; }
+  fState.items.splice(i,1);
+  document.getElementById('itemRows').innerHTML = fState.items.map((it,idx)=>itemRowHtml(it,idx)).join('');
+}
+function onRepChange(v){ fState.repId=v; fState.asgId=''; renderShipBody(); }
+function onAsgChange(v){ fState.asgId=v; document.getElementById('addrPreview').innerHTML=renderAddrPreview(); }
+
+function renderAddrPreview(){
+  if(!fState.asgId) return `<div class="addr-empty">Select a REP and city assignment — the courier address from the REP profile will auto-fill here.</div>`;
+  const rep=REPS.find(r=>r.id===fState.repId), a=rep.assignments.find(x=>x.id===fState.asgId);
+  return `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px;display:flex;align-items:center;gap:6px"><span class="material-icons" style="font-size:14px;color:var(--primary)">link</span>Courier address — pulled from REP profile</div>
+  <div class="addr-card">
+    <div class="addr-row"><span class="material-icons">person</span><span><b>${a.courierAcceptingName}</b> &nbsp;·&nbsp; ${a.courierPhone}</span></div>
+    <div class="addr-row"><span class="material-icons">home</span><span>${a.courierAddress}</span></div>
+    <div class="addr-row"><span class="material-icons">location_on</span><span>${a.city}, ${a.state} — <b>${a.courierPinCode}</b></span></div>
+    ${a.courierAdditionalInfo?`<div class="addr-row"><span class="material-icons">info</span><span>${a.courierAdditionalInfo}</span></div>`:''}
+    <div style="font-size:11.5px;color:var(--muted);margin-top:2px">Snapshotted at save — later edits to the REP profile won't change this shipment.</div>
+  </div>`;
+}
+
+function saveShip(){
+  if(!fState.trialId){ toast('Select a Trial'); return; }
+  if(!fState.repId||!fState.asgId){ toast('Select a REP and city'); return; }
+  const items = fState.items.filter(i=>i.name.trim()&&Number(i.qty)>0);
+  if(!items.length){ toast('Add at least one item with quantity'); return; }
+  if(editId){
+    const s=shipments.find(x=>x.id===editId);
+    s.trialId=fState.trialId;
+    s.repId=fState.repId; s.asgId=fState.asgId;
+    s.snap=snapAddr(fState.repId,fState.asgId);
+    s.items=items; s.remarks=fState.remarks;
+    toast('Shipment updated');
+  } else {
+    const n=String(shipments.length+1).padStart(4,'0');
+    shipments.unshift({ id:`CR-2026-${n}`, trialId:fState.trialId, repId:fState.repId, asgId:fState.asgId,
+      snap:snapAddr(fState.repId,fState.asgId), items, remarks:fState.remarks,
+      status:'Draft', courierCompany:null, awb:null, dispatchDate:null, expectedDate:null,
+      deliveredDate:null, receivedBy:null, deliveryPhotos:[],
+      log:[{s:'Draft',at:now(),by:'Ravi K.',note:'Created'}] });
+    toast('Shipment saved as Draft');
+  }
+  closeShipModal(); renderAll();
+}
+
+// ── DETAIL VIEW ───────────────────────────────────────────────────────────────
+function openDetail(id){
+  const s=shipments.find(x=>x.id===id); if(!s) return;
+  document.getElementById('listPage').style.display='none';
+  const dp=document.getElementById('detailPage');
+  dp.style.display='block';
+  dp.innerHTML=detailHtml(s);
+}
+function backToList(){ document.getElementById('detailPage').style.display='none'; document.getElementById('listPage').style.display='block'; renderAll(); }
+
+function detailHtml(s){
+  const canDisp = s.status==='Draft';
+  const canStat = ['Dispatched','In Transit'].includes(s.status);
+  const totalUnits = s.items.reduce((a,b)=>a+Number(b.qty||0),0);
+  return `
+  <div class="back-bar">
+    <button class="btn btn-secondary btn-sm" onclick="backToList()"><span class="material-icons">arrow_back</span>Back</button>
+    <h2>${s.id}</h2>
+    ${chip(s.status)}
+    <div class="actions">
+      ${s.status==='Draft'?`<button class="btn btn-secondary" onclick="openShipModal('${s.id}')"><span class="material-icons">edit</span>Edit</button>`:''}
+      ${canDisp?`<button class="btn btn-primary" onclick="openDisp('${s.id}')"><span class="material-icons">local_shipping</span>Mark as Dispatched</button>`:''}
+      ${canStat?`<button class="btn btn-info" onclick="openStat('${s.id}')"><span class="material-icons">update</span>Update Status</button>`:''}
+    </div>
+  </div>
+
+  ${s.awb?`
+    <div class="tracking-banner">
+      <span class="material-icons">qr_code_scanner</span>
+      <div>
+        <div class="label">Tracking ID (AWB)</div>
+        <div class="awb">${s.awb}</div>
+        <div class="company">${s.courierCompany}</div>
+      </div>
+    </div>`:''}
+
+  <div class="detail-grid">
+    <div class="detail-card">
+      <div class="detail-card-head"><h4>Destination</h4></div>
+      <div class="detail-card-body">
+        <dl class="kv">
+          <dt>Trial</dt><dd>${trialName(s.trialId)}</dd>
+          <dt>REP</dt><dd>${s.snap.repName}</dd>
+          <dt>Recipient</dt><dd>${s.snap.recipientName} &nbsp;<span style="color:var(--muted);font-size:12px">${s.snap.recipientPhone}</span></dd>
+          <dt>Address</dt><dd>${s.snap.address}</dd>
+          <dt>City / State</dt><dd>${s.snap.city}, ${s.snap.state}</dd>
+          <dt>Pincode</dt><dd><b>${s.snap.pinCode}</b></dd>
+          ${s.snap.additionalInfo?`<dt>Notes</dt><dd>${s.snap.additionalInfo}</dd>`:''}
+        </dl>
+      </div>
+    </div>
+
+    <div class="detail-card">
+      <div class="detail-card-head"><h4>Courier Details</h4></div>
+      <div class="detail-card-body">
+        ${s.courierCompany?`
+        <dl class="kv">
+          <dt>Company</dt><dd>${s.courierCompany}</dd>
+          <dt>AWB / Docket</dt><dd><b style="font-family:monospace;letter-spacing:.04em">${s.awb}</b></dd>
+          <dt>Dispatch Date</dt><dd>${s.dispatchDate||'—'}</dd>
+          <dt>Expected</dt><dd>${s.expectedDate||'—'}</dd>
+          ${s.deliveredDate?`<dt>Delivered</dt><dd>${s.deliveredDate}</dd>`:''}
+          ${s.receivedBy?`<dt>Received by</dt><dd>${s.receivedBy}</dd>`:''}
+        </dl>`
+        :`<p style="color:var(--muted);font-size:13px">Not dispatched yet.</p>`}
+      </div>
+    </div>
+
+    <div class="detail-card full">
+      <div class="detail-card-head">
+        <h4>Items</h4>
+        <span style="font-size:12px;color:var(--muted)">${s.items.length} item${s.items.length!==1?'s':''} · ${totalUnits} total qty</span>
+      </div>
+      <table>
+        <thead><tr><th>Item</th><th>Qty</th><th>Remarks</th></tr></thead>
+        <tbody>
+          ${s.items.map(i=>`<tr><td>${i.name}</td><td><b>${i.qty}</b></td><td>${i.remarks||'<span style="color:var(--muted2)">—</span>'}</td></tr>`).join('')}
+        </tbody>
+      </table>
+      ${s.remarks?`<div style="padding:12px 16px;border-top:1px solid var(--border);font-size:13px;color:var(--muted)"><b>Remarks:</b> ${s.remarks}</div>`:''}
+    </div>
+
+    ${s.deliveryPhotos&&s.deliveryPhotos.length?`
+    <div class="detail-card full">
+      <div class="detail-card-head"><h4>Delivery Photos</h4></div>
+      <div class="detail-card-body">
+        <div class="photo-preview">${s.deliveryPhotos.map(p=>`<div class="photo-thumb"><img src="${p}" /></div>`).join('')}</div>
+      </div>
+    </div>`:''}
+
+    <div class="detail-card full">
+      <div class="detail-card-head"><h4>Tracking Timeline</h4></div>
+      <div class="detail-card-body">
+        <div class="timeline">
+          ${s.log.map((l,i)=>`
+            <div class="tl-item${i<s.log.length-1?' done':''}">
+              <div class="tl-title">${l.s}</div>
+              <div class="tl-meta">${l.at} &nbsp;·&nbsp; ${l.by}</div>
+              ${l.note?`<div class="tl-note">${l.note}</div>`:''}
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── DISPATCH MODAL (Phase 2) ──────────────────────────────────────────────────
+function openDisp(id){
+  dState={ id, courierCompany:'', awb:'', dispatchDate:today(), expectedDate:'' };
+  document.getElementById('dispBody').innerHTML=`
+    <div class="form-row">
+      <div class="field span2">
+        <label>Courier Company <span class="req">*</span></label>
+        <select oninput="dState.courierCompany=this.value">
+          <option value="">— Select company —</option>
+          ${COURIERS.map(c=>`<option>${c}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-row" style="margin-top:12px">
+      <div class="field span2">
+        <label>AWB / Docket / Tracking Number <span class="req">*</span></label>
+        <input placeholder="e.g. BD-12345678" oninput="dState.awb=this.value.trim()" style="font-family:monospace;letter-spacing:.04em" />
+        <div class="hint">This becomes the primary tracking ID shown on the shipment.</div>
+      </div>
+    </div>
+    <div class="form-row" style="margin-top:12px">
+      <div class="field"><label>Dispatch Date <span class="req">*</span></label><input type="date" value="${today()}" oninput="dState.dispatchDate=this.value"/></div>
+      <div class="field"><label>Expected Delivery</label><input type="date" oninput="dState.expectedDate=this.value"/></div>
+    </div>`;
+  document.getElementById('dispOverlay').classList.add('show');
+}
+function closeDisp(){ document.getElementById('dispOverlay').classList.remove('show'); dState=null; }
+function saveDisp(){
+  if(!dState.courierCompany||!dState.awb||!dState.dispatchDate){ toast('Fill required fields'); return; }
+  const s=shipments.find(x=>x.id===dState.id);
+  s.courierCompany=dState.courierCompany; s.awb=dState.awb;
+  s.dispatchDate=dState.dispatchDate; s.expectedDate=dState.expectedDate;
+  s.status='Dispatched';
+  s.log.push({s:'Dispatched',at:now(),by:'Ravi K.',note:`AWB ${s.awb} — ${s.courierCompany}`});
+  closeDisp(); renderAll(); openDetail(s.id); toast('Marked as Dispatched');
+}
+
+// ── STATUS MODAL (Phase 3) ────────────────────────────────────────────────────
+function openStat(id){
+  capturedPhotos = [];
+  const s=shipments.find(x=>x.id===id);
+  const opts = s.status==='Dispatched'?['In Transit','Delivered','Returned','Lost']:['Delivered','Returned','Lost'];
+  stState={ id, newStatus:opts[0], note:'', deliveredDate:today(), receivedBy:'', opts };
+  renderStatBody();
+  document.getElementById('statOverlay').classList.add('show');
+}
+function closeStat(){ document.getElementById('statOverlay').classList.remove('show'); stState=null; capturedPhotos=[]; }
+
+function renderStatBody(){
+  const s=shipments.find(x=>x.id===stState.id);
+  const isDelivered = stState.newStatus==='Delivered';
+  document.getElementById('statBody').innerHTML=`
+    <div class="form-row" style="margin-bottom:12px">
+      <div class="field">
+        <label>Current status</label>
+        <div style="margin-top:4px">${chip(s.status)}</div>
+      </div>
+      <div class="field">
+        <label>New status <span class="req">*</span></label>
+        <select onchange="stState.newStatus=this.value;renderStatBody()">
+          ${stState.opts.map(o=>`<option${stState.newStatus===o?' selected':''}>${o}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    ${isDelivered?`
+    <div class="form-row" style="margin-bottom:12px">
+      <div class="field"><label>Delivered date <span class="req">*</span></label><input type="date" value="${today()}" oninput="stState.deliveredDate=this.value"/></div>
+      <div class="field"><label>Received by <span class="req">*</span></label><input placeholder="Name of person" oninput="stState.receivedBy=this.value"/></div>
+    </div>
+
+    <div class="sec-label" style="margin-top:14px">Delivery proof photo</div>
+    <p style="font-size:12.5px;color:var(--muted);margin-bottom:10px">Capture or upload a photo of the received items as confirmation.</p>
+    <div class="photo-zone" onclick="triggerUpload()" id="photoZone">
+      <span class="material-icons">add_a_photo</span>
+      <p>Click here or use buttons below</p>
+      <p class="sub">Accepted: JPG, PNG — max 5 MB each</p>
+    </div>
+    <input type="file" id="photoInput" accept="image/*" multiple style="display:none" onchange="onFileSelect(this)" />
+    <div class="photo-actions">
+      <button class="photo-capture-btn" onclick="triggerCamera()"><span class="material-icons">camera_alt</span>Use Camera</button>
+      <button class="photo-capture-btn" style="background:var(--grey100);color:var(--grey700)" onclick="triggerUpload()"><span class="material-icons">upload_file</span>Upload from gallery</button>
+    </div>
+    <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none" onchange="onFileSelect(this)" />
+    <div class="photo-preview" id="photoPreview">${capturedPhotos.map((p,i)=>photoThumb(p,i)).join('')}</div>
+    `:''}
+    <div class="field" style="margin-top:12px">
+      <label>Note</label>
+      <textarea placeholder="Optional note…" oninput="stState.note=this.value"></textarea>
+    </div>`;
+}
+
+function photoThumb(src,i){ return `<div class="photo-thumb"><img src="${src}" /><button class="rm" onclick="removePhoto(${i})" title="Remove"><span class="material-icons" style="font-size:14px">close</span></button></div>`; }
+function triggerUpload(){ document.getElementById('photoInput').click(); }
+function triggerCamera(){ document.getElementById('cameraInput').click(); }
+function onFileSelect(input){
+  const files = Array.from(input.files);
+  files.forEach(f=>{
+    if(!f.type.startsWith('image/')){ toast('Only images supported'); return; }
+    if(f.size>5*1024*1024){ toast('Max 5 MB per image'); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      capturedPhotos.push(e.target.result);
+      const pp = document.getElementById('photoPreview');
+      if(pp) pp.innerHTML = capturedPhotos.map((p,i)=>photoThumb(p,i)).join('');
+    };
+    reader.readAsDataURL(f);
+  });
+  input.value='';
+}
+function removePhoto(i){ capturedPhotos.splice(i,1); const pp=document.getElementById('photoPreview'); if(pp) pp.innerHTML=capturedPhotos.map((p,idx)=>photoThumb(p,idx)).join(''); }
+
+function saveStat(){
+  const isDelivered = stState.newStatus==='Delivered';
+  if(isDelivered&&(!stState.deliveredDate||!stState.receivedBy)){ toast('Fill delivery date and receiver name'); return; }
+  const s=shipments.find(x=>x.id===stState.id);
+  s.status=stState.newStatus;
+  if(isDelivered){ s.deliveredDate=stState.deliveredDate; s.receivedBy=stState.receivedBy; s.deliveryPhotos=[...capturedPhotos]; }
+  s.log.push({s:s.status,at:now(),by:'Ravi K.',note:stState.note||(isDelivered?`Received by ${s.receivedBy}`:`Marked ${s.status}`)});
+  closeStat(); renderAll(); openDetail(s.id); toast(`Status updated → ${s.status}`);
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+function today(){ return new Date().toISOString().slice(0,10); }
+function now(){
+  const d=new Date();
+  return d.toISOString().slice(0,10)+' '+d.toTimeString().slice(0,5);
+}
+function toast(msg){
+  const el=document.getElementById('snack');
+  el.textContent=msg; el.classList.add('show');
+  clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove('show'),2400);
+}
+function renderAll(){ renderStats(); renderTable(); }
+
+renderAll();
+</script>
+</body>
+</html>

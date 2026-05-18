@@ -124,7 +124,7 @@ function VendorSearchDialog({ open, onClose, vendors, onEdit, onView }) {
         <Stack spacing={2} sx={{ mb: 3 }}>
           {/* Filter 1: Service Type */}
           <FormControl fullWidth size="small">
-            <Typography variant="caption" sx={{ mb: 0.5, fontWeight: 600, color: '#334155', fontSize: '0.8rem' }}>
+            <Typography variant="caption" sx={{ mb: 0.5, fontWeight: 600, color: '#64748b', fontSize: '0.8rem' }}>
               1. Service Type
             </Typography>
             <Select
@@ -141,7 +141,7 @@ function VendorSearchDialog({ open, onClose, vendors, onEdit, onView }) {
 
           {/* Filter 2: Entity Type */}
           <FormControl fullWidth size="small">
-            <Typography variant="caption" sx={{ mb: 0.5, fontWeight: 600, color: '#334155', fontSize: '0.8rem' }}>
+            <Typography variant="caption" sx={{ mb: 0.5, fontWeight: 600, color: '#64748b', fontSize: '0.8rem' }}>
               2. Entity Type
             </Typography>
             <Select
@@ -158,7 +158,7 @@ function VendorSearchDialog({ open, onClose, vendors, onEdit, onView }) {
 
           {/* Filter 3: Vendor Name */}
           <Box>
-            <Typography variant="caption" sx={{ mb: 0.5, fontWeight: 600, color: '#334155', fontSize: '0.8rem', display: 'block' }}>
+            <Typography variant="caption" sx={{ mb: 0.5, fontWeight: 600, color: '#64748b', fontSize: '0.8rem', display: 'block' }}>
               3. Vendor Name
             </Typography>
             <TextField

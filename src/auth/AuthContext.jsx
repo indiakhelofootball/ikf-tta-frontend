@@ -5,6 +5,7 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import { ROLE_PERMISSIONS } from "./roles";
 import api from "../services/api";
+import { refreshAllFromAPI } from "../utils/adminStorage";
 
 const AuthContext = createContext(null);
 
@@ -18,32 +19,35 @@ export const AuthProvider = ({ children }) => {
 
   // Check for stored user on mount
   useEffect(() => {
-    const token = localStorage.getItem("tta_token");
-    const storedUser = localStorage.getItem("tta_user");
-    const loginTime = localStorage.getItem("tta_login_time");
-    const rememberMe = localStorage.getItem("tta_remember_me");
+    async function initSession() {
+      const token = localStorage.getItem("tta_token");
+      const storedUser = localStorage.getItem("tta_user");
+      const loginTime = localStorage.getItem("tta_login_time");
+      const rememberMe = localStorage.getItem("tta_remember_me");
 
-    if (token && storedUser && loginTime) {
-      const elapsed = Date.now() - parseInt(loginTime);
-      const timeout = rememberMe === "true" ? REMEMBER_ME_DURATION : SESSION_TIMEOUT;
+      if (token && storedUser && loginTime) {
+        const elapsed = Date.now() - parseInt(loginTime);
+        const timeout = rememberMe === "true" ? REMEMBER_ME_DURATION : SESSION_TIMEOUT;
 
-      if (elapsed < timeout) {
-        const parsedUser = JSON.parse(storedUser);
-        
-        // 👤 PROFILE SUPPORT: Load profile data for THIS specific user
-        const profileData = loadProfileData(parsedUser.email);
-        const userWithProfile = {
-          ...parsedUser,
-          ...profileData, // Merge profile data (name, designation, profileImage)
-        };
-        
-        setUser(userWithProfile);
-        startSessionTimer(timeout - elapsed);
-      } else {
-        logout();
+        if (elapsed < timeout) {
+          const parsedUser = JSON.parse(storedUser);
+
+          const profileData = loadProfileData(parsedUser.email);
+          const userWithProfile = {
+            ...parsedUser,
+            ...profileData,
+          };
+
+          setUser(userWithProfile);
+          startSessionTimer(timeout - elapsed);
+          await refreshAllFromAPI().catch(() => {});
+        } else {
+          logout();
+        }
       }
+      setLoading(false);
     }
-    setLoading(false);
+    initSession();
   }, []);
 
   // 👤 PROFILE SUPPORT: Load profile data for specific user email
@@ -148,9 +152,11 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem("tta_remember_me", rememberMe.toString());
       
       setUser(userWithProfile);
-      
+
       const duration = rememberMe ? REMEMBER_ME_DURATION : SESSION_TIMEOUT;
       startSessionTimer(duration);
+
+      refreshAllFromAPI().catch(() => {});
 
       return { success: true };
       
@@ -159,6 +165,49 @@ export const AuthProvider = ({ children }) => {
         success: false, 
         message: error.message || "Login failed. Please check your connection." 
       };
+    }
+  };
+
+  const otpLogin = async (phone, code) => {
+    try {
+      const response = await api.verifyOTP(phone, code);
+
+      if (!response.success) {
+        return { success: false, message: response.message || 'Verification failed.' };
+      }
+
+      const userFromBackend = response.user;
+      if (!userFromBackend || !userFromBackend.role) {
+        return { success: false, message: 'Invalid response from server.' };
+      }
+
+      const userWithPermissions = {
+        id: userFromBackend.id,
+        email: userFromBackend.email,
+        name: userFromBackend.name,
+        role: userFromBackend.role,
+        permissions: ROLE_PERMISSIONS[userFromBackend.role] || ROLE_PERMISSIONS.REP,
+      };
+
+      const profileData = loadProfileData(userFromBackend.email);
+      const userWithProfile = { ...userWithPermissions, ...profileData };
+
+      const accessToken = response.tokens?.access;
+      localStorage.setItem('tta_token', accessToken);
+      if (response.tokens?.refresh) {
+        localStorage.setItem('tta_refresh', response.tokens.refresh);
+      }
+      localStorage.setItem('tta_user', JSON.stringify(userWithPermissions));
+      localStorage.setItem('tta_login_time', Date.now().toString());
+      localStorage.setItem('tta_remember_me', 'false');
+
+      setUser(userWithProfile);
+      startSessionTimer(SESSION_TIMEOUT);
+      refreshAllFromAPI().catch(() => {});
+
+      return { success: true };
+    } catch (error) {
+      return { success: false, message: error.message || 'OTP verification failed.' };
     }
   };
 
@@ -220,6 +269,7 @@ export const AuthProvider = ({ children }) => {
         isAuthenticated: !!user,
         loading,
         login,
+        otpLogin,
         logout,
         updateUserProfile, // 👤 PROFILE SUPPORT: Per-user profile updates
         resetActivityTimer,

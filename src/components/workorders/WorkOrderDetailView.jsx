@@ -1,6 +1,6 @@
 // src/components/workorders/WorkOrderDetailView.jsx
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Box, Typography, Button, Chip, Stack, Divider, IconButton,
@@ -8,42 +8,62 @@ import {
 import {
   Close as CloseIcon, Edit as EditIcon,
   Repeat as PeriodicIcon, AttachMoney as FixedIcon,
+  History as HistoryIcon,
 } from '@mui/icons-material';
 import { WO_STATUS_COLORS, getPeriodLabel } from './workOrderData';
+import { workOrdersAPI } from '../../services/api';
 
 function WorkOrderDetailView({ open, onClose, workOrder, onEdit }) {
+  const [fullWO, setFullWO] = useState(null);
+
+  useEffect(() => {
+    if (open && workOrder?.id) {
+      workOrdersAPI.getById(wo.id)
+        .then((data) => setFullWO(data))
+        .catch(() => setFullWO(null));
+    } else {
+      setFullWO(null);
+    }
+  }, [open, workOrder?.id]);
+
   if (!workOrder) return null;
 
-  const statusStyle = WO_STATUS_COLORS[workOrder.status] || WO_STATUS_COLORS.Issued;
-  const isPeriodic = workOrder.type === 'Periodic';
-  const paidPeriods = workOrder.paidPeriods || [];
+  // Merge: use full WO data (with changeLogs) if available, fall back to passed prop
+  const wo = fullWO || workOrder;
+
+  const statusStyle = WO_STATUS_COLORS[wo.status] || WO_STATUS_COLORS.Issued;
+  const isPeriodic = wo.type === 'Periodic';
+  const paidPeriods = wo.paidPeriods || [];
 
   const fmtAmount = (n) =>
-    new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n || 0);
+    new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(parseFloat(n) || 0);
 
   const sectionSx = {
-    p: 2,
+    p: 2.5,
     bgcolor: '#f8fafc',
     borderRadius: 2,
     border: '1px solid #e2e8f0',
-    mb: 2,
+    mb: 2.5,
   };
 
   const labelSx = {
     fontWeight: 700,
-    color: '#64748b',
-    fontSize: '0.68rem',
+    color: '#94a3b8',
+    fontSize: '0.82rem',
     letterSpacing: '0.5px',
     textTransform: 'uppercase',
-    mb: 0.5,
+    mb: 0.75,
     display: 'block',
   };
+
+  const captionSx = { display: 'block', color: '#94a3b8', fontSize: '0.82rem', mb: 0.25 };
+  const valueSx = { color: '#334155', lineHeight: 1.6 };
 
   return (
     <Dialog
       open={open}
       onClose={onClose}
-      maxWidth="sm"
+      maxWidth="md"
       fullWidth
       PaperProps={{ sx: { borderRadius: 2.5 } }}
     >
@@ -52,29 +72,29 @@ function WorkOrderDetailView({ open, onClose, workOrder, onEdit }) {
         <Stack direction="row" spacing={1.5} alignItems="center">
           <Box>
             <Typography variant="caption" sx={{ color: '#5B63D3', fontWeight: 700 }}>
-              {workOrder.workOrderNumber}
+              {wo.workOrderNumber}
             </Typography>
             <Typography variant="h6" fontWeight={700} sx={{ color: '#1e293b', lineHeight: 1.2 }}>
-              {workOrder.vendorName}
+              {wo.vendorName}
             </Typography>
           </Box>
           <Stack direction="row" spacing={0.75}>
             <Chip
-              label={workOrder.status}
+              label={wo.status}
               size="small"
               sx={{
                 bgcolor: statusStyle.bg, color: statusStyle.color,
-                border: `1px solid ${statusStyle.border}`, fontWeight: 600, fontSize: '0.7rem',
+                border: `1px solid ${statusStyle.border}`, fontWeight: 600, fontSize: '0.8rem',
               }}
             />
             <Chip
               icon={isPeriodic ? <PeriodicIcon sx={{ fontSize: 14 }} /> : <FixedIcon sx={{ fontSize: 14 }} />}
-              label={workOrder.type}
+              label={wo.type}
               size="small"
               sx={{
                 bgcolor: isPeriodic ? '#f0fdf4' : '#eef2ff',
                 color: isPeriodic ? '#16a34a' : '#4338ca',
-                fontWeight: 600, fontSize: '0.65rem',
+                fontWeight: 600, fontSize: '0.8rem',
               }}
             />
           </Stack>
@@ -89,8 +109,8 @@ function WorkOrderDetailView({ open, onClose, workOrder, onEdit }) {
         {/* Description */}
         <Typography sx={labelSx}>Description</Typography>
         <Box sx={sectionSx}>
-          <Typography variant="body2" sx={{ color: '#1e293b' }}>
-            {workOrder.serviceDescription || '—'}
+          <Typography variant="body2" sx={{ color: '#334155', lineHeight: 1.7 }}>
+            {wo.serviceDescription || '—'}
           </Typography>
         </Box>
 
@@ -98,7 +118,7 @@ function WorkOrderDetailView({ open, onClose, workOrder, onEdit }) {
         <Typography sx={labelSx}>Amount</Typography>
         <Box sx={sectionSx}>
           <Typography variant="h5" fontWeight={700} sx={{ color: '#1e293b' }}>
-            {fmtAmount(workOrder.amount)}
+            {fmtAmount(wo.amount)}
           </Typography>
         </Box>
 
@@ -109,25 +129,25 @@ function WorkOrderDetailView({ open, onClose, workOrder, onEdit }) {
             <Box sx={{ ...sectionSx, bgcolor: '#f0fdf4', borderColor: '#bbf7d0' }}>
               <Stack direction="row" spacing={3} sx={{ mb: 1.5 }}>
                 <Box>
-                  <Typography variant="caption" color="text.secondary">Amount / Period</Typography>
-                  <Typography variant="body2" fontWeight={700}>{fmtAmount(workOrder.amountPerPeriod)}</Typography>
+                  <Typography variant="caption" sx={captionSx}>Amount / Period</Typography>
+                  <Typography variant="body2" fontWeight={700} sx={valueSx}>{fmtAmount(wo.amountPerPeriod)}</Typography>
                 </Box>
                 <Box>
-                  <Typography variant="caption" color="text.secondary">Periods</Typography>
-                  <Typography variant="body2" fontWeight={700}>
-                    {paidPeriods.length} / {workOrder.numberOfPeriods} paid
+                  <Typography variant="caption" sx={captionSx}>Periods</Typography>
+                  <Typography variant="body2" fontWeight={700} sx={valueSx}>
+                    {paidPeriods.length} / {wo.numberOfPeriods} paid
                   </Typography>
                 </Box>
               </Stack>
               <Stack direction="row" spacing={0.75} flexWrap="wrap" gap={0.5}>
-                {Array.from({ length: workOrder.numberOfPeriods }, (_, i) => i + 1).map((p) => {
+                {Array.from({ length: wo.numberOfPeriods }, (_, i) => i + 1).map((p) => {
                   const paid = paidPeriods.includes(p);
                   return (
                     <Chip key={p}
-                      label={getPeriodLabel(workOrder, p)}
+                      label={getPeriodLabel(wo, p)}
                       size="small"
                       sx={{
-                        fontWeight: 600, fontSize: '0.65rem',
+                        fontWeight: 600, fontSize: '0.8rem',
                         bgcolor: paid ? '#dcfce7' : '#fff',
                         color: paid ? '#16a34a' : '#64748b',
                         border: `1px solid ${paid ? '#86efac' : '#e2e8f0'}`,
@@ -141,73 +161,102 @@ function WorkOrderDetailView({ open, onClose, workOrder, onEdit }) {
           </>
         )}
 
+        {/* Change Log */}
+        {wo.changeLogs && wo.changeLogs.length > 0 && (
+          <>
+            <Typography sx={labelSx}>
+              <Stack direction="row" spacing={0.5} alignItems="center" component="span">
+                <HistoryIcon sx={{ fontSize: 16 }} />
+                <span>Change Log</span>
+              </Stack>
+            </Typography>
+            <Box sx={{ ...sectionSx, bgcolor: '#fef3c7', borderColor: '#fde68a', mb: 2.5 }}>
+              {wo.changeLogs.map((log) => (
+                <Stack key={log.id} direction="row" spacing={1.5} alignItems="baseline" sx={{ mb: 1, '&:last-child': { mb: 0 } }}>
+                  <Typography variant="caption" sx={{ color: '#92400e', whiteSpace: 'nowrap', minWidth: 120 }}>
+                    {new Date(log.changedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    {' '}
+                    {new Date(log.changedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                  </Typography>
+                  <Typography variant="caption" fontWeight={700} sx={{ color: '#78350f' }}>
+                    {log.changedBy}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: '#92400e' }}>
+                    changed <strong>{log.fieldName}</strong> from <span style={{ textDecoration: 'line-through' }}>{log.oldValue}</span> → <strong>{log.newValue}</strong>
+                  </Typography>
+                </Stack>
+              ))}
+            </Box>
+          </>
+        )}
+
         {/* Vendor — A-to-Z details */}
         <Typography sx={labelSx}>Vendor Details</Typography>
         <Box sx={{ ...sectionSx, bgcolor: '#fffbeb', borderColor: '#fde68a', mb: 0 }}>
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1.5, mb: 2 }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2, mb: 2 }}>
             <Box>
-              <Typography variant="caption" sx={{ color: '#92400e' }}>Vendor Name</Typography>
-              <Typography variant="body2" fontWeight={700}>{workOrder.vendorName}</Typography>
+              <Typography variant="caption" sx={{ display: 'block', color: '#92400e', mb: 0.25 }}>Vendor Name</Typography>
+              <Typography variant="body2" fontWeight={700} sx={{ color: '#334155', lineHeight: 1.6 }}>{wo.vendorName}</Typography>
             </Box>
-            {workOrder.vendorType && (
+            {wo.vendorType && (
               <Box>
-                <Typography variant="caption" sx={{ color: '#92400e' }}>Service Type</Typography>
-                <Typography variant="body2" fontWeight={600}>{workOrder.vendorType}</Typography>
+                <Typography variant="caption" sx={{ display: 'block', color: '#92400e', mb: 0.25 }}>Service Type</Typography>
+                <Typography variant="body2" fontWeight={600} sx={{ color: '#334155', lineHeight: 1.6 }}>{wo.vendorType}</Typography>
               </Box>
             )}
-            {workOrder.companyType && (
+            {wo.companyType && (
               <Box>
-                <Typography variant="caption" sx={{ color: '#92400e' }}>Entity Type</Typography>
-                <Typography variant="body2" fontWeight={600}>{workOrder.companyType}</Typography>
+                <Typography variant="caption" sx={{ display: 'block', color: '#92400e', mb: 0.25 }}>Entity Type</Typography>
+                <Typography variant="body2" fontWeight={600} sx={{ color: '#334155', lineHeight: 1.6 }}>{wo.companyType}</Typography>
               </Box>
             )}
-            {workOrder.contactPerson && (
+            {wo.contactPerson && (
               <Box>
-                <Typography variant="caption" sx={{ color: '#92400e' }}>Contact Person</Typography>
-                <Typography variant="body2" fontWeight={600}>{workOrder.contactPerson}</Typography>
+                <Typography variant="caption" sx={{ display: 'block', color: '#92400e', mb: 0.25 }}>Contact Person</Typography>
+                <Typography variant="body2" fontWeight={600} sx={{ color: '#334155', lineHeight: 1.6 }}>{wo.contactPerson}</Typography>
               </Box>
             )}
-            {workOrder.phone && (
+            {wo.phone && (
               <Box>
-                <Typography variant="caption" sx={{ color: '#92400e' }}>Phone</Typography>
-                <Typography variant="body2" fontWeight={600}>{workOrder.phone}</Typography>
+                <Typography variant="caption" sx={{ display: 'block', color: '#92400e', mb: 0.25 }}>Phone</Typography>
+                <Typography variant="body2" fontWeight={600} sx={{ color: '#334155', lineHeight: 1.6 }}>{wo.phone}</Typography>
               </Box>
             )}
-            {workOrder.email && (
+            {wo.email && (
               <Box>
-                <Typography variant="caption" sx={{ color: '#92400e' }}>Email</Typography>
-                <Typography variant="body2" fontWeight={600}>{workOrder.email}</Typography>
+                <Typography variant="caption" sx={{ display: 'block', color: '#92400e', mb: 0.25 }}>Email</Typography>
+                <Typography variant="body2" fontWeight={600} sx={{ color: '#334155', lineHeight: 1.6 }}>{wo.email}</Typography>
               </Box>
             )}
-            {workOrder.address && (
+            {wo.address && (
               <Box sx={{ gridColumn: { sm: '1 / -1' } }}>
-                <Typography variant="caption" sx={{ color: '#92400e' }}>Address</Typography>
-                <Typography variant="body2" fontWeight={600}>{workOrder.address}</Typography>
+                <Typography variant="caption" sx={{ display: 'block', color: '#92400e', mb: 0.25 }}>Address</Typography>
+                <Typography variant="body2" fontWeight={600} sx={{ color: '#334155', lineHeight: 1.6 }}>{wo.address}</Typography>
               </Box>
             )}
           </Box>
 
           {/* PAN & GST */}
-          {(workOrder.panNumber || workOrder.gstNumber) && (
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1.5, mb: 2 }}>
-              {workOrder.panNumber && (
+          {(wo.panNumber || wo.gstNumber) && (
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2, mb: 2 }}>
+              {wo.panNumber && (
                 <Box>
-                  <Typography variant="caption" sx={{ color: '#92400e' }}>PAN Number</Typography>
+                  <Typography variant="caption" sx={{ display: 'block', color: '#92400e', mb: 0.5 }}>PAN Number</Typography>
                   <Box sx={{
                     display: 'inline-block', px: 1, py: 0.2,
                     bgcolor: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 1,
                     fontFamily: 'monospace', fontSize: '0.78rem', fontWeight: 700,
                     color: '#c2410c', letterSpacing: '0.08em',
                   }}>
-                    {workOrder.panNumber.toUpperCase()}
+                    {wo.panNumber.toUpperCase()}
                   </Box>
                 </Box>
               )}
-              {workOrder.gstNumber && (
+              {wo.gstNumber && (
                 <Box>
-                  <Typography variant="caption" sx={{ color: '#92400e' }}>GST Number</Typography>
-                  <Typography variant="body2" fontWeight={600} sx={{ fontFamily: 'monospace' }}>
-                    {workOrder.gstNumber}
+                  <Typography variant="caption" sx={{ display: 'block', color: '#92400e', mb: 0.25 }}>GST Number</Typography>
+                  <Typography variant="body2" fontWeight={600} sx={{ fontFamily: 'monospace', color: '#334155', lineHeight: 1.6 }}>
+                    {wo.gstNumber}
                   </Typography>
                 </Box>
               )}
@@ -215,41 +264,41 @@ function WorkOrderDetailView({ open, onClose, workOrder, onEdit }) {
           )}
 
           {/* Bank Details — linked to PAN */}
-          {(workOrder.bankName || workOrder.accountNumber || workOrder.ifscCode) && (
+          {(wo.bankName || wo.accountNumber || wo.ifscCode) && (
             <>
               <Divider sx={{ mb: 2, borderColor: '#fde68a' }} />
               <Typography variant="caption" fontWeight={700} sx={{ color: '#92400e', display: 'block', mb: 1.5 }}>
                 Bank Details
-                {workOrder.panNumber && (
-                  <span style={{ fontWeight: 400 }}> — linked to PAN {workOrder.panNumber.toUpperCase()}</span>
+                {wo.panNumber && (
+                  <span style={{ fontWeight: 400 }}> — linked to PAN {wo.panNumber.toUpperCase()}</span>
                 )}
               </Typography>
-              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1.5 }}>
-                {workOrder.bankName && (
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+                {wo.bankName && (
                   <Box>
-                    <Typography variant="caption" sx={{ color: '#92400e' }}>Bank</Typography>
-                    <Typography variant="body2" fontWeight={600}>{workOrder.bankName}</Typography>
+                    <Typography variant="caption" sx={{ display: 'block', color: '#92400e', mb: 0.25 }}>Bank</Typography>
+                    <Typography variant="body2" fontWeight={600} sx={{ color: '#334155', lineHeight: 1.6 }}>{wo.bankName}</Typography>
                   </Box>
                 )}
-                {workOrder.accountType && (
+                {wo.accountType && (
                   <Box>
-                    <Typography variant="caption" sx={{ color: '#92400e' }}>Account Type</Typography>
-                    <Typography variant="body2" fontWeight={600}>{workOrder.accountType}</Typography>
+                    <Typography variant="caption" sx={{ display: 'block', color: '#92400e', mb: 0.25 }}>Account Type</Typography>
+                    <Typography variant="body2" fontWeight={600} sx={{ color: '#334155', lineHeight: 1.6 }}>{wo.accountType}</Typography>
                   </Box>
                 )}
-                {workOrder.accountNumber && (
+                {wo.accountNumber && (
                   <Box>
-                    <Typography variant="caption" sx={{ color: '#92400e' }}>Account Number</Typography>
-                    <Typography variant="body2" fontWeight={600} sx={{ fontFamily: 'monospace' }}>
-                      {workOrder.accountNumber}
+                    <Typography variant="caption" sx={{ display: 'block', color: '#92400e', mb: 0.25 }}>Account Number</Typography>
+                    <Typography variant="body2" fontWeight={600} sx={{ fontFamily: 'monospace', color: '#334155', lineHeight: 1.6 }}>
+                      {wo.accountNumber}
                     </Typography>
                   </Box>
                 )}
-                {workOrder.ifscCode && (
+                {wo.ifscCode && (
                   <Box>
-                    <Typography variant="caption" sx={{ color: '#92400e' }}>IFSC Code</Typography>
-                    <Typography variant="body2" fontWeight={600} sx={{ fontFamily: 'monospace' }}>
-                      {workOrder.ifscCode}
+                    <Typography variant="caption" sx={{ display: 'block', color: '#92400e', mb: 0.25 }}>IFSC Code</Typography>
+                    <Typography variant="body2" fontWeight={600} sx={{ fontFamily: 'monospace', color: '#334155', lineHeight: 1.6 }}>
+                      {wo.ifscCode}
                     </Typography>
                   </Box>
                 )}

@@ -402,7 +402,11 @@ function REPModal({ open, onClose, onSave, editingREP }) {
     const validTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
     if (!validTypes.includes(file.type)) { setFileError('MoU document must be PDF or DOC format'); event.target.value = ''; return; }
     if (file.size > 5 * 1024 * 1024) { setFileError('MoU document must be less than 5MB'); event.target.value = ''; return; }
-    setMouDocument(file); setMouDocumentPreview(file.name); event.target.value = '';
+    setMouDocument(file);
+    const reader = new FileReader();
+    reader.onloadend = () => setMouDocumentPreview(reader.result);
+    reader.readAsDataURL(file);
+    event.target.value = '';
   };
 
   const handleRepLogoUpload = (event) => {
@@ -1253,9 +1257,8 @@ function REPModal({ open, onClose, onSave, editingREP }) {
                   {mouDocumentPreview && (
                     <Stack direction="row" spacing={1} alignItems="center" sx={{ p: 1, bgcolor: '#f0f9ff', borderRadius: 1 }}>
                       <FileIcon fontSize="small" color="primary" />
-                      <Typography variant="caption" sx={{ flex: 1, fontSize: '0.75rem' }}>
-                        {typeof mouDocumentPreview === 'string' && mouDocumentPreview.length > 30
-                          ? mouDocumentPreview.substring(0, 30) + '...' : mouDocumentPreview}
+                      <Typography variant="caption" sx={{ flex: 1, fontSize: '0.75rem' }} noWrap>
+                        {mouDocument?.name || editingREP?.mouDocumentName || 'MoU document attached'}
                       </Typography>
                       <IconButton size="small" onClick={() => { setMouDocument(null); setMouDocumentPreview(null); }}
                         disabled={saving} aria-label="Remove MOU document">

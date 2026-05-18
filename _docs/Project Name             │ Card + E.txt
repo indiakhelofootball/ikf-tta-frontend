@@ -1,0 +1,65 @@
+Project Name             │ Card + Edit modal (locked) │ Card only — remove from Edit                   │
+  ├──────────────────────────┼────────────────────────────┼────────────────────────────────────────────────┤
+  │ Season                   │ Card + Edit modal (locked) │ Card only — remove from Edit                   │
+  ├──────────────────────────┼────────────────────────────┼────────────────────────────────────────────────┤
+  │ Project Description      │ Card + Edit modal (locked) │ Card only — remove from Edit               
+above all needs to come in the same card as a info card of the project like a profile
+
+ground location needs to removed completely . from anywhere no view or edit 
+cities and region if added before from the project setup will be shown in the list lets in the dashboard 
+
+lets keep project created in the project setup will be on main section like it is in the project with sorting and all . once clicked and we go inside a project we will be able to see name of the cities and schedule we have created beside it. if we have suppose 10 or 50 or 100 we can filter it out based on state and cities and with project and seasons . recent will at top and we can give option to sort by date and created . once we go inside the cities we will have option to edit it or we can have option to add more cities like i have discussed earlier . we can give option to add new cities or edit already one . 
+
+now some options will be remove completely from the project 
+
+1Ground Location (optional)
+
+e.g., Andheri Sports Complex
+
+Schedule
+
+Fixed
+
+Tentative
+
+Tentative Month *
+
+April
+
+Date Range Description
+
+e.g., Mid June – End June 2025
+
+Confirmed Project Date
+
+
+dd-mm-yyyy
+this will be removed completely 
+
+Status *
+
+Draft
+ removed completely 
+at the end add notes 
+
+Cities & Regions will changed to region only . now am i clear?
+(venv) root@iZt4n8bk3wgx3xb2uxq5rrZ:~/TTA/backend/ikf-tta-backend/backend# /root/TTA/backend/venv/bin/python manage.py migrate trials --fake
+System check identified some issues:
+
+WARNINGS:
+?: (mysql.W002) MariaDB Strict Mode is not set for database connection 'default'
+        HINT: MariaDB's Strict Mode fixes many data integrity problems in MariaDB, such as data truncation upon insertion, by escalating warnings into errors. It is strongly recommended you activate it. See: https://docs.djangoproject.com/en/3.2/ref/databases/#mysql-sql-mode
+Operations to perform:
+  Apply all migrations: trials
+Running migrations:
+  No migrations to apply.
+(venv) root@iZt4n8bk3wgx3xb2uxq5rrZ:~/TTA/backend/ikf-tta-backend/backend# /root/TTA/backend/venv/bin/python manage.py migrate vendors
+System check identified some issues:
+
+WARNINGS:
+?: (mysql.W002) MariaDB Strict Mode is not set for database connection 'default'
+        HINT: MariaDB's Strict Mode fixes many data integrity problems in MariaDB, such as data truncation upon insertion, by escalating warnings into errors. It is strongly recommended you activate it. See: https://docs.djangoproject.com/en/3.2/ref/databases/#mysql-sql-mode
+Operations to perform:
+  Apply all migrations: vendors
+Running migrations:
+  No migrations to apply.

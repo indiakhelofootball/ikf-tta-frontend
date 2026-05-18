@@ -425,8 +425,10 @@ function BankManagementPage() {
                                 <>
                                   <Chip label="Done" size="small" icon={<DoneIcon sx={{ fontSize: 14 }} />}
                                     sx={{ bgcolor: '#f0fdf4', color: '#16a34a', fontSize: '0.65rem' }} />
-                                  <Tooltip title="Change status">
-                                    <IconButton size="small" onClick={() => setStatusEditDialog({ open: true, record: r })} sx={{ color: '#94a3b8', ml: 0.5 }}>
+                                  <Tooltip title="Edit status (e.g. if payment bounced)">
+                                    <IconButton size="small" onClick={() => setStatusEditDialog({ open: true, record: r })}
+                                      sx={{ color: '#64748b', ml: 0.5, border: '1px solid #e2e8f0', borderRadius: '8px',
+                                        '&:hover': { bgcolor: '#f1f5f9', borderColor: '#94a3b8' } }}>
                                       <EditIcon sx={{ fontSize: 16 }} />
                                     </IconButton>
                                   </Tooltip>

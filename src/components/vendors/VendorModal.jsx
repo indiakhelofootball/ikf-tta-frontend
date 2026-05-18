@@ -25,7 +25,7 @@ const initialFormData = {
   gstVerified: false, panVerified: false,
   contactPerson: '', phone: '', email: '', address: '', contactPinCode: '',
   state: '', city: '',
-  bankName: '', accountNumber: '', accountType: '', ifscCode: '',
+  bankName: '', accountHolderName: '', accountNumber: '', accountType: '', ifscCode: '',
   bankPinCode: '', branchAddress: '',
 };
 
@@ -87,7 +87,8 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
       panVerified: v.panVerified || false, contactPerson: v.contactPerson || '',
       phone: v.phone || '', email: v.email || '', address: v.address || '',
       contactPinCode: v.contactPinCode || '', state: v.state || '', city: v.city || '',
-      bankName: v.bankName || '', accountNumber: v.accountNumber || '',
+      bankName: v.bankName || '', accountHolderName: v.accountHolderName || '',
+      accountNumber: v.accountNumber || '',
       accountType: v.accountType || '', ifscCode: v.ifscCode || '',
       bankPinCode: v.bankPinCode || '', branchAddress: v.branchAddress || '',
     });
@@ -165,8 +166,9 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
     if (!file.type.startsWith('image/') && file.type !== 'application/pdf') { setFileError('PAN card must be an image (PNG/JPG) or PDF'); e.target.value = ''; return; }
     if (file.size > 3 * 1024 * 1024) { setFileError('PAN card file must be less than 3MB'); e.target.value = ''; return; }
     setPanCardImage(file);
-    if (file.type.startsWith('image/')) { const r = new FileReader(); r.onloadend = () => setPanCardImagePreview(r.result); r.readAsDataURL(file); }
-    else { setPanCardImagePreview(file.name); }
+    const r = new FileReader();
+    r.onloadend = () => setPanCardImagePreview(r.result);
+    r.readAsDataURL(file);
     e.target.value = '';
   };
 
@@ -414,7 +416,7 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
                   isPanCardPdf ? (
                     <Stack direction="row" spacing={0.5} alignItems="center" sx={{ p: 0.5, bgcolor: '#f0f9ff', borderRadius: 1, flex: 1, minWidth: 0 }}>
                       <FileIcon fontSize="small" color="primary" />
-                      <Typography variant="caption" noWrap sx={{ flex: 1, fontSize: '0.7rem' }}>{panCardImagePreview}</Typography>
+                      <Typography variant="caption" noWrap sx={{ flex: 1, fontSize: '0.7rem' }}>{panCardImage?.name || vendor?.panCardImageName || 'PAN document attached'}</Typography>
                       <IconButton size="small" onClick={handleRemovePanCard}><DeleteIcon fontSize="small" /></IconButton>
                     </Stack>
                   ) : (
@@ -458,7 +460,7 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
                 error={!!errors.phone} helperText={errors.phone} disabled={!formActive} sx={inputSx} />
             </Box>
             <Box>
-              <Typography variant="caption" sx={lSx}>Email *</Typography>
+              <Typography variant="caption" sx={lSx}>Email</Typography>
               <TextField fullWidth size="small" placeholder="Enter email address"
                 value={formData.email} onChange={handleChange('email')}
                 error={!!errors.email} helperText={errors.email} disabled={!formActive} sx={inputSx} />
@@ -525,6 +527,11 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
                   {accountTypeOptions.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}
                 </Select>
               </FormControl>
+            </Box>
+            <Box>
+              <Typography variant="caption" sx={lSx}>Account Holder Name</Typography>
+              <TextField fullWidth size="small" placeholder="Name as per bank account"
+                value={formData.accountHolderName} onChange={handleChange('accountHolderName')} disabled={!formActive} sx={inputSx} />
             </Box>
             <Box>
               <Typography variant="caption" sx={lSx}>Account Number</Typography>
