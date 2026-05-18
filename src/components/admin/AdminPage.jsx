@@ -17,6 +17,7 @@ import {
   Folder as ProjectIcon,
   Store as VendorIcon,
   AccountBalance as BankingIcon,
+  LocalShipping as CourierIcon,
 } from '@mui/icons-material';
 import {
   getProjectNames, saveProjectNames,
@@ -26,6 +27,7 @@ import {
   getVendorNames, saveVendorNames,
   getBankNames, saveBankNames,
   getAccountTypes, saveAccountTypes,
+  getCourierItems, saveCourierItems,
   refreshAllFromAPI,
 } from '../../utils/adminStorage';
 
@@ -482,6 +484,16 @@ export default function AdminPage() {
   const [vendorNames, setVendorNames] = useState([]);
   const [bankNames, setBankNames] = useState([]);
   const [accountTypes, setAccountTypes] = useState([]);
+  const [courierItems, setCourierItems] = useState([]);
+  const [saveError, setSaveError] = useState('');
+
+  const handleSave = (setter, saveFn) => (updated) => {
+    setter(updated);
+    setSaveError('');
+    saveFn(updated).catch(() => {
+      setSaveError('Failed to save — changes are local only. Check your connection and try again.');
+    });
+  };
 
   useEffect(() => {
     // Load defaults immediately, then fetch from API
@@ -492,6 +504,7 @@ export default function AdminPage() {
     setVendorNames(getVendorNames());
     setBankNames(getBankNames());
     setAccountTypes(getAccountTypes());
+    setCourierItems(getCourierItems());
 
     // Fetch latest from API and refresh state
     refreshAllFromAPI().then(() => {
@@ -502,6 +515,7 @@ export default function AdminPage() {
       setVendorNames(getVendorNames());
       setBankNames(getBankNames());
       setAccountTypes(getAccountTypes());
+      setCourierItems(getCourierItems());
     }).catch(() => {});
   }, []);
 
@@ -519,6 +533,12 @@ export default function AdminPage() {
           </Typography>
         </Box>
 
+        {saveError && (
+          <Alert severity="error" onClose={() => setSaveError('')} sx={{ mb: 2, borderRadius: '12px' }}>
+            {saveError}
+          </Alert>
+        )}
+
         <Stack spacing={1}>
           {/* ── PROJECT section ── */}
           <SectionGroup
@@ -531,13 +551,13 @@ export default function AdminPage() {
               title="Project Names"
               subtitle="These appear in the Project Name dropdown when creating a new project."
               items={projectNames}
-              onSave={(updated) => { setProjectNames(updated); saveProjectNames(updated); }}
+              onSave={handleSave(setProjectNames, saveProjectNames)}
             />
             <OptionPanel
               title="Seasons"
               subtitle="These appear in the Season dropdown when creating a new project."
               items={seasons}
-              onSave={(updated) => { setSeasons(updated); saveSeasons(updated); }}
+              onSave={handleSave(setSeasons, saveSeasons)}
             />
           </SectionGroup>
 
@@ -552,17 +572,17 @@ export default function AdminPage() {
               title="Service Types"
               subtitle="Service types available when adding a vendor (e.g. Photography, Videography, Printing)."
               items={vendorTypes}
-              onSave={(updated) => { setVendorTypes(updated); saveVendorTypes(updated); }}
+              onSave={handleSave(setVendorTypes, saveVendorTypes)}
             />
             <OptionPanel
               title="Entity Types"
               subtitle="Company/entity types available when adding a vendor (e.g. Individual, Private Limited, LLP)."
               items={entityTypes}
-              onSave={(updated) => { setEntityTypes(updated); saveEntityTypes(updated); }}
+              onSave={handleSave(setEntityTypes, saveEntityTypes)}
             />
             <VendorNamePanel
               items={vendorNames}
-              onSave={(updated) => { setVendorNames(updated); saveVendorNames(updated); }}
+              onSave={handleSave(setVendorNames, saveVendorNames)}
               serviceTypes={vendorTypes.map(v => v.name)}
               entityTypes={entityTypes.map(v => v.name)}
             />
@@ -579,13 +599,28 @@ export default function AdminPage() {
               title="Bank Names"
               subtitle="Banks available in the Bank Name dropdown when adding vendor bank details."
               items={bankNames}
-              onSave={(updated) => { setBankNames(updated); saveBankNames(updated); }}
+              onSave={handleSave(setBankNames, saveBankNames)}
             />
             <OptionPanel
               title="Account Types"
               subtitle="Account types available in the Account Type dropdown (e.g. Savings, Current, Overdraft)."
               items={accountTypes}
-              onSave={(updated) => { setAccountTypes(updated); saveAccountTypes(updated); }}
+              onSave={handleSave(setAccountTypes, saveAccountTypes)}
+            />
+          </SectionGroup>
+
+          {/* ── COURIER section ── */}
+          <SectionGroup
+            icon={<CourierIcon sx={{ fontSize: 20, color: '#10b981' }} />}
+            label="Courier"
+            color="#10b981"
+            defaultOpen={false}
+          >
+            <OptionPanel
+              title="Courier Items"
+              subtitle='Items selectable in the "+ Add Item" dropdown when creating a courier shipment. Only items added here can be picked.'
+              items={courierItems}
+              onSave={handleSave(setCourierItems, saveCourierItems)}
             />
           </SectionGroup>
         </Stack>

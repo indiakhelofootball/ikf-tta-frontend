@@ -12,6 +12,7 @@ const CATEGORY_MAP = {
   vendorNames: 'vendor_name',
   bankNames: 'bank_name',
   accountTypes: 'account_type',
+  courierItems: 'courier_item',
 };
 
 // ── In-memory cache (replaces localStorage) ─────────────────────────
@@ -24,6 +25,7 @@ const _cache = {
   vendorNames: null,
   bankNames: null,
   accountTypes: null,
+  courierItems: null,
 };
 
 const DEFAULTS = {
@@ -34,6 +36,7 @@ const DEFAULTS = {
   vendorNames: [],
   bankNames: ['IDFC First Bank'],
   accountTypes: ['Savings', 'Current'],
+  courierItems: [],
 };
 
 function getFromCache(key) {
@@ -74,7 +77,9 @@ async function fetchCategory(cacheKey, category, defaults) {
       _cache[cacheKey] = items;
       return items;
     }
-  } catch {}
+  } catch (err) {
+    console.error(`[adminStorage] Failed to fetch "${category}":`, err.message || err);
+  }
   const fallback = defaults.map((name, i) => ({ id: Date.now() + i, name, comment: '' }));
   _cache[cacheKey] = fallback;
   return fallback;
@@ -88,14 +93,19 @@ async function saveCategory(cacheKey, category, list) {
   _cache[cacheKey] = list;
 
   await Promise.all(
-    removed.map((item) => configAPI.delete(item.id).catch(() => {}))
+    removed.map((item) => configAPI.delete(item.id).catch((err) => {
+      console.error(`[adminStorage] Failed to delete config item ${item.id}:`, err.message || err);
+    }))
   );
 
   try {
     if (list.length === 0) return;
     const items = list.map((item) => localToApi(category, item));
     await configAPI.bulk(items);
-  } catch {}
+  } catch (err) {
+    console.error(`[adminStorage] Failed to save "${category}":`, err.message || err);
+    throw err;
+  }
 }
 
 // ── Public API (sync — reads from in-memory cache) ──────────────────
@@ -105,7 +115,7 @@ export function getProjectNames() {
 }
 
 export function saveProjectNames(list) {
-  saveCategory('projectNames', CATEGORY_MAP.projectNames, list).catch(() => {});
+  return saveCategory('projectNames', CATEGORY_MAP.projectNames, list);
 }
 
 export function getSeasons() {
@@ -113,7 +123,7 @@ export function getSeasons() {
 }
 
 export function saveSeasons(list) {
-  saveCategory('seasons', CATEGORY_MAP.seasons, list).catch(() => {});
+  return saveCategory('seasons', CATEGORY_MAP.seasons, list);
 }
 
 export function getVendorTypes() {
@@ -121,7 +131,7 @@ export function getVendorTypes() {
 }
 
 export function saveVendorTypes(list) {
-  saveCategory('vendorTypes', CATEGORY_MAP.vendorTypes, list).catch(() => {});
+  return saveCategory('vendorTypes', CATEGORY_MAP.vendorTypes, list);
 }
 
 export function getEntityTypes() {
@@ -129,7 +139,7 @@ export function getEntityTypes() {
 }
 
 export function saveEntityTypes(list) {
-  saveCategory('entityTypes', CATEGORY_MAP.entityTypes, list).catch(() => {});
+  return saveCategory('entityTypes', CATEGORY_MAP.entityTypes, list);
 }
 
 export function getVendorNames() {
@@ -137,7 +147,7 @@ export function getVendorNames() {
 }
 
 export function saveVendorNames(list) {
-  saveCategory('vendorNames', CATEGORY_MAP.vendorNames, list).catch(() => {});
+  return saveCategory('vendorNames', CATEGORY_MAP.vendorNames, list);
 }
 
 export function getBankNames() {
@@ -145,7 +155,7 @@ export function getBankNames() {
 }
 
 export function saveBankNames(list) {
-  saveCategory('bankNames', CATEGORY_MAP.bankNames, list).catch(() => {});
+  return saveCategory('bankNames', CATEGORY_MAP.bankNames, list);
 }
 
 export function getAccountTypes() {
@@ -153,7 +163,7 @@ export function getAccountTypes() {
 }
 
 export function saveAccountTypes(list) {
-  saveCategory('accountTypes', CATEGORY_MAP.accountTypes, list).catch(() => {});
+  return saveCategory('accountTypes', CATEGORY_MAP.accountTypes, list);
 }
 
 export function getBankNamesList() {
@@ -162,6 +172,18 @@ export function getBankNamesList() {
 
 export function getAccountTypesList() {
   return getAccountTypes().map(item => item.name);
+}
+
+export function getCourierItems() {
+  return getFromCache('courierItems');
+}
+
+export function saveCourierItems(list) {
+  return saveCategory('courierItems', CATEGORY_MAP.courierItems, list);
+}
+
+export function getCourierItemNames() {
+  return getCourierItems().map(item => item.name);
 }
 
 // ── Helper: return just name strings ─────────────────────────────────
@@ -196,6 +218,7 @@ export async function refreshAllFromAPI() {
     fetchCategory('vendorNames', CATEGORY_MAP.vendorNames, []),
     fetchCategory('bankNames', CATEGORY_MAP.bankNames, ['IDFC First Bank']),
     fetchCategory('accountTypes', CATEGORY_MAP.accountTypes, ['Savings', 'Current']),
+    fetchCategory('courierItems', CATEGORY_MAP.courierItems, []),
   ]);
 }
 

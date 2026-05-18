@@ -4,7 +4,7 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions, IconButton,
   Table, TableHead, TableRow, TableCell, TableBody, Paper,
   InputAdornment, Alert, Checkbox, FormControlLabel, Tooltip,
-  CircularProgress,
+  CircularProgress, Menu,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -23,14 +23,28 @@ import {
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { repAPI, courierAPI } from '../../services/api';
+import { getCourierItems } from '../../utils/adminStorage';
+
+const TSHIRT_ITEM_NAME = 'Volunteer Tshirts';
+
+const ZERO_REASON_OPTIONS = [
+  { value: 'already_couriered', label: 'Already couriered' },
+  { value: 'separate',          label: 'Will be couriered separately' },
+  { value: 'not_sending',       label: 'Not to be sent' },
+];
+
+const ZERO_REASON_LABELS = ZERO_REASON_OPTIONS.reduce((acc, o) => { acc[o.value] = o.label; return acc; }, {});
+
+// Reasons that should be printed on the dispatch/packing PDF below items.
+const PRINTABLE_ZERO_REASONS = new Set(['already_couriered', 'separate']);
 
 const PREDEFINED_ITEMS = [
-  { name: 'Volunteer Tshirts', quantity: 1, remarks: '', isCustom: false, productionStatus: 'Pending' },
-  { name: 'Banners', quantity: 1, remarks: '', isCustom: false, productionStatus: 'Pending' },
-  { name: 'Matchsheet', quantity: 1, remarks: '', isCustom: false, productionStatus: 'Pending' },
-  { name: 'Scout Dockets', quantity: 1, remarks: '', isCustom: false, productionStatus: 'Pending' },
-  { name: 'Numbered Bibs Orange', quantity: 1, remarks: '', isCustom: false, productionStatus: 'Pending' },
-  { name: 'Numbered Bibs Green', quantity: 1, remarks: '', isCustom: false, productionStatus: 'Pending' },
+  { name: TSHIRT_ITEM_NAME, quantity: 0, remarks: '', isCustom: false, productionStatus: 'Pending', zeroReason: '' },
+  { name: 'Banners', quantity: 1, remarks: '', isCustom: false, productionStatus: 'Pending', zeroReason: '' },
+  { name: 'Matchsheet', quantity: 1, remarks: '', isCustom: false, productionStatus: 'Pending', zeroReason: '' },
+  { name: 'Scout Dockets', quantity: 1, remarks: '', isCustom: false, productionStatus: 'Pending', zeroReason: '' },
+  { name: 'Numbered Bibs Orange', quantity: 1, remarks: '', isCustom: false, productionStatus: 'Pending', zeroReason: '' },
+  { name: 'Numbered Bibs Green', quantity: 1, remarks: '', isCustom: false, productionStatus: 'Pending', zeroReason: '' },
 ];
 
 const PRODUCTION_STATUSES = ['Pending', 'Sent for Printing', 'Received from Printer'];
@@ -134,6 +148,20 @@ function downloadPDF(shipment) {
   doc.text(`Total Items: ${(shipment.items || []).length}   Total Qty: ${totalQty}`, 14, endY);
   endY += 8;
 
+  const zeroNotes = (shipment.items || []).filter(
+    i => Number(i.quantity || 0) === 0 && PRINTABLE_ZERO_REASONS.has(i.zeroReason)
+  );
+  if (zeroNotes.length) {
+    doc.setFont('helvetica', 'bold');
+    doc.text('Item status notes', 14, endY); endY += 6;
+    doc.setFont('helvetica', 'normal');
+    zeroNotes.forEach(i => {
+      doc.text(`- ${i.name}: ${ZERO_REASON_LABELS[i.zeroReason]}`, 14, endY);
+      endY += 6;
+    });
+    endY += 2;
+  }
+
   if (shipment.notes) {
     doc.setFont('helvetica', 'bold');
     doc.text('Notes', 14, endY); endY += 6;
@@ -223,9 +251,9 @@ function AddressCard({ assignment }) {
 function ItemRow({ item, index, onChange, onDelete }) {
   return (
     <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 80px auto 1fr 36px', gap: 1, alignItems: 'center', bgcolor: item.isCustom ? '#fefce8' : '#f8fafc', borderRadius: '8px', p: 1, mb: 0.75 }}>
-      <TextField size="small" value={item.name} placeholder="Item name"
-        onChange={e => onChange(index, 'name', e.target.value)}
-        sx={{ '& .MuiInputBase-root': { bgcolor: '#fff', fontSize: '0.82rem' } }} />
+      <TextField size="small" value={item.name}
+        slotProps={{ input: { readOnly: true } }}
+        sx={{ '& .MuiInputBase-root': { bgcolor: '#fff', fontSize: '0.82rem', fontWeight: 600, color: '#1e293b' } }} />
       <TextField size="small" type="number" value={item.quantity} placeholder="Qty"
         onChange={e => onChange(index, 'quantity', Number(e.target.value))}
         sx={{ '& .MuiInputBase-root': { bgcolor: '#fff', fontSize: '0.82rem' } }} />
@@ -282,6 +310,7 @@ export default function CourierManagementPage() {
   const [dispCourierOther, setDispCourierOther] = useState('');
   const [dispAwb, setDispAwb] = useState('');
   const [dispNotes, setDispNotes] = useState('');
+  const [dispTshirtReason, setDispTshirtReason] = useState('');
 
   // delivery modal
   const [deliveryOpen, setDeliveryOpen] = useState(false);
@@ -296,6 +325,10 @@ export default function CourierManagementPage() {
   const [returnOpen, setReturnOpen] = useState(false);
   const [returnId, setReturnId] = useState(null);
   const [returnNote, setReturnNote] = useState('');
+
+  // admin-configured courier items + "+ Add Item" dropdown anchor
+  const [adminItems, setAdminItems] = useState([]);
+  const [addMenuAnchor, setAddMenuAnchor] = useState(null);
 
   const selectedRep = reps.find(r => r.id === fRepId) || null;
   const selectedAsg = selectedRep?.cityAssignments?.find(a => a.id === fAsgId) || null;
@@ -313,6 +346,7 @@ export default function CourierManagementPage() {
           : (repsData.reps || repsData.results || []);
         setReps(repList);
         setShipments(Array.isArray(shipmentsData) ? shipmentsData : (shipmentsData.results || []));
+        setAdminItems(getCourierItems());
       } catch {
         setError('Failed to load data.');
       } finally {
@@ -364,9 +398,15 @@ export default function CourierManagementPage() {
     if (toAdd.length) setFItems(prev => [...prev, ...toAdd]);
   }
 
-  function addBlankItem() {
-    setFItems(prev => [...prev, { name: '', quantity: 1, remarks: '', isCustom: false, productionStatus: 'Pending' }]);
+  function addAdminItem(name) {
+    setFItems(prev => [...prev, { name, quantity: 1, remarks: '', isCustom: false, productionStatus: 'Pending' }]);
+    setAddMenuAnchor(null);
   }
+
+  const availableAdminItems = useMemo(() => {
+    const existing = new Set(fItems.map(i => i.name));
+    return adminItems.filter(a => !existing.has(a.name));
+  }, [adminItems, fItems]);
 
   function changeItem(index, field, value) {
     setFItems(prev => prev.map((it, i) => i === index ? { ...it, [field]: value } : it));
@@ -399,13 +439,29 @@ export default function CourierManagementPage() {
   }
 
   function openDispatch(id) {
-    setDispId(id); setDispCourier(''); setDispCourierOther(''); setDispAwb(''); setDispNotes(''); setError('');
+    setDispId(id); setDispCourier(''); setDispCourierOther(''); setDispAwb(''); setDispNotes('');
+    const shipment = shipments.find(s => s.id === id);
+    const existing = (shipment?.items || []).find(
+      i => i.name === TSHIRT_ITEM_NAME && Number(i.quantity || 0) === 0
+    );
+    setDispTshirtReason(existing?.zeroReason || '');
+    setError('');
     setDispOpen(true);
   }
+
+  const dispShipment = useMemo(() => shipments.find(s => s.id === dispId) || null, [shipments, dispId]);
+  const dispTshirtZero = useMemo(
+    () => (dispShipment?.items || []).some(i => i.name === TSHIRT_ITEM_NAME && Number(i.quantity || 0) === 0),
+    [dispShipment]
+  );
 
   async function saveDispatch() {
     const finalCourier = dispCourier === 'Other' ? dispCourierOther.trim() : dispCourier;
     if (!finalCourier || !dispAwb) return;
+    if (dispTshirtZero && !dispTshirtReason) {
+      setError('Select a Tshirt status before dispatching.');
+      return;
+    }
     setSaving(true);
     setError('');
     try {
@@ -413,6 +469,7 @@ export default function CourierManagementPage() {
         courierProvider: finalCourier,
         trackingNumber: dispAwb,
         dispatchNotes: dispNotes,
+        tshirtZeroReason: dispTshirtZero ? dispTshirtReason : '',
       });
       setShipments(prev => prev.map(s => s.id === dispId ? updated : s));
       setDispOpen(false);
@@ -723,16 +780,39 @@ export default function CourierManagementPage() {
                   sx={{ fontSize: '0.75rem', py: 0.5, borderColor: '#22c55e', color: '#15803d', '&:hover': { bgcolor: '#f0fdf4', borderColor: '#16a34a' } }}>
                   + Add Predefined Items
                 </Button>
-                <Button size="small" variant="outlined" onClick={addBlankItem}
+                <Button size="small" variant="outlined"
+                  onClick={e => setAddMenuAnchor(e.currentTarget)}
+                  disabled={!adminItems.length}
                   sx={{ fontSize: '0.75rem', py: 0.5 }}>
                   + Add Item
                 </Button>
+                <Menu
+                  anchorEl={addMenuAnchor}
+                  open={Boolean(addMenuAnchor)}
+                  onClose={() => setAddMenuAnchor(null)}
+                  slotProps={{ paper: { sx: { maxHeight: 320, minWidth: 220 } } }}
+                >
+                  {!adminItems.length ? (
+                    <MenuItem disabled sx={{ fontSize: '0.82rem', color: '#94a3b8' }}>
+                      No items configured by admin
+                    </MenuItem>
+                  ) : !availableAdminItems.length ? (
+                    <MenuItem disabled sx={{ fontSize: '0.82rem', color: '#94a3b8' }}>
+                      All items already added
+                    </MenuItem>
+                  ) : availableAdminItems.map(a => (
+                    <MenuItem key={a.id} onClick={() => addAdminItem(a.name)}
+                      sx={{ fontSize: '0.85rem' }}>
+                      {a.name}
+                    </MenuItem>
+                  ))}
+                </Menu>
               </Stack>
             </Stack>
 
             {!fItems.length ? (
               <Box sx={{ bgcolor: '#f8fafc', border: '1.5px dashed #e2e8f0', borderRadius: '10px', p: 3, textAlign: 'center', color: '#94a3b8', fontSize: '0.82rem' }}>
-                No items yet — click "Add Predefined Items" or "Add Item"
+                No items yet — click "Add Predefined Items" or pick from "+ Add Item"
               </Box>
             ) : (
               <>
@@ -816,12 +896,35 @@ export default function CourierManagementPage() {
               <TextField fullWidth size="small" multiline minRows={2} value={dispNotes}
                 onChange={e => setDispNotes(e.target.value)} placeholder="Any dispatch notes…" />
             </Box>
+            {dispTshirtZero && (
+              <Box sx={{ bgcolor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px', p: 1.5 }}>
+                <Typography sx={{ ...labelSx, color: '#92400e' }}>
+                  Tshirt status <span style={{ color: '#ef4444' }}>*</span>
+                </Typography>
+                <Typography sx={{ fontSize: '0.75rem', color: '#92400e', mb: 1 }}>
+                  Volunteer Tshirts has qty 0 on this shipment. Pick a reason — it gets printed on the dispatch slip when applicable.
+                </Typography>
+                <TextField select fullWidth size="small" value={dispTshirtReason}
+                  onChange={e => setDispTshirtReason(e.target.value)}>
+                  <MenuItem value="" disabled sx={{ color: '#94a3b8', fontSize: '0.82rem' }}>— Select reason —</MenuItem>
+                  {ZERO_REASON_OPTIONS.map(o => (
+                    <MenuItem key={o.value} value={o.value} sx={{ fontSize: '0.82rem' }}>{o.label}</MenuItem>
+                  ))}
+                </TextField>
+              </Box>
+            )}
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 1.5, borderTop: '1px solid #e5e7eb', bgcolor: '#f8fafc' }}>
           <Button onClick={() => setDispOpen(false)} sx={{ color: '#64748b' }}>Cancel</Button>
           <Button variant="contained" onClick={saveDispatch}
-            disabled={saving || !dispAwb || !dispCourier || (dispCourier === 'Other' && !dispCourierOther.trim())}
+            disabled={
+              saving
+              || !dispAwb
+              || !dispCourier
+              || (dispCourier === 'Other' && !dispCourierOther.trim())
+              || (dispTshirtZero && !dispTshirtReason)
+            }
             sx={{ bgcolor: '#FDE68A', color: '#1e293b', fontWeight: 700, boxShadow: 'none', '&:hover': { bgcolor: '#FCD34D', boxShadow: 'none' } }}>
             {saving ? <CircularProgress size={18} sx={{ color: '#92400e' }} /> : 'Dispatch'}
           </Button>
