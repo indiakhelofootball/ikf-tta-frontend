@@ -146,6 +146,13 @@ dist
 # Claude Code
 .claude/
 
+# Local-only debug / conversation / generated artifacts (do not commit to frontend repo)
+convo.md
+check_db.py
+fix_role.py
+graphify-out/
+src/graphify-out/
+
 # yarn v3
 .pnp.*
 .yarn/*
