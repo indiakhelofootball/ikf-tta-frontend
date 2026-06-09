@@ -20,7 +20,7 @@ import { getVendorTypeNames, getEntityTypeNames, getFilteredVendorNames, getBank
 import { getStateFromPinCode, getCitiesForState, INDIAN_STATES } from '../../utils/pinCodeToState';
 
 const initialFormData = {
-  vendorName: '', vendorType: '', companyType: '',
+  vendorName: '', vendorType: '', companyType: '', entityName: '',
   gstNumber: '', panNumber: '',
   gstVerified: false, panVerified: false,
   contactPerson: '', phone: '', email: '', address: '', contactPinCode: '',
@@ -81,7 +81,7 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
   const populateForm = (v) => {
     setFormData({
       vendorName: v.vendorName || '', vendorType: v.vendorType || '',
-      companyType: v.companyType || '',
+      companyType: v.companyType || '', entityName: v.entityName || '',
       gstNumber: v.gstNumber || '', panNumber: v.panNumber || '',
       tdsType: v.tdsType || 'None',  gstVerified: v.gstVerified || false,
       panVerified: v.panVerified || false, contactPerson: v.contactPerson || '',
@@ -199,7 +199,13 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
       companyType: isEdit ? formData.companyType : searchEntityType,
       status: 'Verified',
     };
-    if (panCardImage) { data.panCardImageName = panCardImage.name; data.panCardImageUrl = panCardImagePreview; }
+    if (panCardImage) {
+      data.panCardImageName = panCardImage.name;
+      data.panCardImageUrl = panCardImagePreview;
+    } else if (isEdit) {
+      data.panCardImageName = vendor?.panCardImageName || '';
+      data.panCardImageUrl = vendor?.panCardImageUrl || '';
+    }
     const vendorId = vendor?._id || vendor?.id || selectedVendor?._id || selectedVendor?.id;
     onSave(data, vendorId);
   };

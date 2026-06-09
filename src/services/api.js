@@ -418,6 +418,80 @@ export const vendorsAPI = {
 };
 
 // ============================================
+// PERMISSIONS API (UI-managed RBAC)
+// ============================================
+export const permissionsAPI = {
+  // Module registry + separation-of-duties pairs, for building the grant grid
+  getModules: async () => {
+    return apiService.request('/permissions/modules/');
+  },
+
+  // Current user's effective grants — used to hide UI
+  getMine: async () => {
+    return apiService.request('/permissions/me/');
+  },
+
+  // SUPER_ADMIN: all users with a grants summary
+  listUsers: async () => {
+    return apiService.request('/permissions/users/');
+  },
+
+  // SUPER_ADMIN: one user's grants
+  getUserPermissions: async (userId) => {
+    return apiService.request(`/permissions/users/${userId}/`);
+  },
+
+  // SUPER_ADMIN: replace a user's grants. grants = { module: { can_view, can_edit } }
+  setUserPermissions: async (userId, grants) => {
+    return apiService.request(`/permissions/users/${userId}/`, {
+      method: 'PUT',
+      body: JSON.stringify({ grants }),
+    });
+  },
+
+  // A user requests access to one or more modules
+  createRequest: async (modules, note = '') => {
+    return apiService.request('/permissions/requests/', {
+      method: 'POST',
+      body: JSON.stringify({ modules, note }),
+    });
+  },
+
+  // The requester's own request history
+  myRequests: async () => {
+    return apiService.request('/permissions/requests/mine/');
+  },
+
+  // SUPER_ADMIN: pending requests inbox
+  listRequests: async () => {
+    return apiService.request('/permissions/requests/');
+  },
+
+  // SUPER_ADMIN: decide a request. decision = 'approve' | 'reject'; grants required for approve
+  decideRequest: async (requestId, decision, grants = {}) => {
+    return apiService.request(`/permissions/requests/${requestId}/decide/`, {
+      method: 'POST',
+      body: JSON.stringify({ decision, grants }),
+    });
+  },
+
+  // SUPER_ADMIN: create a login for a new user. Access is granted separately
+  // on the Access Control page — a new user starts with zero module grants.
+  createUser: async ({ firstName, lastName, email, password }) => {
+    return apiService.request('/auth/register/', {
+      method: 'POST',
+      body: JSON.stringify({
+        first_name: firstName,
+        last_name: lastName,
+        email,
+        password,
+        password2: password,
+      }),
+    });
+  },
+};
+
+// ============================================
 // PAYMENTS API
 // ============================================
 export const paymentsAPI = {

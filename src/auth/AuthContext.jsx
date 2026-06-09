@@ -4,7 +4,7 @@
 
 import { createContext, useContext, useState, useEffect } from "react";
 import { ROLE_PERMISSIONS } from "./roles";
-import api from "../services/api";
+import api, { permissionsAPI } from "../services/api";
 import { refreshAllFromAPI } from "../utils/adminStorage";
 
 const AuthContext = createContext(null);
@@ -16,6 +16,21 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [sessionTimeout, setSessionTimeout] = useState(null);
+  // Per-user module grants (from the backend) — drives grant-aware UI like the sidebar.
+  const [perms, setPerms] = useState(null);
+
+  // Whenever the logged-in user changes, pull their effective grants.
+  useEffect(() => {
+    let active = true;
+    if (user?.email) {
+      permissionsAPI.getMine()
+        .then((d) => { if (active) setPerms(d); })
+        .catch(() => { if (active) setPerms(null); });
+    } else {
+      setPerms(null);
+    }
+    return () => { active = false; };
+  }, [user?.email]);
 
   // Check for stored user on mount
   useEffect(() => {
@@ -266,6 +281,7 @@ export const AuthProvider = ({ children }) => {
     <AuthContext.Provider
       value={{
         user,
+        perms, // { isSuperAdmin, grants: { module: { can_view, can_edit } } }
         isAuthenticated: !!user,
         loading,
         login,

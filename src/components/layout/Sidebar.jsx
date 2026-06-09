@@ -15,28 +15,33 @@ import {
   AccountBalance as BankIcon,
   Assessment as ReportsIcon,
   LocalShipping as CourierIcon,
+  AdminPanelSettings as AccessIcon,
+  LockOpen as RequestAccessIcon,
+  PersonAddAlt1 as UserMgmtIcon,
 } from "@mui/icons-material";
 import { useAuth } from "../../auth/AuthContext";
 import { ROLES } from "../../auth/roles";
 import "./Sidebar.css";
 
 export default function Sidebar({ collapsed, onToggle }) {
-  const { user } = useAuth();
+  const { user, perms } = useAuth();
 
-  const canAccessREPManagement =
-    user?.role === ROLES.SUPER_ADMIN || user?.role === ROLES.ADMIN;
-  const canAccessTrialManagement =
-    user?.role === ROLES.SUPER_ADMIN || user?.role === ROLES.ADMIN;
-  const canAccessVendorManagement =
-    user?.role === ROLES.SUPER_ADMIN || user?.role === ROLES.ADMIN;
-  const canAccessPayments =
-    user?.role === ROLES.SUPER_ADMIN || user?.role === ROLES.ADMIN;
-  const canAccessWorkOrders =
-    user?.role === ROLES.SUPER_ADMIN || user?.role === ROLES.ADMIN;
-  const canAccessBank =
-    user?.role === ROLES.SUPER_ADMIN || user?.role === ROLES.ADMIN;
-  const canAccessReports =
-    user?.role === ROLES.SUPER_ADMIN || user?.role === ROLES.ADMIN;
+  // Grant-aware visibility: SUPER_ADMIN sees everything; everyone else sees a
+  // module only if they have View on it. Falls back to role while perms load.
+  const isSuper = perms ? perms.isSuperAdmin : user?.role === ROLES.SUPER_ADMIN;
+  const grants = perms?.grants || {};
+  const canView = (mod) => isSuper || !!grants[mod]?.can_view;
+
+  const canAccessTrialManagement = canView('trials');
+  const canAccessREPManagement = canView('reps');
+  const canAccessVendorManagement = canView('vendors');
+  const canAccessPayments = canView('payments');
+  const canAccessWorkOrders = canView('workorders');
+  const canAccessBank = canView('bank');
+  const canAccessReports = canView('reports');
+  const canAccessCourier = canView('courier');
+  const canManageConfig = isSuper || !!grants['config']?.can_edit; // Admin = config management
+  const canAccessControl = isSuper;
 
   const linkClass = ({ isActive }) =>
     `sidebar-link ${isActive ? "active" : ""}`;
@@ -96,7 +101,9 @@ export default function Sidebar({ collapsed, onToggle }) {
       {/* Navigation */}
       <nav className="sidebar-nav">
         <NavItem to="/dashboard" icon={<DashboardIcon fontSize="small" />} label="Dashboard" />
-        {canAccessTrialManagement && <NavItem to="/admin" icon={<SettingsIcon fontSize="small" />} label="Admin" />}
+        {canAccessControl && <NavItem to="/user-management" icon={<UserMgmtIcon fontSize="small" />} label="User Management" />}
+        {canAccessControl && <NavItem to="/access-control" icon={<AccessIcon fontSize="small" />} label="Access Control" />}
+        {canManageConfig && <NavItem to="/admin" icon={<SettingsIcon fontSize="small" />} label="Admin" />}
         {canAccessTrialManagement && <NavItem to="/trials/create" icon={<AddIcon fontSize="small" />} label="Project Setup" />}
         {canAccessTrialManagement && <NavItem to="/trials" icon={<EmojiEventsIcon fontSize="small" />} label="Projects" end />}
         {canAccessREPManagement && <NavItem to="/rep-management" icon={<BusinessIcon fontSize="small" />} label="REP Management" />}
@@ -105,7 +112,8 @@ export default function Sidebar({ collapsed, onToggle }) {
         {canAccessPayments && <NavItem to="/payments" icon={<PaymentIcon fontSize="small" />} label="Payments" />}
         {canAccessBank && <NavItem to="/bank-tds" icon={<BankIcon fontSize="small" />} label="Banking" />}
         {canAccessReports && <NavItem to="/reports" icon={<ReportsIcon fontSize="small" />} label="Reports" />}
-        {canAccessReports && <NavItem to="/courier" icon={<CourierIcon fontSize="small" />} label="Courier" />}
+        {canAccessCourier && <NavItem to="/courier" icon={<CourierIcon fontSize="small" />} label="Courier" />}
+        {!isSuper && <NavItem to="/request-access" icon={<RequestAccessIcon fontSize="small" />} label="Request Access" />}
       </nav>
     </aside>
   );
