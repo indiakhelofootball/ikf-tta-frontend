@@ -22,6 +22,7 @@ import {
 } from '@mui/icons-material';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { IKF_LOGO_DATAURI, IKF_LOGO_W, IKF_LOGO_H } from './ikfLogo';
 import { repAPI, courierAPI } from '../../services/api';
 import { getCourierItems } from '../../utils/adminStorage';
 
@@ -52,7 +53,7 @@ const COURIERS = ['Blue Dart', 'DTDC', 'Delhivery', 'FedEx', 'India Post', 'Ekar
 
 const TRACKING_URLS = {
   'Blue Dart':            awb => `https://www.bluedart.com/tracking?trackingId=${encodeURIComponent(awb)}`,
-  'DTDC':                 awb => `https://www.dtdc.in/tracking.asp?strCnno=${encodeURIComponent(awb)}`,
+  'DTDC':                 awb => `https://www.dtdc.com/tracking?awbNumber=${encodeURIComponent(awb)}`,
   'Delhivery':            awb => `https://www.delhivery.com/tracking?awb=${encodeURIComponent(awb)}`,
   'FedEx':                awb => `https://www.fedex.com/fedextrack/?trknbr=${encodeURIComponent(awb)}`,
   'India Post':           ()  => `https://www.indiapost.gov.in/_layouts/15/dop.portal.tracking/trackconsignment.aspx`,
@@ -92,86 +93,94 @@ function getShipmentFlag(shipment) {
   return null;
 }
 
+// Branded IKF courier slip — landscape, matches the official package-slip artwork.
 function downloadPDF(shipment) {
-  const isDraft = shipment.status === 'Draft';
-  const docTitle = isDraft ? 'Packing Slip' : 'Shipment Dispatch Note';
-  const doc = new jsPDF();
-  doc.setFontSize(16);
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const pageW = doc.internal.pageSize.getWidth();   // ~297mm
+  const NAVY = [26, 54, 89];
+  const leftX = 14;
+  const rightX = 198;
+
+  // Logo, top-right
+  const logoW = 80;
+  const logoH = logoW * (IKF_LOGO_H / IKF_LOGO_W);
+  doc.addImage(IKF_LOGO_DATAURI, 'JPEG', pageW - logoW - 14, 8, logoW, logoH);
+
+  // "To" block, top-left
+  doc.setTextColor(...NAVY);
   doc.setFont('helvetica', 'bold');
-  doc.text(`TTA — ${docTitle}`, 14, 18);
+  doc.setFontSize(22);
+  doc.text('To,', leftX, 22);
 
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  let y = 28;
-  doc.text(`Shipment ID: ${shipment.refNumber}`, 14, y); y += 6;
-  doc.text(`Status: ${shipment.status}`, 14, y); y += 6;
-  if (!isDraft) {
-    doc.text(`Dispatch Date: ${shipment.dispatchedAt ? shipment.dispatchedAt.slice(0, 10) : '-'}`, 14, y); y += 6;
-    doc.text(`Courier: ${shipment.courierProvider || '-'}`, 14, y); y += 6;
-    doc.text(`AWB / Tracking ID: ${shipment.trackingNumber || '-'}`, 14, y); y += 6;
+  let y = 34;
+  doc.setFontSize(13);
+  const putLine = (t, gap = 7) => { if (t) { doc.text(String(t), leftX, y); y += gap; } };
+  putLine(shipment.snapAcceptingName);
+  if (shipment.snapAddress) {
+    doc.splitTextToSize(shipment.snapAddress, 150).forEach(l => putLine(l));
   }
+  const cityLine = [shipment.snapCity, shipment.snapState].filter(Boolean).join(', ')
+    + (shipment.snapPinCode ? ` ${shipment.snapPinCode}` : '');
+  putLine(cityLine);
+  putLine(shipment.snapAcceptingPhone);
 
-  y += 4;
-  doc.setFont('helvetica', 'bold');
-  doc.text('Destination', 14, y); y += 6;
-  doc.setFont('helvetica', 'normal');
-  doc.text(`REP: ${shipment.snapRepName || '-'}`, 14, y); y += 6;
-  doc.text(`Recipient: ${shipment.snapAcceptingName || '-'}${shipment.snapAcceptingPhone ? ` | ${shipment.snapAcceptingPhone}` : ''}`, 14, y); y += 6;
-  if (shipment.snapAddress) { doc.text(`Address: ${shipment.snapAddress}`, 14, y); y += 6; }
-  if (shipment.snapSubArea) { doc.text(`Sub-Area: ${shipment.snapSubArea}`, 14, y); y += 6; }
-  doc.text(`City: ${shipment.snapCity || '-'}, ${shipment.snapState || '-'} - ${shipment.snapPinCode || '-'}`, 14, y); y += 6;
-  if (shipment.snapDistrict || shipment.snapCourierState) {
-    doc.text(`District: ${shipment.snapDistrict || '-'} | Courier State: ${shipment.snapCourierState || '-'}`, 14, y); y += 6;
-  }
-  if (shipment.snapTrialName) {
-    doc.text(`Trial: ${shipment.snapTrialName}${shipment.snapTrialDate ? ` (Trial Date: ${shipment.snapTrialDate})` : ''}`, 14, y); y += 6;
-  }
-
+  // Item table, left column
   autoTable(doc, {
-    startY: y + 4,
-    head: [['#', 'Item', 'Qty', 'Custom', 'Production Status / Remarks']],
-    body: (shipment.items || []).map((i, idx) => [
-      idx + 1,
-      i.name,
-      i.quantity,
-      i.isCustom ? 'Yes' : '',
-      i.isCustom ? (i.productionStatus || '') : (i.remarks || ''),
-    ]),
-    styles: { fontSize: 9, cellPadding: 2 },
-    headStyles: { fillColor: [91, 99, 211], textColor: 255 },
-    columnStyles: { 0: { cellWidth: 10 }, 2: { cellWidth: 16 }, 3: { cellWidth: 18 } },
+    startY: y + 5,
+    margin: { left: leftX },
+    tableWidth: 150,
+    head: [['#', 'Item', 'Qty']],
+    body: (shipment.items || []).map((i, idx) => [idx + 1, i.name, i.quantity]),
+    styles: { fontSize: 10, cellPadding: 2.5, textColor: [40, 40, 40] },
+    headStyles: { fillColor: [91, 99, 211], textColor: 255, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [245, 246, 250] },
+    columnStyles: { 0: { cellWidth: 14 }, 2: { cellWidth: 24 } },
   });
 
-  let endY = doc.lastAutoTable.finalY + 4;
+  let endY = doc.lastAutoTable.finalY + 7;
   const totalQty = (shipment.items || []).reduce((a, b) => a + Number(b.quantity || 0), 0);
   doc.setFont('helvetica', 'bold');
-  doc.text(`Total Items: ${(shipment.items || []).length}   Total Qty: ${totalQty}`, 14, endY);
+  doc.setFontSize(11);
+  doc.setTextColor(40, 40, 40);
+  doc.text(`Total Items: ${(shipment.items || []).length}    Total Qty: ${totalQty}`, leftX, endY);
   endY += 8;
 
+  // Conditional zero-quantity notes (e.g. "Tshirts already couriered")
   const zeroNotes = (shipment.items || []).filter(
     i => Number(i.quantity || 0) === 0 && PRINTABLE_ZERO_REASONS.has(i.zeroReason)
   );
   if (zeroNotes.length) {
-    doc.setFont('helvetica', 'bold');
-    doc.text('Item status notes', 14, endY); endY += 6;
     doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(110, 110, 110);
     zeroNotes.forEach(i => {
-      doc.text(`- ${i.name}: ${ZERO_REASON_LABELS[i.zeroReason]}`, 14, endY);
-      endY += 6;
+      doc.text(`- ${i.name}: ${ZERO_REASON_LABELS[i.zeroReason]}`, leftX, endY);
+      endY += 5;
     });
-    endY += 2;
   }
 
-  if (shipment.notes) {
-    doc.setFont('helvetica', 'bold');
-    doc.text('Notes', 14, endY); endY += 6;
-    doc.setFont('helvetica', 'normal');
-    const split = doc.splitTextToSize(shipment.notes, 180);
-    doc.text(split, 14, endY);
-  }
+  // "From" block, right column under the logo
+  let fy = 8 + logoH + 16;
+  doc.setTextColor(...NAVY);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.text('From', rightX, fy); fy += 9;
+  doc.setFontSize(12);
+  doc.text('India Khelo Football', rightX, fy); fy += 7;
+  doc.setFont('helvetica', 'normal');
+  ['2315, Solus, Hiranandani Estate,', 'G. B Road, Thane (W) 400607'].forEach(l => { doc.text(l, rightX, fy); fy += 6.5; });
+  fy += 3;
+  doc.text('+91 99203 90771', rightX, fy); fy += 7;
+  doc.text('indiakhelofootball.com', rightX, fy);
 
-  const suffix = isDraft ? 'packing_slip' : 'dispatch';
-  doc.save(`${shipment.refNumber}_${suffix}.pdf`);
+  // Tagline, bottom-right
+  doc.setFont('helvetica', 'bolditalic');
+  doc.setFontSize(18);
+  doc.setTextColor(...NAVY);
+  doc.text('Aap Khelo, Mauka Hum Denge!', pageW - 14, 198, { align: 'right' });
+
+  const city = (shipment.snapCity || 'Shipment').trim();
+  doc.save(`Package Slip - ${city}.pdf`);
 }
 
 const cardSx = { bgcolor: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', p: 2.5, mb: 2 };

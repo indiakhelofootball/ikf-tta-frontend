@@ -2,6 +2,16 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Hard rules — read every turn
+
+- **Migration / schema / "DB change" questions:** open the migration file in `tta_backend/backend/<app>/migrations/` and quote the operation type (AddField / AlterField / RemoveField) before answering. Memory is not authoritative for DB state.
+- **"Last push" / "what shipped" questions:** run `git log --oneline -10` on BOTH repos (frontend root and `tta_backend/`). Don't answer from memory alone.
+- **Deploy questions:** `_docs/deployment/DEPLOYMENT.md` is the source of truth. Read it before quoting steps.
+- **Never run `git push`** unless the user explicitly asks in that turn. Approval doesn't carry across turns.
+- **Never combine frontend + backend commits.** Two separate repos sharing one folder; `tta_backend/` is in the frontend's `.gitignore`.
+- **Confirm intent before coding** when the user describes a feature/bug. One-sentence restatement, wait for ack.
+- **Don't propose changes to code you haven't read.** Open the file first.
+
 ## Repository layout
 
 This directory contains **two independent repos** that share a local folder:

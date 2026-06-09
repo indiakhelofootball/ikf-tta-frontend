@@ -29,6 +29,9 @@ import PaymentAuditReport from "./components/reports/PaymentAuditReport";
 import VendorAuditReport from "./components/reports/VendorAuditReport";
 import TrialSpendReport from "./components/reports/TrialSpendReport";
 import CourierManagementPage from "./components/courier/CourierManagementPage";
+import PermissionsManagementPage from "./components/permissions/PermissionsManagementPage";
+import RequestAccessPage from "./components/permissions/RequestAccessPage";
+import UserManagementPage from "./components/users/UserManagementPage";
 
 // Import error handling components
 import ErrorFallback from "./components/error/ErrorFallback";
@@ -165,6 +168,17 @@ function App() {
                 <CourierManagementPage />
               </RoleBasedRoute>
             } />
+            <Route path="/user-management" element={
+              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN]}>
+                <UserManagementPage />
+              </RoleBasedRoute>
+            } />
+            <Route path="/access-control" element={
+              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN]}>
+                <PermissionsManagementPage />
+              </RoleBasedRoute>
+            } />
+            <Route path="/request-access" element={<RequestAccessPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/admin" element={
               <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>

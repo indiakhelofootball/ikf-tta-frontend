@@ -28,6 +28,7 @@ import {
 } from '@mui/icons-material';
 import { State, City } from 'country-state-city';
 import { trialsAPI, repAPI } from '../../services/api';
+import { getStateFromPinCode } from '../../utils/pinCodeToState';
 
 // Set of "state|city" keys for cities already assigned to a REP
 let _repAssignedCities = new Set();
@@ -387,7 +388,12 @@ function REPModal({ open, onClose, onSave, editingREP }) {
       }
     } catch (err) {
       if (err.name !== 'AbortError') {
-        setCourierAreas([]); setCourierPinError('Could not verify PIN code');
+        const fallbackState = getStateFromPinCode(pin);
+        setCourierAreas([]); setCourierSubArea('');
+        setCourierDistrict(''); setCourierState(fallbackState);
+        setCourierPinError(fallbackState
+          ? 'PIN lookup offline — state filled, enter district manually'
+          : 'PIN lookup offline — enter district & state manually');
       }
     } finally {
       setCourierPinLoading(false);
@@ -475,8 +481,10 @@ function REPModal({ open, onClose, onSave, editingREP }) {
       if (isEditMode) {
         // Edit mode: update org fields only
         const repData = { ...orgData };
-        if (mouDocument) { repData.mouDocumentName = mouDocument.name; repData.mouDocumentUrl = mouDocumentPreview; }
-        if (repLogo) { repData.repLogoName = repLogo.name; repData.repLogoUrl = repLogoPreview; }
+        repData.mouDocumentName = mouDocument ? mouDocument.name : (editingREP?.mouDocumentName || '');
+        repData.mouDocumentUrl  = mouDocument ? mouDocumentPreview : (editingREP?.mouDocumentUrl  || '');
+        repData.repLogoName     = repLogo     ? repLogo.name      : (editingREP?.repLogoName     || '');
+        repData.repLogoUrl      = repLogo     ? repLogoPreview    : (editingREP?.repLogoUrl      || '');
         await onSave(repData);
       } else {
         // Add mode: org + assignment
@@ -597,7 +605,12 @@ function REPModal({ open, onClose, onSave, editingREP }) {
       }
     } catch (err) {
       if (err.name !== 'AbortError') {
-        setEditCourierAreas([]); setEditCourierPinError('Could not verify PIN code');
+        const fallbackState = getStateFromPinCode(pin);
+        setEditCourierAreas([]); setEditCourierSubArea('');
+        setEditCourierDistrict(''); setEditCourierState(fallbackState);
+        setEditCourierPinError(fallbackState
+          ? 'PIN lookup offline — state filled, enter district manually'
+          : 'PIN lookup offline — enter district & state manually');
       }
     } finally {
       setEditCourierPinLoading(false);
@@ -1088,16 +1101,18 @@ function REPModal({ open, onClose, onSave, editingREP }) {
                 <Box>
                   <Typography sx={labelSx}>District</Typography>
                   <TextField fullWidth placeholder="Auto-filled" value={courierDistrict}
-                    InputProps={{ readOnly: true, sx: courierDistrict ? { bgcolor: '#f0fdf4', borderRadius: 1.5 } : {} }}
+                    onChange={(e) => setCourierDistrict(e.target.value)}
+                    InputProps={{ sx: courierDistrict ? { bgcolor: '#f0fdf4', borderRadius: 1.5 } : {} }}
                     disabled={saving || !canFillForm}
-                    helperText={courierDistrict ? 'Auto-filled' : ' '} />
+                    helperText={courierDistrict ? 'Auto-filled — editable' : 'Enter manually if not auto-filled'} />
                 </Box>
                 <Box>
                   <Typography sx={labelSx}>State</Typography>
                   <TextField fullWidth placeholder="Auto-filled" value={courierState}
-                    InputProps={{ readOnly: true, sx: courierState ? { bgcolor: '#f0fdf4', borderRadius: 1.5 } : {} }}
+                    onChange={(e) => setCourierState(e.target.value)}
+                    InputProps={{ sx: courierState ? { bgcolor: '#f0fdf4', borderRadius: 1.5 } : {} }}
                     disabled={saving || !canFillForm}
-                    helperText={courierState ? 'Auto-filled' : ' '} />
+                    helperText={courierState ? 'Auto-filled' : 'Enter manually if not auto-filled'} />
                 </Box>
                 {courierAreas.length > 0 && (
                   <Box sx={{ gridColumn: '1 / -1' }}>

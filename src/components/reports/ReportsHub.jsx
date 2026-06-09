@@ -3,7 +3,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Box, Container, Typography, Grid, Paper, Stack, Chip,
+  Box, Container, Typography, Grid, Paper, Stack, Chip, Tooltip,
 } from '@mui/material';
 import {
   Payment as PaymentIcon,
@@ -74,45 +74,50 @@ const REPORTS = [
 function ReportTile({ report, onOpen }) {
   const isLive = report.status === 'live';
   return (
-    <Paper
-      variant="outlined"
-      onClick={isLive ? onOpen : undefined}
-      sx={{
-        p: 3, borderRadius: 3, height: '100%', position: 'relative',
-        cursor: isLive ? 'pointer' : 'not-allowed',
-        opacity: isLive ? 1 : 0.55,
-        transition: 'all 0.15s',
-        borderColor: '#e2e8f0',
-        '&:hover': isLive
-          ? { borderColor: report.color, boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }
-          : {},
-      }}
-    >
-      {!isLive && (
-        <Chip
-          label="Coming soon"
-          size="small"
-          sx={{
-            position: 'absolute', top: 12, right: 12,
-            bgcolor: '#f1f5f9', color: '#64748b',
-            fontSize: '0.68rem', fontWeight: 600, height: 20,
-          }}
-        />
-      )}
-      <Box sx={{
-        width: 44, height: 44, borderRadius: 2, mb: 2,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        bgcolor: `${report.color}15`, color: report.color,
-      }}>
-        {report.icon}
+    <Tooltip title={report.description} placement="top" arrow>
+      <Box
+        onClick={isLive ? onOpen : undefined}
+        sx={{
+          display: 'inline-flex', alignItems: 'center', gap: 1,
+          px: 1.75, py: 1, borderRadius: 999,
+          bgcolor: report.color,
+          cursor: isLive ? 'pointer' : 'not-allowed',
+          opacity: isLive ? 1 : 0.55,
+          transition: 'all 0.15s',
+          width: '100%',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+          '&:hover': isLive
+            ? { filter: 'brightness(1.08)', boxShadow: '0 3px 10px rgba(0,0,0,0.12)' }
+            : {},
+        }}
+      >
+        <Box sx={{
+          width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          bgcolor: 'rgba(255,255,255,0.25)', color: '#ffffff',
+          '& svg': { fontSize: '1rem' },
+        }}>
+          {report.icon}
+        </Box>
+        <Typography
+          fontWeight={700}
+          noWrap
+          sx={{ color: '#ffffff', fontSize: '0.82rem', flex: 1, minWidth: 0 }}
+        >
+          {report.title}
+        </Typography>
+        {!isLive && (
+          <Chip
+            label="Soon"
+            size="small"
+            sx={{
+              bgcolor: 'rgba(255,255,255,0.9)', color: '#64748b',
+              fontSize: '0.6rem', fontWeight: 600, height: 18,
+            }}
+          />
+        )}
       </Box>
-      <Typography variant="h6" fontWeight={700} sx={{ color: '#1e293b', mb: 0.75 }}>
-        {report.title}
-      </Typography>
-      <Typography variant="body2" sx={{ color: '#64748b', lineHeight: 1.55 }}>
-        {report.description}
-      </Typography>
-    </Paper>
+    </Tooltip>
   );
 }
 
@@ -131,9 +136,9 @@ function ReportsHub() {
           </Typography>
         </Stack>
 
-        <Grid container spacing={2.5}>
+        <Grid container spacing={1.5}>
           {REPORTS.map(r => (
-            <Grid item xs={12} sm={6} md={4} key={r.key}>
+            <Grid item xs={12} sm={6} md={4} lg={3} key={r.key}>
               <ReportTile report={r} onOpen={() => navigate(r.path)} />
             </Grid>
           ))}

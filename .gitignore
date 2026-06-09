@@ -152,6 +152,13 @@ check_db.py
 fix_role.py
 graphify-out/
 src/graphify-out/
+look_up/
+project_recording_pdf/
+_demo_walkthrough.py
+_gen_courier_pdf.py
+_rep_route_test.py
+test.js
+/*.pdf
 
 # yarn v3
 .pnp.*
