@@ -496,9 +496,16 @@ function REPModal({ open, onClose, onSave, editingREP }) {
         const trialIds = lookupProject ? [Number(lookupProject)] : [];
         if (trialIds.length > 0) repData.trialIds = trialIds;
 
-        // Include assignment data if city was selected
+        // Include assignment data if city was selected. District/state/sub-area
+        // live in separate pin-lookup state, not assignmentData — merge them in
+        // or they are silently dropped.
         if (assignmentData.city && assignmentData.state) {
-          repData.cityAssignment = { ...assignmentData };
+          repData.cityAssignment = {
+            ...assignmentData,
+            courierDistrict,
+            courierState,
+            courierSubArea,
+          };
         }
 
         await onSave(repData);
@@ -522,6 +529,9 @@ function REPModal({ open, onClose, onSave, editingREP }) {
       await repAPI.addAssignment(editingREP.id, {
         trialId: Number(lookupProject),
         ...assignmentData,
+        courierDistrict,
+        courierState,
+        courierSubArea,
       });
       setAddingNewAssignment(false);
       setAssignmentData({
@@ -532,6 +542,8 @@ function REPModal({ open, onClose, onSave, editingREP }) {
         pinCode: '', groundPinCode: '', reportingTime: '',
         groundContactName: '', groundContactPhone: '',
       });
+      setCourierDistrict(''); setCourierState(''); setCourierSubArea('');
+      setCourierAreas([]);
       setLookupProject('');
       setLookupStateObj(null);
       setLookupCityObj(null);
