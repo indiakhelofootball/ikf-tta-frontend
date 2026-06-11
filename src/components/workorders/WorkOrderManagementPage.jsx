@@ -25,11 +25,13 @@ import WorkOrderDetailView from './WorkOrderDetailView';
 import { vendorsAPI, workOrdersAPI } from '../../services/api';
 import { getVendorTypeNames } from '../../utils/adminStorage';
 import { WO_STATUSES, isWOFullyPaid, getPeriodLabel } from './workOrderData';
+import useGrants from '../../auth/useGrants';
 
 
 function WorkOrderManagementPage() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { canEdit } = useGrants();
   const [workOrders, setWorkOrders] = useState([]);
   const [vendors, setVendors] = useState([]);
   const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
@@ -332,24 +334,26 @@ function WorkOrderManagementPage() {
               Create and manage work orders for vendors.
             </Typography>
           </Box>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => { setEditingWO(null); setModalOpen(true); fetchVendors(); }}
-            sx={{
-              mt: { xs: 2, sm: 0 },
-              bgcolor: '#FDE68A',
-              textTransform: 'none',
-              fontWeight: 600,
-              borderRadius: 1.5,
-              px: 3,
-              color: '#1e293b',
-              boxShadow: 'none',
-              '&:hover': { bgcolor: '#FCD34D', boxShadow: 'none' },
-            }}
-          >
-            New Work Order
-          </Button>
+          {canEdit('workorders') && (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => { setEditingWO(null); setModalOpen(true); fetchVendors(); }}
+              sx={{
+                mt: { xs: 2, sm: 0 },
+                bgcolor: '#FDE68A',
+                textTransform: 'none',
+                fontWeight: 600,
+                borderRadius: 1.5,
+                px: 3,
+                color: '#1e293b',
+                boxShadow: 'none',
+                '&:hover': { bgcolor: '#FCD34D', boxShadow: 'none' },
+              }}
+            >
+              New Work Order
+            </Button>
+          )}
         </Stack>
 
         {/* Search / Filter / Sort toolbar */}
@@ -504,18 +508,20 @@ function WorkOrderManagementPage() {
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
               Create a work order to get started.
             </Typography>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => { setEditingWO(null); setModalOpen(true); fetchVendors(); }}
-              sx={{
-                bgcolor: '#FDE68A', textTransform: 'none', fontWeight: 600,
-                borderRadius: 1.5, color: '#1e293b', boxShadow: 'none',
-                '&:hover': { bgcolor: '#FCD34D', boxShadow: 'none' },
-              }}
-            >
-              New Work Order
-            </Button>
+            {canEdit('workorders') && (
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => { setEditingWO(null); setModalOpen(true); fetchVendors(); }}
+                sx={{
+                  bgcolor: '#FDE68A', textTransform: 'none', fontWeight: 600,
+                  borderRadius: 1.5, color: '#1e293b', boxShadow: 'none',
+                  '&:hover': { bgcolor: '#FCD34D', boxShadow: 'none' },
+                }}
+              >
+                New Work Order
+              </Button>
+            )}
           </Box>
         ) : filteredWorkOrders.length === 0 ? (
           <Box sx={{ textAlign: 'center', py: 8, bgcolor: '#f8fafc', borderRadius: 2, border: '1px dashed #cbd5e1' }}>

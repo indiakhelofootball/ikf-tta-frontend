@@ -11,8 +11,10 @@ import {
   ErrorOutline as BouncedIcon, Restore as ResolveIcon,
 } from '@mui/icons-material';
 import { WO_STATUS_COLORS, isWOFullyPaid } from './workOrderData';
+import useGrants from '../../auth/useGrants';
 
 function WorkOrderCard({ workOrder, onView, onEdit, onDelete, onRaisePayment, onRemoveBounced, onDownloadPDF, isPast }) {
+  const { canEdit } = useGrants();
   const fullyPaid = isWOFullyPaid(workOrder);
   const bouncedCount = parseInt(workOrder.bouncedPaymentCount || 0, 10);
   const hasBounced = bouncedCount > 0;
@@ -119,16 +121,18 @@ function WorkOrderCard({ workOrder, onView, onEdit, onDelete, onRaisePayment, on
             }}>
             View
           </Button>
-          <Button size="small" variant="contained" startIcon={<EditIcon fontSize="small" />}
-            onClick={() => onEdit(workOrder)}
-            sx={{
-              textTransform: 'none', fontWeight: 600, fontSize: '0.82rem',
-              bgcolor: '#FDE68A', color: '#1e293b', borderRadius: 1.5,
-              boxShadow: 'none', '&:hover': { bgcolor: '#FCD34D', boxShadow: 'none' },
-            }}>
-            Edit
-          </Button>
-          {!isPast && (
+          {canEdit('workorders') && (
+            <Button size="small" variant="contained" startIcon={<EditIcon fontSize="small" />}
+              onClick={() => onEdit(workOrder)}
+              sx={{
+                textTransform: 'none', fontWeight: 600, fontSize: '0.82rem',
+                bgcolor: '#FDE68A', color: '#1e293b', borderRadius: 1.5,
+                boxShadow: 'none', '&:hover': { bgcolor: '#FCD34D', boxShadow: 'none' },
+              }}>
+              Edit
+            </Button>
+          )}
+          {!isPast && canEdit('workorders') && (
             <Button size="small" variant="outlined" startIcon={<DeleteIcon fontSize="small" />}
               onClick={() => onDelete(workOrder)}
               sx={{
@@ -154,7 +158,7 @@ function WorkOrderCard({ workOrder, onView, onEdit, onDelete, onRaisePayment, on
         {/* Actions — Row 2 */}
         {!isPast && (
           <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-            {onRaisePayment && (
+            {onRaisePayment && canEdit('payments') && (
               <Button
                 size="small"
                 variant="outlined"
@@ -173,7 +177,7 @@ function WorkOrderCard({ workOrder, onView, onEdit, onDelete, onRaisePayment, on
                 Raise Payment
               </Button>
             )}
-            {hasBounced && onRemoveBounced && (
+            {hasBounced && onRemoveBounced && canEdit('workorders') && (
               <Button
                 size="small"
                 variant="contained"

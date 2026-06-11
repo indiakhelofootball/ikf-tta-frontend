@@ -57,8 +57,10 @@ import REPCard from './REPCard';
 import REPModal from './REPModal';
 import REPDetailView from './REPDetailView';
 import { repAPI } from '../../services/api';
+import useGrants from '../../auth/useGrants';
 
 function REPManagementPage() {
+  const { canEdit } = useGrants();
   const [reps, setReps] = useState([]);
   const [filteredReps, setFilteredReps] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -403,6 +405,7 @@ function REPManagementPage() {
             </Typography>
           </Box>
 
+          {canEdit('reps') && (
           <Stack direction="row" spacing={2}>
             <Button
               variant="outlined"
@@ -436,6 +439,7 @@ function REPManagementPage() {
               Add REP
             </Button>
           </Stack>
+          )}
         </Box>
 
         {/* Summary Stats */}

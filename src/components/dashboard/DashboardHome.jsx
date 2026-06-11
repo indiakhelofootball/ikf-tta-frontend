@@ -23,31 +23,36 @@ import {
 import { useAuth } from '../../auth/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { ROLES } from '../../auth/roles';
+import useGrants from '../../auth/useGrants';
 import { trialsAPI, repAPI, vendorsAPI, workOrdersAPI, paymentRequestsAPI } from '../../services/api';
 
 export default function DashboardHome() {
-  const { user } = useAuth();
+  const { user, perms, permsLoading } = useAuth();
+  const { canView, canEdit } = useGrants();
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [statsError, setStatsError] = useState(false);
 
   useEffect(() => {
+    if (permsLoading) return;
+    const skip = Promise.resolve(null);
     const fetchStats = async () => {
       try {
+        // Only hit endpoints the user can view — the rest would 403.
         const [trialsRes, repsRes, vendorsRes, workOrdersRes, paymentsRes] = await Promise.allSettled([
-          trialsAPI.getAll(),
-          repAPI.getAll(),
-          vendorsAPI.getAll({ limit: 1 }),
-          workOrdersAPI.getAll(),
-          paymentRequestsAPI.getAll(),
+          canView('trials') ? trialsAPI.getAll() : skip,
+          canView('reps') ? repAPI.getAll() : skip,
+          canView('vendors') ? vendorsAPI.getAll({ limit: 1 }) : skip,
+          canView('workorders') ? workOrdersAPI.getAll() : skip,
+          canView('payments') ? paymentRequestsAPI.getAll() : skip,
         ]);
 
-        const trials = trialsRes.status === 'fulfilled' ? (trialsRes.value.trials || []) : [];
-        const reps = repsRes.status === 'fulfilled' ? (repsRes.value.reps || []) : [];
-        const vendors = vendorsRes.status === 'fulfilled' ? (vendorsRes.value.total || 0) : 0;
-        const workOrders = workOrdersRes.status === 'fulfilled' ? (workOrdersRes.value.workOrders || []) : [];
-        const payments = paymentsRes.status === 'fulfilled' ? (paymentsRes.value.paymentRequests || []) : [];
+        const trials = trialsRes.status === 'fulfilled' ? (trialsRes.value?.trials || []) : [];
+        const reps = repsRes.status === 'fulfilled' ? (repsRes.value?.reps || []) : [];
+        const vendors = vendorsRes.status === 'fulfilled' ? (vendorsRes.value?.total || 0) : 0;
+        const workOrders = workOrdersRes.status === 'fulfilled' ? (workOrdersRes.value?.workOrders || []) : [];
+        const payments = paymentsRes.status === 'fulfilled' ? (paymentsRes.value?.paymentRequests || []) : [];
 
         const activeTrials = trials.filter(t => t.status === 'Active' || t.status === 'Scheduled').length;
         const activeWOs = workOrders.filter(w => w.status !== 'Cancelled' && w.status !== 'Completed').length;
@@ -73,17 +78,18 @@ export default function DashboardHome() {
     };
 
     fetchStats();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [permsLoading, perms]);
 
   const getStatCards = () => {
     if (!stats) return [];
     return [
-      { label: 'Projects', value: stats.totalTrials, sub: `${stats.activeTrials} active`, icon: LocationCity, color: '#22C55E', bgColor: '#DCFCE7' },
-      { label: 'REPs', value: stats.totalReps, sub: 'registered', icon: People, color: '#FBBF24', bgColor: '#FEF3C7' },
-      { label: 'Vendors', value: stats.totalVendors, sub: 'total', icon: StoreIcon, color: '#3B82F6', bgColor: '#DBEAFE' },
-      { label: 'Work Orders', value: stats.totalWorkOrders, sub: `${stats.activeWorkOrders} active`, icon: Assignment, color: '#8B5CF6', bgColor: '#EDE9FE' },
-      { label: 'Payment Requests', value: stats.totalPayments, sub: `${stats.pendingPayments} pending`, icon: PaymentIcon, color: '#F59E0B', bgColor: '#FEF3C7' },
-    ];
+      { module: 'trials', label: 'Projects', value: stats.totalTrials, sub: `${stats.activeTrials} active`, icon: LocationCity, color: '#22C55E', bgColor: '#DCFCE7' },
+      { module: 'reps', label: 'REPs', value: stats.totalReps, sub: 'registered', icon: People, color: '#FBBF24', bgColor: '#FEF3C7' },
+      { module: 'vendors', label: 'Vendors', value: stats.totalVendors, sub: 'total', icon: StoreIcon, color: '#3B82F6', bgColor: '#DBEAFE' },
+      { module: 'workorders', label: 'Work Orders', value: stats.totalWorkOrders, sub: `${stats.activeWorkOrders} active`, icon: Assignment, color: '#8B5CF6', bgColor: '#EDE9FE' },
+      { module: 'payments', label: 'Payment Requests', value: stats.totalPayments, sub: `${stats.pendingPayments} pending`, icon: PaymentIcon, color: '#F59E0B', bgColor: '#FEF3C7' },
+    ].filter((stat) => canView(stat.module));
   };
 
   const statCards = getStatCards();
@@ -209,6 +215,7 @@ export default function DashboardHome() {
       )}
 
       {/* Quick Actions */}
+      {(canView('trials') || canView('workorders') || canView('vendors') || canView('payments')) && (
       <Paper
         elevation={0}
         sx={{
@@ -224,8 +231,8 @@ export default function DashboardHome() {
           Quick Actions
         </Typography>
 
-        {isAdmin && (
-          <Grid container spacing={2}>
+        <Grid container spacing={2}>
+            {canEdit('trials') && (
             <Grid item xs={12} sm={6} md={3}>
               <Button
                 fullWidth variant="contained" size="large"
@@ -241,6 +248,8 @@ export default function DashboardHome() {
                 New Project
               </Button>
             </Grid>
+            )}
+            {canView('workorders') && (
             <Grid item xs={12} sm={6} md={3}>
               <Button
                 fullWidth variant="outlined" size="large" endIcon={<ArrowIcon />}
@@ -254,6 +263,8 @@ export default function DashboardHome() {
                 Work Orders
               </Button>
             </Grid>
+            )}
+            {canView('vendors') && (
             <Grid item xs={12} sm={6} md={3}>
               <Button
                 fullWidth variant="outlined" size="large" endIcon={<ArrowIcon />}
@@ -267,6 +278,8 @@ export default function DashboardHome() {
                 Vendors
               </Button>
             </Grid>
+            )}
+            {canView('payments') && (
             <Grid item xs={12} sm={6} md={3}>
               <Button
                 fullWidth variant="outlined" size="large" endIcon={<ArrowIcon />}
@@ -280,11 +293,8 @@ export default function DashboardHome() {
                 Payments
               </Button>
             </Grid>
-          </Grid>
-        )}
-
-        {!isAdmin && (
-          <Grid container spacing={2}>
+            )}
+            {canView('trials') && !canEdit('trials') && (
             <Grid item xs={12} sm={6}>
               <Button
                 fullWidth variant="outlined" size="large" endIcon={<ArrowIcon />}
@@ -298,12 +308,13 @@ export default function DashboardHome() {
                 View My Trials
               </Button>
             </Grid>
-          </Grid>
-        )}
+            )}
+        </Grid>
       </Paper>
+      )}
 
       {/* Reports & Assets */}
-      {isAdmin && (
+      {canView('reports') && (
         <Paper
           elevation={0}
           sx={{

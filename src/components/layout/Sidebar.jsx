@@ -19,18 +19,11 @@ import {
   LockOpen as RequestAccessIcon,
   PersonAddAlt1 as UserMgmtIcon,
 } from "@mui/icons-material";
-import { useAuth } from "../../auth/AuthContext";
-import { ROLES } from "../../auth/roles";
+import useGrants from "../../auth/useGrants";
 import "./Sidebar.css";
 
 export default function Sidebar({ collapsed, onToggle }) {
-  const { user, perms } = useAuth();
-
-  // Grant-aware visibility: SUPER_ADMIN sees everything; everyone else sees a
-  // module only if they have View on it. Falls back to role while perms load.
-  const isSuper = perms ? perms.isSuperAdmin : user?.role === ROLES.SUPER_ADMIN;
-  const grants = perms?.grants || {};
-  const canView = (mod) => isSuper || !!grants[mod]?.can_view;
+  const { isSuper, canView, canEdit } = useGrants();
 
   const canAccessTrialManagement = canView('trials');
   const canAccessREPManagement = canView('reps');
@@ -40,7 +33,7 @@ export default function Sidebar({ collapsed, onToggle }) {
   const canAccessBank = canView('bank');
   const canAccessReports = canView('reports');
   const canAccessCourier = canView('courier');
-  const canManageConfig = isSuper || !!grants['config']?.can_edit; // Admin = config management
+  const canManageConfig = canEdit('config'); // Admin = config management
   const canAccessControl = isSuper;
 
   const linkClass = ({ isActive }) =>
@@ -104,7 +97,7 @@ export default function Sidebar({ collapsed, onToggle }) {
         {canAccessControl && <NavItem to="/user-management" icon={<UserMgmtIcon fontSize="small" />} label="User Management" />}
         {canAccessControl && <NavItem to="/access-control" icon={<AccessIcon fontSize="small" />} label="Access Control" />}
         {canManageConfig && <NavItem to="/admin" icon={<SettingsIcon fontSize="small" />} label="Admin" />}
-        {canAccessTrialManagement && <NavItem to="/trials/create" icon={<AddIcon fontSize="small" />} label="Project Setup" />}
+        {canEdit('trials') && <NavItem to="/trials/create" icon={<AddIcon fontSize="small" />} label="Project Setup" />}
         {canAccessTrialManagement && <NavItem to="/trials" icon={<EmojiEventsIcon fontSize="small" />} label="Projects" end />}
         {canAccessREPManagement && <NavItem to="/rep-management" icon={<BusinessIcon fontSize="small" />} label="REP Management" />}
         {canAccessVendorManagement && <NavItem to="/vendors" icon={<StoreIcon fontSize="small" />} label="Vendors" />}

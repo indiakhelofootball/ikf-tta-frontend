@@ -9,6 +9,7 @@ import {
   Delete as DeleteIcon,
   ArrowForward as ArrowIcon,
 } from '@mui/icons-material';
+import useGrants from '../../auth/useGrants';
 
 const captionSx = {
   fontSize: '0.78rem',
@@ -21,6 +22,7 @@ const captionSx = {
 };
 
 function TrialCard({ trial, onEdit, onDelete }) {
+  const { canEdit } = useGrants();
   const navigate = useNavigate();
   const cities = trial.assignedCities || [];
   const cityCount = cities.length;
@@ -121,17 +123,19 @@ function TrialCard({ trial, onEdit, onDelete }) {
           >
             Open
           </Button>
-          <Button
-            variant="outlined" size="small" color="error"
-            onClick={() => onDelete(trial)}
-            sx={{
-              minWidth: 'auto', px: 1.5, borderRadius: 2,
-              borderColor: '#fecaca',
-              '&:hover': { bgcolor: '#fef2f2', borderColor: '#ef4444' },
-            }}
-          >
-            <DeleteIcon sx={{ fontSize: '1rem' }} />
-          </Button>
+          {canEdit('trials') && (
+            <Button
+              variant="outlined" size="small" color="error"
+              onClick={() => onDelete(trial)}
+              sx={{
+                minWidth: 'auto', px: 1.5, borderRadius: 2,
+                borderColor: '#fecaca',
+                '&:hover': { bgcolor: '#fef2f2', borderColor: '#ef4444' },
+              }}
+            >
+              <DeleteIcon sx={{ fontSize: '1rem' }} />
+            </Button>
+          )}
         </Stack>
       </Box>
     </Card>

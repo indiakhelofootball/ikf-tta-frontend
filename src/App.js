@@ -9,6 +9,7 @@ import Typography from "@mui/material/Typography";
 import Login from "./auth/Login";
 import RequireAuth from "./auth/RequireAuth";
 import RoleBasedRoute from "./auth/RoleBasedRoute";
+import GrantedRoute from "./auth/GrantedRoute";
 import { ROLES } from "./auth/roles";
 import Unauthorized from "./components/Unauthorized";
 
@@ -99,74 +100,74 @@ function App() {
           <Route element={<DashboardLayout />}>
             <Route path="/dashboard" element={<DashboardHome />} />
             <Route path="/trials/create" element={
-              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+              <GrantedRoute module="trials" edit>
                 <TrialWizard />
-              </RoleBasedRoute>
+              </GrantedRoute>
             } />
             <Route path="/trials" element={
-              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+              <GrantedRoute module="trials">
                 <TrialManagementPage />
-              </RoleBasedRoute>
+              </GrantedRoute>
             } />
             <Route path="/trials/:id" element={
-              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+              <GrantedRoute module="trials">
                 <ProjectDashboard />
-              </RoleBasedRoute>
+              </GrantedRoute>
             } />
             <Route path="/rep-management" element={
-              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+              <GrantedRoute module="reps">
                 <REPManagementPage />
-              </RoleBasedRoute>
+              </GrantedRoute>
             } />
             <Route path="/vendors" element={
-              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+              <GrantedRoute module="vendors">
                 <VendorManagementPage />
-              </RoleBasedRoute>
+              </GrantedRoute>
             } />
             <Route path="/payments" element={
-              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+              <GrantedRoute module="payments">
                 <PaymentManagementPage />
-              </RoleBasedRoute>
+              </GrantedRoute>
             } />
             <Route path="/work-orders" element={
-              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+              <GrantedRoute module="workorders">
                 <WorkOrderManagementPage />
-              </RoleBasedRoute>
+              </GrantedRoute>
             } />
             <Route path="/bank-tds" element={
-              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+              <GrantedRoute module="bank">
                 <BankManagementPage />
-              </RoleBasedRoute>
+              </GrantedRoute>
             } />
             <Route path="/reports" element={
-              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+              <GrantedRoute module="reports">
                 <ReportsHub />
-              </RoleBasedRoute>
+              </GrantedRoute>
             } />
             <Route path="/reports/payment-audit" element={
-              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+              <GrantedRoute module="reports">
                 <PaymentAuditReport />
-              </RoleBasedRoute>
+              </GrantedRoute>
             } />
             <Route path="/reports/vendor-audit" element={
-              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+              <GrantedRoute module="reports">
                 <VendorAuditReport />
-              </RoleBasedRoute>
+              </GrantedRoute>
             } />
             <Route path="/reports/trial-spend" element={
-              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+              <GrantedRoute module="reports">
                 <TrialSpendReport />
-              </RoleBasedRoute>
+              </GrantedRoute>
             } />
             <Route path="/reports/social-media" element={
-              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+              <GrantedRoute module="reports">
                 <SocialMediaReport />
-              </RoleBasedRoute>
+              </GrantedRoute>
             } />
             <Route path="/courier" element={
-              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+              <GrantedRoute module="courier">
                 <CourierManagementPage />
-              </RoleBasedRoute>
+              </GrantedRoute>
             } />
             <Route path="/user-management" element={
               <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN]}>

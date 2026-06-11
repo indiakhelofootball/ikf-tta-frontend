@@ -23,8 +23,10 @@ import {
   Business as BusinessIcon,
   Close as CloseIcon,
 } from '@mui/icons-material';
+import useGrants from '../../auth/useGrants';
 
 function REPCard({ rep, onEdit, onDelete, onViewDetails }) {
+  const { canEdit } = useGrants();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [confirmText, setConfirmText] = useState('');
   const [deleteError, setDeleteError] = useState('');
@@ -145,35 +147,39 @@ function REPCard({ rep, onEdit, onDelete, onViewDetails }) {
             >
               View
             </Button>
-            <Button
-              variant="contained"
-              size="small"
-              startIcon={<EditIcon />}
-              onClick={() => onEdit(rep)}
-              sx={{ 
-                flex: 1,
-                bgcolor: '#FBB040',
-                fontWeight: 600,
-                '&:hover': {
-                  bgcolor: '#E89F2C'
-                }
-              }}
-            >
-              Edit
-            </Button>
-            <Button
-              variant="outlined"
-              size="small"
-              color="error"
-              onClick={handleDeleteClick}
-              sx={{
-                minWidth: 'auto',
-                px: 2,
-                fontWeight: 600,
-              }}
-            >
-              <DeleteIcon fontSize="small" />
-            </Button>
+            {canEdit('reps') && (
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={<EditIcon />}
+                onClick={() => onEdit(rep)}
+                sx={{
+                  flex: 1,
+                  bgcolor: '#FBB040',
+                  fontWeight: 600,
+                  '&:hover': {
+                    bgcolor: '#E89F2C'
+                  }
+                }}
+              >
+                Edit
+              </Button>
+            )}
+            {canEdit('reps') && (
+              <Button
+                variant="outlined"
+                size="small"
+                color="error"
+                onClick={handleDeleteClick}
+                sx={{
+                  minWidth: 'auto',
+                  px: 2,
+                  fontWeight: 600,
+                }}
+              >
+                <DeleteIcon fontSize="small" />
+              </Button>
+            )}
           </Stack>
         </Box>
       </Card>

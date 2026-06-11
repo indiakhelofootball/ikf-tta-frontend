@@ -30,8 +30,10 @@ import {
   Check as CheckIcon,
 } from '@mui/icons-material';
 import { STATUS_COLORS } from './trialConstants';
+import useGrants from '../../auth/useGrants';
 
 function TrialDetailView({ trial, open, onClose, onEdit, onDelete }) {
+  const { canEdit } = useGrants();
   if (!trial) return null;
 
   const cities = trial.assignedCities || [];
@@ -101,22 +103,26 @@ function TrialDetailView({ trial, open, onClose, onEdit, onDelete }) {
           </Box>
         </Stack>
         <Stack direction="row" spacing={1}>
-          <IconButton
-            onClick={() => { onClose(); onEdit(trial); }}
-            size="small"
-            aria-label="Edit trial"
-            sx={{ bgcolor: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}
-          >
-            <EditIcon />
-          </IconButton>
-          <IconButton
-            onClick={() => { onClose(); onDelete(trial); }}
-            size="small"
-            aria-label="Delete trial"
-            sx={{ bgcolor: 'white', color: 'error.main', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}
-          >
-            <DeleteIcon />
-          </IconButton>
+          {canEdit('trials') && (
+            <IconButton
+              onClick={() => { onClose(); onEdit(trial); }}
+              size="small"
+              aria-label="Edit trial"
+              sx={{ bgcolor: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}
+            >
+              <EditIcon />
+            </IconButton>
+          )}
+          {canEdit('trials') && (
+            <IconButton
+              onClick={() => { onClose(); onDelete(trial); }}
+              size="small"
+              aria-label="Delete trial"
+              sx={{ bgcolor: 'white', color: 'error.main', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}
+            >
+              <DeleteIcon />
+            </IconButton>
+          )}
           <IconButton onClick={onClose} size="small" aria-label="Close" sx={{ bgcolor: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
             <CloseIcon />
           </IconButton>
@@ -412,17 +418,19 @@ function TrialDetailView({ trial, open, onClose, onEdit, onDelete }) {
 
       <DialogActions sx={{ px: 3, pb: 3 }}>
         <Button onClick={onClose} sx={{ borderRadius: 2, textTransform: 'none' }}>Close</Button>
-        <Button
-          variant="contained"
-          startIcon={<EditIcon />}
-          onClick={() => { onClose(); onEdit(trial); }}
-          sx={{
-            bgcolor: '#FDE68A', borderRadius: 2, textTransform: 'none', fontWeight: 600,
-            '&:hover': { bgcolor: '#FCD34D' },
-          }}
-        >
-          Edit Trial
-        </Button>
+        {canEdit('trials') && (
+          <Button
+            variant="contained"
+            startIcon={<EditIcon />}
+            onClick={() => { onClose(); onEdit(trial); }}
+            sx={{
+              bgcolor: '#FDE68A', borderRadius: 2, textTransform: 'none', fontWeight: 600,
+              '&:hover': { bgcolor: '#FCD34D' },
+            }}
+          >
+            Edit Trial
+          </Button>
+        )}
       </DialogActions>
     </Dialog>
   );
