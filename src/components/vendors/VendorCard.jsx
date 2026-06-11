@@ -22,9 +22,10 @@ import {
   ReceiptLong as StatementIcon,
   CheckCircle as CheckIcon,
 } from '@mui/icons-material';
-// vendorConstants no longer needed here
+import useGrants from '../../auth/useGrants';
 
 function VendorCard({ vendor, onEdit, onViewDetails, onDelete, onViewStatement }) {
+  const { canEdit } = useGrants();
 
   return (
     <Card
@@ -143,23 +144,25 @@ function VendorCard({ vendor, onEdit, onViewDetails, onDelete, onViewStatement }
             >
               View
             </Button>
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={<EditIcon fontSize="small" />}
-              onClick={() => onEdit(vendor)}
-              sx={{
-                textTransform: 'none',
-                fontWeight: 600,
-                fontSize: '0.82rem',
-                borderColor: '#e2e8f0',
-                color: '#475569',
-                borderRadius: 1.5,
-                '&:hover': { borderColor: '#94a3b8', bgcolor: '#f8fafc' },
-              }}
-            >
-              Edit
-            </Button>
+            {canEdit('vendors') && (
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<EditIcon fontSize="small" />}
+                onClick={() => onEdit(vendor)}
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  fontSize: '0.82rem',
+                  borderColor: '#e2e8f0',
+                  color: '#475569',
+                  borderRadius: 1.5,
+                  '&:hover': { borderColor: '#94a3b8', bgcolor: '#f8fafc' },
+                }}
+              >
+                Edit
+              </Button>
+            )}
             {onViewStatement && (
               <Button
                 size="small"
@@ -179,23 +182,25 @@ function VendorCard({ vendor, onEdit, onViewDetails, onDelete, onViewStatement }
                 Statement
               </Button>
             )}
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={<DeleteIcon fontSize="small" />}
-              onClick={() => onDelete(vendor)}
-              sx={{
-                textTransform: 'none',
-                fontWeight: 600,
-                fontSize: '0.82rem',
-                borderColor: '#fecaca',
-                color: '#dc2626',
-                borderRadius: 1.5,
-                '&:hover': { borderColor: '#dc2626', bgcolor: '#fef2f2' },
-              }}
-            >
-              Delete
-            </Button>
+            {canEdit('vendors') && (
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<DeleteIcon fontSize="small" />}
+                onClick={() => onDelete(vendor)}
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  fontSize: '0.82rem',
+                  borderColor: '#fecaca',
+                  color: '#dc2626',
+                  borderRadius: 1.5,
+                  '&:hover': { borderColor: '#dc2626', bgcolor: '#fef2f2' },
+                }}
+              >
+                Delete
+              </Button>
+            )}
           </Box>
         </Box>
       </CardContent>

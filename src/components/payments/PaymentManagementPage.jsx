@@ -33,6 +33,7 @@ import { vendorsAPI, paymentRequestsAPI, paymentBatchesAPI } from '../../service
 import { buildBlkpayWorkbook } from '../../utils/blkpayExcel';
 import { buildIciciXlsBuffer } from '../../utils/iciciExcel';
 import { buildFullDetailsWorkbook } from '../../utils/fullDetailsExcel';
+import useGrants from '../../auth/useGrants';
 
 // localStorage batch cache removed — API is source of truth
 
@@ -210,6 +211,8 @@ function downloadBatchPDF(batch) {
 function PaymentManagementPage() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { canEdit } = useGrants();
+  const canEditPayments = canEdit('payments');
   const [payments, setPayments] = useState([]);
   const [search, setSearch] = useState('');
   const [vendors, setVendors] = useState([]);
@@ -446,19 +449,21 @@ function PaymentManagementPage() {
               ),
             }}
           />
-          <Button
-            variant="contained"
-            startIcon={<InvoiceIcon />}
-            onClick={() => setPrModalOpen(true)}
-            sx={{
-              whiteSpace: 'nowrap', bgcolor: '#FDE68A', color: '#1e293b',
-              boxShadow: 'none', textTransform: 'none', fontWeight: 600,
-              borderRadius: 1.5, px: 3,
-              '&:hover': { bgcolor: '#FCD34D', boxShadow: 'none' },
-            }}
-          >
-            Payment Request
-          </Button>
+          {canEditPayments && (
+            <Button
+              variant="contained"
+              startIcon={<InvoiceIcon />}
+              onClick={() => setPrModalOpen(true)}
+              sx={{
+                whiteSpace: 'nowrap', bgcolor: '#FDE68A', color: '#1e293b',
+                boxShadow: 'none', textTransform: 'none', fontWeight: 600,
+                borderRadius: 1.5, px: 3,
+                '&:hover': { bgcolor: '#FCD34D', boxShadow: 'none' },
+              }}
+            >
+              Payment Request
+            </Button>
+          )}
         </Stack>
 
         {/* ══ Active Payment Requests Table ══ */}
@@ -528,18 +533,22 @@ function PaymentManagementPage() {
                             <ViewIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
-                        <Tooltip title="Edit">
-                          <IconButton size="small" sx={{ color: '#64748b' }}
-                            onClick={() => { setDetailPayment(r); setDetailMode('edit'); }}>
-                            <EditIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Delete">
-                          <IconButton size="small" sx={{ color: '#dc2626' }}
-                            onClick={() => handlePaymentDelete(r)}>
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
+                        {canEditPayments && (
+                          <Tooltip title="Edit">
+                            <IconButton size="small" sx={{ color: '#64748b' }}
+                              onClick={() => { setDetailPayment(r); setDetailMode('edit'); }}>
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                        {canEditPayments && (
+                          <Tooltip title="Delete">
+                            <IconButton size="small" sx={{ color: '#dc2626' }}
+                              onClick={() => handlePaymentDelete(r)}>
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
                       </Stack>
                     </TableCell>
                   </TableRow>
@@ -580,6 +589,7 @@ function PaymentManagementPage() {
                 </Stack>
               </Stack>
             </Box>
+            {canEdit('bank') && (
             <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
               <Button
                 variant="contained"
@@ -597,6 +607,7 @@ function PaymentManagementPage() {
                 Send to Payment
               </Button>
             </Box>
+            )}
           </>
         )}
 

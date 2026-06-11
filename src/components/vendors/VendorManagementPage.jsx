@@ -32,8 +32,10 @@ import VendorDetailView from './VendorDetailView';
 import VendorStatementDialog from './VendorStatementDialog';
 import { vendorsAPI } from '../../services/api';
 import { SORT_OPTIONS } from './vendorConstants';
+import useGrants from '../../auth/useGrants';
 
 function VendorManagementPage() {
+  const { canEdit } = useGrants();
   const [vendors, setVendors] = useState([]);
   const [filteredVendors, setFilteredVendors] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -196,6 +198,7 @@ function VendorManagementPage() {
               Manage vendor profiles and documents.
             </Typography>
           </Box>
+          {canEdit('vendors') && (
           <Stack direction="row" spacing={1.5} sx={{ mt: { xs: 2, sm: 0 } }}>
             <Button
               variant="outlined"
@@ -230,6 +233,7 @@ function VendorManagementPage() {
               Add Vendor
             </Button>
           </Stack>
+          )}
         </Stack>
 
         {/* Search & Filters */}
@@ -382,7 +386,7 @@ function VendorManagementPage() {
                 ? 'Add your first vendor to get started.'
                 : 'Try adjusting your search or filters.'}
             </Typography>
-            {vendors.length === 0 && (
+            {vendors.length === 0 && canEdit('vendors') && (
               <Button
                 variant="contained"
                 startIcon={<AddIcon />}

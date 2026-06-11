@@ -19,6 +19,7 @@ import {
   OpenInNew as OpenInNewIcon,
   InsertDriveFile as FileIcon,
 } from '@mui/icons-material';
+import useGrants from '../../auth/useGrants';
 
 // ── shared styles (mirrors REPModal) ─────────────────────────────────────────
 
@@ -95,6 +96,7 @@ function Field({ label, value, mono = false, full = false, children }) {
 // ── component ─────────────────────────────────────────────────────────────────
 
 function REPDetailView({ rep, open, onClose, onEdit }) {
+  const { canEdit } = useGrants();
   if (!rep) return null;
 
   const assignments = rep.cityAssignments || [];
@@ -145,10 +147,12 @@ function REPDetailView({ rep, open, onClose, onEdit }) {
           </Stack>
         </Box>
         <Stack direction="row" spacing={0.5}>
-          <IconButton onClick={() => { onClose(); onEdit(rep); }} size="small"
-            sx={{ bgcolor: '#f1f5f9', '&:hover': { bgcolor: '#FBB040', color: 'white' } }}>
-            <EditIcon fontSize="small" />
-          </IconButton>
+          {canEdit('reps') && (
+            <IconButton onClick={() => { onClose(); onEdit(rep); }} size="small"
+              sx={{ bgcolor: '#f1f5f9', '&:hover': { bgcolor: '#FBB040', color: 'white' } }}>
+              <EditIcon fontSize="small" />
+            </IconButton>
+          )}
           <IconButton onClick={onClose} size="small" sx={{ bgcolor: '#f1f5f9' }}>
             <CloseIcon fontSize="small" />
           </IconButton>
@@ -364,14 +368,16 @@ function REPDetailView({ rep, open, onClose, onEdit }) {
 
       <DialogActions sx={{ px: 2.5, pb: 2.5, pt: 1.5, borderTop: '1px solid #e5e7eb', bgcolor: 'white' }}>
         <Button onClick={onClose} sx={{ color: '#64748b' }}>Close</Button>
-        <Button
-          variant="contained"
-          startIcon={<EditIcon />}
-          onClick={() => { onClose(); onEdit(rep); }}
-          sx={{ bgcolor: '#FBB040', '&:hover': { bgcolor: '#E89F2C' }, fontWeight: 600 }}
-        >
-          Edit REP
-        </Button>
+        {canEdit('reps') && (
+          <Button
+            variant="contained"
+            startIcon={<EditIcon />}
+            onClick={() => { onClose(); onEdit(rep); }}
+            sx={{ bgcolor: '#FBB040', '&:hover': { bgcolor: '#E89F2C' }, fontWeight: 600 }}
+          >
+            Edit REP
+          </Button>
+        )}
       </DialogActions>
     </Dialog>
   );

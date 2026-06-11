@@ -25,6 +25,7 @@ import autoTable from 'jspdf-autotable';
 import { IKF_LOGO_DATAURI, IKF_LOGO_W, IKF_LOGO_H } from './ikfLogo';
 import { repAPI, courierAPI } from '../../services/api';
 import { getCourierItems } from '../../utils/adminStorage';
+import useGrants from '../../auth/useGrants';
 
 const TSHIRT_ITEM_NAME = 'Volunteer Tshirts';
 
@@ -296,6 +297,8 @@ function ItemRow({ item, index, onChange, onDelete }) {
 }
 
 export default function CourierManagementPage() {
+  const { canEdit } = useGrants();
+  const canEditCourier = canEdit('courier');
   const [shipments, setShipments] = useState([]);
   const [reps, setReps] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -560,10 +563,12 @@ export default function CourierManagementPage() {
             Track shipments dispatched to REPs across trial cities
           </Typography>
         </Box>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={openNew}
-          sx={{ bgcolor: '#FDE68A', color: '#1e293b', fontWeight: 700, boxShadow: 'none', '&:hover': { bgcolor: '#FCD34D', boxShadow: 'none' } }}>
-          New Shipment
-        </Button>
+        {canEditCourier && (
+          <Button variant="contained" startIcon={<AddIcon />} onClick={openNew}
+            sx={{ bgcolor: '#FDE68A', color: '#1e293b', fontWeight: 700, boxShadow: 'none', '&:hover': { bgcolor: '#FCD34D', boxShadow: 'none' } }}>
+            New Shipment
+          </Button>
+        )}
       </Stack>
 
       {error && !modalOpen && !dispOpen && !deliveryOpen && (
@@ -688,12 +693,16 @@ export default function CourierManagementPage() {
                               <PdfIcon fontSize="small" />
                             </IconButton>
                           </Tooltip>
-                          <Button size="small" variant="outlined" onClick={() => openEdit(s)}
-                            sx={{ fontSize: '0.72rem', py: 0.3, px: 1, minWidth: 'auto' }}>Edit</Button>
-                          <Button size="small" variant="contained" onClick={() => openDispatch(s.id)}
-                            sx={{ fontSize: '0.72rem', py: 0.3, px: 1, minWidth: 'auto', bgcolor: '#FDE68A', color: '#1e293b', boxShadow: 'none', '&:hover': { bgcolor: '#FCD34D', boxShadow: 'none' } }}>
-                            Dispatch
-                          </Button>
+                          {canEditCourier && (
+                            <>
+                              <Button size="small" variant="outlined" onClick={() => openEdit(s)}
+                                sx={{ fontSize: '0.72rem', py: 0.3, px: 1, minWidth: 'auto' }}>Edit</Button>
+                              <Button size="small" variant="contained" onClick={() => openDispatch(s.id)}
+                                sx={{ fontSize: '0.72rem', py: 0.3, px: 1, minWidth: 'auto', bgcolor: '#FDE68A', color: '#1e293b', boxShadow: 'none', '&:hover': { bgcolor: '#FCD34D', boxShadow: 'none' } }}>
+                                Dispatch
+                              </Button>
+                            </>
+                          )}
                         </>
                       )}
                       {['Dispatched', 'In Transit'].includes(s.status) && (
@@ -703,15 +712,19 @@ export default function CourierManagementPage() {
                               <PdfIcon fontSize="small" />
                             </IconButton>
                           </Tooltip>
-                          <Button size="small" variant="outlined" color="success" onClick={() => openDelivery(s.id)}
-                            sx={{ fontSize: '0.72rem', py: 0.3, px: 1, minWidth: 'auto' }}>
-                            Delivered
-                          </Button>
-                          <Button size="small" variant="outlined" color="error"
-                            onClick={() => { setReturnId(s.id); setReturnNote(''); setReturnOpen(true); }}
-                            sx={{ fontSize: '0.72rem', py: 0.3, px: 1, minWidth: 'auto' }}>
-                            Returned
-                          </Button>
+                          {canEditCourier && (
+                            <>
+                              <Button size="small" variant="outlined" color="success" onClick={() => openDelivery(s.id)}
+                                sx={{ fontSize: '0.72rem', py: 0.3, px: 1, minWidth: 'auto' }}>
+                                Delivered
+                              </Button>
+                              <Button size="small" variant="outlined" color="error"
+                                onClick={() => { setReturnId(s.id); setReturnNote(''); setReturnOpen(true); }}
+                                sx={{ fontSize: '0.72rem', py: 0.3, px: 1, minWidth: 'auto' }}>
+                                Returned
+                              </Button>
+                            </>
+                          )}
                         </>
                       )}
                       {s.status === 'Delivered' && (

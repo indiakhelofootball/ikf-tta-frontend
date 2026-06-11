@@ -27,6 +27,7 @@ import {
 import { State, City } from 'country-state-city';
 
 import { trialsAPI } from '../../services/api';
+import useGrants from '../../auth/useGrants';
 import TrialEditModal from './TrialEditModal';
 import TrialDeleteDialog from './TrialDeleteDialog';
 import { CITY_SORT_OPTIONS, MONTHS } from './trialConstants';
@@ -71,6 +72,8 @@ function makeBulkRows(n) {
 function ProjectDashboard() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { canEdit } = useGrants();
+  const canEditTrials = canEdit('trials');
 
   const [trial, setTrial] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -425,16 +428,18 @@ function ProjectDashboard() {
           >
             Back to Projects
           </Button>
-          <Stack direction="row" spacing={1.5}>
-            <Button
-              variant="outlined" size="small" color="error"
-              startIcon={<DeleteIcon sx={{ fontSize: '0.95rem' }} />}
-              onClick={() => setDeleteOpen(true)}
-              sx={{ borderColor: '#fecaca', fontWeight: 600, borderRadius: 2, textTransform: 'none' }}
-            >
-              Delete
-            </Button>
-          </Stack>
+          {canEditTrials && (
+            <Stack direction="row" spacing={1.5}>
+              <Button
+                variant="outlined" size="small" color="error"
+                startIcon={<DeleteIcon sx={{ fontSize: '0.95rem' }} />}
+                onClick={() => setDeleteOpen(true)}
+                sx={{ borderColor: '#fecaca', fontWeight: 600, borderRadius: 2, textTransform: 'none' }}
+              >
+                Delete
+              </Button>
+            </Stack>
+          )}
         </Stack>
 
         {/* ── Project profile card ── */}
@@ -515,6 +520,7 @@ function ProjectDashboard() {
                     : cityCount}
                 </Typography>
               </Typography>
+              {canEditTrials && (
               <Stack direction="row" spacing={1}>
                 <Button
                   size="small" variant="outlined"
@@ -540,6 +546,7 @@ function ProjectDashboard() {
                   Add Trial Location
                 </Button>
               </Stack>
+              )}
             </Stack>
 
             {/* Add region form */}
@@ -814,8 +821,9 @@ function ProjectDashboard() {
                               ) : (
                                 <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5,
                                   bgcolor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '20px',
-                                  px: 1.5, py: 0.4, cursor: 'pointer', '&:hover': { bgcolor: '#f0fdf4', borderColor: '#bbf7d0' } }}
-                                  onClick={() => handleToggleConfirmed(city)}
+                                  px: 1.5, py: 0.4,
+                                  ...(canEditTrials && { cursor: 'pointer', '&:hover': { bgcolor: '#f0fdf4', borderColor: '#bbf7d0' } }) }}
+                                  onClick={canEditTrials ? () => handleToggleConfirmed(city) : undefined}
                                 >
                                   <Box component="span" sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: '#94a3b8', flexShrink: 0 }} />
                                   <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>Not Confirmed</Typography>
@@ -840,7 +848,7 @@ function ProjectDashboard() {
                                     </IconButton>
                                   </Tooltip>
                                 </Stack>
-                              ) : (
+                              ) : canEditTrials && (
                                 <Stack direction="row" spacing={0.5} justifyContent="flex-end">
                                   <Tooltip title="Edit">
                                     <IconButton onClick={() => startEditCity(city)} aria-label="Edit city"

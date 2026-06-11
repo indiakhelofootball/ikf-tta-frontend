@@ -20,8 +20,10 @@ import {
   Edit as EditIcon,
   InsertDriveFile as FileIcon,
 } from '@mui/icons-material';
+import useGrants from '../../auth/useGrants';
 
 function VendorDetailView({ open, onClose, vendor, onEdit }) {
+  const { canEdit } = useGrants();
   if (!vendor) return null;
 
   const isRep = vendor.isRepSourced;
@@ -258,7 +260,7 @@ function VendorDetailView({ open, onClose, vendor, onEdit }) {
           >
             Edit this vendor from REP Management
           </Typography>
-        ) : (
+        ) : canEdit('vendors') && (
           <Button
             onClick={() => { onClose(); onEdit(vendor); }}
             variant="contained"

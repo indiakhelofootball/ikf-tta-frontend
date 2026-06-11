@@ -20,6 +20,7 @@ import {
 } from '@mui/icons-material';
 import { PR_STATUS_COLORS } from '../payments/paymentData';
 import { paymentRequestsAPI, tdsAPI } from '../../services/api';
+import useGrants from '../../auth/useGrants';
 
 /* ── helpers ── */
 const fmtINR = (n) =>
@@ -146,6 +147,9 @@ function downloadTDSExcel(records) {
 
 /* ══ Main Page ══ */
 function BankManagementPage() {
+  // Status changes PATCH payment requests (module: payments); TDS deposits
+  // hit the tds module — gate each action by what the backend will enforce.
+  const { canEdit } = useGrants();
   const [tab, setTab] = useState(0);
   const [records, setRecords] = useState([]);
   const [tdsRecords, setTdsRecords] = useState([]);
@@ -393,7 +397,7 @@ function BankManagementPage() {
                           {/* ACTIONS */}
                           <TableCell>
                             <Stack direction="row" spacing={0.5}>
-                              {!isLocked && !isBounced && (
+                              {!isLocked && !isBounced && canEdit('payments') && (
                                 <>
                                   <Tooltip title="Mark Payment Done">
                                     <IconButton size="small" onClick={() => markDone(r.id)} sx={{ color: '#16a34a' }}>
@@ -407,7 +411,7 @@ function BankManagementPage() {
                                   </Tooltip>
                                 </>
                               )}
-                              {isBounced && (
+                              {isBounced && canEdit('payments') && (
                                 <>
                                   <Tooltip title="Fix bank details and re-submit">
                                     <IconButton size="small" onClick={() => openBounce(r)} sx={{ color: '#d97706' }}>
@@ -425,13 +429,15 @@ function BankManagementPage() {
                                 <>
                                   <Chip label="Done" size="small" icon={<DoneIcon sx={{ fontSize: 14 }} />}
                                     sx={{ bgcolor: '#f0fdf4', color: '#16a34a', fontSize: '0.65rem' }} />
-                                  <Tooltip title="Edit status (e.g. if payment bounced)">
-                                    <IconButton size="small" onClick={() => setStatusEditDialog({ open: true, record: r })}
-                                      sx={{ color: '#64748b', ml: 0.5, border: '1px solid #e2e8f0', borderRadius: '8px',
-                                        '&:hover': { bgcolor: '#f1f5f9', borderColor: '#94a3b8' } }}>
-                                      <EditIcon sx={{ fontSize: 16 }} />
-                                    </IconButton>
-                                  </Tooltip>
+                                  {canEdit('payments') && (
+                                    <Tooltip title="Edit status (e.g. if payment bounced)">
+                                      <IconButton size="small" onClick={() => setStatusEditDialog({ open: true, record: r })}
+                                        sx={{ color: '#64748b', ml: 0.5, border: '1px solid #e2e8f0', borderRadius: '8px',
+                                          '&:hover': { bgcolor: '#f1f5f9', borderColor: '#94a3b8' } }}>
+                                        <EditIcon sx={{ fontSize: 16 }} />
+                                      </IconButton>
+                                    </Tooltip>
+                                  )}
                                 </>
                               )}
                             </Stack>
@@ -471,7 +477,7 @@ function BankManagementPage() {
             )}
 
             {/* Mark TDS Deposited — per month buttons */}
-            {pendingMonths.length > 0 && (
+            {pendingMonths.length > 0 && canEdit('tds') && (
               <Box sx={{ mb: 3 }}>
                 <Typography variant="subtitle2" fontWeight={700} sx={{ color: '#64748b', mb: 1.5, textTransform: 'uppercase', fontSize: '0.72rem', letterSpacing: '0.5px' }}>
                   Mark TDS as Deposited

@@ -12,8 +12,10 @@ import {
 } from '@mui/icons-material';
 import { WO_STATUS_COLORS, getPeriodLabel } from './workOrderData';
 import { workOrdersAPI } from '../../services/api';
+import useGrants from '../../auth/useGrants';
 
 function WorkOrderDetailView({ open, onClose, workOrder, onEdit }) {
+  const { canEdit } = useGrants();
   const [fullWO, setFullWO] = useState(null);
 
   useEffect(() => {
@@ -320,18 +322,20 @@ function WorkOrderDetailView({ open, onClose, workOrder, onEdit }) {
         >
           Close
         </Button>
-        <Button
-          onClick={() => { onClose(); onEdit(workOrder); }}
-          variant="contained"
-          startIcon={<EditIcon fontSize="small" />}
-          sx={{
-            textTransform: 'none', fontWeight: 600, bgcolor: '#FDE68A',
-            color: '#1e293b', borderRadius: 1.5, px: 3, boxShadow: 'none',
-            '&:hover': { bgcolor: '#FCD34D', boxShadow: 'none' },
-          }}
-        >
-          Edit Work Order
-        </Button>
+        {canEdit('workorders') && (
+          <Button
+            onClick={() => { onClose(); onEdit(workOrder); }}
+            variant="contained"
+            startIcon={<EditIcon fontSize="small" />}
+            sx={{
+              textTransform: 'none', fontWeight: 600, bgcolor: '#FDE68A',
+              color: '#1e293b', borderRadius: 1.5, px: 3, boxShadow: 'none',
+              '&:hover': { bgcolor: '#FCD34D', boxShadow: 'none' },
+            }}
+          >
+            Edit Work Order
+          </Button>
+        )}
       </DialogActions>
     </Dialog>
   );

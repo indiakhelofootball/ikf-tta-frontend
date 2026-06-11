@@ -3,7 +3,7 @@
 // NOW WITH PER-USER PROFILE SUPPORT!
 
 import { createContext, useContext, useState, useEffect } from "react";
-import { ROLE_PERMISSIONS } from "./roles";
+import { ROLES, ROLE_PERMISSIONS } from "./roles";
 import api, { permissionsAPI } from "../services/api";
 import { refreshAllFromAPI } from "../utils/adminStorage";
 
@@ -18,19 +18,42 @@ export const AuthProvider = ({ children }) => {
   const [sessionTimeout, setSessionTimeout] = useState(null);
   // Per-user module grants (from the backend) — drives grant-aware UI like the sidebar.
   const [perms, setPerms] = useState(null);
+  const [permsSettled, setPermsSettled] = useState(false);
+  // Derived, not effect-set: true from the instant a user exists until the
+  // grants fetch settles, so guards never see a stale "not loading" window.
+  // perms === null after settling means the fetch failed.
+  const permsLoading = !!user?.email && !permsSettled;
 
-  // Whenever the logged-in user changes, pull their effective grants.
+  // Whenever the logged-in user changes, pull their effective grants, then
+  // refresh the config dropdown cache only for users allowed to read config —
+  // blind refreshes 403 for non-granted users and spam the console.
   useEffect(() => {
     let active = true;
     if (user?.email) {
+      setPermsSettled(false);
       permissionsAPI.getMine()
-        .then((d) => { if (active) setPerms(d); })
-        .catch(() => { if (active) setPerms(null); });
+        .then((d) => {
+          if (!active) return;
+          setPerms(d);
+          if (d?.isSuperAdmin || d?.grants?.config?.can_view) {
+            refreshAllFromAPI().catch(() => {});
+          }
+        })
+        .catch(() => {
+          if (!active) return;
+          setPerms(null);
+          // Grants unavailable (offline / pre-backfill server) — legacy behavior.
+          if (user.role === ROLES.SUPER_ADMIN || user.role === ROLES.ADMIN) {
+            refreshAllFromAPI().catch(() => {});
+          }
+        })
+        .finally(() => { if (active) setPermsSettled(true); });
     } else {
       setPerms(null);
+      setPermsSettled(false);
     }
     return () => { active = false; };
-  }, [user?.email]);
+  }, [user?.email, user?.role]);
 
   // Check for stored user on mount
   useEffect(() => {
@@ -55,7 +78,6 @@ export const AuthProvider = ({ children }) => {
 
           setUser(userWithProfile);
           startSessionTimer(timeout - elapsed);
-          await refreshAllFromAPI().catch(() => {});
         } else {
           logout();
         }
@@ -171,8 +193,6 @@ export const AuthProvider = ({ children }) => {
       const duration = rememberMe ? REMEMBER_ME_DURATION : SESSION_TIMEOUT;
       startSessionTimer(duration);
 
-      refreshAllFromAPI().catch(() => {});
-
       return { success: true };
       
     } catch (error) {
@@ -218,7 +238,6 @@ export const AuthProvider = ({ children }) => {
 
       setUser(userWithProfile);
       startSessionTimer(SESSION_TIMEOUT);
-      refreshAllFromAPI().catch(() => {});
 
       return { success: true };
     } catch (error) {
@@ -282,6 +301,7 @@ export const AuthProvider = ({ children }) => {
       value={{
         user,
         perms, // { isSuperAdmin, grants: { module: { can_view, can_edit } } }
+        permsLoading,
         isAuthenticated: !!user,
         loading,
         login,
