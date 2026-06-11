@@ -34,6 +34,7 @@ import { buildBlkpayWorkbook } from '../../utils/blkpayExcel';
 import { buildIciciXlsBuffer } from '../../utils/iciciExcel';
 import { buildFullDetailsWorkbook } from '../../utils/fullDetailsExcel';
 import useGrants from '../../auth/useGrants';
+import useRefetchOnFocus from '../../hooks/useRefetchOnFocus';
 
 // localStorage batch cache removed — API is source of truth
 
@@ -230,12 +231,13 @@ function PaymentManagementPage() {
 
   const showToast = (msg, severity = 'success') => setToast({ open: true, message: msg, severity });
 
-  const fetchPayments = () => {
+  const fetchPayments = ({ silent = false } = {}) => {
     paymentRequestsAPI.getAll()
       .then((res) => {
         setPayments(res.paymentRequests || []);
       })
       .catch((err) => {
+        if (silent) return;
         setPayments([]);
         const msg = err?.message || 'Failed to load payment requests';
         showToast(msg, 'error');
@@ -264,6 +266,7 @@ function PaymentManagementPage() {
     fetchPayments();
     fetchBatches();
   }, []);
+  useRefetchOnFocus(() => { fetchPayments({ silent: true }); fetchBatches(); });
 
   // Work Orders → /payments with state: open Raise Payment with WO + vendor prefill
   useEffect(() => {
