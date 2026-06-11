@@ -412,6 +412,15 @@ export const vendorsAPI = {
     });
   },
 
+  // Partial update — only the provided fields change (e.g. bank-detail
+  // corrections), unlike update()'s full PUT which requires every field.
+  patch: async (id, vendorData) => {
+    return apiService.request(`/vendors/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(vendorData),
+    });
+  },
+
   delete: async (id) => {
     return apiService.request(`/vendors/${id}/`, { method: 'DELETE' });
   },
