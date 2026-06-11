@@ -15,6 +15,7 @@ import {
   PeopleAlt as PeopleIcon,
   CheckCircle as CheckIcon,
   Close as CloseIcon,
+  History as HistoryIcon,
 } from '@mui/icons-material';
 import { permissionsAPI } from '../../services/api';
 
@@ -50,6 +51,11 @@ export default function PermissionsManagementPage() {
   const [review, setReview] = useState(null); // { request, grid: {mod:{view,edit}} }
   const [deciding, setDeciding] = useState(false);
 
+  // ---- Audit tab state ----
+  const [auditLogs, setAuditLogs] = useState(null); // null = not loaded yet
+  const [auditTotal, setAuditTotal] = useState(0);
+  const [loadingAudit, setLoadingAudit] = useState(false);
+
   const loadRequests = useCallback(async () => {
     try {
       const r = await permissionsAPI.listRequests();
@@ -78,6 +84,23 @@ export default function PermissionsManagementPage() {
 
   const moduleLabel = useCallback(
     (key) => modules.find((m) => m.key === key)?.label || key, [modules]);
+
+  const loadAudit = useCallback(async (page = 1) => {
+    setLoadingAudit(true);
+    try {
+      const r = await permissionsAPI.getAuditLog({ page });
+      setAuditLogs((prev) => (page === 1 ? r.logs : [...(prev || []), ...r.logs]));
+      setAuditTotal(r.total || 0);
+    } catch (e) {
+      setToast({ severity: 'error', msg: e.message || 'Failed to load audit log' });
+    } finally {
+      setLoadingAudit(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (tab === 2 && auditLogs === null) loadAudit(1);
+  }, [tab, auditLogs, loadAudit]);
 
   // ---------- Users tab ----------
   const selectUser = useCallback(async (u) => {
@@ -123,6 +146,7 @@ export default function PermissionsManagementPage() {
       setUsers((prev) => prev.map((u) => u.id === selectedUser.id
         ? { ...u, grantedModules: Object.keys(grants).filter((k) => grants[k].can_view || grants[k].can_edit).sort() }
         : u));
+      setAuditLogs(null);
     } catch (e) {
       setToast({ severity: 'error', msg: e.message || 'Failed to save' });
     } finally {
@@ -169,6 +193,7 @@ export default function PermissionsManagementPage() {
       await permissionsAPI.decideRequest(review.request.id, decision, grantsPayload);
       setToast({ severity: 'success', msg: `Request ${decision === 'approve' ? 'approved' : 'rejected'}` });
       setReview(null);
+      setAuditLogs(null);
       await loadRequests();
     } catch (e) {
       setToast({ severity: 'error', msg: e.message || 'Failed' });
@@ -216,6 +241,7 @@ export default function PermissionsManagementPage() {
           label="Requests"
           sx={{ pr: requests.length ? 3 : 2 }}
         />
+        <Tab icon={<HistoryIcon fontSize="small" />} iconPosition="start" label="Audit" />
       </Tabs>
 
       {tab === 0 ? (
@@ -223,8 +249,11 @@ export default function PermissionsManagementPage() {
           {...{ filteredUsers, search, setSearch, selectedUser, selectUser, modules,
             grants, setCell, loadingGrants, saving, violatesSoD, sodLabel, warnOpen, setWarnOpen, doSave }}
         />
-      ) : (
+      ) : tab === 1 ? (
         <RequestsTab requests={requests} moduleLabel={moduleLabel} onReview={openReview} />
+      ) : (
+        <AuditTab logs={auditLogs || []} total={auditTotal} loading={loadingAudit}
+          moduleLabel={moduleLabel} onLoadMore={loadAudit} />
       )}
 
       {/* SoD soft-warning before save */}
@@ -448,6 +477,76 @@ function RequestsTab({ requests, moduleLabel, onReview }) {
           </Button>
         </Paper>
       ))}
+    </Stack>
+  );
+}
+
+// ---------------- Audit tab ----------------
+function cellLabel(cell) {
+  if (!cell) return 'no access';
+  return cell.can_edit ? 'View + Edit' : 'View';
+}
+
+function AuditTab({ logs, total, loading, moduleLabel, onLoadMore }) {
+  if (loading && logs.length === 0) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 6 }}>
+        <CircularProgress size={28} sx={{ color: INDIGO }} />
+      </Box>
+    );
+  }
+  if (logs.length === 0) {
+    return (
+      <Paper variant="outlined" sx={{ borderRadius: 3, p: 6, textAlign: 'center', color: '#94a3b8' }}>
+        <HistoryIcon sx={{ fontSize: 44, mb: 1, opacity: 0.5 }} />
+        <Typography sx={{ fontWeight: 600 }}>No grant changes yet</Typography>
+        <Typography variant="body2">Every permission change lands here — who, whom, and what changed.</Typography>
+      </Paper>
+    );
+  }
+  const nextPage = Math.floor(logs.length / 50) + 1;
+  return (
+    <Stack spacing={1.5}>
+      {logs.map((log) => (
+        <Paper key={log.id} variant="outlined" sx={{ borderRadius: 3, p: 2 }}>
+          <Stack direction="row" alignItems="center" spacing={1.5} sx={{ flexWrap: 'wrap', gap: 1 }}>
+            <Avatar sx={{ width: 34, height: 34, fontSize: '0.8rem', bgcolor: '#cbd5e1', color: SLATE }}>
+              {initials(log.actorName)}
+            </Avatar>
+            <Box sx={{ flex: 1, minWidth: 200 }}>
+              <Typography sx={{ fontWeight: 700, color: SLATE, fontSize: '0.92rem' }}>
+                {log.actorName} <Box component="span" sx={{ color: MUTED, fontWeight: 400 }}>changed access for</Box> {log.targetName}
+              </Typography>
+              <Typography variant="body2" sx={{ color: MUTED, fontSize: '0.78rem' }}>
+                {new Date(log.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+              </Typography>
+            </Box>
+            <Chip size="small"
+              label={log.source === 'REQUEST' ? 'Request approval' : 'Direct'}
+              sx={{ height: 22, fontSize: '0.68rem', fontWeight: 600,
+                bgcolor: log.source === 'REQUEST' ? '#fef3c7' : '#eef2ff',
+                color: log.source === 'REQUEST' ? '#92400e' : INDIGO }} />
+          </Stack>
+          <Stack spacing={0.5} sx={{ mt: 1.25, pl: { sm: 6 } }}>
+            {Object.entries(log.changes).map(([mod, diff]) => (
+              <Typography key={mod} sx={{ fontSize: '0.84rem', color: SLATE }}>
+                <Box component="span" sx={{ fontWeight: 600 }}>{moduleLabel(mod)}:</Box>{' '}
+                <Box component="span" sx={{ color: diff.before ? MUTED : '#94a3b8' }}>{cellLabel(diff.before)}</Box>
+                {' → '}
+                <Box component="span" sx={{ color: diff.after ? '#15803d' : '#b91c1c', fontWeight: 600 }}>
+                  {cellLabel(diff.after)}
+                </Box>
+              </Typography>
+            ))}
+          </Stack>
+        </Paper>
+      ))}
+      {logs.length < total && (
+        <Button onClick={() => onLoadMore(nextPage)} disabled={loading}
+          sx={{ textTransform: 'none', fontWeight: 600, color: INDIGO, alignSelf: 'center' }}>
+          {loading ? 'Loading…' : `Load more (${total - logs.length} older)`}
+        </Button>
+      )}
     </Stack>
   );
 }
