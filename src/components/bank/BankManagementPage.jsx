@@ -19,7 +19,7 @@ import {
   TaskAlt as DepositedIcon,
 } from '@mui/icons-material';
 import { PR_STATUS_COLORS } from '../payments/paymentData';
-import { paymentRequestsAPI, tdsAPI } from '../../services/api';
+import { paymentRequestsAPI, tdsAPI, vendorsAPI } from '../../services/api';
 import useGrants from '../../auth/useGrants';
 import useRefetchOnFocus from '../../hooks/useRefetchOnFocus';
 
@@ -208,6 +208,16 @@ function BankManagementPage() {
 
   const handleBounceEdit = async (updated) => {
     try {
+      // Bank details belong to the vendor — the payment request only projects
+      // them read-only. Persist the correction on the vendor first, otherwise
+      // the re-submitted payment carries the same wrong details that bounced.
+      if (updated.vendorId) {
+        await vendorsAPI.patch(updated.vendorId, {
+          bankName: updated.bankName,
+          accountNumber: updated.accountNumber,
+          ifscCode: updated.ifscCode,
+        });
+      }
       await paymentRequestsAPI.patch(updated.id, { status: 'Sent to Accounts' });
       setRecords((prev) => prev.map((r) => r.id === updated.id ? updated : r));
       showToast('Bank details updated — re-submitted to accounts');
