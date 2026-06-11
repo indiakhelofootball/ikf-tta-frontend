@@ -484,6 +484,13 @@ export const permissionsAPI = {
     });
   },
 
+  // SUPER_ADMIN: grant-change audit trail, newest first. Optional target filter
+  getAuditLog: async ({ userId, page = 1 } = {}) => {
+    const params = new URLSearchParams({ page });
+    if (userId) params.set('user_id', userId);
+    return apiService.request(`/permissions/audit-log/?${params}`);
+  },
+
   // SUPER_ADMIN: create a login for a new user. Access is granted separately
   // on the Access Control page — a new user starts with zero module grants.
   createUser: async ({ firstName, lastName, email, password }) => {
