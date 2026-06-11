@@ -33,6 +33,7 @@ import VendorStatementDialog from './VendorStatementDialog';
 import { vendorsAPI } from '../../services/api';
 import { SORT_OPTIONS } from './vendorConstants';
 import useGrants from '../../auth/useGrants';
+import useRefetchOnFocus from '../../hooks/useRefetchOnFocus';
 
 function VendorManagementPage() {
   const { canEdit } = useGrants();
@@ -63,21 +64,22 @@ function VendorManagementPage() {
   useEffect(() => {
     loadVendors();
   }, []);
+  useRefetchOnFocus(() => loadVendors({ silent: true }));
 
   useEffect(() => {
     filterAndSort();
   }, [vendors, searchQuery, sortBy, filterType]);
 
-  const loadVendors = async () => {
+  const loadVendors = async ({ silent = false } = {}) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const response = await vendorsAPI.getAll();
       setVendors(response.vendors || []);
     } catch (error) {
       console.error('Load error:', error);
-      showToast('Failed to load vendors', 'error');
+      if (!silent) showToast('Failed to load vendors', 'error');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 

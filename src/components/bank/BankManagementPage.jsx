@@ -21,6 +21,7 @@ import {
 import { PR_STATUS_COLORS } from '../payments/paymentData';
 import { paymentRequestsAPI, tdsAPI } from '../../services/api';
 import useGrants from '../../auth/useGrants';
+import useRefetchOnFocus from '../../hooks/useRefetchOnFocus';
 
 /* ── helpers ── */
 const fmtINR = (n) =>
@@ -158,7 +159,7 @@ function BankManagementPage() {
   const [tdsDepositDialog, setTdsDepositDialog] = useState({ open: false, month: null });
   const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
 
-  useEffect(() => {
+  const loadBankData = () => {
     paymentRequestsAPI.getAll()
       .then((res) => setRecords(res.paymentRequests || []))
       .catch(() => setRecords([]));
@@ -168,7 +169,10 @@ function BankManagementPage() {
     tdsAPI.getSummary()
       .then((res) => setTdsSummary(Array.isArray(res) ? res : []))
       .catch(() => setTdsSummary([]));
-  }, []);
+  };
+
+  useEffect(() => { loadBankData(); }, []);
+  useRefetchOnFocus(loadBankData);
 
   const showToast = (message, severity = 'success') => setToast({ open: true, message, severity });
 

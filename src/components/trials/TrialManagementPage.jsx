@@ -19,6 +19,7 @@ import TrialEditModal from './TrialEditModal';
 import TrialDeleteDialog from './TrialDeleteDialog';
 import { trialsAPI } from '../../services/api';
 import { SEASONS, SORT_OPTIONS } from './trialConstants';
+import useRefetchOnFocus from '../../hooks/useRefetchOnFocus';
 
 function TrialManagementPage() {
   const [trials, setTrials] = useState([]);
@@ -38,20 +39,21 @@ function TrialManagementPage() {
   const [filterMenuAnchor, setFilterMenuAnchor] = useState(null);
 
   useEffect(() => { loadTrials(); }, []);
+  useRefetchOnFocus(() => loadTrials({ silent: true }));
 
   useEffect(() => {
     filterAndSortTrials();
   }, [trials, searchQuery, sortBy, filterType, filterSeason]);
 
-  const loadTrials = async () => {
+  const loadTrials = async ({ silent = false } = {}) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const response = await trialsAPI.getAll();
       setTrials(response.trials || []);
     } catch (error) {
-      showToast('Failed to load projects', 'error');
+      if (!silent) showToast('Failed to load projects', 'error');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 

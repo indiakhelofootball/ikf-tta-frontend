@@ -2,7 +2,7 @@
 // Production-Ready: Works with unlimited users from backend
 // NOW WITH PER-USER PROFILE SUPPORT!
 
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useRef } from "react";
 import { ROLES, ROLE_PERMISSIONS } from "./roles";
 import api, { permissionsAPI } from "../services/api";
 import { refreshAllFromAPI } from "../utils/adminStorage";
@@ -54,6 +54,35 @@ export const AuthProvider = ({ children }) => {
     }
     return () => { active = false; };
   }, [user?.email, user?.role]);
+
+  // Grants and the config cache are otherwise only loaded at login, so a
+  // grant change or dropdown edit never reaches an open session. Re-pull both
+  // when the tab regains focus, at most once per REFETCH_MIN_GAP.
+  const lastFocusRefetch = useRef(0);
+  useEffect(() => {
+    if (!user?.email) return undefined;
+    const REFETCH_MIN_GAP = 30 * 1000;
+    const refetch = () => {
+      if (document.visibilityState !== "visible") return;
+      const now = Date.now();
+      if (now - lastFocusRefetch.current < REFETCH_MIN_GAP) return;
+      lastFocusRefetch.current = now;
+      permissionsAPI.getMine()
+        .then((d) => {
+          setPerms(d);
+          if (d?.isSuperAdmin || d?.grants?.config?.can_view) {
+            refreshAllFromAPI().catch(() => {});
+          }
+        })
+        .catch(() => {}); // transient failure — keep the last known grants
+    };
+    window.addEventListener("focus", refetch);
+    document.addEventListener("visibilitychange", refetch);
+    return () => {
+      window.removeEventListener("focus", refetch);
+      document.removeEventListener("visibilitychange", refetch);
+    };
+  }, [user?.email]);
 
   // Check for stored user on mount
   useEffect(() => {

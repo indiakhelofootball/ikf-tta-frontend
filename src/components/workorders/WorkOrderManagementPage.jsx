@@ -26,6 +26,7 @@ import { vendorsAPI, workOrdersAPI } from '../../services/api';
 import { getVendorTypeNames } from '../../utils/adminStorage';
 import { WO_STATUSES, isWOFullyPaid, getPeriodLabel } from './workOrderData';
 import useGrants from '../../auth/useGrants';
+import useRefetchOnFocus from '../../hooks/useRefetchOnFocus';
 
 
 function WorkOrderManagementPage() {
@@ -237,6 +238,7 @@ function WorkOrderManagementPage() {
   };
 
   useEffect(() => { fetchVendors(); fetchWorkOrders(); }, []);
+  useRefetchOnFocus(() => { fetchVendors(); fetchWorkOrders(); });
 
   // Auto-open modal when navigated from Vendor page with a vendor
   useEffect(() => {

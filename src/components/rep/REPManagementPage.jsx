@@ -58,6 +58,7 @@ import REPModal from './REPModal';
 import REPDetailView from './REPDetailView';
 import { repAPI } from '../../services/api';
 import useGrants from '../../auth/useGrants';
+import useRefetchOnFocus from '../../hooks/useRefetchOnFocus';
 
 function REPManagementPage() {
   const { canEdit } = useGrants();
@@ -94,21 +95,22 @@ function REPManagementPage() {
   useEffect(() => {
     loadREPs();
   }, []);
+  useRefetchOnFocus(() => loadREPs({ silent: true }));
 
   useEffect(() => {
     filterAndSortREPs();
   }, [reps, searchQuery, sortBy, sortOrder, filterTrialName, filterCity]);
 
-  const loadREPs = async () => {
+  const loadREPs = async ({ silent = false } = {}) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const response = await repAPI.getAll({ limit: 100 });
       setReps(response.reps || []);
     } catch (error) {
       console.error('Load error:', error);
-      showToast('Failed to load REPs', 'error');
+      if (!silent) showToast('Failed to load REPs', 'error');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 

@@ -26,6 +26,7 @@ import { IKF_LOGO_DATAURI, IKF_LOGO_W, IKF_LOGO_H } from './ikfLogo';
 import { repAPI, courierAPI } from '../../services/api';
 import { getCourierItems } from '../../utils/adminStorage';
 import useGrants from '../../auth/useGrants';
+import useRefetchOnFocus from '../../hooks/useRefetchOnFocus';
 
 const TSHIRT_ITEM_NAME = 'Volunteer Tshirts';
 
@@ -345,28 +346,28 @@ export default function CourierManagementPage() {
   const selectedRep = reps.find(r => r.id === fRepId) || null;
   const selectedAsg = selectedRep?.cityAssignments?.find(a => a.id === fAsgId) || null;
 
-  useEffect(() => {
-    async function init() {
-      setLoading(true);
-      try {
-        const [repsData, shipmentsData] = await Promise.all([
-          repAPI.getAll({ limit: 100 }),
-          courierAPI.getAll(),
-        ]);
-        const repList = Array.isArray(repsData)
-          ? repsData
-          : (repsData.reps || repsData.results || []);
-        setReps(repList);
-        setShipments(Array.isArray(shipmentsData) ? shipmentsData : (shipmentsData.results || []));
-        setAdminItems(getCourierItems());
-      } catch {
-        setError('Failed to load data.');
-      } finally {
-        setLoading(false);
-      }
+  async function loadData({ silent = false } = {}) {
+    if (!silent) setLoading(true);
+    try {
+      const [repsData, shipmentsData] = await Promise.all([
+        repAPI.getAll({ limit: 100 }),
+        courierAPI.getAll(),
+      ]);
+      const repList = Array.isArray(repsData)
+        ? repsData
+        : (repsData.reps || repsData.results || []);
+      setReps(repList);
+      setShipments(Array.isArray(shipmentsData) ? shipmentsData : (shipmentsData.results || []));
+      setAdminItems(getCourierItems());
+    } catch {
+      if (!silent) setError('Failed to load data.');
+    } finally {
+      if (!silent) setLoading(false);
     }
-    init();
-  }, []);
+  }
+
+  useEffect(() => { loadData(); }, []);
+  useRefetchOnFocus(() => loadData({ silent: true }));
 
   const stats = useMemo(() => ({
     Draft: shipments.filter(s => s.status === 'Draft').length,
@@ -427,7 +428,9 @@ export default function CourierManagementPage() {
   function deleteItem(index) { setFItems(prev => prev.filter((_, i) => i !== index)); }
 
   async function saveShipment() {
-    if (!fAsgId || !fItems.length) return;
+    // Updates only send notes/items, so they must not require a live
+    // assignment — a shipment whose assignment was deleted is still editable.
+    if ((!editingId && !fAsgId) || !fItems.length) return;
     setSaving(true);
     setError('');
     try {

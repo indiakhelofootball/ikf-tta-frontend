@@ -28,7 +28,7 @@ import { State, City } from 'country-state-city';
 
 import { trialsAPI } from '../../services/api';
 import useGrants from '../../auth/useGrants';
-import TrialEditModal from './TrialEditModal';
+import useRefetchOnFocus from '../../hooks/useRefetchOnFocus';
 import TrialDeleteDialog from './TrialDeleteDialog';
 import { CITY_SORT_OPTIONS, MONTHS } from './trialConstants';
 
@@ -80,7 +80,6 @@ function ProjectDashboard() {
   const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
 
   // Project-level modals
-  const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   // City table controls
@@ -111,16 +110,17 @@ function ProjectDashboard() {
 
   // ── Load ──────────────────────────────────────────────────────────
   useEffect(() => { loadTrial(); }, [id]);
+  useRefetchOnFocus(() => loadTrial({ silent: true }));
 
-  const loadTrial = async () => {
+  const loadTrial = async ({ silent = false } = {}) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const data = await trialsAPI.getById(id);
       setTrial(data.trial);
     } catch {
-      showToast('Failed to load project', 'error');
+      if (!silent) showToast('Failed to load project', 'error');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -180,13 +180,6 @@ function ProjectDashboard() {
   useEffect(() => { setPage(1); }, [search, filterState, sortBy]);
 
   // ── Project edit / delete ─────────────────────────────────────────
-  const handleSaveProject = async (trialId, updateData) => {
-    await trialsAPI.patch(trialId, updateData);
-    showToast('Project updated');
-    setEditOpen(false);
-    await loadTrial();
-  };
-
   const handleDeleteProject = async (t) => {
     await trialsAPI.delete(t.id);
     navigate('/trials');
@@ -1118,14 +1111,6 @@ function ProjectDashboard() {
           </Button>
         </DialogActions>
       </Dialog>
-
-      {/* ── Edit Project Modal ── */}
-      <TrialEditModal
-        open={editOpen}
-        onClose={() => setEditOpen(false)}
-        trial={trial}
-        onSave={handleSaveProject}
-      />
 
       {/* ── Delete Project Dialog ── */}
       <TrialDeleteDialog
