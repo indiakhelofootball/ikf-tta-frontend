@@ -4,7 +4,7 @@ import {
   Table, TableHead, TableRow, TableCell, TableBody, Checkbox, Button,
   Snackbar, Alert, CircularProgress, Divider, TextField, InputAdornment,
   Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions,
-  Tabs, Tab, Badge, Stack,
+  Tabs, Tab, Badge, Stack, IconButton,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -16,6 +16,9 @@ import {
   CheckCircle as CheckIcon,
   Close as CloseIcon,
   History as HistoryIcon,
+  PersonAddAlt1 as PersonAddIcon,
+  Visibility as VisibilityIcon,
+  VisibilityOff as VisibilityOffIcon,
 } from '@mui/icons-material';
 import { permissionsAPI } from '../../services/api';
 
@@ -23,6 +26,7 @@ const INDIGO = '#4F46E5';
 const SLATE = '#1e293b';
 const MUTED = '#64748b';
 const emptyCell = { can_view: false, can_edit: false };
+const emptyUserForm = { firstName: '', lastName: '', email: '', password: '', confirm: '' };
 
 const labelSx = { fontWeight: 700, color: SLATE, fontSize: '0.82rem' };
 
@@ -55,6 +59,13 @@ export default function PermissionsManagementPage() {
   const [auditLogs, setAuditLogs] = useState(null); // null = not loaded yet
   const [auditTotal, setAuditTotal] = useState(0);
   const [loadingAudit, setLoadingAudit] = useState(false);
+
+  // ---- Create-user dialog state ----
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState(emptyUserForm);
+  const [createErrors, setCreateErrors] = useState({});
+  const [showPwd, setShowPwd] = useState(false);
+  const [creating, setCreating] = useState(false);
 
   const loadRequests = useCallback(async () => {
     try {
@@ -117,6 +128,63 @@ export default function PermissionsManagementPage() {
       setLoadingGrants(false);
     }
   }, []);
+
+  // ---------- Create user ----------
+  const setCreateField = (key, value) => {
+    setCreateForm((prev) => ({ ...prev, [key]: value }));
+    setCreateErrors((prev) => ({ ...prev, [key]: undefined }));
+  };
+
+  const validateCreate = () => {
+    const e = {};
+    if (!createForm.firstName.trim()) e.firstName = 'Required';
+    if (!createForm.email.trim()) e.email = 'Required';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(createForm.email.trim())) e.email = 'Enter a valid email';
+    if (!createForm.password) e.password = 'Required';
+    else if (createForm.password.length < 8) e.password = 'At least 8 characters';
+    if (createForm.confirm !== createForm.password) e.confirm = 'Passwords do not match';
+    setCreateErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const openCreate = () => {
+    setCreateForm(emptyUserForm);
+    setCreateErrors({});
+    setShowPwd(false);
+    setCreateOpen(true);
+  };
+
+  const submitCreate = async () => {
+    if (!validateCreate()) return;
+    setCreating(true);
+    try {
+      const res = await permissionsAPI.createUser({
+        firstName: createForm.firstName.trim(),
+        lastName: createForm.lastName.trim(),
+        email: createForm.email.trim(),
+        password: createForm.password,
+      });
+      setCreateOpen(false);
+      const refreshed = await permissionsAPI.listUsers();
+      const list = refreshed.users || [];
+      setUsers(list);
+      // Land the admin straight in the grant grid for the new user —
+      // creating a login is only half the job until access is granted.
+      const created = list.find((u) =>
+        u.id === res.user?.id || u.email === createForm.email.trim());
+      setTab(0);
+      if (created) selectUser(created);
+      setToast({ severity: 'success', msg: 'User created — now grant their access' });
+    } catch (err) {
+      const fieldErrors = err?.response?.data?.errors;
+      const msg = fieldErrors
+        ? Object.values(fieldErrors).flat().join(' ')
+        : (err.message || 'Failed to create user');
+      setToast({ severity: 'error', msg });
+    } finally {
+      setCreating(false);
+    }
+  };
 
   const setCell = (moduleKey, field, value) => {
     setGrants((prev) => {
@@ -213,14 +281,20 @@ export default function PermissionsManagementPage() {
   return (
     <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: 1200, mx: 'auto' }}>
       {/* Header */}
-      <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 0.5 }}>
-        <AdminIcon sx={{ color: INDIGO, fontSize: 30 }} />
-        <Typography sx={{ fontWeight: 800, color: SLATE, fontSize: '1.6rem', letterSpacing: '-0.02em' }}>
-          Access Control
-        </Typography>
+      <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2} sx={{ mb: 0.5, flexWrap: 'wrap', gap: 1.5 }}>
+        <Stack direction="row" alignItems="center" spacing={1.5}>
+          <AdminIcon sx={{ color: INDIGO, fontSize: 30 }} />
+          <Typography sx={{ fontWeight: 800, color: SLATE, fontSize: '1.6rem', letterSpacing: '-0.02em' }}>
+            User Management
+          </Typography>
+        </Stack>
+        <Button variant="contained" startIcon={<PersonAddIcon />} onClick={openCreate}
+          sx={{ textTransform: 'none', fontWeight: 700, bgcolor: INDIGO, '&:hover': { bgcolor: '#4338ca' } }}>
+          Create User
+        </Button>
       </Stack>
       <Typography sx={{ color: MUTED, fontSize: '0.95rem', mb: 3 }}>
-        Grant module access per person, or review access requests. SUPER_ADMIN always has full access.
+        Create logins and grant module access per person. Review access requests and audit every change. SUPER_ADMIN always has full access.
       </Typography>
 
       <Tabs
@@ -333,6 +407,50 @@ export default function PermissionsManagementPage() {
         )}
       </Dialog>
 
+      {/* Create user dialog */}
+      <Dialog open={createOpen} onClose={() => !creating && setCreateOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 800, color: SLATE, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <PersonAddIcon sx={{ color: INDIGO }} /> Create User
+        </DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2} sx={{ mt: 0.5 }}>
+            <Stack direction="row" spacing={2}>
+              <TextField label="First name" fullWidth size="small" value={createForm.firstName}
+                onChange={(e) => setCreateField('firstName', e.target.value)}
+                error={!!createErrors.firstName} helperText={createErrors.firstName} />
+              <TextField label="Last name" fullWidth size="small" value={createForm.lastName}
+                onChange={(e) => setCreateField('lastName', e.target.value)} />
+            </Stack>
+            <TextField label="Email (login id)" type="email" fullWidth size="small" value={createForm.email}
+              onChange={(e) => setCreateField('email', e.target.value)}
+              error={!!createErrors.email} helperText={createErrors.email} />
+            <TextField label="Password" type={showPwd ? 'text' : 'password'} fullWidth size="small" value={createForm.password}
+              onChange={(e) => setCreateField('password', e.target.value)}
+              error={!!createErrors.password} helperText={createErrors.password}
+              slotProps={{ input: { endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton size="small" onClick={() => setShowPwd((s) => !s)} edge="end">
+                    {showPwd ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
+                  </IconButton>
+                </InputAdornment>
+              ) } }} />
+            <TextField label="Confirm password" type={showPwd ? 'text' : 'password'} fullWidth size="small" value={createForm.confirm}
+              onChange={(e) => setCreateField('confirm', e.target.value)}
+              error={!!createErrors.confirm} helperText={createErrors.confirm} />
+            <Alert severity="info" sx={{ borderRadius: 1.5 }}>
+              A new user has no access. After creating, you land on their grant grid — tick modules and save.
+            </Alert>
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setCreateOpen(false)} disabled={creating} sx={{ textTransform: 'none' }}>Cancel</Button>
+          <Button onClick={submitCreate} disabled={creating} variant="contained"
+            sx={{ textTransform: 'none', fontWeight: 700, bgcolor: INDIGO, '&:hover': { bgcolor: '#4338ca' } }}>
+            {creating ? 'Creating…' : 'Create user'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <Snackbar open={!!toast} autoHideDuration={4000} onClose={() => setToast(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
         {toast ? <Alert severity={toast.severity} onClose={() => setToast(null)} sx={{ width: '100%' }}>{toast.msg}</Alert> : undefined}
@@ -369,7 +487,9 @@ function UsersTab(props) {
                 secondaryTypographyProps={{ fontSize: '0.76rem' }} />
               {u.isSuperAdmin
                 ? <Chip size="small" label="SUPER" sx={{ height: 20, fontSize: '0.62rem', bgcolor: INDIGO, color: '#fff' }} />
-                : <Chip size="small" label={u.role} variant="outlined" sx={{ height: 20, fontSize: '0.62rem' }} />}
+                : (u.grantedModules || []).length === 0
+                  ? <Chip size="small" label="No access" sx={{ height: 20, fontSize: '0.62rem', bgcolor: '#fef2f2', color: '#b91c1c', fontWeight: 600 }} />
+                  : <Chip size="small" label={`${u.grantedModules.length} module${u.grantedModules.length > 1 ? 's' : ''}`} variant="outlined" sx={{ height: 20, fontSize: '0.62rem', color: MUTED }} />}
             </ListItemButton>
           ))}
           {filteredUsers.length === 0 && <Box sx={{ p: 2, color: '#94a3b8', fontSize: '0.85rem' }}>No users match.</Box>}
