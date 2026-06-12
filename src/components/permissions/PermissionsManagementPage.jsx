@@ -4,7 +4,7 @@ import {
   Table, TableHead, TableRow, TableCell, TableBody, Checkbox, Button,
   Snackbar, Alert, CircularProgress, Divider, TextField, InputAdornment,
   Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions,
-  Tabs, Tab, Badge, Stack, IconButton, MenuItem,
+  Tabs, Tab, Badge, Stack, IconButton, FormControlLabel, Switch,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -29,12 +29,6 @@ const SLATE = '#1e293b';
 const MUTED = '#64748b';
 const emptyCell = { can_view: false, can_edit: false };
 const emptyUserForm = { firstName: '', lastName: '', email: '', password: '', confirm: '', role: 'REP' };
-
-const ROLE_OPTIONS = [
-  { value: 'REP', label: 'REP', hint: 'Access granted per module below' },
-  { value: 'ADMIN', label: 'Admin', hint: 'Access granted per module below' },
-  { value: 'SUPER_ADMIN', label: 'Super Admin', hint: 'Full access to everything — no grants needed' },
-];
 
 const labelSx = { fontWeight: 700, color: SLATE, fontSize: '0.82rem' };
 
@@ -500,16 +494,20 @@ export default function PermissionsManagementPage() {
             <TextField label="Confirm password" type={showPwd ? 'text' : 'password'} fullWidth size="small" value={createForm.confirm}
               onChange={(e) => setCreateField('confirm', e.target.value)}
               error={!!createErrors.confirm} helperText={createErrors.confirm} />
-            <TextField select label="Role" fullWidth size="small" value={createForm.role}
-              onChange={(e) => setCreateField('role', e.target.value)}
-              helperText={ROLE_OPTIONS.find((r) => r.value === createForm.role)?.hint}>
-              {ROLE_OPTIONS.map((r) => (
-                <MenuItem key={r.value} value={r.value}>{r.label}</MenuItem>
-              ))}
-            </TextField>
+            <FormControlLabel
+              control={
+                <Switch checked={createForm.role === 'SUPER_ADMIN'} color="warning"
+                  onChange={(e) => setCreateField('role', e.target.checked ? 'SUPER_ADMIN' : 'REP')} />
+              }
+              label={
+                <Typography sx={{ fontWeight: 600, fontSize: '0.9rem', color: SLATE }}>
+                  Super Admin
+                </Typography>
+              }
+            />
             {createForm.role === 'SUPER_ADMIN' ? (
               <Alert severity="warning" sx={{ borderRadius: 1.5 }}>
-                Super Admin has unrestricted access to every module, including this page. Grant it sparingly.
+                Unrestricted access to every module, including this page. Grant it sparingly.
               </Alert>
             ) : (
               <Alert severity="info" sx={{ borderRadius: 1.5 }}>
