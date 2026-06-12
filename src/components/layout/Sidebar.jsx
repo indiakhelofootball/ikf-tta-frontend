@@ -17,7 +17,6 @@ import {
   LocalShipping as CourierIcon,
   AdminPanelSettings as AccessIcon,
   LockOpen as RequestAccessIcon,
-  PersonAddAlt1 as UserMgmtIcon,
 } from "@mui/icons-material";
 import useGrants from "../../auth/useGrants";
 import "./Sidebar.css";
@@ -94,8 +93,7 @@ export default function Sidebar({ collapsed, onToggle }) {
       {/* Navigation */}
       <nav className="sidebar-nav">
         <NavItem to="/dashboard" icon={<DashboardIcon fontSize="small" />} label="Dashboard" />
-        {canAccessControl && <NavItem to="/user-management" icon={<UserMgmtIcon fontSize="small" />} label="User Management" />}
-        {canAccessControl && <NavItem to="/access-control" icon={<AccessIcon fontSize="small" />} label="Access Control" />}
+        {canAccessControl && <NavItem to="/user-management" icon={<AccessIcon fontSize="small" />} label="User Management" />}
         {canManageConfig && <NavItem to="/admin" icon={<SettingsIcon fontSize="small" />} label="Admin" />}
         {canEdit('trials') && <NavItem to="/trials/create" icon={<AddIcon fontSize="small" />} label="Project Setup" />}
         {canAccessTrialManagement && <NavItem to="/trials" icon={<EmojiEventsIcon fontSize="small" />} label="Projects" end />}

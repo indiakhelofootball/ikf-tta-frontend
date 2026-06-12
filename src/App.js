@@ -32,7 +32,6 @@ import TrialSpendReport from "./components/reports/TrialSpendReport";
 import CourierManagementPage from "./components/courier/CourierManagementPage";
 import PermissionsManagementPage from "./components/permissions/PermissionsManagementPage";
 import RequestAccessPage from "./components/permissions/RequestAccessPage";
-import UserManagementPage from "./components/users/UserManagementPage";
 
 // Import error handling components
 import ErrorFallback from "./components/error/ErrorFallback";
@@ -171,14 +170,11 @@ function App() {
             } />
             <Route path="/user-management" element={
               <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN]}>
-                <UserManagementPage />
-              </RoleBasedRoute>
-            } />
-            <Route path="/access-control" element={
-              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN]}>
                 <PermissionsManagementPage />
               </RoleBasedRoute>
             } />
+            {/* Old bookmark — Access Control merged into User Management */}
+            <Route path="/access-control" element={<Navigate to="/user-management" replace />} />
             <Route path="/request-access" element={<RequestAccessPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/admin" element={
