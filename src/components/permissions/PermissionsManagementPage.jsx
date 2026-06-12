@@ -543,7 +543,7 @@ function UsersTab(props) {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3, alignItems: 'flex-start' }}>
-      <Paper variant="outlined" sx={{ width: { xs: '100%', md: 320 }, borderRadius: 3, flexShrink: 0, overflow: 'hidden' }}>
+      <Paper variant="outlined" sx={{ width: { xs: '100%', md: 380 }, borderRadius: 3, flexShrink: 0, overflow: 'hidden' }}>
         <Box sx={{ p: 1.5 }}>
           <TextField fullWidth size="small" placeholder="Search users"
             value={search} onChange={(e) => setSearch(e.target.value)}
@@ -553,22 +553,23 @@ function UsersTab(props) {
         <List dense sx={{ maxHeight: 560, overflow: 'auto', py: 0 }}>
           {filteredUsers.map((u) => (
             <ListItemButton key={u.id} selected={selectedUser?.id === u.id} onClick={() => selectUser(u)}
-              sx={{ gap: 1.25, py: 1, '&.Mui-selected': { bgcolor: '#eef2ff' }, '&.Mui-selected:hover': { bgcolor: '#e0e7ff' } }}>
-              <Avatar sx={{ width: 34, height: 34, fontSize: '0.8rem', bgcolor: u.isSuperAdmin ? INDIGO : '#cbd5e1', color: u.isSuperAdmin ? '#fff' : SLATE }}>
+              sx={{ gap: 1, py: 1.25, pr: 1, '&.Mui-selected': { bgcolor: '#eef2ff' }, '&.Mui-selected:hover': { bgcolor: '#e0e7ff' } }}>
+              <Avatar sx={{ width: 34, height: 34, fontSize: '0.8rem', flexShrink: 0, bgcolor: u.isSuperAdmin ? INDIGO : '#cbd5e1', color: u.isSuperAdmin ? '#fff' : SLATE }}>
                 {initials(u.name)}
               </Avatar>
               <ListItemText primary={u.name} secondary={u.email}
-                primaryTypographyProps={{ fontWeight: 600, fontSize: '0.9rem' }}
-                secondaryTypographyProps={{ fontSize: '0.76rem' }} />
+                sx={{ minWidth: 0, my: 0 }}
+                primaryTypographyProps={{ fontWeight: 600, fontSize: '0.9rem', noWrap: true }}
+                secondaryTypographyProps={{ fontSize: '0.76rem', noWrap: true }} />
               {u.isSuperAdmin
-                ? <Chip size="small" label="SUPER" sx={{ height: 20, fontSize: '0.62rem', bgcolor: INDIGO, color: '#fff' }} />
+                ? <Chip size="small" label="SUPER" sx={{ height: 20, fontSize: '0.62rem', flexShrink: 0, bgcolor: INDIGO, color: '#fff' }} />
                 : (u.grantedModules || []).length === 0
-                  ? <Chip size="small" label="No access" sx={{ height: 20, fontSize: '0.62rem', bgcolor: '#fef2f2', color: '#b91c1c', fontWeight: 600 }} />
-                  : <Chip size="small" label={`${u.grantedModules.length} module${u.grantedModules.length > 1 ? 's' : ''}`} variant="outlined" sx={{ height: 20, fontSize: '0.62rem', color: MUTED }} />}
+                  ? <Chip size="small" label="No access" sx={{ height: 20, fontSize: '0.62rem', flexShrink: 0, bgcolor: '#fef2f2', color: '#b91c1c', fontWeight: 600 }} />
+                  : <Chip size="small" label={`${u.grantedModules.length} mod`} variant="outlined" sx={{ height: 20, fontSize: '0.62rem', flexShrink: 0, color: MUTED }} />}
               {u.email !== currentEmail && (
                 <IconButton size="small" aria-label={`Delete ${u.name}`}
                   onClick={(e) => { e.stopPropagation(); onDelete(u); }}
-                  sx={{ color: '#cbd5e1', '&:hover': { color: '#b91c1c', bgcolor: '#fef2f2' } }}>
+                  sx={{ p: 0.5, flexShrink: 0, color: '#cbd5e1', '&:hover': { color: '#b91c1c', bgcolor: '#fef2f2' } }}>
                   <DeleteIcon fontSize="small" />
                 </IconButton>
               )}
