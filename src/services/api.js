@@ -491,9 +491,9 @@ export const permissionsAPI = {
     return apiService.request(`/permissions/audit-log/?${params}`);
   },
 
-  // SUPER_ADMIN: create a login for a new user. Access is granted separately
-  // on the Access Control page — a new user starts with zero module grants.
-  createUser: async ({ firstName, lastName, email, password }) => {
+  // SUPER_ADMIN: create a login for a new user. REP/ADMIN start with zero
+  // grants (granted on this page); SUPER_ADMIN bypasses grants entirely.
+  createUser: async ({ firstName, lastName, email, password, role = 'REP' }) => {
     return apiService.request('/auth/register/', {
       method: 'POST',
       body: JSON.stringify({
@@ -502,8 +502,14 @@ export const permissionsAPI = {
         email,
         password,
         password2: password,
+        role,
       }),
     });
+  },
+
+  // SUPER_ADMIN: permanently delete a user. Self-delete is rejected.
+  deleteUser: async (userId) => {
+    return apiService.request(`/permissions/users/${userId}/`, { method: 'DELETE' });
   },
 };
 

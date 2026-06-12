@@ -4,7 +4,7 @@ import {
   Table, TableHead, TableRow, TableCell, TableBody, Checkbox, Button,
   Snackbar, Alert, CircularProgress, Divider, TextField, InputAdornment,
   Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions,
-  Tabs, Tab, Badge, Stack, IconButton,
+  Tabs, Tab, Badge, Stack, IconButton, MenuItem,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -19,14 +19,22 @@ import {
   PersonAddAlt1 as PersonAddIcon,
   Visibility as VisibilityIcon,
   VisibilityOff as VisibilityOffIcon,
+  DeleteOutline as DeleteIcon,
 } from '@mui/icons-material';
 import { permissionsAPI } from '../../services/api';
+import { useAuth } from '../../auth/AuthContext';
 
 const INDIGO = '#4F46E5';
 const SLATE = '#1e293b';
 const MUTED = '#64748b';
 const emptyCell = { can_view: false, can_edit: false };
-const emptyUserForm = { firstName: '', lastName: '', email: '', password: '', confirm: '' };
+const emptyUserForm = { firstName: '', lastName: '', email: '', password: '', confirm: '', role: 'REP' };
+
+const ROLE_OPTIONS = [
+  { value: 'REP', label: 'REP', hint: 'Access granted per module below' },
+  { value: 'ADMIN', label: 'Admin', hint: 'Access granted per module below' },
+  { value: 'SUPER_ADMIN', label: 'Super Admin', hint: 'Full access to everything — no grants needed' },
+];
 
 const labelSx = { fontWeight: 700, color: SLATE, fontSize: '0.82rem' };
 
@@ -35,6 +43,7 @@ function initials(name = '') {
 }
 
 export default function PermissionsManagementPage() {
+  const { user: currentUser } = useAuth();
   const [tab, setTab] = useState(0);
   const [modules, setModules] = useState([]);
   const [sodPairs, setSodPairs] = useState([]);
@@ -66,6 +75,10 @@ export default function PermissionsManagementPage() {
   const [createErrors, setCreateErrors] = useState({});
   const [showPwd, setShowPwd] = useState(false);
   const [creating, setCreating] = useState(false);
+
+  // ---- Delete-user dialog state ----
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const loadRequests = useCallback(async () => {
     try {
@@ -163,18 +176,24 @@ export default function PermissionsManagementPage() {
         lastName: createForm.lastName.trim(),
         email: createForm.email.trim(),
         password: createForm.password,
+        role: createForm.role,
       });
       setCreateOpen(false);
       const refreshed = await permissionsAPI.listUsers();
       const list = refreshed.users || [];
       setUsers(list);
-      // Land the admin straight in the grant grid for the new user —
-      // creating a login is only half the job until access is granted.
-      const created = list.find((u) =>
-        u.id === res.user?.id || u.email === createForm.email.trim());
       setTab(0);
-      if (created) selectUser(created);
-      setToast({ severity: 'success', msg: 'User created — now grant their access' });
+      if (createForm.role === 'SUPER_ADMIN') {
+        // Super admins bypass grants — nothing to tick.
+        setToast({ severity: 'success', msg: 'Super Admin created — full access, ready to log in' });
+      } else {
+        // Land the admin straight in the grant grid for the new user —
+        // creating a login is only half the job until access is granted.
+        const created = list.find((u) =>
+          u.id === res.user?.id || u.email === createForm.email.trim());
+        if (created) selectUser(created);
+        setToast({ severity: 'success', msg: 'User created — now grant their access' });
+      }
     } catch (err) {
       const fieldErrors = err?.response?.data?.errors;
       const msg = fieldErrors
@@ -183,6 +202,22 @@ export default function PermissionsManagementPage() {
       setToast({ severity: 'error', msg });
     } finally {
       setCreating(false);
+    }
+  };
+
+  const confirmDelete = async () => {
+    setDeleting(true);
+    try {
+      await permissionsAPI.deleteUser(deleteTarget.id);
+      setUsers((prev) => prev.filter((u) => u.id !== deleteTarget.id));
+      if (selectedUser?.id === deleteTarget.id) setSelectedUser(null);
+      setToast({ severity: 'success', msg: `${deleteTarget.name} deleted` });
+      setDeleteTarget(null);
+      setAuditLogs(null);
+    } catch (err) {
+      setToast({ severity: 'error', msg: err.message || 'Failed to delete user' });
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -322,6 +357,8 @@ export default function PermissionsManagementPage() {
         <UsersTab
           {...{ filteredUsers, search, setSearch, selectedUser, selectUser, modules,
             grants, setCell, loadingGrants, saving, violatesSoD, sodLabel, warnOpen, setWarnOpen, doSave }}
+          currentEmail={currentUser?.email}
+          onDelete={setDeleteTarget}
         />
       ) : tab === 1 ? (
         <RequestsTab requests={requests} moduleLabel={moduleLabel} onReview={openReview} />
@@ -407,6 +444,32 @@ export default function PermissionsManagementPage() {
         )}
       </Dialog>
 
+      {/* Delete user confirmation */}
+      <Dialog open={!!deleteTarget} onClose={() => !deleting && setDeleteTarget(null)} maxWidth="xs" fullWidth>
+        {deleteTarget && (
+          <>
+            <DialogTitle sx={{ fontWeight: 800, color: SLATE, display: 'flex', alignItems: 'center', gap: 1 }}>
+              <DeleteIcon sx={{ color: '#b91c1c' }} /> Delete user
+            </DialogTitle>
+            <DialogContent dividers>
+              <DialogContentText sx={{ color: SLATE }}>
+                Permanently delete <strong>{deleteTarget.name}</strong> ({deleteTarget.email})?
+                Their login and module grants are removed. This cannot be undone.
+              </DialogContentText>
+            </DialogContent>
+            <DialogActions sx={{ p: 2 }}>
+              <Button onClick={() => setDeleteTarget(null)} disabled={deleting} sx={{ textTransform: 'none' }}>
+                Cancel
+              </Button>
+              <Button onClick={confirmDelete} disabled={deleting} variant="contained" color="error"
+                sx={{ textTransform: 'none', fontWeight: 700 }}>
+                {deleting ? 'Deleting…' : 'Delete user'}
+              </Button>
+            </DialogActions>
+          </>
+        )}
+      </Dialog>
+
       {/* Create user dialog */}
       <Dialog open={createOpen} onClose={() => !creating && setCreateOpen(false)} maxWidth="xs" fullWidth>
         <DialogTitle sx={{ fontWeight: 800, color: SLATE, display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -437,9 +500,22 @@ export default function PermissionsManagementPage() {
             <TextField label="Confirm password" type={showPwd ? 'text' : 'password'} fullWidth size="small" value={createForm.confirm}
               onChange={(e) => setCreateField('confirm', e.target.value)}
               error={!!createErrors.confirm} helperText={createErrors.confirm} />
-            <Alert severity="info" sx={{ borderRadius: 1.5 }}>
-              A new user has no access. After creating, you land on their grant grid — tick modules and save.
-            </Alert>
+            <TextField select label="Role" fullWidth size="small" value={createForm.role}
+              onChange={(e) => setCreateField('role', e.target.value)}
+              helperText={ROLE_OPTIONS.find((r) => r.value === createForm.role)?.hint}>
+              {ROLE_OPTIONS.map((r) => (
+                <MenuItem key={r.value} value={r.value}>{r.label}</MenuItem>
+              ))}
+            </TextField>
+            {createForm.role === 'SUPER_ADMIN' ? (
+              <Alert severity="warning" sx={{ borderRadius: 1.5 }}>
+                Super Admin has unrestricted access to every module, including this page. Grant it sparingly.
+              </Alert>
+            ) : (
+              <Alert severity="info" sx={{ borderRadius: 1.5 }}>
+                A new user has no access. After creating, you land on their grant grid — tick modules and save.
+              </Alert>
+            )}
           </Stack>
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
@@ -462,7 +538,8 @@ export default function PermissionsManagementPage() {
 // ---------------- Users tab ----------------
 function UsersTab(props) {
   const { filteredUsers, search, setSearch, selectedUser, selectUser, modules,
-    grants, setCell, loadingGrants, saving, violatesSoD, sodLabel, setWarnOpen, doSave } = props;
+    grants, setCell, loadingGrants, saving, violatesSoD, sodLabel, setWarnOpen, doSave,
+    currentEmail, onDelete } = props;
 
   const onSaveClick = () => (violatesSoD ? setWarnOpen(true) : doSave());
 
@@ -490,6 +567,13 @@ function UsersTab(props) {
                 : (u.grantedModules || []).length === 0
                   ? <Chip size="small" label="No access" sx={{ height: 20, fontSize: '0.62rem', bgcolor: '#fef2f2', color: '#b91c1c', fontWeight: 600 }} />
                   : <Chip size="small" label={`${u.grantedModules.length} module${u.grantedModules.length > 1 ? 's' : ''}`} variant="outlined" sx={{ height: 20, fontSize: '0.62rem', color: MUTED }} />}
+              {u.email !== currentEmail && (
+                <IconButton size="small" aria-label={`Delete ${u.name}`}
+                  onClick={(e) => { e.stopPropagation(); onDelete(u); }}
+                  sx={{ color: '#cbd5e1', '&:hover': { color: '#b91c1c', bgcolor: '#fef2f2' } }}>
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              )}
             </ListItemButton>
           ))}
           {filteredUsers.length === 0 && <Box sx={{ p: 2, color: '#94a3b8', fontSize: '0.85rem' }}>No users match.</Box>}
