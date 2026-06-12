@@ -53,7 +53,7 @@ import {
   Business as BusinessIcon,
 } from '@mui/icons-material';
 
-import REPCard from './REPCard';
+import REPCard from './Repcard';
 import REPModal from './REPModal';
 import REPDetailView from './REPDetailView';
 import { repAPI } from '../../services/api';
