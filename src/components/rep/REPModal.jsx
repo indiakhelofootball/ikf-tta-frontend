@@ -479,7 +479,17 @@ function REPModal({ open, onClose, onSave, editingREP }) {
     setSaving(true);
     try {
       if (isEditMode) {
-        // Edit mode: update org fields only
+        // Edit mode: if a city-assignment panel is open, persist its edits too —
+        // the footer Save must not silently drop courier/ground changes made there.
+        if (editAssignmentId) {
+          await repAPI.updateAssignment(editingREP.id, editAssignmentId, {
+            ...editAssignmentData,
+            courierDistrict: editCourierDistrict,
+            courierState: editCourierState,
+            courierSubArea: editCourierSubArea,
+          });
+        }
+        // Org fields
         const repData = { ...orgData };
         repData.mouDocumentName = mouDocument ? mouDocument.name : (editingREP?.mouDocumentName || '');
         repData.mouDocumentUrl  = mouDocument ? mouDocumentPreview : (editingREP?.mouDocumentUrl  || '');
