@@ -10,7 +10,7 @@ import Login from "./auth/Login";
 import RequireAuth from "./auth/RequireAuth";
 import RoleBasedRoute from "./auth/RoleBasedRoute";
 import GrantedRoute from "./auth/GrantedRoute";
-import { ROLES } from "./auth/roles";
+import { ROLES, REPORT_KEYS } from "./auth/roles";
 import Unauthorized from "./components/Unauthorized";
 
 import DashboardLayout from "./components/layout/DashboardLayout";
@@ -139,27 +139,27 @@ function App() {
               </GrantedRoute>
             } />
             <Route path="/reports" element={
-              <GrantedRoute module="reports">
+              <GrantedRoute anyOf={REPORT_KEYS}>
                 <ReportsHub />
               </GrantedRoute>
             } />
             <Route path="/reports/payment-audit" element={
-              <GrantedRoute module="reports">
+              <GrantedRoute module="report_payment_audit">
                 <PaymentAuditReport />
               </GrantedRoute>
             } />
             <Route path="/reports/vendor-audit" element={
-              <GrantedRoute module="reports">
+              <GrantedRoute module="report_vendor_audit">
                 <VendorAuditReport />
               </GrantedRoute>
             } />
             <Route path="/reports/trial-spend" element={
-              <GrantedRoute module="reports">
+              <GrantedRoute module="report_trial_spend">
                 <TrialSpendReport />
               </GrantedRoute>
             } />
             <Route path="/reports/social-media" element={
-              <GrantedRoute module="reports">
+              <GrantedRoute module="report_social_media">
                 <SocialMediaReport />
               </GrantedRoute>
             } />

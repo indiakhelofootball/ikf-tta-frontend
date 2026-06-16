@@ -20,9 +20,7 @@ import {
   Close as CloseIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import {
-  paymentRequestsAPI, vendorsAPI, workOrdersAPI, tdsAPI,
-} from '../../services/api';
+import { reportsAPI } from '../../services/api';
 import {
   computeVendorFlags, topSeverity, FLAG_COLORS, FLAG_LABELS,
 } from './flagEngine';
@@ -64,16 +62,11 @@ function VendorAuditReport() {
   const loadAll = async () => {
     setLoading(true);
     try {
-      const [vRes, woRes, prRes, tRes] = await Promise.all([
-        vendorsAPI.getAll({ limit: 1000 }).catch(() => ({ vendors: [] })),
-        workOrdersAPI.getAll().catch(() => ({ workOrders: [] })),
-        paymentRequestsAPI.getAll().catch(() => ({ paymentRequests: [] })),
-        tdsAPI.getAll().catch(() => ({ tdsRecords: [] })),
-      ]);
-      setVendors(vRes.vendors || []);
-      setWorkOrders(woRes.workOrders || []);
-      setPayments(prRes.paymentRequests || []);
-      setTdsRecords(tRes.tdsRecords || []);
+      const res = await reportsAPI.vendorAudit();
+      setVendors(res.vendors || []);
+      setWorkOrders(res.workOrders || []);
+      setPayments(res.paymentRequests || []);
+      setTdsRecords(res.tdsRecords || []);
     } catch (err) {
       console.error('Vendor audit load error:', err);
       setToast({ open: true, message: 'Failed to load report data', severity: 'error' });

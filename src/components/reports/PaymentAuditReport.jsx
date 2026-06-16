@@ -20,10 +20,7 @@ import {
   ReceiptLong as PRIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import {
-  paymentRequestsAPI, vendorsAPI, workOrdersAPI,
-  paymentBatchesAPI, tdsAPI,
-} from '../../services/api';
+import { reportsAPI } from '../../services/api';
 import {
   computePaymentFlags, topSeverity,
   FLAG_COLORS, FLAG_LABELS,
@@ -125,18 +122,12 @@ function PaymentAuditReport() {
   const loadAll = async () => {
     setLoading(true);
     try {
-      const [prRes, vRes, woRes, bRes, tRes] = await Promise.all([
-        paymentRequestsAPI.getAll().catch(() => ({ paymentRequests: [] })),
-        vendorsAPI.getAll({ limit: 1000 }).catch(() => ({ vendors: [] })),
-        workOrdersAPI.getAll().catch(() => ({ workOrders: [] })),
-        paymentBatchesAPI.getAll().catch(() => ({ batches: [] })),
-        tdsAPI.getAll().catch(() => ({ tdsRecords: [] })),
-      ]);
-      setPayments(prRes.paymentRequests || []);
-      setVendors(vRes.vendors || []);
-      setWorkOrders(woRes.workOrders || []);
-      setBatches(bRes.batches || []);
-      setTdsRecords(tRes.tdsRecords || []);
+      const res = await reportsAPI.paymentAudit();
+      setPayments(res.paymentRequests || []);
+      setVendors(res.vendors || []);
+      setWorkOrders(res.workOrders || []);
+      setBatches(res.batches || []);
+      setTdsRecords(res.tdsRecords || []);
     } catch (err) {
       console.error('Report load error:', err);
       setToast({ open: true, message: 'Failed to load report data', severity: 'error' });

@@ -805,3 +805,15 @@ export const courierAPI = {
     });
   },
 };
+
+// ============================================
+// REPORTS API
+// Each report has its own endpoint gated by its own grant key, so a user can
+// be given a single report without any operational-module access.
+// ============================================
+export const reportsAPI = {
+  socialMedia: async () => apiService.request('/reports/social-media/'),
+  paymentAudit: async () => apiService.request('/reports/payment-audit/'),
+  vendorAudit: async () => apiService.request('/reports/vendor-audit/'),
+  trialSpend: async () => apiService.request('/reports/trial-spend/'),
+};

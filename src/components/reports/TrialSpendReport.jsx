@@ -21,9 +21,7 @@ import {
   WarningAmber as WarningIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import {
-  paymentRequestsAPI, workOrdersAPI, trialsAPI,
-} from '../../services/api';
+import { reportsAPI } from '../../services/api';
 
 const fmtINR = (n) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })
@@ -47,14 +45,10 @@ function TrialSpendReport() {
   const loadAll = async () => {
     setLoading(true);
     try {
-      const [tRes, woRes, prRes] = await Promise.all([
-        trialsAPI.getAll({ limit: 500 }).catch(() => ({ trials: [] })),
-        workOrdersAPI.getAll().catch(() => ({ workOrders: [] })),
-        paymentRequestsAPI.getAll().catch(() => ({ paymentRequests: [] })),
-      ]);
-      setTrials(tRes.trials || []);
-      setWorkOrders(woRes.workOrders || []);
-      setPayments(prRes.paymentRequests || []);
+      const res = await reportsAPI.trialSpend();
+      setTrials(res.trials || []);
+      setWorkOrders(res.workOrders || []);
+      setPayments(res.paymentRequests || []);
     } catch (err) {
       console.error('Trial spend load error:', err);
       setToast({ open: true, message: 'Failed to load report data', severity: 'error' });
