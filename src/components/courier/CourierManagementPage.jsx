@@ -21,8 +21,9 @@ import {
   Phone as PhoneIcon,
 } from '@mui/icons-material';
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
-import { IKF_LOGO_DATAURI, IKF_LOGO_W, IKF_LOGO_H } from './ikfLogo';
+import {
+  SLIP_PAGE_PT, SLIP_TEMPLATE_PNG, ARSENAL_BOLD_TTF, HANKEN_BOLD_TTF,
+} from './courierSlipAssets';
 import { repAPI, courierAPI } from '../../services/api';
 import { getCourierItems } from '../../utils/adminStorage';
 import useGrants from '../../auth/useGrants';
@@ -35,11 +36,6 @@ const ZERO_REASON_OPTIONS = [
   { value: 'separate',          label: 'Will be couriered separately' },
   { value: 'not_sending',       label: 'Not to be sent' },
 ];
-
-const ZERO_REASON_LABELS = ZERO_REASON_OPTIONS.reduce((acc, o) => { acc[o.value] = o.label; return acc; }, {});
-
-// Reasons that should be printed on the dispatch/packing PDF below items.
-const PRINTABLE_ZERO_REASONS = new Set(['already_couriered', 'separate']);
 
 const PREDEFINED_ITEMS = [
   { name: TSHIRT_ITEM_NAME, quantity: 0, remarks: '', isCustom: false, productionStatus: 'Pending', zeroReason: '' },
@@ -95,91 +91,81 @@ function getShipmentFlag(shipment) {
   return null;
 }
 
-// Branded IKF courier slip — landscape, matches the official package-slip artwork.
+// Branded IKF courier slip — pixel-identical to the official package-slip artwork.
+// The static layer (logo, mascot, From block, tagline, "To,", field labels,
+// "Item Lists in Courier" heading, icons) is a high-res raster of the source PDF.
+// Only the recipient values and item lines are drawn live, in the artwork's own
+// fonts (Arsenal Bold / Hanken Grotesk Bold) at the exact baselines and colour.
 function downloadPDF(shipment) {
-  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-  const pageW = doc.internal.pageSize.getWidth();   // ~297mm
-  const NAVY = [26, 54, 89];
-  const leftX = 14;
-  const rightX = 198;
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: SLIP_PAGE_PT });
+  const [pageW, pageH] = SLIP_PAGE_PT;
+  const NAVY = [20, 74, 108];   // rgb(20,74,108) — the artwork's navy
 
-  // Logo, top-right
-  const logoW = 80;
-  const logoH = logoW * (IKF_LOGO_H / IKF_LOGO_W);
-  doc.addImage(IKF_LOGO_DATAURI, 'JPEG', pageW - logoW - 14, 8, logoW, logoH);
+  // Static template, full page.
+  doc.addImage(SLIP_TEMPLATE_PNG, 'PNG', 0, 0, pageW, pageH);
 
-  // "To" block, top-left
+  // Register the artwork's fonts.
+  doc.addFileToVFS('Arsenal-Bold.ttf', ARSENAL_BOLD_TTF);
+  doc.addFont('Arsenal-Bold.ttf', 'Arsenal', 'normal');
+  doc.addFileToVFS('Hanken-Bold.ttf', HANKEN_BOLD_TTF);
+  doc.addFont('Hanken-Bold.ttf', 'Hanken', 'normal');
   doc.setTextColor(...NAVY);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(22);
-  doc.text('To,', leftX, 22);
 
-  let y = 34;
-  doc.setFontSize(13);
-  const putLine = (t, gap = 7) => { if (t) { doc.text(String(t), leftX, y); y += gap; } };
-  putLine(shipment.snapAcceptingName);
-  if (shipment.snapAddress) {
-    doc.splitTextToSize(shipment.snapAddress, 150).forEach(l => putLine(l));
-  }
-  const cityLine = [shipment.snapCity, shipment.snapState].filter(Boolean).join(', ')
-    + (shipment.snapPinCode ? ` ${shipment.snapPinCode}` : '');
-  putLine(cityLine);
-  putLine(shipment.snapAcceptingPhone);
+  // Trailing comma after a value, collapsing any the data already carries.
+  const comma = (s) => (s ? String(s).replace(/[,\s]+$/, '') + ',' : '');
 
-  // Item table, left column
-  autoTable(doc, {
-    startY: y + 5,
-    margin: { left: leftX },
-    tableWidth: 150,
-    head: [['#', 'Item', 'Qty']],
-    body: (shipment.items || []).map((i, idx) => [idx + 1, i.name, i.quantity]),
-    styles: { fontSize: 10, cellPadding: 2.5, textColor: [40, 40, 40] },
-    headStyles: { fillColor: [91, 99, 211], textColor: 255, fontStyle: 'bold' },
-    alternateRowStyles: { fillColor: [245, 246, 250] },
-    columnStyles: { 0: { cellWidth: 14 }, 2: { cellWidth: 24 } },
-  });
+  // The artwork applies fixed letter-spacing; reproduce it so live text matches.
+  const ARSENAL_TC = 1.163;   // pt of char-spacing at 11.3pt
+  const HANKEN_TC = 0.84;     // pt of char-spacing at 8.2pt
+  const trackedWidth = (s, size, tc) => doc.getStringUnitWidth(s) * size + Math.max(0, s.length - 1) * tc;
+  const wrapTracked = (text, size, tc, maxW) => {
+    const lines = [];
+    let cur = '';
+    for (const w of String(text).split(' ')) {
+      const t = cur ? `${cur} ${w}` : w;
+      if (!cur || trackedWidth(t, size, tc) <= maxW) cur = t;
+      else { lines.push(cur); cur = w; }
+    }
+    if (cur) lines.push(cur);
+    return lines;
+  };
 
-  let endY = doc.lastAutoTable.finalY + 7;
-  const totalQty = (shipment.items || []).reduce((a, b) => a + Number(b.quantity || 0), 0);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.setTextColor(40, 40, 40);
-  doc.text(`Total Items: ${(shipment.items || []).length}    Total Qty: ${totalQty}`, leftX, endY);
-  endY += 8;
+  // ---- Recipient block (Arsenal Bold 11.3pt) — baselines from the source ----
+  const RX = 27.9;
+  let ry = 57.1;            // first baseline ("Name:")
+  const RSTEP = 15.75;
+  doc.setFont('Arsenal', 'normal');
+  doc.setFontSize(11.3);
+  // Measure/wrap with char-spacing OFF (getStringUnitWidth counts active spacing),
+  // then enable it for drawing.
+  doc.setCharSpace(0);
+  const addrLines = shipment.snapAddress
+    ? wrapTracked(`Address: ${comma(shipment.snapAddress)}`, 11.3, ARSENAL_TC, 261)
+    : [];
+  doc.setCharSpace(ARSENAL_TC);
+  const putR = (t) => { if (t) { doc.text(String(t), RX, ry); ry += RSTEP; } };
 
-  // Conditional zero-quantity notes (e.g. "Tshirts already couriered")
-  const zeroNotes = (shipment.items || []).filter(
-    i => Number(i.quantity || 0) === 0 && PRINTABLE_ZERO_REASONS.has(i.zeroReason)
-  );
-  if (zeroNotes.length) {
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(110, 110, 110);
-    zeroNotes.forEach(i => {
-      doc.text(`- ${i.name}: ${ZERO_REASON_LABELS[i.zeroReason]}`, leftX, endY);
-      endY += 5;
+  putR(`Name: ${comma(shipment.snapAcceptingName)}`);
+  addrLines.forEach(putR);
+  if (shipment.snapCity) putR(`City: ${comma(shipment.snapCity)}`);
+  if (shipment.snapState) putR(`State: ${comma(shipment.snapState)}`);
+  if (shipment.snapPinCode) putR(`Pin Code: ${shipment.snapPinCode}`);
+  if (shipment.snapAcceptingPhone) putR(`Mobile No: ${shipment.snapAcceptingPhone}`);
+
+  // ---- Item list (Hanken Grotesk Bold 8.2pt) — baselines from the source ----
+  const IX = 23.5;
+  let iy = 196.6;          // first item baseline
+  const ISTEP = 11.0;
+  doc.setFont('Hanken', 'normal');
+  doc.setFontSize(8.2);
+  doc.setCharSpace(HANKEN_TC);
+  (shipment.items || [])
+    .filter((i) => Number(i.quantity || 0) > 0)   // skip zero-quantity items
+    .forEach((i) => {
+      doc.text(`${i.name} - ${i.quantity}`, IX, iy);
+      iy += ISTEP;
     });
-  }
-
-  // "From" block, right column under the logo
-  let fy = 8 + logoH + 16;
-  doc.setTextColor(...NAVY);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
-  doc.text('From', rightX, fy); fy += 9;
-  doc.setFontSize(12);
-  doc.text('India Khelo Football', rightX, fy); fy += 7;
-  doc.setFont('helvetica', 'normal');
-  ['2315, Solus, Hiranandani Estate,', 'G. B Road, Thane (W) 400607'].forEach(l => { doc.text(l, rightX, fy); fy += 6.5; });
-  fy += 3;
-  doc.text('+91 99203 90771', rightX, fy); fy += 7;
-  doc.text('indiakhelofootball.com', rightX, fy);
-
-  // Tagline, bottom-right
-  doc.setFont('helvetica', 'bolditalic');
-  doc.setFontSize(18);
-  doc.setTextColor(...NAVY);
-  doc.text('Aap Khelo, Mauka Hum Denge!', pageW - 14, 198, { align: 'right' });
+  doc.setCharSpace(0);
 
   const city = (shipment.snapCity || 'Shipment').trim();
   doc.save(`Package Slip - ${city}.pdf`);
