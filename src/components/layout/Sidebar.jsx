@@ -19,6 +19,7 @@ import {
   LockOpen as RequestAccessIcon,
 } from "@mui/icons-material";
 import useGrants from "../../auth/useGrants";
+import { REPORT_KEYS } from "../../auth/roles";
 import "./Sidebar.css";
 
 export default function Sidebar({ collapsed, onToggle }) {
@@ -30,7 +31,7 @@ export default function Sidebar({ collapsed, onToggle }) {
   const canAccessPayments = canView('payments');
   const canAccessWorkOrders = canView('workorders');
   const canAccessBank = canView('bank');
-  const canAccessReports = canView('reports');
+  const canAccessReports = REPORT_KEYS.some((k) => canView(k));
   const canAccessCourier = canView('courier');
   const canManageConfig = canEdit('config'); // Admin = config management
   const canAccessControl = isSuper;

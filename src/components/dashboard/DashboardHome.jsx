@@ -22,7 +22,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../../auth/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { ROLES } from '../../auth/roles';
+import { ROLES, REPORT_KEYS } from '../../auth/roles';
 import useGrants from '../../auth/useGrants';
 import { trialsAPI, repAPI, vendorsAPI, workOrdersAPI, paymentRequestsAPI } from '../../services/api';
 
@@ -314,7 +314,7 @@ export default function DashboardHome() {
       )}
 
       {/* Reports & Assets */}
-      {canView('reports') && (
+      {REPORT_KEYS.some((k) => canView(k)) && (
         <Paper
           elevation={0}
           sx={{
@@ -330,19 +330,21 @@ export default function DashboardHome() {
             Reports & Assets
           </Typography>
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6} md={4}>
-              <Button
-                fullWidth variant="outlined" size="large" endIcon={<ArrowIcon />}
-                onClick={() => navigate('/reports/social-media')}
-                sx={{
-                  py: 1.75, borderRadius: 2.5, textTransform: 'none', fontWeight: 600, fontSize: '0.9375rem',
-                  color: '#EC4899', borderColor: '#EC4899', borderWidth: 2,
-                  '&:hover': { borderColor: '#DB2777', borderWidth: 2, bgcolor: '#FDF2F8' },
-                }}
-              >
-                Social Media Report
-              </Button>
-            </Grid>
+            {canView('report_social_media') && (
+              <Grid item xs={12} sm={6} md={4}>
+                <Button
+                  fullWidth variant="outlined" size="large" endIcon={<ArrowIcon />}
+                  onClick={() => navigate('/reports/social-media')}
+                  sx={{
+                    py: 1.75, borderRadius: 2.5, textTransform: 'none', fontWeight: 600, fontSize: '0.9375rem',
+                    color: '#EC4899', borderColor: '#EC4899', borderWidth: 2,
+                    '&:hover': { borderColor: '#DB2777', borderWidth: 2, bgcolor: '#FDF2F8' },
+                  }}
+                >
+                  Social Media Report
+                </Button>
+              </Grid>
+            )}
           </Grid>
         </Paper>
       )}

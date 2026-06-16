@@ -6,7 +6,7 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 import { ROLES } from "./roles";
 
-const GrantedRoute = ({ children, module, edit = false, fallbackRoles = [ROLES.SUPER_ADMIN, ROLES.ADMIN] }) => {
+const GrantedRoute = ({ children, module, anyOf, edit = false, fallbackRoles = [ROLES.SUPER_ADMIN, ROLES.ADMIN] }) => {
   const { user, isAuthenticated, perms, permsLoading } = useAuth();
 
   if (!isAuthenticated) {
@@ -24,6 +24,12 @@ const GrantedRoute = ({ children, module, edit = false, fallbackRoles = [ROLES.S
   }
 
   if (perms) {
+    // anyOf: allow when the user has a view grant on ANY listed module — used
+    // by the Reports hub, which opens with a single per-report grant.
+    if (anyOf) {
+      const allowed = anyOf.some((m) => perms.grants?.[m]?.can_view);
+      return allowed ? children : <Navigate to="/unauthorized" replace />;
+    }
     const grant = perms.grants?.[module];
     const allowed = edit ? grant?.can_edit : grant?.can_view;
     return allowed ? children : <Navigate to="/unauthorized" replace />;

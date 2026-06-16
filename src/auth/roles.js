@@ -6,6 +6,16 @@ export const ROLES = {
   REP: "REP",
 };
 
+// Per-report grant keys (mirror permissions/registry.REPORT_MODULES on the
+// backend). Each report is granted independently so a user can be given a
+// single report without any operational-module access.
+export const REPORT_KEYS = [
+  "report_social_media",
+  "report_payment_audit",
+  "report_vendor_audit",
+  "report_trial_spend",
+];
+
 // Define all available permissions
 export const PERMISSIONS = {
   // User Management

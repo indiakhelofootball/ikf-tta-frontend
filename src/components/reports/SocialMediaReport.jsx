@@ -11,7 +11,7 @@ import {
   Download as DownloadIcon,
   Language as WebIcon,
 } from '@mui/icons-material';
-import { repAPI } from '../../services/api';
+import { reportsAPI } from '../../services/api';
 import { downloadLogo, downloadMOU } from '../../utils/downloadHelpers';
 
 // ── Styles ───────────────────────────────────────────────────────────────────
@@ -285,7 +285,7 @@ export default function SocialMediaReport() {
     setToast({ open: true, message, severity });
 
   useEffect(() => {
-    repAPI.getAll({ limit: 1000 })
+    reportsAPI.socialMedia()
       .then(res => setReps(res.reps || []))
       .catch(() => showToast('Failed to load REPs', 'error'))
       .finally(() => setLoading(false));

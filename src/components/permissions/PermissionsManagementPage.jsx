@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, Fragment } from 'react';
 import {
   Box, Paper, Typography, List, ListItemButton, ListItemText, Chip, Avatar,
   Table, TableHead, TableRow, TableCell, TableBody, Checkbox, Button,
@@ -621,23 +621,36 @@ function UsersTab(props) {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {modules.map((m) => {
+                {modules.map((m, i) => {
                   const cell = grants[m.key] || emptyCell;
                   const includes = m.viewOnly ? '—'
                     : ['edit', m.canCreate && 'create', m.canDelete && 'delete'].filter(Boolean).join(', ');
+                  // Sub-header before the first report row — each report is
+                  // granted on its own, no operational-module access required.
+                  const showReportsHeader = m.group === 'reports'
+                    && (i === 0 || modules[i - 1].group !== 'reports');
                   return (
-                    <TableRow key={m.key} hover>
-                      <TableCell sx={{ fontWeight: 600, color: SLATE }}>{m.label}</TableCell>
-                      <TableCell align="center">
-                        <Checkbox size="small" checked={!!cell.can_view}
-                          onChange={(e) => setCell(m.key, 'can_view', e.target.checked)} />
-                      </TableCell>
-                      <TableCell align="center">
-                        <Checkbox size="small" checked={!!cell.can_edit} disabled={m.viewOnly}
-                          onChange={(e) => setCell(m.key, 'can_edit', e.target.checked)} />
-                      </TableCell>
-                      <TableCell sx={{ color: '#94a3b8', fontSize: '0.8rem' }}>{includes}</TableCell>
-                    </TableRow>
+                    <Fragment key={m.key}>
+                      {showReportsHeader && (
+                        <TableRow sx={{ bgcolor: '#f8fafc' }}>
+                          <TableCell colSpan={4} sx={{ fontWeight: 700, color: '#64748b', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                            Reports — granted individually
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      <TableRow hover>
+                        <TableCell sx={{ fontWeight: 600, color: SLATE }}>{m.label}</TableCell>
+                        <TableCell align="center">
+                          <Checkbox size="small" checked={!!cell.can_view}
+                            onChange={(e) => setCell(m.key, 'can_view', e.target.checked)} />
+                        </TableCell>
+                        <TableCell align="center">
+                          <Checkbox size="small" checked={!!cell.can_edit} disabled={m.viewOnly}
+                            onChange={(e) => setCell(m.key, 'can_edit', e.target.checked)} />
+                        </TableCell>
+                        <TableCell sx={{ color: '#94a3b8', fontSize: '0.8rem' }}>{includes}</TableCell>
+                      </TableRow>
+                    </Fragment>
                   );
                 })}
               </TableBody>

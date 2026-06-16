@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import useGrants from '../../auth/useGrants';
 import {
   Box, Container, Typography, Grid, Paper, Stack, Chip, Tooltip,
 } from '@mui/material';
@@ -23,6 +24,7 @@ const REPORTS = [
     path: '/reports/payment-audit',
     status: 'live',
     color: '#5B63D3',
+    grant: 'report_payment_audit',
   },
   {
     key: 'vendor-audit',
@@ -32,6 +34,7 @@ const REPORTS = [
     path: '/reports/vendor-audit',
     status: 'live',
     color: '#0891b2',
+    grant: 'report_vendor_audit',
   },
   {
     key: 'trial-spend',
@@ -41,6 +44,7 @@ const REPORTS = [
     path: '/reports/trial-spend',
     status: 'live',
     color: '#16a34a',
+    grant: 'report_trial_spend',
   },
   {
     key: 'batch-report',
@@ -68,6 +72,7 @@ const REPORTS = [
     path: '/reports/social-media',
     status: 'live',
     color: '#7c3aed',
+    grant: 'report_social_media',
   },
 ];
 
@@ -123,6 +128,12 @@ function ReportTile({ report, onOpen }) {
 
 function ReportsHub() {
   const navigate = useNavigate();
+  const { isSuper, canView } = useGrants();
+
+  // Show only the reports the user is granted. SUPER_ADMIN sees all.
+  const visibleReports = REPORTS.filter(
+    (r) => isSuper || (r.grant && canView(r.grant))
+  );
 
   return (
     <Box sx={{ py: 4 }}>
@@ -137,7 +148,7 @@ function ReportsHub() {
         </Stack>
 
         <Grid container spacing={1.5}>
-          {REPORTS.map(r => (
+          {visibleReports.map(r => (
             <Grid item xs={12} sm={6} md={4} lg={3} key={r.key}>
               <ReportTile report={r} onOpen={() => navigate(r.path)} />
             </Grid>
