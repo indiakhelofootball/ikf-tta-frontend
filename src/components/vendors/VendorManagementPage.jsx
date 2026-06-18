@@ -73,7 +73,7 @@ function VendorManagementPage() {
   const loadVendors = async ({ silent = false } = {}) => {
     try {
       if (!silent) setLoading(true);
-      const response = await vendorsAPI.getAll();
+      const response = await vendorsAPI.getAll({ limit: 1000 });
       setVendors(response.vendors || []);
     } catch (error) {
       console.error('Load error:', error);
