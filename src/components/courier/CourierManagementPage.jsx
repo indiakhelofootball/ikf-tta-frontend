@@ -22,7 +22,8 @@ import {
 } from '@mui/icons-material';
 import jsPDF from 'jspdf';
 import {
-  SLIP_PAGE_PT, SLIP_TEMPLATE_PNG, ARSENAL_BOLD_TTF, HANKEN_BOLD_TTF,
+  SLIP_PAGE_PT, SLIP_TEMPLATE_PNG,
+  BARLOW_REGULAR_TTF, BARLOW_BOLD_TTF, BARLOW_EXTRABOLD_TTF,
 } from './courierSlipAssets';
 import { repAPI, courierAPI } from '../../services/api';
 import { getCourierItems } from '../../utils/adminStorage';
@@ -91,81 +92,138 @@ function getShipmentFlag(shipment) {
   return null;
 }
 
-// Branded IKF courier slip — pixel-identical to the official package-slip artwork.
-// The static layer (logo, mascot, From block, tagline, "To,", field labels,
-// "Item Lists in Courier" heading, icons) is a high-res raster of the source PDF.
-// Only the recipient values and item lines are drawn live, in the artwork's own
-// fonts (Arsenal Bold / Hanken Grotesk Bold) at the exact baselines and colour.
-function downloadPDF(shipment) {
+// Fetch a (possibly remote) image URL and return a data: URL for jsPDF.
+// Data URLs are passed straight through; failures resolve to null (logo skipped).
+async function urlToDataURL(url) {
+  if (!url) return null;
+  if (String(url).startsWith('data:')) return url;
+  try {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    return await new Promise((resolve) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result);
+      r.onerror = () => resolve(null);
+      r.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
+// Branded IKF "TYGER-IKF Trial Kit" package slip — pixel-identical to the official
+// artwork. The static layer (header, SHIP TO / DISPATCHED FROM labels, CONTENTS table
+// with empty badges, sidebar, footer) is a high-res raster of the source PDF. Only the
+// REP name, recipient details, PIN/MOB, QTY numbers and the REP logo are drawn live,
+// in the artwork's own font (Barlow) at the exact baselines, colours and letter-spacing.
+async function downloadPDF(shipment, logoDataURL) {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: SLIP_PAGE_PT });
-  const [pageW, pageH] = SLIP_PAGE_PT;
-  const NAVY = [20, 74, 108];   // rgb(20,74,108) — the artwork's navy
+  const [pageW, pageH] = SLIP_PAGE_PT;   // 1440 x 810
+  const NAVY = [0, 36, 74];              // artwork navy
+  const QTY_COLOR = [241, 241, 241];     // off-white badge numbers
 
-  // Static template, full page.
-  doc.addImage(SLIP_TEMPLATE_PNG, 'PNG', 0, 0, pageW, pageH);
+  // Static template, full page (deflate-compressed to keep the download small).
+  doc.addImage(SLIP_TEMPLATE_PNG, 'PNG', 0, 0, pageW, pageH, 'slipTemplate', 'FAST');
 
-  // Register the artwork's fonts.
-  doc.addFileToVFS('Arsenal-Bold.ttf', ARSENAL_BOLD_TTF);
-  doc.addFont('Arsenal-Bold.ttf', 'Arsenal', 'normal');
-  doc.addFileToVFS('Hanken-Bold.ttf', HANKEN_BOLD_TTF);
-  doc.addFont('Hanken-Bold.ttf', 'Hanken', 'normal');
-  doc.setTextColor(...NAVY);
+  // Register the artwork's fonts (full Barlow — covers any recipient text).
+  doc.addFileToVFS('Barlow-Regular.ttf', BARLOW_REGULAR_TTF);
+  doc.addFont('Barlow-Regular.ttf', 'Barlow', 'normal');
+  doc.addFileToVFS('Barlow-Bold.ttf', BARLOW_BOLD_TTF);
+  doc.addFont('Barlow-Bold.ttf', 'Barlow', 'bold');
+  doc.addFileToVFS('Barlow-ExtraBold.ttf', BARLOW_EXTRABOLD_TTF);
+  doc.addFont('Barlow-ExtraBold.ttf', 'BarlowXB', 'normal');
 
-  // Trailing comma after a value, collapsing any the data already carries.
-  const comma = (s) => (s ? String(s).replace(/[,\s]+$/, '') + ',' : '');
+  // Draw tracked text at an exact baseline (x, y in pt from the source artwork).
+  const put = (text, x, y, { font = 'Barlow', style = 'normal', size, color = NAVY, tc = 0, align } = {}) => {
+    if (text === undefined || text === null || text === '') return;
+    doc.setFont(font, style);
+    doc.setFontSize(size);
+    doc.setTextColor(...color);
+    doc.setCharSpace(tc);
+    doc.text(String(text), x, y, align ? { align } : undefined);
+    doc.setCharSpace(0);
+  };
 
-  // The artwork applies fixed letter-spacing; reproduce it so live text matches.
-  const ARSENAL_TC = 1.163;   // pt of char-spacing at 11.3pt
-  const HANKEN_TC = 0.84;     // pt of char-spacing at 8.2pt
+  // Width-aware wrap honouring the active letter-spacing (Barlow Regular 23.809pt).
   const trackedWidth = (s, size, tc) => doc.getStringUnitWidth(s) * size + Math.max(0, s.length - 1) * tc;
-  const wrapTracked = (text, size, tc, maxW) => {
+  const wrapTracked = (text, size, tc, maxW, maxLines) => {
     const lines = [];
     let cur = '';
-    for (const w of String(text).split(' ')) {
+    for (const w of String(text).split(/\s+/).filter(Boolean)) {
       const t = cur ? `${cur} ${w}` : w;
       if (!cur || trackedWidth(t, size, tc) <= maxW) cur = t;
       else { lines.push(cur); cur = w; }
     }
     if (cur) lines.push(cur);
-    return lines;
+    return lines.slice(0, maxLines);
   };
 
-  // ---- Recipient block (Arsenal Bold 11.3pt) — baselines from the source ----
-  const RX = 27.9;
-  let ry = 57.1;            // first baseline ("Name:")
-  const RSTEP = 15.75;
-  doc.setFont('Arsenal', 'normal');
-  doc.setFontSize(11.3);
-  // Measure/wrap with char-spacing OFF (getStringUnitWidth counts active spacing),
-  // then enable it for drawing.
-  doc.setCharSpace(0);
+  // ---- Header subtitle: "Trial kit for <REP>" (Barlow Regular 22.619pt) ----
+  put(`Trial kit for ${shipment.snapRepName || ''}`, 259.23, 97.35, { size: 22.619, tc: 1.416 });
+
+  // ---- SPOC name (Barlow ExtraBold 24.217pt) ----
+  put(shipment.snapAcceptingName, 46.0, 223.39, { font: 'BarlowXB', size: 24.217 });
+
+  // ---- Address (≤3 lines) + City + State, packed contiguously into the 5 slots ----
+  const ADDR_SIZE = 23.809, ADDR_TC = 1.536, ADDR_X = 43.57;
+  const SLOT_Y0 = 259.88, SLOT_STEP = 32.66;   // baselines: 259.88, 292.54, 325.19, 357.85, 390.51
   const addrLines = shipment.snapAddress
-    ? wrapTracked(`Address: ${comma(shipment.snapAddress)}`, 11.3, ARSENAL_TC, 261)
+    ? wrapTracked(shipment.snapAddress, ADDR_SIZE, ADDR_TC, 640, 3)
     : [];
-  doc.setCharSpace(ARSENAL_TC);
-  const putR = (t) => { if (t) { doc.text(String(t), RX, ry); ry += RSTEP; } };
+  const block = [...addrLines];
+  if (shipment.snapCity) block.push(shipment.snapCity);
+  if (shipment.snapState) block.push(shipment.snapState);
+  block.slice(0, 5).forEach((line, i) => {
+    put(line, ADDR_X, SLOT_Y0 + i * SLOT_STEP, { size: ADDR_SIZE, tc: ADDR_TC });
+  });
 
-  putR(`Name: ${comma(shipment.snapAcceptingName)}`);
-  addrLines.forEach(putR);
-  if (shipment.snapCity) putR(`City: ${comma(shipment.snapCity)}`);
-  if (shipment.snapState) putR(`State: ${comma(shipment.snapState)}`);
-  if (shipment.snapPinCode) putR(`Pin Code: ${shipment.snapPinCode}`);
-  if (shipment.snapAcceptingPhone) putR(`Mobile No: ${shipment.snapAcceptingPhone}`);
+  // ---- PIN / MOB line (Barlow Bold 18.584pt) — labels & divider at fixed x ----
+  const PM = { size: 18.584, font: 'Barlow', style: 'bold', tc: 0.932 };
+  const PM_Y = 433.58;
+  put('PIN CODE', 43.57, PM_Y, PM);
+  put(shipment.snapPinCode, 137.38, PM_Y, PM);
+  put('|', 239.02, PM_Y, PM);
+  put('MOB', 299.47, PM_Y, PM);
+  put(shipment.snapAcceptingPhone, 352.46, PM_Y, PM);
 
-  // ---- Item list (Hanken Grotesk Bold 8.2pt) — baselines from the source ----
-  const IX = 23.5;
-  let iy = 196.6;          // first item baseline
-  const ISTEP = 11.0;
-  doc.setFont('Hanken', 'normal');
-  doc.setFontSize(8.2);
-  doc.setCharSpace(HANKEN_TC);
-  (shipment.items || [])
-    .filter((i) => Number(i.quantity || 0) > 0)   // skip zero-quantity items
-    .forEach((i) => {
-      doc.text(`${i.name} - ${i.quantity}`, IX, iy);
-      iy += ISTEP;
-    });
-  doc.setCharSpace(0);
+  // ---- CONTENTS quantities — off-white, centred in each badge circle ----
+  // QTY_X / baselines are the true pixel centroids of the circle artwork (the image
+  // bounding boxes are offset from the visible circles), so numbers sit dead-centre.
+  const QTY_X = 1207.7, QTY_SIZE = 17.02;
+  const items = shipment.items || [];
+  const nameLower = (s) => String(s || '').toLowerCase();
+  const findQty = (test) => {
+    const it = items.find((i) => test(nameLower(i.name)));
+    return it ? Number(it.quantity || 0) : 0;
+  };
+  const pad2 = (n) => String(n).padStart(2, '0');
+  // Baselines = badge centre-y + half cap-height (6.84pt @17.02), so each number
+  // is truly centred in its circle (the source art's own baselines were irregular).
+  const QTY_ROWS = [
+    { y: 416.86, qty: findQty((n) => n.includes('volunteer') || n.includes('shirt')) },
+    { y: 475.39, qty: findQty((n) => n.includes('banner')) },
+    { y: 529.58, qty: findQty((n) => n.includes('matchsheet')) },
+    { y: 585.89, qty: findQty((n) => n.includes('scout')) },
+    { y: 647.58, qty: findQty((n) => n.includes('bib') && n.includes('orange')) },
+    { y: 712.90, qty: findQty((n) => n.includes('bib') && n.includes('green')) },
+  ];
+  QTY_ROWS.forEach((r) => {
+    put(pad2(r.qty), QTY_X, r.y, { font: 'BarlowXB', size: QTY_SIZE, color: QTY_COLOR, align: 'center' });
+  });
+
+  // ---- REP logo, fitted (aspect-preserved) into the <REP LOGO SPACE> box ----
+  if (logoDataURL) {
+    try {
+      const props = doc.getImageProperties(logoDataURL);
+      const boxX = 319.3, boxY = 515.6, boxW = 204.7, boxH = 204.7;
+      const scale = Math.min(boxW / props.width, boxH / props.height);
+      const w = props.width * scale, h = props.height * scale;
+      doc.addImage(logoDataURL, props.fileType || 'PNG',
+        boxX + (boxW - w) / 2, boxY + (boxH - h) / 2, w, h);
+    } catch {
+      /* logo optional — skip on any decode error */
+    }
+  }
 
   const city = (shipment.snapCity || 'Shipment').trim();
   doc.save(`Package Slip - ${city}.pdf`);
@@ -354,6 +412,19 @@ export default function CourierManagementPage() {
 
   useEffect(() => { loadData(); }, []);
   useRefetchOnFocus(() => loadData({ silent: true }));
+
+  // Resolve the shipment's REP logo (via assignmentId → rep) then render the slip PDF.
+  async function handleDownload(s) {
+    let repLogoUrl = '';
+    for (const r of reps) {
+      if ((r.cityAssignments || []).some(a => a.id === s.assignmentId)) {
+        repLogoUrl = r.repLogoUrl || '';
+        break;
+      }
+    }
+    const logoData = await urlToDataURL(repLogoUrl);
+    await downloadPDF(s, logoData);
+  }
 
   const stats = useMemo(() => ({
     Draft: shipments.filter(s => s.status === 'Draft').length,
@@ -678,7 +749,7 @@ export default function CourierManagementPage() {
                       {s.status === 'Draft' && (
                         <>
                           <Tooltip title="Download packing slip PDF">
-                            <IconButton size="small" onClick={() => downloadPDF(s)} sx={{ color: '#5B63D3' }}>
+                            <IconButton size="small" onClick={() => handleDownload(s)} sx={{ color: '#5B63D3' }}>
                               <PdfIcon fontSize="small" />
                             </IconButton>
                           </Tooltip>
@@ -697,7 +768,7 @@ export default function CourierManagementPage() {
                       {['Dispatched', 'In Transit'].includes(s.status) && (
                         <>
                           <Tooltip title="Download dispatch PDF">
-                            <IconButton size="small" onClick={() => downloadPDF(s)} sx={{ color: '#5B63D3' }}>
+                            <IconButton size="small" onClick={() => handleDownload(s)} sx={{ color: '#5B63D3' }}>
                               <PdfIcon fontSize="small" />
                             </IconButton>
                           </Tooltip>
@@ -718,7 +789,7 @@ export default function CourierManagementPage() {
                       )}
                       {s.status === 'Delivered' && (
                         <Tooltip title="Download dispatch PDF">
-                          <IconButton size="small" onClick={() => downloadPDF(s)} sx={{ color: '#5B63D3' }}>
+                          <IconButton size="small" onClick={() => handleDownload(s)} sx={{ color: '#5B63D3' }}>
                             <PdfIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
