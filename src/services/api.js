@@ -816,4 +816,5 @@ export const reportsAPI = {
   paymentAudit: async () => apiService.request('/reports/payment-audit/'),
   vendorAudit: async () => apiService.request('/reports/vendor-audit/'),
   trialSpend: async () => apiService.request('/reports/trial-spend/'),
+  trials: async () => apiService.request('/reports/trials/'),
 };

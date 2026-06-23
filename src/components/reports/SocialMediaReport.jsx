@@ -219,11 +219,33 @@ function REPReportCard({ rep, selected, onSelect }) {
                     <Typography sx={{ fontSize: '0.95rem', fontWeight: 700, color: '#1e293b', mb: 0.5 }}>
                       {[a.trialSeason, a.trialType, a.city].filter(Boolean).join(' | ')}
                     </Typography>
-                    <Typography sx={{ fontSize: '0.875rem', color: '#64748b' }}>
-                      <Box component="span" sx={{ fontWeight: 600 }}>Ground Contact:</Box>{' '}
+                    {(a.physicalAddress || a.groundLocation) && (
+                      <Typography sx={{ fontSize: '0.875rem', color: '#64748b', mt: 0.25 }}>
+                        <Box component="span" sx={{ fontWeight: 600 }}>Trial Address:</Box>{' '}
+                        {a.physicalAddress || a.groundLocation}
+                        {a.googleMapLink && (
+                          <Box component="a" href={a.googleMapLink} target="_blank" rel="noopener noreferrer"
+                            sx={{ color: '#3B82F6', textDecoration: 'none', fontWeight: 600, ml: 0.5 }}>(Map)</Box>
+                        )}
+                      </Typography>
+                    )}
+                    <Typography sx={{ fontSize: '0.875rem', color: '#64748b', mt: 0.25 }}>
+                      <Box component="span" sx={{ fontWeight: 600 }}>Trial Contact:</Box>{' '}
                       {a.groundContactName || 'Not Available'}
                       {a.groundContactPhone ? ` · ${a.groundContactPhone}` : ''}
                     </Typography>
+                    {a.reportingTime && (
+                      <Typography sx={{ fontSize: '0.875rem', color: '#64748b', mt: 0.25 }}>
+                        <Box component="span" sx={{ fontWeight: 600 }}>Trial Time:</Box>{' '}
+                        {a.reportingTime}
+                      </Typography>
+                    )}
+                    {a.trialDate && (
+                      <Typography sx={{ fontSize: '0.875rem', color: '#64748b', mt: 0.25 }}>
+                        <Box component="span" sx={{ fontWeight: 600 }}>Trial Date:</Box>{' '}
+                        {a.trialDate}
+                      </Typography>
+                    )}
                   </Box>
                 ))}
               </Stack>
@@ -387,7 +409,7 @@ export default function SocialMediaReport() {
       {/* Header */}
       <Box sx={{ mb: 3 }}>
         <Typography variant="h5" fontWeight={700} sx={{ color: '#1e293b', mb: 0.5 }}>
-          Social Media Report
+          REP Report
         </Typography>
         <Typography variant="body2" sx={{ color: '#64748b' }}>
           {reps.length} REPs &middot; {reps.reduce((sum, r) => sum + (r.cityAssignments || []).length, 0)} assignments

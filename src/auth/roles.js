@@ -14,6 +14,7 @@ export const REPORT_KEYS = [
   "report_payment_audit",
   "report_vendor_audit",
   "report_trial_spend",
+  "report_trials",
 ];
 
 // Define all available permissions
