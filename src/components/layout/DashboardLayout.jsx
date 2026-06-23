@@ -14,7 +14,8 @@ const pageTitles = {
   "/payments": "Payments",
   "/logistics": "Logistics",
   "/profile": "Profile",
-  "/reports/social-media": "Social Media Report",
+  "/reports/social-media": "REP Report",
+  "/reports/trials": "Trials Report",
 };
 
 export default function DashboardLayout() {

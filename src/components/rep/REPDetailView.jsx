@@ -187,6 +187,7 @@ function REPDetailView({ rep, open, onClose, onEdit }) {
                     )}
                   </Stack>
                   <Box sx={grid2}>
+                    <Field label="Trial Date" value={a.trialDate} />
                     <Field label="City" value={a.city} />
                     <Field label="State" value={a.state} />
                     {a.region && <Field label="Region" value={a.region} />}

@@ -29,6 +29,7 @@ import ReportsHub from "./components/reports/ReportsHub";
 import PaymentAuditReport from "./components/reports/PaymentAuditReport";
 import VendorAuditReport from "./components/reports/VendorAuditReport";
 import TrialSpendReport from "./components/reports/TrialSpendReport";
+import TrialsReport from "./components/reports/TrialsReport";
 import CourierManagementPage from "./components/courier/CourierManagementPage";
 import PermissionsManagementPage from "./components/permissions/PermissionsManagementPage";
 import RequestAccessPage from "./components/permissions/RequestAccessPage";
@@ -161,6 +162,11 @@ function App() {
             <Route path="/reports/social-media" element={
               <GrantedRoute module="report_social_media">
                 <SocialMediaReport />
+              </GrantedRoute>
+            } />
+            <Route path="/reports/trials" element={
+              <GrantedRoute module="report_trials">
+                <TrialsReport />
               </GrantedRoute>
             } />
             <Route path="/courier" element={

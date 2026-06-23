@@ -47,6 +47,16 @@ const REPORTS = [
     grant: 'report_trial_spend',
   },
   {
+    key: 'trials',
+    title: 'Trials Report',
+    description: 'Assigned trials in one place with city and date, month-wise counts per project and overall, and which cities have a REP assigned vs unassigned.',
+    icon: <WorkOrderIcon />,
+    path: '/reports/trials',
+    status: 'live',
+    color: '#0d9488',
+    grant: 'report_trials',
+  },
+  {
     key: 'batch-report',
     title: 'Batch and Bank Reconciliation',
     description: 'Every batch sent to the bank with its payments, bounce rate and breakdown by bank (IDFC, ICICI).',
@@ -66,8 +76,8 @@ const REPORTS = [
   },
   {
     key: 'social-media',
-    title: 'Social Media',
-    description: 'REP social media presence with logos and MOU documents.',
+    title: 'REP Report',
+    description: 'Per-REP view with assigned trials, trial address, contact, time and date, plus logos and MOU documents.',
     icon: <SocialIcon />,
     path: '/reports/social-media',
     status: 'live',

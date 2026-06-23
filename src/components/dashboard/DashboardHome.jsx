@@ -341,7 +341,7 @@ export default function DashboardHome() {
                     '&:hover': { borderColor: '#DB2777', borderWidth: 2, bgcolor: '#FDF2F8' },
                   }}
                 >
-                  Social Media Report
+                  REP Report
                 </Button>
               </Grid>
             )}
