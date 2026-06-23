@@ -30,12 +30,13 @@ import {
   getCourierItems, saveCourierItems,
   refreshAllFromAPI,
 } from '../../utils/adminStorage';
+import { configAPI } from '../../services/api';
 
 const fieldSx = {
   '& .MuiOutlinedInput-root': { borderRadius: '12px', fontSize: '0.95rem' },
 };
 
-function OptionPanel({ title, subtitle, items, onSave }) {
+function OptionPanel({ title, subtitle, items, onSave, onRename = null }) {
   const [list, setList] = useState(items);
   const [newName, setNewName] = useState('');
   const [editingId, setEditingId] = useState(null);
@@ -85,6 +86,14 @@ function OptionPanel({ title, subtitle, items, onSave }) {
       return;
     }
     setDupeError('');
+    const original = list.find(i => i.id === editingId);
+    // For categories with a cascade (project names), route the rename through the
+    // backend so every record that copied the old string is updated too.
+    if (onRename && original && original.name !== name) {
+      onRename(original.name, name);
+      setEditingId(null);
+      return;
+    }
     persist(list.map(item =>
       item.id === editingId ? { ...item, name } : item
     ));
@@ -486,6 +495,7 @@ export default function AdminPage() {
   const [accountTypes, setAccountTypes] = useState([]);
   const [courierItems, setCourierItems] = useState([]);
   const [saveError, setSaveError] = useState('');
+  const [renameInfo, setRenameInfo] = useState('');
 
   const handleSave = (setter, saveFn) => (updated) => {
     setter(updated);
@@ -493,6 +503,25 @@ export default function AdminPage() {
     saveFn(updated).catch(() => {
       setSaveError('Failed to save — changes are local only. Check your connection and try again.');
     });
+  };
+
+  // Rename a project name through the backend so it cascades to every record that
+  // copied the old string (trials, trial cities, work orders).
+  const handleProjectRename = async (oldName, newName) => {
+    setSaveError(''); setRenameInfo('');
+    try {
+      const res = await configAPI.rename('project_name', oldName, newName);
+      const c = (res && res.cascade) || {};
+      setRenameInfo(
+        `Renamed "${oldName}" to "${newName}". Updated ${c.trials || 0} trial(s), ` +
+        `${c.trialCities || 0} city record(s), ${c.workOrders || 0} work order(s).`
+      );
+      await refreshAllFromAPI();
+      setProjectNames(getProjectNames());
+    } catch (err) {
+      setSaveError(err?.message || `Could not rename "${oldName}". It may already exist.`);
+      setProjectNames(getProjectNames());   // discard the optimistic edit
+    }
   };
 
   useEffect(() => {
@@ -538,6 +567,11 @@ export default function AdminPage() {
             {saveError}
           </Alert>
         )}
+        {renameInfo && (
+          <Alert severity="success" onClose={() => setRenameInfo('')} sx={{ mb: 2, borderRadius: '12px' }}>
+            {renameInfo}
+          </Alert>
+        )}
 
         <Stack spacing={1}>
           {/* ── PROJECT section ── */}
@@ -549,9 +583,10 @@ export default function AdminPage() {
           >
             <OptionPanel
               title="Project Names"
-              subtitle="These appear in the Project Name dropdown when creating a new project."
+              subtitle="These appear in the Project Name dropdown. Renaming a project updates it everywhere it's used — trials, trial cities and work orders."
               items={projectNames}
               onSave={handleSave(setProjectNames, saveProjectNames)}
+              onRename={handleProjectRename}
             />
             <OptionPanel
               title="Seasons"
