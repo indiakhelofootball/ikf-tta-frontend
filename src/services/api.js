@@ -584,6 +584,15 @@ export const configAPI = {
     return apiService.request(`/config/${id}/`, { method: 'DELETE' });
   },
 
+  // Rename a config value in place; for project_name this cascades to every record
+  // that copied the old string (trials, trial cities, work orders).
+  rename: async (category, oldValue, newValue) => {
+    return apiService.request('/config/rename/', {
+      method: 'POST',
+      body: JSON.stringify({ category, oldValue, newValue }),
+    });
+  },
+
   bulk: async (items) => {
     return apiService.request('/config/bulk/', {
       method: 'POST',
