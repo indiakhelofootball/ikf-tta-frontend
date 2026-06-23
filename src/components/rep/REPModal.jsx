@@ -489,6 +489,17 @@ function REPModal({ open, onClose, onSave, editingREP }) {
             courierSubArea: editCourierSubArea,
           });
         }
+        // If the "Assign New Trial" panel is open and filled, create that
+        // assignment too — the footer Save must not silently drop it.
+        if (addingNewAssignment && lookupProject && assignmentData.city && assignmentData.state) {
+          await repAPI.addAssignment(editingREP.id, {
+            trialId: Number(lookupProject),
+            ...assignmentData,
+            courierDistrict,
+            courierState,
+            courierSubArea,
+          });
+        }
         // Org fields
         const repData = { ...orgData };
         repData.mouDocumentName = mouDocument ? mouDocument.name : (editingREP?.mouDocumentName || '');
@@ -1007,15 +1018,14 @@ function REPModal({ open, onClose, onSave, editingREP }) {
                       setLookupCityObj(null);
                       if (val) {
                         const libCities = City.getCitiesOfState('IN', val.isoCode);
-                        const stateLower = val.name.toLowerCase();
-                        const allCities = libCities.map(c => ({
-                          ...c,
-                          _assigned: _repAssignedCities.has(`${stateLower}|${c.name.toLowerCase()}`),
-                        }));
-                        allCities.sort((a, b) => {
-                          if (a._assigned !== b._assigned) return a._assigned ? 1 : -1;
-                          return a.name.localeCompare(b.name);
-                        });
+                        const libNames = new Set(libCities.map(c => c.name.toLowerCase()));
+                        const projectCities = (trialCitiesByState[val.name] || [])
+                          .filter(name => !libNames.has(name.toLowerCase()))
+                          .map(name => ({ name, isProjectCity: true }));
+                        // A city assigned under another project is a fresh start
+                        // here, so don't grey it — just list alphabetically.
+                        const allCities = [...libCities, ...projectCities]
+                          .sort((a, b) => a.name.localeCompare(b.name));
                         setLookupAvailCities(allCities);
                       } else {
                         setLookupAvailCities([]);
@@ -1041,11 +1051,8 @@ function REPModal({ open, onClose, onSave, editingREP }) {
                       const { key, ...otherProps } = props;
                       return (
                         <Box component="li" key={option.name} {...otherProps}
-                          sx={{ py: 1, px: 2, fontSize: '0.88rem', borderBottom: '1px solid #f3f4f6', '&:hover': { backgroundColor: '#f0f9ff !important' }, opacity: option._assigned ? 0.55 : 1 }}>
+                          sx={{ py: 1, px: 2, fontSize: '0.88rem', borderBottom: '1px solid #f3f4f6', '&:hover': { backgroundColor: '#f0f9ff !important' } }}>
                           <HighlightMatch text={option.name} query={cityInputValue} />
-                          {option._assigned && (
-                            <Typography component="span" sx={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 600, ml: 1 }}>ASSIGNED</Typography>
-                          )}
                         </Box>
                       );
                     }}
