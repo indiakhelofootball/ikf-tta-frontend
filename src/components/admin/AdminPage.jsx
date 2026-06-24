@@ -36,7 +36,7 @@ const fieldSx = {
   '& .MuiOutlinedInput-root': { borderRadius: '12px', fontSize: '0.95rem' },
 };
 
-function OptionPanel({ title, subtitle, items, onSave, onRename = null }) {
+function OptionPanel({ title, subtitle, items, onSave, onRename = null, autoCode = false }) {
   const [list, setList] = useState(items);
   const [newName, setNewName] = useState('');
   const [editingId, setEditingId] = useState(null);
@@ -63,7 +63,15 @@ function OptionPanel({ title, subtitle, items, onSave, onRename = null }) {
       return;
     }
     setDupeError('');
-    const updated = [...list, { id: Date.now(), name }];
+    // For project names, set a default code abbreviation (comment) at creation time
+    // so it's never blank — this is the same fallback trialCodeGenerator.js already
+    // uses today, just persisted up front instead of recomputed every time. Without
+    // this, a future rename of this project would have nothing to preserve and the
+    // trial-code prefix would drift the moment the name changes.
+    const newItem = autoCode
+      ? { id: Date.now(), name, comment: name.substring(0, 3).toUpperCase() }
+      : { id: Date.now(), name };
+    const updated = [...list, newItem];
     persist(updated);
     setNewName('');
   };
@@ -512,10 +520,14 @@ export default function AdminPage() {
     try {
       const res = await configAPI.rename('project_name', oldName, newName);
       const c = (res && res.cascade) || {};
-      setRenameInfo(
-        `Renamed "${oldName}" to "${newName}". Updated ${c.trials || 0} trial(s), ` +
-        `${c.trialCities || 0} city record(s), ${c.workOrders || 0} work order(s).`
-      );
+      // Lead with what actually matters (trials) and only mention city/WO records
+      // when something was really touched — most renames legitimately update 0 of
+      // those, and reporting "0 city records, 0 work orders" every time read as if
+      // the rename had partially failed.
+      const parts = [`${c.trials || 0} trial(s)`];
+      if (c.trialCities) parts.push(`${c.trialCities} city record(s)`);
+      if (c.workOrders) parts.push(`${c.workOrders} work order(s)`);
+      setRenameInfo(`Renamed "${oldName}" to "${newName}". Updated ${parts.join(', ')}.`);
       await refreshAllFromAPI();
       setProjectNames(getProjectNames());
     } catch (err) {
@@ -587,6 +599,7 @@ export default function AdminPage() {
               items={projectNames}
               onSave={handleSave(setProjectNames, saveProjectNames)}
               onRename={handleProjectRename}
+              autoCode
             />
             <OptionPanel
               title="Seasons"

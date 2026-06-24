@@ -92,7 +92,7 @@ function TrialWizard() {
     setToast({ open: true, message, severity });
 
   const autoProjectCode = (formData.projectName && formData.season)
-    ? generateProjectCode(formData.projectName, formData.season, existingTrials)
+    ? generateProjectCode(formData.projectName, formData.season, existingTrials, adminProjects)
     : '';
 
   const handleChange = useCallback((field) => (e) => {
@@ -115,7 +115,7 @@ function TrialWizard() {
   const handleSubmit = async () => {
     setSaving(true);
     try {
-      const code = generateProjectCode(formData.projectName, formData.season, existingTrials);
+      const code = generateProjectCode(formData.projectName, formData.season, existingTrials, adminProjects);
       const existing = existingTrials.find(
         t => t.trialType === formData.projectName && t.season === formData.season
       );

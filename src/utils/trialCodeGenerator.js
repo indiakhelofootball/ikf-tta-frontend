@@ -39,13 +39,17 @@ const getNextNumber = (prefix, existingTrials = []) => {
  * @param {string} projectName - e.g., "IKF" or "Project Nari Shakti"
  * @param {string} season - e.g., "Season 5"
  * @param {Array} existingTrials - array of existing trials
+ * @param {Array} adminProjects - admin-managed project list, each { name, comment }.
+ *   `comment` holds the project's code abbreviation (set on create, survives renames
+ *   since a rename updates the row in place). Preferred over the hardcoded map so a
+ *   renamed project keeps the same code prefix for all of its future trials.
  * @returns {string}
  */
-export const generateProjectCode = (projectName, season, existingTrials = []) => {
-  const projectCode = PROJECT_CODES_MAP[projectName] || projectName.substring(0, 3).toUpperCase();
+export const generateProjectCode = (projectName, season, existingTrials = [], adminProjects = []) => {
+  const match = adminProjects.find((p) => p.name === projectName);
+  const projectCode = (match && match.comment) || PROJECT_CODES_MAP[projectName] || projectName.substring(0, 3).toUpperCase();
   const seasonCode = getSeasonCode(season);
   const prefix = `${projectCode}-${seasonCode}`;
   const number = getNextNumber(prefix, existingTrials);
   return `${prefix}-${number}`;
 };
-

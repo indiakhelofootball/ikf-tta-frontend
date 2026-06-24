@@ -11,11 +11,10 @@ export const SEASONS_PROJECT = ['Season 5', 'Season 6', 'Season 7'];
 // Project name options for the wizard dropdown
 export const PROJECT_NAMES = ['IKF', 'Project Nari Shakti'];
 
-// Short codes used in project code generation
-export const PROJECT_CODES = {
-  'IKF': 'IKF',
-  'Project Nari Shakti': 'PNS',
-};
+// NOTE: code abbreviations used to live here as a second, unsynced copy of the map
+// in src/utils/trialCodeGenerator.js. Removed (dead code — confirmed unused outside
+// this file) so there's only one place a project's code abbreviation can live: the
+// admin-managed ConfigOption.comment field, read via trialCodeGenerator.js.
 
 // "Not Any" = no tier / not applicable
 export const TIER_TYPES = [
