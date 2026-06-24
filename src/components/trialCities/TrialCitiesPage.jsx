@@ -61,6 +61,7 @@ function TrialCitiesPage() {
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
   const [bulkData, setBulkData] = useState([]);
   const [bulkErrors, setBulkErrors] = useState([]);
+  const [bulkWarnings, setBulkWarnings] = useState([]);
   const [bulkUploading, setBulkUploading] = useState(false);
   const [bulkProgress, setBulkProgress] = useState(0);
   const fileInputRef = useRef(null);
@@ -276,14 +277,27 @@ function TrialCitiesPage() {
     }
   };
 
+  // Same options CityModal.jsx offers for "Trial Type" — used only to warn on a CSV
+  // import that doesn't match, never to block it. Trial Cities' trial_type field is a
+  // fixed category here, not a project name; this just catches accidental free text
+  // (e.g. someone pasting a project name into this column) before it lands silently.
+  const KNOWN_TRIAL_TYPES = [
+    'IKF Season Trial',
+    'Exclusive IKF Season Trial',
+    'CSR Project Trial',
+    'Zonals',
+    'Other',
+  ];
+
   const parseCSV = (text) => {
     try {
       const lines = text.split('\n').filter(l => l.trim());
-      if (lines.length < 2) return { data: [], errors: ['CSV file is empty or invalid'] };
+      if (lines.length < 2) return { data: [], errors: ['CSV file is empty or invalid'], warnings: [] };
 
       const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
       const data = [];
       const errors = [];
+      const warnings = [];
 
       for (let i = 1; i < lines.length; i++) {
         const values = lines[i].split(',').map(v => v.trim());
@@ -293,6 +307,9 @@ function TrialCitiesPage() {
         if (!row.state || !row.city) {
           errors.push(`Row ${i + 1}: state & city are required`);
         } else {
+          if (row.trialtype && !KNOWN_TRIAL_TYPES.includes(row.trialtype)) {
+            warnings.push(`Row ${i + 1}: "${row.trialtype}" isn't a standard trial type — it will be imported as-is.`);
+          }
           data.push({
             state: row.state,
             city: row.city,
@@ -302,10 +319,10 @@ function TrialCitiesPage() {
           });
         }
       }
-      return { data, errors };
+      return { data, errors, warnings };
     } catch (error) {
       console.error('Error parsing CSV:', error);
-      return { data: [], errors: ['Failed to parse CSV file. Please check the format.'] };
+      return { data: [], errors: ['Failed to parse CSV file. Please check the format.'], warnings: [] };
     }
   };
 
@@ -333,9 +350,10 @@ function TrialCitiesPage() {
       
       reader.onload = ev => {
         try {
-          const { data, errors } = parseCSV(ev.target.result);
+          const { data, errors, warnings } = parseCSV(ev.target.result);
           setBulkData(data);
           setBulkErrors(errors);
+          setBulkWarnings(warnings || []);
           setBulkUploadOpen(true);
         } catch (error) {
           console.error('Error processing CSV:', error);
@@ -604,6 +622,12 @@ function TrialCitiesPage() {
               <Alert severity="error" sx={{ mb: 2 }}>
                 <Typography variant="subtitle2" gutterBottom>CSV Errors:</Typography>
                 {bulkErrors.map((e, i) => <div key={i}>• {e}</div>)}
+              </Alert>
+            )}
+            {bulkWarnings.length > 0 && (
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                <Typography variant="subtitle2" gutterBottom>Heads up:</Typography>
+                {bulkWarnings.map((w, i) => <div key={i}>• {w}</div>)}
               </Alert>
             )}
             <TableContainer component={Paper} variant="outlined">
