@@ -79,6 +79,21 @@ function PaymentDetailDialog({ open, onClose, payment, onUpdate, mode: initialMo
             bgcolor: statusStyle.bg, color: statusStyle.color,
             border: `1px solid ${statusStyle.border}`, fontWeight: 600, fontSize: '0.7rem',
           }} />
+          {payment.bounceResolved && (
+            <Chip
+              label="Bounced → Resolved"
+              size="small"
+              title={[
+                payment.bounceResolvedBy && `by ${payment.bounceResolvedBy}`,
+                payment.bounceResolvedAt && new Date(payment.bounceResolvedAt).toLocaleDateString('en-IN'),
+                payment.bounceResolvedNote,
+              ].filter(Boolean).join(' · ')}
+              sx={{
+                bgcolor: '#eef2ff', color: '#4338ca', border: '1px solid #c7d2fe',
+                fontWeight: 600, fontSize: '0.7rem',
+              }}
+            />
+          )}
           <IconButton size="small" onClick={onClose}><CloseIcon /></IconButton>
         </Stack>
       </DialogTitle>

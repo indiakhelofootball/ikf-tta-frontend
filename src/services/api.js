@@ -693,6 +693,15 @@ export const paymentRequestsAPI = {
   delete: async (id) => {
     return apiService.request(`/payment-requests/${id}/`, { method: 'DELETE' });
   },
+
+  // Non-destructive "Resolve" for a bounced payment: marks it resolved so it
+  // leaves "Needs Resolution" and moves to Past Payments. Touches no money/TDS.
+  resolve: async (id, body = {}) => {
+    return apiService.request(`/payment-requests/${id}/resolve/`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
 };
 
 // ============================================

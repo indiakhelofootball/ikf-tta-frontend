@@ -22,7 +22,7 @@ import autoTable from 'jspdf-autotable';
 import WorkOrderCard from './WorkOrderCard';
 import WorkOrderModal from './WorkOrderModal';
 import WorkOrderDetailView from './WorkOrderDetailView';
-import { vendorsAPI, workOrdersAPI } from '../../services/api';
+import { vendorsAPI, workOrdersAPI, paymentRequestsAPI } from '../../services/api';
 import { getVendorTypeNames } from '../../utils/adminStorage';
 import { WO_STATUSES, isWOFullyPaid, getPeriodLabel } from './workOrderData';
 import useGrants from '../../auth/useGrants';
@@ -291,18 +291,46 @@ function WorkOrderManagementPage() {
     }
   };
 
-  const handleRemoveBounced = async (wo) => {
+  // Non-destructive: mark the WO's bounced payment(s) Resolved. The WO stays on
+  // file (moves to Past Payments); it just leaves "Needs Resolution". No delete.
+  const handleResolveBounced = async (wo) => {
+    const id = wo.id || wo._id;
     const msg =
-      `Remove ${wo.workOrderNumber} permanently?\n\n` +
-      `This will delete the work order AND its ${wo.bouncedPaymentCount} bounced payment record(s). ` +
-      `This cannot be undone.`;
+      `Mark ${wo.workOrderNumber}'s bounced payment(s) as Resolved?\n\n` +
+      `The work order stays on file and the bounced record moves to Past Payments. ` +
+      `Nothing is deleted, and no amount or TDS changes.`;
+    if (!window.confirm(msg)) return;
+    try {
+      const res = await paymentRequestsAPI.getAll({ workOrder: id, limit: 200 });
+      const prs = (res.paymentRequests || []).filter(
+        (p) => p.status === 'Payment Bounced' && !p.bounceResolved
+      );
+      if (prs.length === 0) {
+        showToast('No unresolved bounced payments found.', 'info');
+        return;
+      }
+      await Promise.all(prs.map((p) => paymentRequestsAPI.resolve(p.id || p._id)));
+      showToast(`Resolved ${prs.length} bounced payment(s) — moved to Past Payments`);
+      fetchWorkOrders();
+    } catch (err) {
+      showToast(err.message || 'Failed to resolve bounced payment.', 'error');
+    }
+  };
+
+  // Destructive: only for a junk WO whose payments are all bounced. The backend
+  // refuses (409) if any real (non-bounced) payment exists — use Resolve there.
+  const handleDeleteBounced = async (wo) => {
+    const msg =
+      `Delete ${wo.workOrderNumber} permanently?\n\n` +
+      `This wipes the work order AND its ${wo.bouncedPaymentCount} bounced payment record(s). ` +
+      `Only use this for a work order created by mistake. This cannot be undone.`;
     if (!window.confirm(msg)) return;
     try {
       await workOrdersAPI.resolveBounced(wo.id || wo._id);
-      showToast('Work order and bounced payments removed');
+      showToast('Work order and bounced payments deleted');
       fetchWorkOrders();
     } catch (err) {
-      showToast(err.message || 'Failed to remove work order.', 'error');
+      showToast(err.message || 'Failed to delete work order.', 'error');
     }
   };
 
@@ -556,7 +584,8 @@ function WorkOrderManagementPage() {
                         onEdit={handleEdit}
                         onDelete={handleDelete}
                         onRaisePayment={handleRaisePayment}
-                        onRemoveBounced={handleRemoveBounced}
+                        onResolveBounced={handleResolveBounced}
+                        onRemoveBounced={handleDeleteBounced}
                         onDownloadPDF={downloadWOPdf}
                       />
                     </Grid>
