@@ -13,7 +13,7 @@ import {
 import { WO_STATUS_COLORS, isWOFullyPaid } from './workOrderData';
 import useGrants from '../../auth/useGrants';
 
-function WorkOrderCard({ workOrder, onView, onEdit, onDelete, onRaisePayment, onRemoveBounced, onDownloadPDF, isPast }) {
+function WorkOrderCard({ workOrder, onView, onEdit, onDelete, onRaisePayment, onResolveBounced, onRemoveBounced, onDownloadPDF, isPast }) {
   const { canEdit } = useGrants();
   const fullyPaid = isWOFullyPaid(workOrder);
   const bouncedCount = parseInt(workOrder.bouncedPaymentCount || 0, 10);
@@ -132,7 +132,7 @@ function WorkOrderCard({ workOrder, onView, onEdit, onDelete, onRaisePayment, on
               Edit
             </Button>
           )}
-          {!isPast && canEdit('workorders') && (
+          {!isPast && !hasBounced && canEdit('workorders') && (
             <Button size="small" variant="outlined" startIcon={<DeleteIcon fontSize="small" />}
               onClick={() => onDelete(workOrder)}
               sx={{
@@ -177,20 +177,36 @@ function WorkOrderCard({ workOrder, onView, onEdit, onDelete, onRaisePayment, on
                 Raise Payment
               </Button>
             )}
+            {hasBounced && onResolveBounced && canEdit('payments') && (
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<ResolveIcon fontSize="small" />}
+                onClick={() => onResolveBounced(workOrder)}
+                title="Mark the bounced payment as resolved and move it to Past Payments — nothing is deleted"
+                sx={{
+                  textTransform: 'none', fontWeight: 700, fontSize: '0.82rem',
+                  borderColor: '#c7d2fe', color: '#4338ca', borderRadius: 1.5,
+                  '&:hover': { borderColor: '#818cf8', bgcolor: '#eef2ff' },
+                }}
+              >
+                Resolve
+              </Button>
+            )}
             {hasBounced && onRemoveBounced && canEdit('workorders') && (
               <Button
                 size="small"
-                variant="contained"
-                startIcon={<ResolveIcon fontSize="small" />}
+                variant="outlined"
+                startIcon={<DeleteIcon fontSize="small" />}
                 onClick={() => onRemoveBounced(workOrder)}
-                title="Permanently delete this work order and its bounced payment records"
+                title="Delete this work order and its bounced records — only for a work order created by mistake"
                 sx={{
                   textTransform: 'none', fontWeight: 700, fontSize: '0.82rem',
-                  bgcolor: '#dc2626', color: '#fff', borderRadius: 1.5, boxShadow: 'none',
-                  '&:hover': { bgcolor: '#b91c1c', boxShadow: 'none' },
+                  borderColor: '#fecaca', color: '#dc2626', borderRadius: 1.5,
+                  '&:hover': { borderColor: '#f87171', bgcolor: '#fef2f2' },
                 }}
               >
-                Remove
+                Delete
               </Button>
             )}
           </Stack>
