@@ -81,6 +81,7 @@ function REPModal({ open, onClose, onSave, editingREP }) {
     instagram: '', instagramNA: false,
     telegram: '', telegramNA: false,
     mouStatus: '',
+    repLogoLink: '',
   });
 
   // ── City-specific assignment state (Add mode) ──
@@ -204,6 +205,7 @@ function REPModal({ open, onClose, onSave, editingREP }) {
         instagram: editingREP.instagram || '', instagramNA: !!editingREP.instagramNA,
         telegram: editingREP.telegram || '', telegramNA: !!editingREP.telegramNA,
         mouStatus: editingREP.mouStatus || '',
+        repLogoLink: editingREP.repLogoLink || '',
       });
       if (editingREP.mouDocumentUrl) setMouDocumentPreview(editingREP.mouDocumentUrl);
       if (editingREP.repLogoUrl) setRepLogoPreview(editingREP.repLogoUrl);
@@ -215,6 +217,7 @@ function REPModal({ open, onClose, onSave, editingREP }) {
         website: '', websiteNA: false, facebook: '', facebookNA: false,
         instagram: '', instagramNA: false, telegram: '', telegramNA: false,
         mouStatus: '',
+        repLogoLink: '',
       });
       setMouDocument(null); setMouDocumentPreview(null);
       setRepLogo(null); setRepLogoPreview(null);
@@ -1333,6 +1336,14 @@ function REPModal({ open, onClose, onSave, editingREP }) {
                     </Box>
                   )}
                   <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>PNG/JPG, max 2MB</Typography>
+                  <TextField
+                    fullWidth size="small" placeholder="https://drive.google.com/..."
+                    value={orgData.repLogoLink} onChange={handleOrgChange('repLogoLink')}
+                    disabled={saving || !canFillForm}
+                    label="Original logo link (optional)"
+                    helperText="Paste a Drive/URL link to the full-quality original"
+                    sx={{ mt: 0.5 }}
+                  />
                 </Box>
               </Box>
             </Box>
