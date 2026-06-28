@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box, Container, Typography, Button, Stack, Snackbar, Alert,
   CircularProgress, TextField, InputAdornment,
@@ -7,6 +8,7 @@ import {
   Add as AddIcon,
   VolunteerActivism as CSRIcon,
   Search as SearchIcon,
+  Category as CategoryIcon,
 } from '@mui/icons-material';
 
 import CSRProjectCard from './CSRProjectCard';
@@ -17,6 +19,7 @@ import useRefetchOnFocus from '../../hooks/useRefetchOnFocus';
 
 export default function CSRProjectManagementPage() {
   const { canEdit } = useGrants();
+  const navigate = useNavigate();
   const editable = canEdit('csr');
 
   const [projects, setProjects] = useState([]);
@@ -98,11 +101,19 @@ export default function CSRProjectManagementPage() {
           <CSRIcon color="primary" />
           <Typography variant="h5">CSR Projects</Typography>
         </Stack>
-        {editable && (
-          <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
-            New Project
+        <Stack direction="row" spacing={1}>
+          <Button
+            variant="outlined" startIcon={<CategoryIcon />}
+            onClick={() => navigate('/csr/activity-types')}
+          >
+            Activity Types
           </Button>
-        )}
+          {editable && (
+            <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
+              New Project
+            </Button>
+          )}
+        </Stack>
       </Stack>
 
       <TextField

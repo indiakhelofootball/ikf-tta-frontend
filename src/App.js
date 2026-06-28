@@ -31,7 +31,7 @@ import VendorAuditReport from "./components/reports/VendorAuditReport";
 import TrialSpendReport from "./components/reports/TrialSpendReport";
 import TrialsReport from "./components/reports/TrialsReport";
 import CourierManagementPage from "./components/courier/CourierManagementPage";
-import { CSRProjectManagementPage, CSRProjectDetailPage } from "./components/csr";
+import { CSRProjectManagementPage, CSRProjectDetailPage, CSRActivityTypesPage } from "./components/csr";
 import PermissionsManagementPage from "./components/permissions/PermissionsManagementPage";
 import RequestAccessPage from "./components/permissions/RequestAccessPage";
 
@@ -178,6 +178,11 @@ function App() {
             <Route path="/csr" element={
               <GrantedRoute module="csr">
                 <CSRProjectManagementPage />
+              </GrantedRoute>
+            } />
+            <Route path="/csr/activity-types" element={
+              <GrantedRoute module="csr">
+                <CSRActivityTypesPage />
               </GrantedRoute>
             } />
             <Route path="/csr/:id" element={
