@@ -172,3 +172,8 @@ test.js
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Local scratch artifacts (not part of the repo)
+Untitled.txt
+WhatsApp Video*
+CSR_Module_Design_Review.docx
