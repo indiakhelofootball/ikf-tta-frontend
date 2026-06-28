@@ -98,3 +98,23 @@ Tooling delivered (uncommitted, backend repo):
    same WO/period"? (UI implies yes via `bouncedPeriods`/`bouncedPaymentCount`.)
 
 **No code changed. This is diagnosis only.**
+
+---
+
+## RESOLUTION — CLOSED (item #5 fully done: code + data)
+
+**Status as of 2026-06-27: RESOLVED in code AND in production.**
+
+1. **Code fix shipped.** Root cause moved from create-time guessing to
+   bounce-time voiding: on bounce the PR's TDS is voided
+   (`payments/serializers.py:219`, `update(voided=True)`), un-voided on un-bounce
+   (`:241`); `TDSRecord.voided` flag added (migration `0004`); every TDS total
+   filters `voided=False` (payments + reports views, both dedupe commands);
+   regression suite `payments/test_tds_flow_map.py`.
+2. **Production data cleaned.** The historical double-counted rows were fixed by
+   running `dedupe_tds_records --apply` on prod — **confirmed done by the user
+   (abhishek) on 2026-06-27.** No further prod run is owed.
+
+**Therefore item #5 is fully closed.** Do NOT re-flag "prod cleanup still
+pending" — it has been run. Both the active code path and the legacy data are
+corrected.

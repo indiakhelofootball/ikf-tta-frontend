@@ -1,3 +1,5 @@
+> **SUPERSEDED — see `_docs/planning/CSR_COMPLETE_REFERENCE.md` (the single source of truth). Kept for history. NOTE: this doc's `CSR_OPS` role is WRONG — internal CSR is a `csr` grant, not a role.**
+
 # CSR — Implementation Plan
 
 How we are building the CSR app on top of TTA. Companion to

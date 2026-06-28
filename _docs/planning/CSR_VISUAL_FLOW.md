@@ -1,3 +1,5 @@
+> **SUPERSEDED — see `_docs/planning/CSR_COMPLETE_REFERENCE.md` (the single source of truth). Kept for history.**
+
 # CSR Module — Functional Flow
 
 A non-technical walkthrough of the CSR module's scope, structure, and operation.
