@@ -836,3 +836,28 @@ export const reportsAPI = {
   trialSpend: async () => apiService.request('/reports/trial-spend/'),
   trials: async () => apiService.request('/reports/trials/'),
 };
+
+// ============================================
+// CSR API — org side only (/api/csr/...), gated by the `csr` grant.
+// The external client/partner surface (/api/client/) is a later, gated phase.
+// ============================================
+function csrCrud(base) {
+  return {
+    getAll: async () => apiService.request(`${base}/`),
+    getById: async (id) => apiService.request(`${base}/${id}/`),
+    create: async (data) =>
+      apiService.request(`${base}/`, { method: 'POST', body: JSON.stringify(data) }),
+    update: async (id, data) =>
+      apiService.request(`${base}/${id}/`, { method: 'PUT', body: JSON.stringify(data) }),
+    delete: async (id) => apiService.request(`${base}/${id}/`, { method: 'DELETE' }),
+  };
+}
+
+export const csrAPI = {
+  projects: csrCrud('/csr/projects'),
+  activities: csrCrud('/csr/activities'),
+  activityTypes: csrCrud('/csr/activity-types'),
+  reports: csrCrud('/csr/reports'),
+  expenseTags: csrCrud('/csr/expense-tags'),
+  clientUsers: csrCrud('/csr/client-users'),
+};

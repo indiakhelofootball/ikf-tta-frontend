@@ -31,6 +31,7 @@ import VendorAuditReport from "./components/reports/VendorAuditReport";
 import TrialSpendReport from "./components/reports/TrialSpendReport";
 import TrialsReport from "./components/reports/TrialsReport";
 import CourierManagementPage from "./components/courier/CourierManagementPage";
+import { CSRProjectManagementPage } from "./components/csr";
 import PermissionsManagementPage from "./components/permissions/PermissionsManagementPage";
 import RequestAccessPage from "./components/permissions/RequestAccessPage";
 
@@ -172,6 +173,11 @@ function App() {
             <Route path="/courier" element={
               <GrantedRoute module="courier">
                 <CourierManagementPage />
+              </GrantedRoute>
+            } />
+            <Route path="/csr" element={
+              <GrantedRoute module="csr">
+                <CSRProjectManagementPage />
               </GrantedRoute>
             } />
             <Route path="/user-management" element={
