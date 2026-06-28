@@ -110,7 +110,7 @@ function REPDetailView({ rep, open, onClose, onEdit }) {
   ].filter(f => rep[f.key] || rep[f.naKey]);
 
   const hasBackup = rep.backupContactName || rep.backupPhone || rep.backupEmail;
-  const hasDocs = rep.mouDocumentUrl || rep.repLogoUrl;
+  const hasDocs = rep.mouDocumentUrl || rep.repLogoUrl || rep.repLogoLink;
 
   return (
     <Dialog
@@ -302,6 +302,15 @@ function REPDetailView({ rep, open, onClose, onEdit }) {
                       p: 1, bgcolor: '#f9fafb', display: 'block',
                     }}
                   />
+                </Box>
+              )}
+              {rep.repLogoLink && (
+                <Box>
+                  <Typography sx={labelSx}>Original Logo</Typography>
+                  <Box component="a" href={rep.repLogoLink} target="_blank" rel="noopener noreferrer"
+                    sx={{ fontSize: '0.875rem', color: 'primary.main' }}>
+                    Open original (full quality)
+                  </Box>
                 </Box>
               )}
             </Box>
