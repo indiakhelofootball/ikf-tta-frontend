@@ -1,3 +1,5 @@
+> **SUPERSEDED — see `_docs/planning/CSR_COMPLETE_REFERENCE.md` (the single source of truth). Kept for history.**
+
 # CSR Module — Context Analysis & Mock Flow
 
 Source: `project_recording_pdf/` — two segments of one conversation between Speaker 1
