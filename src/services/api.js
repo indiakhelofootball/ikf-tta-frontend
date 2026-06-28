@@ -843,7 +843,10 @@ export const reportsAPI = {
 // ============================================
 function csrCrud(base) {
   return {
-    getAll: async () => apiService.request(`${base}/`),
+    getAll: async (params = {}) => {
+      const qs = new URLSearchParams(params).toString();
+      return apiService.request(`${base}/${qs ? `?${qs}` : ''}`);
+    },
     getById: async (id) => apiService.request(`${base}/${id}/`),
     create: async (data) =>
       apiService.request(`${base}/`, { method: 'POST', body: JSON.stringify(data) }),

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Card, CardContent, Box, Typography, Chip, IconButton, Collapse, Tooltip,
 } from '@mui/material';
@@ -7,12 +8,14 @@ import {
   ExpandLess as ExpandLessIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
+  OpenInNew as OpenIcon,
 } from '@mui/icons-material';
 
 import CSRProjectDetailView from './CSRProjectDetailView';
 
 export default function CSRProjectCard({ project, canEdit, onEdit, onDelete }) {
   const [expanded, setExpanded] = useState(false);
+  const navigate = useNavigate();
   const amount =
     project.sanctionedAmount != null
       ? `₹${Number(project.sanctionedAmount).toLocaleString('en-IN')}`
@@ -33,6 +36,11 @@ export default function CSRProjectCard({ project, canEdit, onEdit, onDelete }) {
             label={project.status}
             color={project.status === 'Active' ? 'success' : 'default'}
           />
+          <Tooltip title="Open project">
+            <IconButton size="small" onClick={() => navigate(`/csr/${project.id}`)}>
+              <OpenIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
           {canEdit && (
             <>
               <Tooltip title="Edit">
