@@ -75,6 +75,13 @@ const STATUS_CONFIG = {
   Lost:         { color: 'error',   label: 'Lost' },
 };
 
+// Active = in-flight shipments that still need work; Past = terminal states,
+// kept permanently as history but filtered out of the default working view.
+const ACTIVE_STATUSES = ['Draft', 'Dispatched', 'In Transit'];
+const PAST_STATUSES = ['Delivered', 'Returned', 'Lost'];
+const STATUS_FILTERS = ['active', 'past', 'all', 'Draft', 'Dispatched', 'In Transit', 'Delivered', 'Returned', 'Lost'];
+const FILTER_LABELS = { active: 'Active', past: 'Past', all: 'All' };
+
 function daysUntil(dateStr) {
   if (!dateStr) return null;
   return Math.ceil((new Date(dateStr) - new Date()) / 86400000);
@@ -350,7 +357,7 @@ export default function CourierManagementPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('active');
 
   // new/edit modal
   const [modalOpen, setModalOpen] = useState(false);
@@ -434,13 +441,27 @@ export default function CourierManagementPage() {
   }), [shipments]);
 
   const filtered = useMemo(() => shipments.filter(s => {
-    if (filterStatus !== 'all' && s.status !== filterStatus) return false;
+    if (filterStatus === 'active' && !ACTIVE_STATUSES.includes(s.status)) return false;
+    if (filterStatus === 'past' && !PAST_STATUSES.includes(s.status)) return false;
+    if (!['all', 'active', 'past'].includes(filterStatus) && s.status !== filterStatus) return false;
     if (search.trim()) {
       const q = search.toLowerCase();
       return [s.refNumber, s.snapRepName, s.snapCity, s.trackingNumber || ''].join(' ').toLowerCase().includes(q);
     }
     return true;
   }), [shipments, filterStatus, search]);
+
+  async function handleDeleteShipment(s) {
+    if (!window.confirm(
+      `Delete draft shipment ${s.refNumber}?\n\nThis permanently removes it. Only drafts can be deleted — dispatched/delivered shipments are kept as history.`
+    )) return;
+    try {
+      await courierAPI.delete(s.id);
+      setShipments(prev => prev.filter(x => x.id !== s.id));
+    } catch (e) {
+      setError(e.message || 'Failed to delete shipment.');
+    }
+  }
 
   function openNew() {
     setEditingId(null); setFRepId(''); setFAsgId(''); setFItems([]); setFNotes(''); setError('');
@@ -646,7 +667,7 @@ export default function CourierManagementPage() {
           <StatCard key={card.key}
             icon={card.icon} label={card.label} value={stats[card.key]} color={card.color}
             active={filterStatus === card.key}
-            onClick={() => setFilterStatus(prev => prev === card.key ? 'all' : card.key)} />
+            onClick={() => setFilterStatus(prev => prev === card.key ? 'active' : card.key)} />
         ))}
       </Box>
 
@@ -658,8 +679,8 @@ export default function CourierManagementPage() {
             slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchIcon sx={{ fontSize: 18, color: '#94a3b8' }} /></InputAdornment> } }}
             sx={{ flex: 1, minWidth: 220 }} />
           <Stack direction="row" gap={1} flexWrap="wrap">
-            {['all', 'Draft', 'Dispatched', 'In Transit', 'Delivered', 'Returned', 'Lost'].map(s => (
-              <Chip key={s} label={s === 'all' ? 'All' : s} size="small"
+            {STATUS_FILTERS.map(s => (
+              <Chip key={s} label={FILTER_LABELS[s] || s} size="small"
                 onClick={() => setFilterStatus(s)}
                 variant={filterStatus === s ? 'filled' : 'outlined'}
                 sx={{ fontWeight: 600, cursor: 'pointer',
@@ -761,6 +782,11 @@ export default function CourierManagementPage() {
                                 sx={{ fontSize: '0.72rem', py: 0.3, px: 1, minWidth: 'auto', bgcolor: '#FDE68A', color: '#1e293b', boxShadow: 'none', '&:hover': { bgcolor: '#FCD34D', boxShadow: 'none' } }}>
                                 Dispatch
                               </Button>
+                              <Tooltip title="Delete draft">
+                                <IconButton size="small" onClick={() => handleDeleteShipment(s)} sx={{ color: '#ef4444' }}>
+                                  <DeleteIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
                             </>
                           )}
                         </>
