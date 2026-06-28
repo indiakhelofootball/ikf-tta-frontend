@@ -7,7 +7,7 @@ import ExcelJS from 'exceljs';
 import fs from 'fs';
 import { buildBlkpayWorkbook } from './blkpayExcel';
 
-const REFERENCE = path.join(process.cwd(), 'BLKPAY_070426.xlsx');
+const REFERENCE = path.join(process.cwd(), '_docs', 'excel', 'BLKPAY_070426.xlsx');
 
 function normNewlines(s) {
   if (s == null) return s;

@@ -7,7 +7,7 @@ import SocialMediaReport from './SocialMediaReport';
 // ── Mocks ────────────────────────────────────────────────────────────────────
 
 jest.mock('../../services/api', () => ({
-  repAPI: { getAll: jest.fn() },
+  reportsAPI: { socialMedia: jest.fn() },
 }));
 
 jest.mock('../../utils/downloadHelpers', () => ({
@@ -15,7 +15,7 @@ jest.mock('../../utils/downloadHelpers', () => ({
   downloadMOU: jest.fn(() => Promise.resolve()),
 }));
 
-const { repAPI } = require('../../services/api');
+const { reportsAPI } = require('../../services/api');
 const { downloadLogo, downloadMOU } = require('../../utils/downloadHelpers');
 
 // ── Test Data ────────────────────────────────────────────────────────────────
@@ -101,7 +101,7 @@ const mockReps = [
 
 beforeEach(() => {
   jest.clearAllMocks();
-  repAPI.getAll.mockResolvedValue({ reps: mockReps });
+  reportsAPI.socialMedia.mockResolvedValue({ reps: mockReps });
 });
 
 function renderReport() {
@@ -140,13 +140,13 @@ describe('SocialMediaReport', () => {
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
   });
 
-  test('calls repAPI.getAll with limit 1000', async () => {
+  test('calls reportsAPI.socialMedia on mount', async () => {
     renderReport();
-    await waitFor(() => expect(repAPI.getAll).toHaveBeenCalledWith({ limit: 1000 }));
+    await waitFor(() => expect(reportsAPI.socialMedia).toHaveBeenCalled());
   });
 
   test('shows error toast on API failure', async () => {
-    repAPI.getAll.mockRejectedValue(new Error('Network error'));
+    reportsAPI.socialMedia.mockRejectedValue(new Error('Network error'));
     renderReport();
     await waitFor(() => {
       expect(screen.getByText('Failed to load REPs')).toBeInTheDocument();
@@ -154,7 +154,7 @@ describe('SocialMediaReport', () => {
   });
 
   test('shows empty state when no REPs', async () => {
-    repAPI.getAll.mockResolvedValue({ reps: [] });
+    reportsAPI.socialMedia.mockResolvedValue({ reps: [] });
     renderReport();
     await waitFor(() => {
       expect(screen.getByText('No REPs found')).toBeInTheDocument();
@@ -166,7 +166,7 @@ describe('SocialMediaReport', () => {
   test('displays page header with REP and assignment counts', async () => {
     renderReport();
     await waitFor(() => {
-      expect(screen.getByText('Social Media Report')).toBeInTheDocument();
+      expect(screen.getByText('REP Report')).toBeInTheDocument();
     });
     // 3 REPs, 3 total assignments
     expect(screen.getByText(/3 REPs/)).toBeInTheDocument();
@@ -225,7 +225,7 @@ describe('SocialMediaReport', () => {
         groundContactName: '', groundContactPhone: '',
       })),
     };
-    repAPI.getAll.mockResolvedValue({ reps: [repWith6Cities] });
+    reportsAPI.socialMedia.mockResolvedValue({ reps: [repWith6Cities] });
     renderReport();
     await waitFor(() => {
       expect(screen.getByText('+2')).toBeInTheDocument();
