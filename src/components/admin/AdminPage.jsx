@@ -692,18 +692,32 @@ export default function AdminPage() {
                 </Typography>
               </Box>
               <Box sx={{ px: 3.5, py: 3 }}>
-                <Button
-                  variant="contained"
-                  endIcon={<GoIcon sx={{ fontSize: '1.1rem' }} />}
-                  onClick={() => navigate('/csr/activity-types')}
-                  sx={{
-                    bgcolor: '#ec4899', color: '#fff', borderRadius: '12px',
-                    textTransform: 'none', fontWeight: 700, boxShadow: 'none',
-                    '&:hover': { bgcolor: '#db2777', boxShadow: 'none' },
-                  }}
-                >
-                  Manage Activity Types
-                </Button>
+                <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
+                  <Button
+                    variant="contained"
+                    endIcon={<GoIcon sx={{ fontSize: '1.1rem' }} />}
+                    onClick={() => navigate('/csr/activity-types')}
+                    sx={{
+                      bgcolor: '#ec4899', color: '#fff', borderRadius: '12px',
+                      textTransform: 'none', fontWeight: 700, boxShadow: 'none',
+                      '&:hover': { bgcolor: '#db2777', boxShadow: 'none' },
+                    }}
+                  >
+                    Manage Activity Types
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    endIcon={<GoIcon sx={{ fontSize: '1.1rem' }} />}
+                    onClick={() => navigate('/csr/branding')}
+                    sx={{
+                      color: '#ec4899', borderColor: '#ec4899', borderRadius: '12px',
+                      textTransform: 'none', fontWeight: 700,
+                      '&:hover': { borderColor: '#db2777', bgcolor: '#fdf2f8' },
+                    }}
+                  >
+                    Client Portal Branding
+                  </Button>
+                </Stack>
               </Box>
             </Paper>
           </SectionGroup>

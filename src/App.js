@@ -31,8 +31,9 @@ import VendorAuditReport from "./components/reports/VendorAuditReport";
 import TrialSpendReport from "./components/reports/TrialSpendReport";
 import TrialsReport from "./components/reports/TrialsReport";
 import CourierManagementPage from "./components/courier/CourierManagementPage";
-import { CSRProjectManagementPage, CSRProjectDetailPage, CSRActivityTypesPage, CSRClientsPage } from "./components/csr";
+import { CSRProjectManagementPage, CSRProjectDetailPage, CSRActivityTypesPage, CSRClientsPage, CSRBrandingPage } from "./components/csr";
 import ClientPortalPage from "./components/client/ClientPortalPage";
+import ClientLogin from "./components/client/ClientLogin";
 import PermissionsManagementPage from "./components/permissions/PermissionsManagementPage";
 import RequestAccessPage from "./components/permissions/RequestAccessPage";
 
@@ -94,6 +95,7 @@ function App() {
 
         {/* PUBLIC */}
         <Route path="/login" element={<Login />} />
+        <Route path="/client/:slug/login" element={<ClientLogin />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
 
         {/* PROTECTED */}
@@ -193,6 +195,11 @@ function App() {
             <Route path="/csr/clients" element={
               <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
                 <CSRClientsPage />
+              </RoleBasedRoute>
+            } />
+            <Route path="/csr/branding" element={
+              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+                <CSRBrandingPage />
               </RoleBasedRoute>
             } />
             <Route path="/csr/:id" element={
