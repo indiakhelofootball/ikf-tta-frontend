@@ -20,6 +20,7 @@ import {
   Person as PersonIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../../auth/AuthContext';
+import ChangePasswordCard from './ChangePasswordCard';
 
 export default function ProfilePage() {
   const { user, updateUserProfile } = useAuth();
@@ -346,6 +347,8 @@ export default function ProfilePage() {
           </Box>
         </Box>
       </Paper>
+
+      <ChangePasswordCard />
 
       {/* Toast Notification */}
       <Snackbar

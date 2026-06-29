@@ -179,6 +179,17 @@ class APIService {
       body: JSON.stringify(profileData),
     });
   }
+
+  async changePassword({ oldPassword, newPassword, newPassword2 }) {
+    return this.request('/auth/change-password/', {
+      method: 'POST',
+      body: JSON.stringify({
+        old_password: oldPassword,
+        new_password: newPassword,
+        new_password2: newPassword2,
+      }),
+    });
+  }
 }
 
 // Export singleton
