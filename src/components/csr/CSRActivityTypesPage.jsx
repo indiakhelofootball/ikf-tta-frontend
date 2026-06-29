@@ -9,12 +9,12 @@ import {
 } from '@mui/icons-material';
 
 import { csrAPI } from '../../services/api';
-import useGrants from '../../auth/useGrants';
 
 export default function CSRActivityTypesPage() {
   const navigate = useNavigate();
-  const { canEdit } = useGrants();
-  const editable = canEdit('csr');
+  // Admin-only route (D1): the catalog is managed in TTA Admin, so anyone who
+  // reaches this page may edit it.
+  const editable = true;
 
   const [types, setTypes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -68,13 +68,14 @@ export default function CSRActivityTypesPage() {
 
   return (
     <Container maxWidth="sm" sx={{ py: 3 }}>
-      <Button startIcon={<BackIcon />} onClick={() => navigate('/csr')} sx={{ mb: 2 }}>
-        CSR Projects
+      <Button startIcon={<BackIcon />} onClick={() => navigate('/admin')} sx={{ mb: 2 }}>
+        Admin Settings
       </Button>
-      <Typography variant="h5" sx={{ mb: 0.5 }}>Activity Types</Typography>
+      <Typography variant="h5" sx={{ mb: 0.5 }}>CSR Activity Types</Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        The catalog of activity types (trials, workshops, trainings) selectable when adding a
-        project activity. Mark a type as a reusable master template if it applies across projects.
+        The admin-managed catalog of activity types (trials, workshops, trainings) that CSR staff
+        pick from when adding a project activity. Mark a type as a reusable master template if it
+        applies across projects.
       </Typography>
 
       {editable && (

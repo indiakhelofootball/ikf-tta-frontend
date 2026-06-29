@@ -18,13 +18,17 @@ import {
   AdminPanelSettings as AccessIcon,
   LockOpen as RequestAccessIcon,
   VolunteerActivism as CSRIcon,
+  GroupAdd as GroupAddIcon,
 } from "@mui/icons-material";
 import useGrants from "../../auth/useGrants";
-import { REPORT_KEYS } from "../../auth/roles";
+import { useAuth } from "../../auth/AuthContext";
+import { REPORT_KEYS, ROLES } from "../../auth/roles";
 import "./Sidebar.css";
 
 export default function Sidebar({ collapsed, onToggle }) {
   const { isSuper, canView, canEdit } = useGrants();
+  const { user } = useAuth();
+  const isAdminOrSuper = user?.role === ROLES.SUPER_ADMIN || user?.role === ROLES.ADMIN;
 
   const canAccessTrialManagement = canView('trials');
   const canAccessREPManagement = canView('reps');
@@ -108,6 +112,7 @@ export default function Sidebar({ collapsed, onToggle }) {
         {canAccessReports && <NavItem to="/reports" icon={<ReportsIcon fontSize="small" />} label="Reports" />}
         {canAccessCourier && <NavItem to="/courier" icon={<CourierIcon fontSize="small" />} label="Courier" />}
         {canAccessCSR && <NavItem to="/csr" icon={<CSRIcon fontSize="small" />} label="CSR Projects" />}
+        {isAdminOrSuper && <NavItem to="/csr/clients" icon={<GroupAddIcon fontSize="small" />} label="CSR Clients" />}
         {!isSuper && <NavItem to="/request-access" icon={<RequestAccessIcon fontSize="small" />} label="Request Access" />}
       </nav>
     </aside>
