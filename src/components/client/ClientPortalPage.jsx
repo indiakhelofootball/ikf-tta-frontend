@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { ThemeProvider } from '@mui/material/styles';
 import {
   Box, Container, Typography, Tabs, Tab, List, ListItem, ListItemText, Chip,
   CircularProgress, AppBar, Toolbar, Button, Link, Stack, Alert, Divider, Tooltip,
@@ -7,6 +8,8 @@ import { OpenInNew as OpenIcon } from '@mui/icons-material';
 
 import { clientAPI } from '../../services/api';
 import { useAuth } from '../../auth/AuthContext';
+import clientThemeFrom from './clientTheme';
+import ClientChangePasswordDialog from './ClientChangePasswordDialog';
 
 function Field({ label, value }) {
   return (
@@ -22,9 +25,11 @@ export default function ClientPortalPage() {
   const [project, setProject] = useState(null);
   const [activities, setActivities] = useState([]);
   const [reports, setReports] = useState([]);
+  const [brand, setBrand] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [tab, setTab] = useState(0);
+  const [pwOpen, setPwOpen] = useState(false);
 
   const asList = (d) => (Array.isArray(d) ? d : d?.results || []);
 
@@ -32,13 +37,15 @@ export default function ClientPortalPage() {
     let active = true;
     (async () => {
       try {
-        const [p, acts, reps] = await Promise.all([
+        const [p, acts, reps, b] = await Promise.all([
           clientAPI.project(), clientAPI.activities(), clientAPI.reports(),
+          clientAPI.myBranding().catch(() => null),
         ]);
         if (!active) return;
         setProject(asList(p)[0] || null);
         setActivities(asList(acts));
         setReports(asList(reps));
+        setBrand(b && b.slug ? b : null);
       } catch (e) {
         if (active) setError(e.message || 'Failed to load your project.');
       } finally {
@@ -48,13 +55,20 @@ export default function ClientPortalPage() {
     return () => { active = false; };
   }, []);
 
+  const title = brand?.displayName || project?.name || 'CSR Portal';
+
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'var(--yellow-50, #fffdf5)' }}>
+    <ThemeProvider theme={clientThemeFrom(brand)}>
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       <AppBar position="static" color="default" elevation={1}>
-        <Toolbar>
+        <Toolbar sx={{ gap: 1 }}>
+          {brand?.logoUrl && (
+            <Box component="img" src={brand.logoUrl} alt={title} sx={{ height: 36, mr: 1 }} />
+          )}
           <Typography variant="h6" sx={{ flexGrow: 1 }}>
-            {project?.name || 'CSR Portal'}
+            {title}
           </Typography>
+          <Button onClick={() => setPwOpen(true)}>Change password</Button>
           <Button onClick={logout}>Sign out</Button>
         </Toolbar>
       </AppBar>
@@ -135,6 +149,8 @@ export default function ClientPortalPage() {
           </>
         )}
       </Container>
+      <ClientChangePasswordDialog open={pwOpen} onClose={() => setPwOpen(false)} />
     </Box>
+    </ThemeProvider>
   );
 }

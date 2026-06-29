@@ -885,6 +885,8 @@ export const csrAPI = {
   // Server-authoritative Utilisation Certificate (totals computed server-side).
   utilisationCertificate: async (projectId) =>
     apiService.request(`/csr/projects/${projectId}/utilisation-certificate/`),
+  // White-label branding — admin-managed CRUD (SUPER_ADMIN/ADMIN).
+  branding: csrCrud('/csr/branding'),
 };
 
 // ============================================
@@ -895,4 +897,8 @@ export const clientAPI = {
   project: async () => apiService.request('/client/project/'),
   activities: async () => apiService.request('/client/activities/'),
   reports: async () => apiService.request('/client/reports/'),
+  // White-label branding: public by slug (pre-auth login), and the funder's own
+  // branding post-auth (skins the portal without a slug in the URL).
+  brandingBySlug: async (slug) => apiService.request(`/client/branding/${slug}/`),
+  myBranding: async () => apiService.request('/client/my-branding/'),
 };
