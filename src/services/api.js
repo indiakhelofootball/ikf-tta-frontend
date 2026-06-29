@@ -875,6 +875,16 @@ export const csrAPI = {
   expenseTags: csrCrud('/csr/expense-tags'),
   clientUsers: csrCrud('/csr/client-users'),
   contacts: csrCrud('/csr/contacts'),
+  // Funder onboarding — admin-only endpoint (SUPER_ADMIN/ADMIN). Creates the
+  // CSR_CLIENT login + project link in one atomic call; role is fixed server-side.
+  clients: {
+    list: async () => apiService.request('/csr/clients/'),
+    onboard: async (data) =>
+      apiService.request('/csr/clients/', { method: 'POST', body: JSON.stringify(data) }),
+  },
+  // Server-authoritative Utilisation Certificate (totals computed server-side).
+  utilisationCertificate: async (projectId) =>
+    apiService.request(`/csr/projects/${projectId}/utilisation-certificate/`),
 };
 
 // ============================================

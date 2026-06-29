@@ -205,25 +205,35 @@ export default function CSRProjectDetailPage() {
   const totalTagged = expenses.reduce((sum, x) => sum + (Number(x.amount) || 0), 0);
   const sanctioned = Number(project?.sanctionedAmount) || 0;
 
-  const generateCertificate = () => {
+  // The PDF is a download of the server's authoritative figures, not a
+  // browser-side sum — fetch the certificate, then render it.
+  const generateCertificate = async () => {
+    let cert;
+    try {
+      cert = await csrAPI.utilisationCertificate(id);
+    } catch (e) {
+      notify(e.message || 'Could not generate certificate.', 'error');
+      return;
+    }
+    const num = (v) => Number(v || 0).toLocaleString('en-IN');
     const doc = new jsPDF();
     doc.setFontSize(16);
     doc.text('Utilisation Certificate', 14, 18);
     doc.setFontSize(10);
-    doc.text(`Project: ${project.name}`, 14, 28);
-    doc.text(`Client / Funder: ${project.clientName}`, 14, 34);
-    doc.text(`Sanctioned: INR ${sanctioned.toLocaleString('en-IN')}`, 14, 40);
-    doc.text(`Total Utilised: INR ${totalTagged.toLocaleString('en-IN')}`, 14, 46);
+    doc.text(`Project: ${cert.projectName}`, 14, 28);
+    doc.text(`Client / Funder: ${cert.clientName}`, 14, 34);
+    doc.text(`Sanctioned: INR ${num(cert.sanctionedAmount)}`, 14, 40);
+    doc.text(`Total Utilised: INR ${num(cert.totalUtilised)}`, 14, 46);
     autoTable(doc, {
       startY: 54,
       head: [['Source', 'Note', 'Amount (INR)']],
-      body: expenses.map((x) => [
-        x.paymentLabel || 'Manual',
+      body: (cert.lineItems || []).map((x) => [
+        x.source || 'Manual',
         x.note || '',
-        (Number(x.amount) || 0).toLocaleString('en-IN'),
+        num(x.amount),
       ]),
     });
-    doc.save(`utilisation_certificate_${project.name}.pdf`);
+    doc.save(`utilisation_certificate_${cert.projectName}.pdf`);
   };
 
   if (loading) {

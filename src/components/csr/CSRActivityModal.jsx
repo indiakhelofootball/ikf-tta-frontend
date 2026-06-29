@@ -9,7 +9,8 @@ import { trialsAPI } from '../../services/api';
 const STATUS_OPTIONS = ['Planned', 'Completed'];
 
 const EMPTY = {
-  title: '', activityTypeId: '', date: '', location: '', status: 'Planned', linkedTrialId: '',
+  title: '', activityTypeId: '', date: '', startDate: '', endDate: '',
+  location: '', status: 'Planned', linkedTrialId: '',
 };
 
 export default function CSRActivityModal({ open, activity, activityTypes, onClose, onSave, saving }) {
@@ -32,6 +33,8 @@ export default function CSRActivityModal({ open, activity, activityTypes, onClos
         title: activity.title || '',
         activityTypeId: activity.activityTypeId ?? '',
         date: activity.date || '',
+        startDate: activity.startDate || '',
+        endDate: activity.endDate || '',
         location: activity.location || '',
         status: activity.status || 'Planned',
         linkedTrialId: activity.linkedTrialId ?? '',
@@ -58,6 +61,8 @@ export default function CSRActivityModal({ open, activity, activityTypes, onClos
       title: form.title.trim(),
       activityTypeId: Number(form.activityTypeId),
       date: form.date || null,
+      startDate: form.startDate || null,
+      endDate: form.endDate || null,
       location: form.location.trim(),
       status: form.status,
       linkedTrialId: form.linkedTrialId === '' ? null : Number(form.linkedTrialId),
@@ -91,6 +96,17 @@ export default function CSRActivityModal({ open, activity, activityTypes, onClos
               type="date" slotProps={{ inputLabel: { shrink: true } }} fullWidth
             />
             <TextField label="Location" value={form.location} onChange={setField('location')} fullWidth />
+          </Stack>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+            <TextField
+              label="Start (multi-month)" value={form.startDate} onChange={setField('startDate')}
+              type="date" slotProps={{ inputLabel: { shrink: true } }} fullWidth
+              helperText="For programmes that run over months, e.g. a 6-month training."
+            />
+            <TextField
+              label="End (multi-month)" value={form.endDate} onChange={setField('endDate')}
+              type="date" slotProps={{ inputLabel: { shrink: true } }} fullWidth
+            />
           </Stack>
           <TextField label="Status" value={form.status} onChange={setField('status')} select fullWidth>
             {STATUS_OPTIONS.map((s) => (

@@ -31,7 +31,7 @@ import VendorAuditReport from "./components/reports/VendorAuditReport";
 import TrialSpendReport from "./components/reports/TrialSpendReport";
 import TrialsReport from "./components/reports/TrialsReport";
 import CourierManagementPage from "./components/courier/CourierManagementPage";
-import { CSRProjectManagementPage, CSRProjectDetailPage, CSRActivityTypesPage } from "./components/csr";
+import { CSRProjectManagementPage, CSRProjectDetailPage, CSRActivityTypesPage, CSRClientsPage } from "./components/csr";
 import ClientPortalPage from "./components/client/ClientPortalPage";
 import PermissionsManagementPage from "./components/permissions/PermissionsManagementPage";
 import RequestAccessPage from "./components/permissions/RequestAccessPage";
@@ -181,10 +181,19 @@ function App() {
                 <CSRProjectManagementPage />
               </GrantedRoute>
             } />
+            {/* D1: the activity-type catalog is admin-managed (TTA Admin), not a
+                CSR-owned page. Admins reach it from Admin Settings. */}
             <Route path="/csr/activity-types" element={
-              <GrantedRoute module="csr">
+              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
                 <CSRActivityTypesPage />
-              </GrantedRoute>
+              </RoleBasedRoute>
+            } />
+            {/* Funder onboarding — admin-only, not csr-grant gated. Static path
+                must precede the dynamic /csr/:id route. */}
+            <Route path="/csr/clients" element={
+              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+                <CSRClientsPage />
+              </RoleBasedRoute>
             } />
             <Route path="/csr/:id" element={
               <GrantedRoute module="csr">
