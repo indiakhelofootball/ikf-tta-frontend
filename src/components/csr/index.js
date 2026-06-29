@@ -6,3 +6,4 @@ export { default as CSRProjectDetailView } from './CSRProjectDetailView';
 export { default as CSRProjectModal } from './CSRProjectModal';
 export { default as CSRActivityModal } from './CSRActivityModal';
 export { default as CSRReportModal } from './CSRReportModal';
+export { default as CSRContactModal } from './CSRContactModal';

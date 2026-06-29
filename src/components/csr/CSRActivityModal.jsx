@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, MenuItem, Button, Stack,
+  TextField, MenuItem, Button, Stack, Autocomplete,
 } from '@mui/material';
+
+import { trialsAPI } from '../../services/api';
 
 const STATUS_OPTIONS = ['Planned', 'Completed'];
 
@@ -13,6 +15,16 @@ const EMPTY = {
 export default function CSRActivityModal({ open, activity, activityTypes, onClose, onSave, saving }) {
   const [form, setForm] = useState(EMPTY);
   const [errors, setErrors] = useState({});
+  const [trials, setTrials] = useState([]);
+
+  useEffect(() => {
+    if (!open) return;
+    let active = true;
+    trialsAPI.getAll()
+      .then((data) => { if (active) setTrials(Array.isArray(data) ? data : data?.results || []); })
+      .catch(() => { if (active) setTrials([]); });
+    return () => { active = false; };
+  }, [open]);
 
   useEffect(() => {
     if (activity) {
@@ -85,10 +97,15 @@ export default function CSRActivityModal({ open, activity, activityTypes, onClos
               <MenuItem key={s} value={s}>{s}</MenuItem>
             ))}
           </TextField>
-          <TextField
-            label="Linked Trial ID (optional)" value={form.linkedTrialId}
-            onChange={setField('linkedTrialId')} type="number" fullWidth
-            helperText="Link an existing trial, if this activity is one."
+          <Autocomplete
+            options={trials}
+            value={trials.find((t) => t.id === Number(form.linkedTrialId)) || null}
+            getOptionLabel={(t) => `${t.trialCode ? `${t.trialCode} — ` : ''}${t.trialName || `#${t.id}`}`}
+            isOptionEqualToValue={(o, v) => o.id === v.id}
+            onChange={(e, opt) => setForm((f) => ({ ...f, linkedTrialId: opt ? opt.id : '' }))}
+            renderInput={(params) => (
+              <TextField {...params} label="Linked Trial (optional)" helperText="Link an existing trial, if this activity is one." />
+            )}
           />
         </Stack>
       </DialogContent>

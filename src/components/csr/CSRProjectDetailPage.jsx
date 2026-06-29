@@ -15,6 +15,7 @@ import {
 import CSRProjectDetailView from './CSRProjectDetailView';
 import CSRActivityModal from './CSRActivityModal';
 import CSRReportModal from './CSRReportModal';
+import CSRContactModal from './CSRContactModal';
 import { csrAPI } from '../../services/api';
 import useGrants from '../../auth/useGrants';
 
@@ -27,6 +28,7 @@ export default function CSRProjectDetailPage() {
   const [project, setProject] = useState(null);
   const [activities, setActivities] = useState([]);
   const [reports, setReports] = useState([]);
+  const [contacts, setContacts] = useState([]);
   const [activityTypes, setActivityTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState(0);
@@ -34,6 +36,7 @@ export default function CSRProjectDetailPage() {
 
   const [activityModal, setActivityModal] = useState({ open: false, editing: null });
   const [reportModal, setReportModal] = useState({ open: false, editing: null });
+  const [contactModal, setContactModal] = useState({ open: false, editing: null });
   const [saving, setSaving] = useState(false);
 
   const notify = (message, severity = 'success') => setToast({ open: true, message, severity });
@@ -43,15 +46,17 @@ export default function CSRProjectDetailPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [p, acts, reps, types] = await Promise.all([
+      const [p, acts, reps, cons, types] = await Promise.all([
         csrAPI.projects.getById(id),
         csrAPI.activities.getAll({ project: id }),
         csrAPI.reports.getAll({ project: id }),
+        csrAPI.contacts.getAll({ project: id }),
         csrAPI.activityTypes.getAll(),
       ]);
       setProject(p);
       setActivities(asList(acts));
       setReports(asList(reps));
+      setContacts(asList(cons));
       setActivityTypes(asList(types));
     } catch (e) {
       notify(e.message || 'Failed to load project.', 'error');
@@ -124,6 +129,37 @@ export default function CSRProjectDetailPage() {
     }
   };
 
+  const saveContact = async (payload) => {
+    setSaving(true);
+    try {
+      const body = { ...payload, projectId: Number(id) };
+      if (contactModal.editing) {
+        await csrAPI.contacts.update(contactModal.editing.id, body);
+        notify('Contact updated.');
+      } else {
+        await csrAPI.contacts.create(body);
+        notify('Contact added.');
+      }
+      setContactModal({ open: false, editing: null });
+      load();
+    } catch (e) {
+      notify(e.message || 'Save failed.', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteContact = async (c) => {
+    if (!window.confirm(`Delete contact "${c.name}"?`)) return;
+    try {
+      await csrAPI.contacts.delete(c.id);
+      notify('Contact deleted.');
+      load();
+    } catch (e) {
+      notify(e.message || 'Delete failed.', 'error');
+    }
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
@@ -153,6 +189,7 @@ export default function CSRProjectDetailPage() {
 
       <Tabs value={tab} onChange={(e, v) => setTab(v)} sx={{ mb: 2 }}>
         <Tab label="Overview" />
+        <Tab label={`Contacts (${contacts.length})`} />
         <Tab label={`Activities (${activities.length})`} />
         <Tab label={`Reports (${reports.length})`} />
       </Tabs>
@@ -160,6 +197,45 @@ export default function CSRProjectDetailPage() {
       {tab === 0 && <CSRProjectDetailView project={project} />}
 
       {tab === 1 && (
+        <Box>
+          {editable && (
+            <Button
+              size="small" startIcon={<AddIcon />} sx={{ mb: 1 }}
+              onClick={() => setContactModal({ open: true, editing: null })}
+            >
+              Add Contact
+            </Button>
+          )}
+          {contacts.length === 0 ? (
+            <Typography color="text.secondary" sx={{ py: 2 }}>No contacts yet.</Typography>
+          ) : (
+            <List dense>
+              {contacts.map((c) => (
+                <ListItem
+                  key={c.id}
+                  secondaryAction={editable && (
+                    <>
+                      <IconButton size="small" onClick={() => setContactModal({ open: true, editing: c })}>
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton size="small" onClick={() => deleteContact(c)}>
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </>
+                  )}
+                >
+                  <ListItemText
+                    primary={[c.name, c.designation].filter(Boolean).join(' · ')}
+                    secondary={[c.email, c.phone].filter(Boolean).join(' · ') || null}
+                  />
+                </ListItem>
+              ))}
+            </List>
+          )}
+        </Box>
+      )}
+
+      {tab === 2 && (
         <Box>
           {editable && (
             <Button
@@ -199,7 +275,7 @@ export default function CSRProjectDetailPage() {
         </Box>
       )}
 
-      {tab === 2 && (
+      {tab === 3 && (
         <Box>
           {editable && (
             <Button
@@ -268,6 +344,13 @@ export default function CSRProjectDetailPage() {
         activities={activities}
         onClose={() => setReportModal({ open: false, editing: null })}
         onSave={saveReport}
+        saving={saving}
+      />
+      <CSRContactModal
+        open={contactModal.open}
+        contact={contactModal.editing}
+        onClose={() => setContactModal({ open: false, editing: null })}
+        onSave={saveContact}
         saving={saving}
       />
 

@@ -863,4 +863,5 @@ export const csrAPI = {
   reports: csrCrud('/csr/reports'),
   expenseTags: csrCrud('/csr/expense-tags'),
   clientUsers: csrCrud('/csr/client-users'),
+  contacts: csrCrud('/csr/contacts'),
 };
