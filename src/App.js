@@ -32,6 +32,7 @@ import TrialSpendReport from "./components/reports/TrialSpendReport";
 import TrialsReport from "./components/reports/TrialsReport";
 import CourierManagementPage from "./components/courier/CourierManagementPage";
 import { CSRProjectManagementPage, CSRProjectDetailPage, CSRActivityTypesPage } from "./components/csr";
+import ClientPortalPage from "./components/client/ClientPortalPage";
 import PermissionsManagementPage from "./components/permissions/PermissionsManagementPage";
 import RequestAccessPage from "./components/permissions/RequestAccessPage";
 
@@ -40,7 +41,7 @@ import ErrorFallback from "./components/error/ErrorFallback";
 import { logError } from "./utils/errorLogger";
 
 function App() {
-  const { loading, isAuthenticated } = useAuth();
+  const { loading, isAuthenticated, user } = useAuth();
 
   // Error handler function
   const handleError = (error, errorInfo) => {
@@ -84,7 +85,7 @@ function App() {
           path="/"
           element={
             isAuthenticated ? (
-              <Navigate to="/dashboard" replace />
+              <Navigate to={user?.role === ROLES.CSR_CLIENT ? "/client" : "/dashboard"} replace />
             ) : (
               <Navigate to="/login" replace />
             )
@@ -205,6 +206,13 @@ function App() {
               </RoleBasedRoute>
             } />
           </Route>
+
+          {/* External CSR funder portal — own shell, no TTA sidebar */}
+          <Route path="/client" element={
+            <RoleBasedRoute allowedRoles={[ROLES.CSR_CLIENT]}>
+              <ClientPortalPage />
+            </RoleBasedRoute>
+          } />
         </Route>
 
         {/* FALLBACK */}
