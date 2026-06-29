@@ -876,3 +876,13 @@ export const csrAPI = {
   clientUsers: csrCrud('/csr/client-users'),
   contacts: csrCrud('/csr/contacts'),
 };
+
+// ============================================
+// CLIENT API — external funder portal (/api/client/...). Read-only, scoped to
+// the caller's one project by the backend (CSR_CLIENT role).
+// ============================================
+export const clientAPI = {
+  project: async () => apiService.request('/client/project/'),
+  activities: async () => apiService.request('/client/activities/'),
+  reports: async () => apiService.request('/client/reports/'),
+};

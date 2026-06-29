@@ -4,6 +4,7 @@ export const ROLES = {
   SUPER_ADMIN: "SUPER_ADMIN",
   ADMIN: "ADMIN",
   REP: "REP",
+  CSR_CLIENT: "CSR_CLIENT",
 };
 
 // Per-report grant keys (mirror permissions/registry.REPORT_MODULES on the
@@ -164,6 +165,14 @@ export const ROLE_PERMISSIONS = {
       PERMISSIONS.VIEW_VENDOR_DOCS,
       PERMISSIONS.VIEW_TRIAL_CITIES,
     ],
+  },
+  // External CSR funder — no TTA permissions; scoped to the /client portal by
+  // role. Explicit empty entry so it never falls back to REP permissions.
+  CSR_CLIENT: {
+    canEdit: false,
+    canCreateAdmin: false,
+    canCreateREP: false,
+    permissions: [],
   },
 };
 
