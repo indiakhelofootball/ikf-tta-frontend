@@ -28,6 +28,12 @@ export default function CSRProjectDetailView({ project }) {
         <Field label="End" value={project.endDate} />
         <Field label="Work Order" value={project.workOrderId ? `#${project.workOrderId}` : null} />
       </Stack>
+      {project.description && (
+        <Box sx={{ mt: 2 }}>
+          <Typography variant="caption" color="text.secondary">Description</Typography>
+          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{project.description}</Typography>
+        </Box>
+      )}
     </Box>
   );
 }
