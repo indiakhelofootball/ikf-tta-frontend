@@ -12,23 +12,30 @@ import {
   OpenInNew as OpenIcon,
 } from '@mui/icons-material';
 
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+
 import CSRProjectDetailView from './CSRProjectDetailView';
 import CSRActivityModal from './CSRActivityModal';
 import CSRReportModal from './CSRReportModal';
 import CSRContactModal from './CSRContactModal';
+import CSRExpenseTagModal from './CSRExpenseTagModal';
 import { csrAPI } from '../../services/api';
 import useGrants from '../../auth/useGrants';
 
 export default function CSRProjectDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { canEdit } = useGrants();
+  const { canEdit, canView } = useGrants();
   const editable = canEdit('csr');
+  const canViewCert = canView('csr_certificate');
+  const canEditCert = canEdit('csr_certificate');
 
   const [project, setProject] = useState(null);
   const [activities, setActivities] = useState([]);
   const [reports, setReports] = useState([]);
   const [contacts, setContacts] = useState([]);
+  const [expenses, setExpenses] = useState([]);
   const [activityTypes, setActivityTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState(0);
@@ -37,6 +44,7 @@ export default function CSRProjectDetailPage() {
   const [activityModal, setActivityModal] = useState({ open: false, editing: null });
   const [reportModal, setReportModal] = useState({ open: false, editing: null });
   const [contactModal, setContactModal] = useState({ open: false, editing: null });
+  const [expenseModalOpen, setExpenseModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const notify = (message, severity = 'success') => setToast({ open: true, message, severity });
@@ -63,7 +71,16 @@ export default function CSRProjectDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+    // Expense tags require the stricter csr_certificate grant — fetch separately
+    // so a csr-only user still sees the rest of the project.
+    if (canViewCert) {
+      try {
+        setExpenses(asList(await csrAPI.expenseTags.getAll({ project: id })));
+      } catch {
+        /* ignore — no certificate access */
+      }
+    }
+  }, [id, canViewCert]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -160,6 +177,55 @@ export default function CSRProjectDetailPage() {
     }
   };
 
+  const saveExpense = async (payload) => {
+    setSaving(true);
+    try {
+      await csrAPI.expenseTags.create({ ...payload, projectId: Number(id) });
+      notify('Expense tagged.');
+      setExpenseModalOpen(false);
+      load();
+    } catch (e) {
+      notify(e.message || 'Tag failed.', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteExpense = async (x) => {
+    if (!window.confirm('Remove this expense tag?')) return;
+    try {
+      await csrAPI.expenseTags.delete(x.id);
+      notify('Expense tag removed.');
+      load();
+    } catch (e) {
+      notify(e.message || 'Delete failed.', 'error');
+    }
+  };
+
+  const totalTagged = expenses.reduce((sum, x) => sum + (Number(x.amount) || 0), 0);
+  const sanctioned = Number(project?.sanctionedAmount) || 0;
+
+  const generateCertificate = () => {
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.text('Utilisation Certificate', 14, 18);
+    doc.setFontSize(10);
+    doc.text(`Project: ${project.name}`, 14, 28);
+    doc.text(`Client / Funder: ${project.clientName}`, 14, 34);
+    doc.text(`Sanctioned: INR ${sanctioned.toLocaleString('en-IN')}`, 14, 40);
+    doc.text(`Total Utilised: INR ${totalTagged.toLocaleString('en-IN')}`, 14, 46);
+    autoTable(doc, {
+      startY: 54,
+      head: [['Source', 'Note', 'Amount (INR)']],
+      body: expenses.map((x) => [
+        x.paymentLabel || 'Manual',
+        x.note || '',
+        (Number(x.amount) || 0).toLocaleString('en-IN'),
+      ]),
+    });
+    doc.save(`utilisation_certificate_${project.name}.pdf`);
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
@@ -192,6 +258,7 @@ export default function CSRProjectDetailPage() {
         <Tab label={`Contacts (${contacts.length})`} />
         <Tab label={`Activities (${activities.length})`} />
         <Tab label={`Reports (${reports.length})`} />
+        {canViewCert && <Tab label="Utilisation" />}
       </Tabs>
 
       {tab === 0 && <CSRProjectDetailView project={project} />}
@@ -346,11 +413,62 @@ export default function CSRProjectDetailPage() {
         onSave={saveReport}
         saving={saving}
       />
+      {tab === 4 && canViewCert && (
+        <Box>
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }} spacing={1}
+            sx={{ mb: 2, justifyContent: 'space-between', alignItems: { sm: 'center' } }}
+          >
+            <Typography variant="body2">
+              Sanctioned: ₹{sanctioned.toLocaleString('en-IN')} · Utilised: ₹{totalTagged.toLocaleString('en-IN')}
+            </Typography>
+            <Stack direction="row" spacing={1}>
+              {canEditCert && (
+                <Button size="small" startIcon={<AddIcon />} onClick={() => setExpenseModalOpen(true)}>
+                  Tag Expense
+                </Button>
+              )}
+              <Button
+                size="small" variant="outlined"
+                onClick={generateCertificate} disabled={expenses.length === 0}
+              >
+                Generate Certificate
+              </Button>
+            </Stack>
+          </Stack>
+          {expenses.length === 0 ? (
+            <Typography color="text.secondary" sx={{ py: 2 }}>No expenses tagged yet.</Typography>
+          ) : (
+            <List dense>
+              {expenses.map((x) => (
+                <ListItem
+                  key={x.id}
+                  secondaryAction={canEditCert && (
+                    <IconButton size="small" onClick={() => deleteExpense(x)}>
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  )}
+                >
+                  <ListItemText primary={x.paymentLabel || 'Manual'} secondary={x.note || null} />
+                  <Chip size="small" label={`₹${(Number(x.amount) || 0).toLocaleString('en-IN')}`} sx={{ mr: 1 }} />
+                </ListItem>
+              ))}
+            </List>
+          )}
+        </Box>
+      )}
+
       <CSRContactModal
         open={contactModal.open}
         contact={contactModal.editing}
         onClose={() => setContactModal({ open: false, editing: null })}
         onSave={saveContact}
+        saving={saving}
+      />
+      <CSRExpenseTagModal
+        open={expenseModalOpen}
+        onClose={() => setExpenseModalOpen(false)}
+        onSave={saveExpense}
         saving={saving}
       />
 
