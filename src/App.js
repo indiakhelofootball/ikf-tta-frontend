@@ -135,7 +135,7 @@ function App() {
               </GrantedRoute>
             } />
             <Route path="/bank-tds" element={
-              <GrantedRoute module="bank">
+              <GrantedRoute module="payments">
                 <BankManagementPage />
               </GrantedRoute>
             } />
