@@ -202,28 +202,28 @@ async function downloadPDF(shipment, logoDataURL) {
   put('MOB', 299.47, PM_Y, PM);
   put(shipment.snapAcceptingPhone, 352.46, PM_Y, PM);
 
-  // ---- CONTENTS rows — only items with qty > 0, packed top-down ----
-  // The blank template has the rows erased; each surviving item is composited from its
-  // original label tile + a badge (navy/orange, alternating by row position) into one of the
-  // six original row slots, and its QTY number is drawn live, off-white, centred in the badge.
-  // Items with qty 0 are skipped entirely, so the rows below close up with no gaps.
+  // ---- CONTENTS rows — every item with qty > 0 renders, packed top-down ----
+  // The blank template has the rows erased. The six standard items are composited from
+  // their original label tiles; anything else (admin-added items) is drawn as live Barlow
+  // text fitted to the tile typography, so a custom item can neither vanish from the slip
+  // nor steal a standard item's artwork. Badges (navy/orange, alternating by row position)
+  // and QTY numbers are drawn live for both kinds.
   const QTY_X = 1207.7, QTY_SIZE = 17.02;
-  const items = shipment.items || [];
+  const items = (shipment.items || []).filter((i) => Number(i.quantity || 0) > 0);
   const nameLower = (s) => String(s || '').toLowerCase();
-  const findQty = (test) => {
-    const it = items.find((i) => test(nameLower(i.name)));
-    return it ? Number(it.quantity || 0) : 0;
-  };
   const pad2 = (n) => String(n).padStart(2, '0');
 
-  // Canonical content rows in slip order, each with its matcher and artwork tile.
+  // Canonical artwork rows in slip order. Each tile is claimed by at most ONE item —
+  // an exact canonical name wins first, then a legacy keyword variant — so a custom
+  // item like "School Banners Kit" can't steal the Banners artwork from the real
+  // "Banners" row; unclaimed items fall through to text.
   const CONTENT_ROWS = [
-    { tile: 'vol',  match: (n) => n.includes('volunteer') || n.includes('shirt') },
-    { tile: 'ban',  match: (n) => n.includes('banner') },
-    { tile: 'mat',  match: (n) => n.includes('matchsheet') },
-    { tile: 'sco',  match: (n) => n.includes('scout') },
-    { tile: 'bibo', match: (n) => n.includes('bib') && n.includes('orange') },
-    { tile: 'bibg', match: (n) => n.includes('bib') && n.includes('green') },
+    { tile: 'vol',  exact: 'volunteer tshirts',    match: (n) => n.includes('volunteer') || n.includes('shirt') },
+    { tile: 'ban',  exact: 'banners',              match: (n) => n.includes('banner') },
+    { tile: 'mat',  exact: 'matchsheet',           match: (n) => n.includes('matchsheet') },
+    { tile: 'sco',  exact: 'scout dockets',        match: (n) => n.includes('scout') },
+    { tile: 'bibo', exact: 'numbered bibs orange', match: (n) => n.includes('bib') && n.includes('orange') },
+    { tile: 'bibg', exact: 'numbered bibs green',  match: (n) => n.includes('bib') && n.includes('green') },
   ];
 
   // Original slot geometry from the source art (pt). Surviving rows fill these from the
@@ -231,26 +231,72 @@ async function downloadPDF(shipment, logoDataURL) {
   const SLOT_CENTERS = [410.0, 468.5, 522.75, 579.0, 640.75, 706.0];
   const DIVIDER_YS   = [437.75, 494.25, 551.0, 607.25, 675.25];
   const LABEL_X = 690, LABEL_W = 320, LABEL_HALF = 25;   // label tile bounds (pt)
-  const BADGE_X = 1187.5, BADGE_W = 40, BADGE_HALF = 20;  // badge tile bounds (pt)
+  const BADGE_CX = 1207.5, BADGE_HALF = 20;               // badge tile centre / half-size (pt)
   const DIV_X0 = 675, DIV_X1 = 1253;                      // divider rule extent in the source art
 
-  const present = CONTENT_ROWS
-    .map((r) => ({ ...r, qty: findQty(r.match) }))
-    .filter((r) => r.qty > 0);
+  // Text-row typography, measured from the tile pixels: the artwork weight (~Barlow
+  // Medium) isn't embedded, but Bold at these metrics matches the measured tile text
+  // widths within 1.6pt. x-offset and baseline are the tile averages.
+  const ITEM_TXT = { x: LABEL_X + 29.8, base: 12.25, size: 15.1, tc: 1.35 };
+  const ITEM_TXT_MAXW = BADGE_CX - BADGE_HALF - ITEM_TXT.x - 15;
+
+  const claimed = new Set();
+  const claims = new Map();
+  CONTENT_ROWS.forEach((r) => {
+    const it = items.find((i) => !claimed.has(i) && nameLower(i.name).trim() === r.exact);
+    if (it) { claimed.add(it); claims.set(r.tile, it); }
+  });
+  CONTENT_ROWS.forEach((r) => {
+    if (claims.has(r.tile)) return;
+    const it = items.find((i) => !claimed.has(i) && r.match(nameLower(i.name)));
+    if (it) { claimed.add(it); claims.set(r.tile, it); }
+  });
+  const tiled = CONTENT_ROWS
+    .filter((r) => claims.has(r.tile))
+    .map((r) => ({ tile: r.tile, qty: Number(claims.get(r.tile).quantity) }));
+  const present = [
+    ...tiled,
+    ...items.filter((i) => !claimed.has(i))
+      .map((i) => ({ text: String(i.name || '').trim(), qty: Number(i.quantity) })),
+  ];
+
+  // Six rows or fewer sit in the original slots; a surplus respaces the same vertical
+  // span evenly and scales rows down proportionally so nothing overflows the template.
+  const rowCount = present.length;
+  const rowScale = rowCount <= 6 ? 1 : 6 / rowCount;
+  const centers = rowCount <= 6
+    ? SLOT_CENTERS
+    : present.map((_, k) => 410.0 + (k * (706.0 - 410.0)) / (rowCount - 1));
 
   present.forEach((r, k) => {
-    const cy = SLOT_CENTERS[k];
-    // Label, then a badge whose colour alternates navy/orange by row position.
-    doc.addImage(SLIP_ITEM_TILES[r.tile], 'PNG', LABEL_X, cy - LABEL_HALF, LABEL_W, LABEL_HALF * 2);
+    const cy = centers[k];
+    if (r.tile) {
+      // Label tile, left-aligned, scaled about the row centre.
+      doc.addImage(SLIP_ITEM_TILES[r.tile], 'PNG',
+        LABEL_X, cy - LABEL_HALF * rowScale, LABEL_W * rowScale, LABEL_HALF * 2 * rowScale);
+    } else {
+      // Custom item: live text, shrunk to fit the label span if the name runs long.
+      doc.setFont('Barlow', 'bold');
+      let size = ITEM_TXT.size * rowScale;
+      const tc = ITEM_TXT.tc * rowScale;
+      while (size > 9 && trackedWidth(r.text, size, tc) > ITEM_TXT_MAXW) size -= 0.5;
+      put(r.text, ITEM_TXT.x, cy + ITEM_TXT.base * rowScale,
+        { font: 'Barlow', style: 'bold', size, tc });
+    }
+    // Badge (colour alternates navy/orange by row position), kept centred as it scales.
     const badge = k % 2 === 0 ? SLIP_BADGE_TILES.navy : SLIP_BADGE_TILES.orange;
-    doc.addImage(badge, 'PNG', BADGE_X, cy - BADGE_HALF, BADGE_W, BADGE_HALF * 2);
+    doc.addImage(badge, 'PNG',
+      BADGE_CX - BADGE_HALF * rowScale, cy - BADGE_HALF * rowScale,
+      BADGE_HALF * 2 * rowScale, BADGE_HALF * 2 * rowScale);
     // QTY number — baseline = slot centre + half cap-height (6.84pt @17.02).
-    put(pad2(r.qty), QTY_X, cy + 6.84, { font: 'BarlowXB', size: QTY_SIZE, color: QTY_COLOR, align: 'center' });
+    put(pad2(r.qty), QTY_X, cy + 6.84 * rowScale,
+      { font: 'BarlowXB', size: QTY_SIZE * rowScale, color: QTY_COLOR, align: 'center' });
     // Divider below every row except the last present one (matches the source rule).
-    if (k < present.length - 1) {
+    if (k < rowCount - 1) {
       doc.setDrawColor(228, 227, 222);
       doc.setLineWidth(0.75);
-      doc.line(DIV_X0, DIVIDER_YS[k], DIV_X1, DIVIDER_YS[k]);
+      const dy = rowCount <= 6 ? DIVIDER_YS[k] : (centers[k] + centers[k + 1]) / 2;
+      doc.line(DIV_X0, dy, DIV_X1, dy);
     }
   });
 
