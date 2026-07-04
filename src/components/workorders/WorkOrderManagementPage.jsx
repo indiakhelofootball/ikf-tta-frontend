@@ -51,9 +51,26 @@ function WorkOrderManagementPage() {
   const [filterService, setFilterService] = useState('');   // vendorType (service type)
   const [filterPayment, setFilterPayment] = useState('');   // Unpaid | Partial | Paid | ''
   const [filterStatus, setFilterStatus] = useState('');     // WO status filter
+  const [filterProject, setFilterProject] = useState('');   // project_ref filter
+  const [filterCity, setFilterCity] = useState('');         // project_city filter
   const [sortBy, setSortBy] = useState('newest');           // newest | oldest | amountHigh | amountLow
 
   const serviceTypes = useMemo(() => getVendorTypeNames(), []);
+  // Project/city options derived from the work orders that actually exist, so the filters
+  // only ever offer values that match something. City list narrows to the chosen project.
+  const projectFilterOptions = useMemo(
+    () => [...new Set(workOrders.map((wo) => wo.projectRef).filter(Boolean))].sort(),
+    [workOrders]
+  );
+  const cityFilterOptions = useMemo(
+    () => [...new Set(
+      workOrders
+        .filter((wo) => !filterProject || wo.projectRef === filterProject)
+        .map((wo) => wo.projectCity)
+        .filter(Boolean)
+    )].sort(),
+    [workOrders, filterProject]
+  );
 
   const filteredWorkOrders = useMemo(() => {
     let list = [...workOrders];
@@ -75,6 +92,10 @@ function WorkOrderManagementPage() {
 
     // Filter by status
     if (filterStatus) list = list.filter((wo) => wo.status === filterStatus);
+
+    // Filter by project / city
+    if (filterProject) list = list.filter((wo) => wo.projectRef === filterProject);
+    if (filterCity) list = list.filter((wo) => wo.projectCity === filterCity);
 
     // Filter by payment progress
     if (filterPayment) {
@@ -98,7 +119,7 @@ function WorkOrderManagementPage() {
     });
 
     return list;
-  }, [workOrders, search, filterType, filterService, filterStatus, filterPayment, sortBy]);
+  }, [workOrders, search, filterType, filterService, filterStatus, filterProject, filterCity, filterPayment, sortBy]);
 
   const bouncedWorkOrders = useMemo(
     () => filteredWorkOrders.filter((wo) => parseInt(wo.bouncedPaymentCount || 0, 10) > 0),
@@ -461,6 +482,47 @@ function WorkOrderManagementPage() {
                   <MenuItem value="">All Service Types</MenuItem>
                   {serviceTypes.map((st) => (
                     <MenuItem key={st} value={st}>{st}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <FormControl size="small" sx={{ minWidth: 160 }}>
+                <Select
+                  displayEmpty
+                  value={filterProject}
+                  onChange={(e) => { setFilterProject(e.target.value); setFilterCity(''); }}
+                  sx={{
+                    borderRadius: 1.5, fontSize: '0.85rem', height: 36,
+                    bgcolor: filterProject ? '#5B63D3' : undefined,
+                    color: filterProject ? '#fff' : undefined,
+                    '& .MuiOutlinedInput-notchedOutline': { borderColor: filterProject ? '#5B63D3' : '#e2e8f0' },
+                    '& .MuiSelect-icon': { color: filterProject ? '#fff' : '#94a3b8' },
+                  }}
+                >
+                  <MenuItem value="">All Projects</MenuItem>
+                  {projectFilterOptions.map((p) => (
+                    <MenuItem key={p} value={p}>{p}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <FormControl size="small" sx={{ minWidth: 150 }}>
+                <Select
+                  displayEmpty
+                  value={filterCity}
+                  onChange={(e) => setFilterCity(e.target.value)}
+                  disabled={cityFilterOptions.length === 0}
+                  sx={{
+                    borderRadius: 1.5, fontSize: '0.85rem', height: 36,
+                    bgcolor: filterCity ? '#5B63D3' : undefined,
+                    color: filterCity ? '#fff' : undefined,
+                    '& .MuiOutlinedInput-notchedOutline': { borderColor: filterCity ? '#5B63D3' : '#e2e8f0' },
+                    '& .MuiSelect-icon': { color: filterCity ? '#fff' : '#94a3b8' },
+                  }}
+                >
+                  <MenuItem value="">All Cities</MenuItem>
+                  {cityFilterOptions.map((c) => (
+                    <MenuItem key={c} value={c}>{c}</MenuItem>
                   ))}
                 </Select>
               </FormControl>
