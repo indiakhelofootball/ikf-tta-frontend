@@ -22,7 +22,7 @@ import {
 } from '@mui/icons-material';
 import jsPDF from 'jspdf';
 import {
-  SLIP_PAGE_PT, SLIP_TEMPLATE_PNG,
+  SLIP_PAGE_PT, SLIP_BLANK_PNG, SLIP_ITEM_TILES, SLIP_BADGE_TILES,
   BARLOW_REGULAR_TTF, BARLOW_BOLD_TTF, BARLOW_EXTRABOLD_TTF,
 } from './courierSlipAssets';
 import { repAPI, courierAPI } from '../../services/api';
@@ -38,14 +38,22 @@ const ZERO_REASON_OPTIONS = [
   { value: 'not_sending',       label: 'Not to be sent' },
 ];
 
-const PREDEFINED_ITEMS = [
-  { name: TSHIRT_ITEM_NAME, quantity: 0, remarks: '', isCustom: false, productionStatus: 'Pending', zeroReason: '' },
-  { name: 'Banners', quantity: 1, remarks: '', isCustom: false, productionStatus: 'Pending', zeroReason: '' },
-  { name: 'Matchsheet', quantity: 1, remarks: '', isCustom: false, productionStatus: 'Pending', zeroReason: '' },
-  { name: 'Scout Dockets', quantity: 1, remarks: '', isCustom: false, productionStatus: 'Pending', zeroReason: '' },
-  { name: 'Numbered Bibs Orange', quantity: 1, remarks: '', isCustom: false, productionStatus: 'Pending', zeroReason: '' },
-  { name: 'Numbered Bibs Green', quantity: 1, remarks: '', isCustom: false, productionStatus: 'Pending', zeroReason: '' },
-];
+// Courier item names come from ONE place: the admin master list (config
+// category 'courier_item', loaded via getCourierItems). There is no hardcoded
+// item list — operators pick from the master list, so the contents are always
+// the authoritative set and no one adds ad-hoc names. Build a shipment-item row
+// from a master-list name here; Volunteer Tshirts start at qty 0 (the count
+// depends on the volunteer headcount and is set at dispatch), everything else 1.
+function makeCourierItem(name) {
+  return {
+    name,
+    quantity: name === TSHIRT_ITEM_NAME ? 0 : 1,
+    remarks: '',
+    isCustom: false,
+    productionStatus: 'Pending',
+    zeroReason: '',
+  };
+}
 
 const PRODUCTION_STATUSES = ['Pending', 'Sent for Printing', 'Received from Printer'];
 const COURIERS = ['Blue Dart', 'DTDC', 'Delhivery', 'FedEx', 'India Post', 'Ekart', 'Professional Couriers', 'XpressBees', 'Other'];
@@ -80,7 +88,7 @@ const STATUS_CONFIG = {
 const ACTIVE_STATUSES = ['Draft', 'Dispatched', 'In Transit'];
 const PAST_STATUSES = ['Delivered', 'Returned', 'Lost'];
 const STATUS_FILTERS = ['active', 'past', 'all', 'Draft', 'Dispatched', 'In Transit', 'Delivered', 'Returned', 'Lost'];
-const FILTER_LABELS = { active: 'Active', past: 'Past', all: 'All' };
+const FILTER_LABELS = { active: 'Active', past: 'Past', all: 'All', deleted: 'Deleted' };
 
 function daysUntil(dateStr) {
   if (!dateStr) return null;
@@ -129,8 +137,9 @@ async function downloadPDF(shipment, logoDataURL) {
   const NAVY = [0, 36, 74];              // artwork navy
   const QTY_COLOR = [241, 241, 241];     // off-white badge numbers
 
-  // Static template, full page (deflate-compressed to keep the download small).
-  doc.addImage(SLIP_TEMPLATE_PNG, 'PNG', 0, 0, pageW, pageH, 'slipTemplate', 'FAST');
+  // Static template (CONTENTS rows erased), full page. The rows themselves are
+  // composited below from per-item tiles so zero-quantity contents are omitted.
+  doc.addImage(SLIP_BLANK_PNG, 'PNG', 0, 0, pageW, pageH, 'slipBlank', 'FAST');
 
   // Register the artwork's fonts (full Barlow — covers any recipient text).
   doc.addFileToVFS('Barlow-Regular.ttf', BARLOW_REGULAR_TTF);
@@ -193,9 +202,11 @@ async function downloadPDF(shipment, logoDataURL) {
   put('MOB', 299.47, PM_Y, PM);
   put(shipment.snapAcceptingPhone, 352.46, PM_Y, PM);
 
-  // ---- CONTENTS quantities — off-white, centred in each badge circle ----
-  // QTY_X / baselines are the true pixel centroids of the circle artwork (the image
-  // bounding boxes are offset from the visible circles), so numbers sit dead-centre.
+  // ---- CONTENTS rows — only items with qty > 0, packed top-down ----
+  // The blank template has the rows erased; each surviving item is composited from its
+  // original label tile + a badge (navy/orange, alternating by row position) into one of the
+  // six original row slots, and its QTY number is drawn live, off-white, centred in the badge.
+  // Items with qty 0 are skipped entirely, so the rows below close up with no gaps.
   const QTY_X = 1207.7, QTY_SIZE = 17.02;
   const items = shipment.items || [];
   const nameLower = (s) => String(s || '').toLowerCase();
@@ -204,18 +215,43 @@ async function downloadPDF(shipment, logoDataURL) {
     return it ? Number(it.quantity || 0) : 0;
   };
   const pad2 = (n) => String(n).padStart(2, '0');
-  // Baselines = badge centre-y + half cap-height (6.84pt @17.02), so each number
-  // is truly centred in its circle (the source art's own baselines were irregular).
-  const QTY_ROWS = [
-    { y: 416.86, qty: findQty((n) => n.includes('volunteer') || n.includes('shirt')) },
-    { y: 475.39, qty: findQty((n) => n.includes('banner')) },
-    { y: 529.58, qty: findQty((n) => n.includes('matchsheet')) },
-    { y: 585.89, qty: findQty((n) => n.includes('scout')) },
-    { y: 647.58, qty: findQty((n) => n.includes('bib') && n.includes('orange')) },
-    { y: 712.90, qty: findQty((n) => n.includes('bib') && n.includes('green')) },
+
+  // Canonical content rows in slip order, each with its matcher and artwork tile.
+  const CONTENT_ROWS = [
+    { tile: 'vol',  match: (n) => n.includes('volunteer') || n.includes('shirt') },
+    { tile: 'ban',  match: (n) => n.includes('banner') },
+    { tile: 'mat',  match: (n) => n.includes('matchsheet') },
+    { tile: 'sco',  match: (n) => n.includes('scout') },
+    { tile: 'bibo', match: (n) => n.includes('bib') && n.includes('orange') },
+    { tile: 'bibg', match: (n) => n.includes('bib') && n.includes('green') },
   ];
-  QTY_ROWS.forEach((r) => {
-    put(pad2(r.qty), QTY_X, r.y, { font: 'BarlowXB', size: QTY_SIZE, color: QTY_COLOR, align: 'center' });
+
+  // Original slot geometry from the source art (pt). Surviving rows fill these from the
+  // top; the all-six case reproduces the original layout pixel-for-pixel.
+  const SLOT_CENTERS = [410.0, 468.5, 522.75, 579.0, 640.75, 706.0];
+  const DIVIDER_YS   = [437.75, 494.25, 551.0, 607.25, 675.25];
+  const LABEL_X = 690, LABEL_W = 320, LABEL_HALF = 25;   // label tile bounds (pt)
+  const BADGE_X = 1187.5, BADGE_W = 40, BADGE_HALF = 20;  // badge tile bounds (pt)
+  const DIV_X0 = 675, DIV_X1 = 1253;                      // divider rule extent in the source art
+
+  const present = CONTENT_ROWS
+    .map((r) => ({ ...r, qty: findQty(r.match) }))
+    .filter((r) => r.qty > 0);
+
+  present.forEach((r, k) => {
+    const cy = SLOT_CENTERS[k];
+    // Label, then a badge whose colour alternates navy/orange by row position.
+    doc.addImage(SLIP_ITEM_TILES[r.tile], 'PNG', LABEL_X, cy - LABEL_HALF, LABEL_W, LABEL_HALF * 2);
+    const badge = k % 2 === 0 ? SLIP_BADGE_TILES.navy : SLIP_BADGE_TILES.orange;
+    doc.addImage(badge, 'PNG', BADGE_X, cy - BADGE_HALF, BADGE_W, BADGE_HALF * 2);
+    // QTY number — baseline = slot centre + half cap-height (6.84pt @17.02).
+    put(pad2(r.qty), QTY_X, cy + 6.84, { font: 'BarlowXB', size: QTY_SIZE, color: QTY_COLOR, align: 'center' });
+    // Divider below every row except the last present one (matches the source rule).
+    if (k < present.length - 1) {
+      doc.setDrawColor(228, 227, 222);
+      doc.setLineWidth(0.75);
+      doc.line(DIV_X0, DIVIDER_YS[k], DIV_X1, DIVIDER_YS[k]);
+    }
   });
 
   // ---- REP logo, fitted (aspect-preserved) into the <REP LOGO SPACE> box ----
@@ -349,7 +385,7 @@ function ItemRow({ item, index, onChange, onDelete }) {
 }
 
 export default function CourierManagementPage() {
-  const { canEdit } = useGrants();
+  const { canEdit, isSuper } = useGrants();
   const canEditCourier = canEdit('courier');
   const [shipments, setShipments] = useState([]);
   const [reps, setReps] = useState([]);
@@ -397,12 +433,14 @@ export default function CourierManagementPage() {
   const selectedRep = reps.find(r => r.id === fRepId) || null;
   const selectedAsg = selectedRep?.cityAssignments?.find(a => a.id === fAsgId) || null;
 
+  const viewingDeleted = filterStatus === 'deleted';
+
   async function loadData({ silent = false } = {}) {
     if (!silent) setLoading(true);
     try {
       const [repsData, shipmentsData] = await Promise.all([
         repAPI.getAll({ limit: 100 }),
-        courierAPI.getAll(),
+        courierAPI.getAll(viewingDeleted ? { deleted: true } : {}),
       ]);
       const repList = Array.isArray(repsData)
         ? repsData
@@ -417,7 +455,9 @@ export default function CourierManagementPage() {
     }
   }
 
-  useEffect(() => { loadData(); }, []);
+  // Reload when toggling between the live list and the Deleted (super-admin) view,
+  // since those are two different server queries.
+  useEffect(() => { loadData(); }, [viewingDeleted]); // eslint-disable-line react-hooks/exhaustive-deps
   useRefetchOnFocus(() => loadData({ silent: true }));
 
   // Resolve the shipment's REP logo (via assignmentId → rep) then render the slip PDF.
@@ -441,25 +481,40 @@ export default function CourierManagementPage() {
   }), [shipments]);
 
   const filtered = useMemo(() => shipments.filter(s => {
-    if (filterStatus === 'active' && !ACTIVE_STATUSES.includes(s.status)) return false;
-    if (filterStatus === 'past' && !PAST_STATUSES.includes(s.status)) return false;
-    if (!['all', 'active', 'past'].includes(filterStatus) && s.status !== filterStatus) return false;
+    // In the Deleted view the server already returns only soft-deleted rows; skip the
+    // active/past/status filters and just honour the search box.
+    if (!viewingDeleted) {
+      if (filterStatus === 'active' && !ACTIVE_STATUSES.includes(s.status)) return false;
+      if (filterStatus === 'past' && !PAST_STATUSES.includes(s.status)) return false;
+      if (!['all', 'active', 'past'].includes(filterStatus) && s.status !== filterStatus) return false;
+    }
     if (search.trim()) {
       const q = search.toLowerCase();
       return [s.refNumber, s.snapRepName, s.snapCity, s.trackingNumber || ''].join(' ').toLowerCase().includes(q);
     }
     return true;
-  }), [shipments, filterStatus, search]);
+  }), [shipments, filterStatus, search, viewingDeleted]);
 
   async function handleDeleteShipment(s) {
-    if (!window.confirm(
-      `Delete draft shipment ${s.refNumber}?\n\nThis permanently removes it. Only drafts can be deleted — dispatched/delivered shipments are kept as history.`
-    )) return;
+    const isDraft = s.status === 'Draft';
+    const msg = isDraft
+      ? `Delete draft shipment ${s.refNumber}?\n\nIt will be archived (not destroyed) — a super admin can restore it from the Deleted view.`
+      : `Delete shipment ${s.refNumber} (${s.status})?\n\nIt will be archived (not destroyed) and can be restored from the Deleted view.`;
+    if (!window.confirm(msg)) return;
     try {
       await courierAPI.delete(s.id);
       setShipments(prev => prev.filter(x => x.id !== s.id));
     } catch (e) {
       setError(e.message || 'Failed to delete shipment.');
+    }
+  }
+
+  async function handleRestoreShipment(s) {
+    try {
+      await courierAPI.restore(s.id);
+      setShipments(prev => prev.filter(x => x.id !== s.id));
+    } catch (e) {
+      setError(e.message || 'Failed to restore shipment.');
     }
   }
 
@@ -483,14 +538,16 @@ export default function CourierManagementPage() {
 
   function onRepChange(repId) { setFRepId(repId); setFAsgId(''); }
 
-  function addPredefined() {
+  // Add every master-list item not already on the shipment (convenience for the
+  // common case of sending the full standard set).
+  function addAllItems() {
     const existing = new Set(fItems.map(i => i.name));
-    const toAdd = PREDEFINED_ITEMS.filter(p => !existing.has(p.name)).map(p => ({ ...p }));
+    const toAdd = adminItems.filter(a => !existing.has(a.name)).map(a => makeCourierItem(a.name));
     if (toAdd.length) setFItems(prev => [...prev, ...toAdd]);
   }
 
   function addAdminItem(name) {
-    setFItems(prev => [...prev, { name, quantity: 1, remarks: '', isCustom: false, productionStatus: 'Pending' }]);
+    setFItems(prev => [...prev, makeCourierItem(name)]);
     setAddMenuAnchor(null);
   }
 
@@ -679,12 +736,14 @@ export default function CourierManagementPage() {
             slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchIcon sx={{ fontSize: 18, color: '#94a3b8' }} /></InputAdornment> } }}
             sx={{ flex: 1, minWidth: 220 }} />
           <Stack direction="row" gap={1} flexWrap="wrap">
-            {STATUS_FILTERS.map(s => (
+            {[...STATUS_FILTERS, ...(isSuper ? ['deleted'] : [])].map(s => (
               <Chip key={s} label={FILTER_LABELS[s] || s} size="small"
                 onClick={() => setFilterStatus(s)}
                 variant={filterStatus === s ? 'filled' : 'outlined'}
                 sx={{ fontWeight: 600, cursor: 'pointer',
-                  ...(filterStatus === s ? { bgcolor: '#5B63D3', color: '#fff', borderColor: '#5B63D3' } : { color: '#64748b' }) }} />
+                  ...(filterStatus === s
+                    ? { bgcolor: s === 'deleted' ? '#b91c1c' : '#5B63D3', color: '#fff', borderColor: s === 'deleted' ? '#b91c1c' : '#5B63D3' }
+                    : { color: s === 'deleted' ? '#b91c1c' : '#64748b' }) }} />
             ))}
           </Stack>
         </Stack>
@@ -767,6 +826,17 @@ export default function CourierManagementPage() {
                   </TableCell>
                   <TableCell>
                     <Stack direction="row" gap={0.5} flexWrap="wrap">
+                      {viewingDeleted ? (
+                        <>
+                          <Tooltip title="Download packing slip PDF">
+                            <IconButton size="small" onClick={() => handleDownload(s)} sx={{ color: '#5B63D3' }}>
+                              <PdfIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Button size="small" variant="contained" color="success" onClick={() => handleRestoreShipment(s)}
+                            sx={{ fontSize: '0.72rem', py: 0.3, px: 1, minWidth: 'auto' }}>Restore</Button>
+                        </>
+                      ) : (<>
                       {s.status === 'Draft' && (
                         <>
                           <Tooltip title="Download packing slip PDF">
@@ -820,6 +890,7 @@ export default function CourierManagementPage() {
                           </IconButton>
                         </Tooltip>
                       )}
+                      </>)}
                     </Stack>
                   </TableCell>
                 </TableRow>
@@ -884,9 +955,10 @@ export default function CourierManagementPage() {
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
               <Typography sx={secHeaderSx}>Items</Typography>
               <Stack direction="row" gap={1}>
-                <Button size="small" variant="outlined" onClick={addPredefined}
+                <Button size="small" variant="outlined" onClick={addAllItems}
+                  disabled={!adminItems.length}
                   sx={{ fontSize: '0.75rem', py: 0.5, borderColor: '#22c55e', color: '#15803d', '&:hover': { bgcolor: '#f0fdf4', borderColor: '#16a34a' } }}>
-                  + Add Predefined Items
+                  + Add All Items
                 </Button>
                 <Button size="small" variant="outlined"
                   onClick={e => setAddMenuAnchor(e.currentTarget)}
@@ -920,7 +992,9 @@ export default function CourierManagementPage() {
 
             {!fItems.length ? (
               <Box sx={{ bgcolor: '#f8fafc', border: '1.5px dashed #e2e8f0', borderRadius: '10px', p: 3, textAlign: 'center', color: '#94a3b8', fontSize: '0.82rem' }}>
-                No items yet — click "Add Predefined Items" or pick from "+ Add Item"
+                {adminItems.length
+                  ? 'No items yet — click "Add All Items" or pick from "+ Add Item"'
+                  : 'No courier items configured yet — add them in Admin → Courier Items first.'}
               </Box>
             ) : (
               <>
