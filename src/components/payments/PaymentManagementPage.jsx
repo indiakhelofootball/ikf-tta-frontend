@@ -592,7 +592,7 @@ function PaymentManagementPage() {
                 </Stack>
               </Stack>
             </Box>
-            {canEdit('bank') && (
+            {canEditPayments && (
             <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
               <Button
                 variant="contained"
