@@ -536,6 +536,25 @@ export default function AdminPage() {
     }
   };
 
+  // Rename a service type / entity type through the backend so existing vendors
+  // that stored the old string follow the rename (fixes 'volunteer -> scout not
+  // reflecting in vendors'). category: 'service_type' | 'entity_type'; refresh
+  // rebuilds the local caches from the API afterward.
+  const handleVendorTagRename = (category, setState, getState) => async (oldName, newName) => {
+    setSaveError(''); setRenameInfo('');
+    try {
+      const res = await configAPI.rename(category, oldName, newName);
+      const c = (res && res.cascade) || {};
+      const noun = category === 'service_type' ? 'service type' : 'entity type';
+      setRenameInfo(`Renamed ${noun} "${oldName}" to "${newName}". Updated ${c.vendors || 0} vendor(s).`);
+      await refreshAllFromAPI();
+      setState(getState());
+    } catch (err) {
+      setSaveError(err?.message || `Could not rename "${oldName}". It may already exist.`);
+      setState(getState());   // discard the optimistic edit
+    }
+  };
+
   useEffect(() => {
     // Load defaults immediately, then fetch from API
     setProjectNames(getProjectNames());
@@ -618,15 +637,17 @@ export default function AdminPage() {
           >
             <OptionPanel
               title="Service Types"
-              subtitle="Service types available when adding a vendor (e.g. Photography, Videography, Printing)."
+              subtitle="Service types available when adding a vendor (e.g. Photography, Videography, Printing). Renaming one updates every vendor already using it."
               items={vendorTypes}
               onSave={handleSave(setVendorTypes, saveVendorTypes)}
+              onRename={handleVendorTagRename('service_type', setVendorTypes, getVendorTypes)}
             />
             <OptionPanel
               title="Entity Types"
-              subtitle="Company/entity types available when adding a vendor (e.g. Individual, Private Limited, LLP)."
+              subtitle="Company/entity types available when adding a vendor (e.g. Individual, Private Limited, LLP). Renaming one updates every vendor already using it."
               items={entityTypes}
               onSave={handleSave(setEntityTypes, saveEntityTypes)}
+              onRename={handleVendorTagRename('entity_type', setEntityTypes, getEntityTypes)}
             />
             <VendorNamePanel
               items={vendorNames}

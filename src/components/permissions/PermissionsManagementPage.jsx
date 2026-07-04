@@ -41,6 +41,7 @@ export default function PermissionsManagementPage() {
   const [tab, setTab] = useState(0);
   const [modules, setModules] = useState([]);
   const [sodPairs, setSodPairs] = useState([]);
+  const [moduleDeps, setModuleDeps] = useState({});
   const [users, setUsers] = useState([]);
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -90,6 +91,7 @@ export default function PermissionsManagementPage() {
         ]);
         setModules(mods.modules || []);
         setSodPairs(mods.separationOfDutiesPairs || []);
+        setModuleDeps(mods.moduleDependencies || {});
         setUsers(usr.users || []);
         await loadRequests();
       } catch (e) {
@@ -234,6 +236,17 @@ export default function PermissionsManagementPage() {
     return pair ? `${moduleLabel(pair[0])} + ${moduleLabel(pair[1])}` : '';
   }, [sodPairs, grants, moduleLabel]);
 
+  // For each granted module, list its dependency modules that have no grant in the
+  // current grid — the granted screen will be partly broken (blank pickers, hidden
+  // actions) without them. Soft warning only; never blocks the save.
+  const unmetDeps = useMemo(() => {
+    const isGranted = (m) => !!(grants[m]?.can_view || grants[m]?.can_edit);
+    return Object.entries(moduleDeps)
+      .filter(([mod]) => isGranted(mod))
+      .map(([mod, deps]) => ({ module: mod, missing: (deps || []).filter((d) => !isGranted(d)) }))
+      .filter((d) => d.missing.length > 0);
+  }, [grants, moduleDeps]);
+
   const doSave = async () => {
     setWarnOpen(false);
     setSaving(true);
@@ -350,7 +363,8 @@ export default function PermissionsManagementPage() {
       {tab === 0 ? (
         <UsersTab
           {...{ filteredUsers, search, setSearch, selectedUser, selectUser, modules,
-            grants, setCell, loadingGrants, saving, violatesSoD, sodLabel, warnOpen, setWarnOpen, doSave }}
+            grants, setCell, loadingGrants, saving, violatesSoD, sodLabel, warnOpen, setWarnOpen, doSave,
+            unmetDeps, moduleLabel }}
           currentEmail={currentUser?.email}
           onDelete={setDeleteTarget}
         />
@@ -537,7 +551,7 @@ export default function PermissionsManagementPage() {
 function UsersTab(props) {
   const { filteredUsers, search, setSearch, selectedUser, selectUser, modules,
     grants, setCell, loadingGrants, saving, violatesSoD, sodLabel, setWarnOpen, doSave,
-    currentEmail, onDelete } = props;
+    unmetDeps, moduleLabel, currentEmail, onDelete } = props;
 
   const onSaveClick = () => (violatesSoD ? setWarnOpen(true) : doSave());
 
@@ -608,6 +622,19 @@ function UsersTab(props) {
             {violatesSoD && (
               <Alert severity="warning" icon={<WarningIcon />} sx={{ mx: 2.5, mb: 1.5 }}>
                 Edit on <strong>{sodLabel}</strong> lets one person raise and approve payments. You can still save.
+              </Alert>
+            )}
+            {unmetDeps.length > 0 && (
+              <Alert severity="info" sx={{ mx: 2.5, mb: 1.5 }}>
+                Some granted modules depend on others to work fully. You can still save:
+                <Box component="ul" sx={{ m: 0.5, pl: 2.5 }}>
+                  {unmetDeps.map(({ module, missing }) => (
+                    <li key={module}>
+                      <strong>{moduleLabel(module)}</strong> also needs{' '}
+                      {missing.map(moduleLabel).join(', ')}
+                    </li>
+                  ))}
+                </Box>
               </Alert>
             )}
             <Divider />
