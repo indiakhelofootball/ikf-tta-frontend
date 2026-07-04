@@ -59,6 +59,11 @@ function WorkOrderCard({ workOrder, onView, onEdit, onDelete, onRaisePayment, on
                 {workOrder.companyType ? ` · ${workOrder.companyType}` : ''}
               </Typography>
             )}
+            {workOrder.projectRef && (
+              <Typography variant="caption" sx={{ color: '#5B63D3', fontWeight: 600, display: 'block', mt: 0.25 }}>
+                {workOrder.projectRef}{workOrder.projectCity ? ` · ${workOrder.projectCity}` : ''}
+              </Typography>
+            )}
           </Box>
           <Stack direction="column" alignItems="flex-end" spacing={0.5}>
             <Chip label={workOrder.status} size="small" sx={{

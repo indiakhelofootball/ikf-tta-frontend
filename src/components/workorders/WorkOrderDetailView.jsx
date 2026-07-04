@@ -108,6 +108,18 @@ function WorkOrderDetailView({ open, onClose, workOrder, onEdit }) {
 
       <DialogContent sx={{ pt: 2.5 }}>
 
+        {/* Project / City */}
+        {(wo.projectRef || wo.projectCity) && (
+          <>
+            <Typography sx={labelSx}>Project</Typography>
+            <Box sx={sectionSx}>
+              <Typography variant="body2" sx={{ color: '#334155', lineHeight: 1.7 }}>
+                {wo.projectRef || '—'}{wo.projectCity ? ` · ${wo.projectCity}` : ''}
+              </Typography>
+            </Box>
+          </>
+        )}
+
         {/* Description */}
         <Typography sx={labelSx}>Description</Typography>
         <Box sx={sectionSx}>
