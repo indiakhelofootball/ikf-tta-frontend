@@ -432,6 +432,16 @@ export const vendorsAPI = {
     });
   },
 
+  // Correct only a vendor's bank fields — used by the Banking screen to fix a
+  // bounced payment before re-submission. Gated by the 'payments' grant, so a
+  // payments user can do it without full vendor edit.
+  updateBankDetails: async (id, bankData) => {
+    return apiService.request(`/vendors/${id}/bank-details/`, {
+      method: 'PATCH',
+      body: JSON.stringify(bankData),
+    });
+  },
+
   delete: async (id) => {
     return apiService.request(`/vendors/${id}/`, { method: 'DELETE' });
   },

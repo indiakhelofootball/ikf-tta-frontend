@@ -35,7 +35,9 @@ export default function Sidebar({ collapsed, onToggle }) {
   const canAccessVendorManagement = canView('vendors');
   const canAccessPayments = canView('payments');
   const canAccessWorkOrders = canView('workorders');
-  const canAccessBank = canView('bank');
+  // Banking is a payments-operations screen (mark paid/bounced, TDS deposit), so
+  // it lives under the payments grant — the person who handles payments does it.
+  const canAccessBank = canView('payments');
   const canAccessReports = REPORT_KEYS.some((k) => canView(k));
   const canAccessCourier = canView('courier');
   const canAccessCSR = canView('csr');
