@@ -51,6 +51,23 @@ const fmtDate = (d) => {
   return dt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 };
 
+// Full address string for a row = venue (ground location) + city + state.
+const addressOf = (r) => [r.location, r.city, r.state].filter(Boolean).join(', ');
+
+// Google Maps search link for the row's address (no API key needed). Empty when
+// there is nothing locatable.
+const mapUrl = (r) => {
+  const q = addressOf(r);
+  return q ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}` : '';
+};
+
+// Sort key: rows with a real date come first in ascending date order; undated
+// rows sink to the bottom (they have no place on a date-ordered list).
+const dateSortKey = (r) => {
+  const t = r.date ? new Date(r.date).getTime() : NaN;
+  return isNaN(t) ? Infinity : t;
+};
+
 function TrialsReport() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -105,6 +122,7 @@ function TrialsReport() {
           season: t.season || '',
           state: c.state || '',
           city: c.cityName || '',
+          location: c.groundLocation || '',
           month: monthOf(c),
           date: c.tentativeDate || '',
           confirmed: !!c.confirmed,
@@ -123,18 +141,22 @@ function TrialsReport() {
 
   const filteredRows = useMemo(() => {
     const q = norm(search);
-    return rows.filter((r) => {
-      if (seasonFilter && r.season !== seasonFilter) return false;
-      if (assignFilter === 'assigned' && !r.assigned) return false;
-      if (assignFilter === 'unassigned' && r.assigned) return false;
-      if (!q) return true;
-      return (
-        norm(r.projectName).includes(q) ||
-        norm(r.city).includes(q) ||
-        norm(r.state).includes(q) ||
-        r.reps.some((n) => norm(n).includes(q))
-      );
-    });
+    return rows
+      .filter((r) => {
+        if (seasonFilter && r.season !== seasonFilter) return false;
+        if (assignFilter === 'assigned' && !r.assigned) return false;
+        if (assignFilter === 'unassigned' && r.assigned) return false;
+        if (!q) return true;
+        return (
+          norm(r.projectName).includes(q) ||
+          norm(r.city).includes(q) ||
+          norm(r.state).includes(q) ||
+          norm(r.location).includes(q) ||
+          r.reps.some((n) => norm(n).includes(q))
+        );
+      })
+      // Detail listing is ordered by trial date, ascending (dated first, then undated).
+      .sort((a, b) => dateSortKey(a) - dateSortKey(b));
   }, [rows, search, seasonFilter, assignFilter]);
 
   // Month-wise matrix: project (row) x month (col) counts, from filtered rows.
@@ -170,10 +192,10 @@ function TrialsReport() {
   }), [rows]);
 
   const exportCSV = () => {
-    const header = ['Project', 'Season', 'State', 'City', 'Month', 'Date', 'Confirmed', 'REP(s)', 'Assignment'];
+    const header = ['Project', 'Season', 'State', 'City', 'Location', 'Address', 'Date', 'Map', 'Confirmed', 'REP(s)', 'Assignment'];
     const lines = filteredRows.map((r) => [
-      r.projectName, r.season, r.state, r.city, r.month,
-      r.date ? fmtDate(r.date) : '', r.confirmed ? 'Yes' : 'No',
+      r.projectName, r.season, r.state, r.city, r.location, addressOf(r),
+      r.date ? fmtDate(r.date) : '', mapUrl(r), r.confirmed ? 'Yes' : 'No',
       r.reps.join('; '), r.assigned ? 'Assigned' : 'Unassigned',
     ].map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','));
     const csv = [header.join(','), ...lines].join('\n');
@@ -322,7 +344,7 @@ function TrialsReport() {
               <Table size="small">
                 <TableHead>
                   <TableRow sx={{ bgcolor: '#f8fafc' }}>
-                    {['Project', 'Season', 'State', 'City', 'Month', 'Date', 'REP', 'Status'].map((h) => (
+                    {['Project', 'Season', 'State', 'City', 'Location', 'Date', 'Map', 'REP', 'Status'].map((h) => (
                       <TableCell key={h} sx={headSx}>{h}</TableCell>
                     ))}
                   </TableRow>
@@ -330,7 +352,7 @@ function TrialsReport() {
                 <TableBody>
                   {filteredRows.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} align="center" sx={{ py: 5, color: '#94a3b8' }}>
+                      <TableCell colSpan={9} align="center" sx={{ py: 5, color: '#94a3b8' }}>
                         No trial cities match the current filters.
                       </TableCell>
                     </TableRow>
@@ -341,9 +363,14 @@ function TrialsReport() {
                         <TableCell sx={cellSx}>{r.season || '—'}</TableCell>
                         <TableCell sx={cellSx}>{r.state || '—'}</TableCell>
                         <TableCell sx={cellSx}>{r.city || '—'}</TableCell>
-                        <TableCell sx={cellSx}>{r.month}</TableCell>
+                        <TableCell sx={cellSx}>{r.location || <span style={{ color: '#cbd5e1' }}>—</span>}</TableCell>
                         <TableCell sx={cellSx}>{fmtDate(r.date)}</TableCell>
-                        <TableCell sx={cellSx}>{r.reps.length ? r.reps.join(', ') : <span style={{ color: '#cbd5e1' }}>—</span>}</TableCell>
+                        <TableCell sx={cellSx}>
+                          {mapUrl(r)
+                            ? <a href={mapUrl(r)} target="_blank" rel="noopener noreferrer" style={{ color: '#0d9488', fontWeight: 600, textDecoration: 'none' }}>Map</a>
+                            : <span style={{ color: '#cbd5e1' }}>—</span>}
+                        </TableCell>
+                        <TableCell sx={cellSx}>{r.reps.length ? r.reps.join(', ') : <span style={{ color: '#dc2626', fontWeight: 600 }}>Unassigned</span>}</TableCell>
                         <TableCell sx={cellSx}>
                           <Chip
                             label={r.assigned ? 'Assigned' : 'Unassigned'}
