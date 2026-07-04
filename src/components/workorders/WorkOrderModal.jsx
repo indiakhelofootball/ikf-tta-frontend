@@ -20,8 +20,8 @@ import {
   Lock as LockIcon,
 } from '@mui/icons-material';
 import { generateWorkOrderNumber } from './workOrderData';
-import { getVendorTypeNames, getEntityTypeNames } from '../../utils/adminStorage';
-import { vendorsAPI } from '../../services/api';
+import { getVendorTypeNames, getEntityTypeNames, getProjectNames } from '../../utils/adminStorage';
+import { vendorsAPI, trialsAPI } from '../../services/api';
 
 /* ── Design tokens ── */
 const cardSx = {
@@ -74,6 +74,8 @@ const EMPTY_FORM = {
   workOrderNumber: '',
   type: 'Fixed',
   vendorId: '',
+  projectRef: '',
+  projectCity: '',
   serviceDescription: '',
   amount: '',
   amountPerPeriod: '',
@@ -96,13 +98,20 @@ function WorkOrderModal({ open, onClose, onSave, workOrder, saving, allVendors: 
   const [freshVendors, setFreshVendors] = useState([]);
   const allVendors = freshVendors.length > 0 ? freshVendors : propVendors;
 
+  // — trials (for the project → city dropdown) —
+  const [trials, setTrials] = useState([]);
+
   useEffect(() => {
     if (open) {
       vendorsAPI.getAll({ limit: 1000 })
         .then(res => { if (res.vendors?.length) setFreshVendors(res.vendors); })
         .catch(() => {});
+      trialsAPI.getAll()
+        .then(res => setTrials(Array.isArray(res) ? res : (res.trials || res.results || [])))
+        .catch(() => {});
     } else {
       setFreshVendors([]);
+      setTrials([]);
     }
   }, [open]);
 
@@ -146,6 +155,20 @@ function WorkOrderModal({ open, onClose, onSave, workOrder, saving, allVendors: 
   /* ── Search filter logic ── */
   const serviceTypeOptions = useMemo(() => getVendorTypeNames(), []);
   const entityTypeOptions = useMemo(() => getEntityTypeNames(), []);
+  const projectOptions = useMemo(() => getProjectNames().map((p) => p.name), []);
+  // Cities of the selected project = distinct city names across trials whose trialType
+  // matches the chosen project name.
+  const projectCityOptions = useMemo(() => {
+    if (!form.projectRef) return [];
+    const names = new Set();
+    trials
+      .filter((t) => t.trialType === form.projectRef)
+      .forEach((t) => (t.assignedCities || []).forEach((c) => {
+        const name = c.cityName || c.city || c.name;
+        if (name) names.add(name);
+      }));
+    return [...names].sort();
+  }, [trials, form.projectRef]);
 
   const filteredVendors = useMemo(() => {
     let pool = [...allVendors];
@@ -309,6 +332,8 @@ function WorkOrderModal({ open, onClose, onSave, workOrder, saving, allVendors: 
       type: form.type,
       amount: totalAmount,
       serviceDescription: form.serviceDescription,
+      projectRef: form.projectRef || '',
+      projectCity: form.projectCity || '',
       status: 'Issued',
       ...(form.type === 'Periodic' && {
         amountPerPeriod: Number(form.amountPerPeriod),
@@ -805,6 +830,37 @@ function WorkOrderModal({ open, onClose, onSave, workOrder, saving, allVendors: 
             {/* ── 6. DESCRIPTION ── */}
             <Box sx={cardSx}>
               <Typography sx={secHeaderSx}>Description</Typography>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1.5, mb: 2 }}>
+                <Box>
+                  <Typography component="label" sx={labelSx}>Project</Typography>
+                  <Autocomplete
+                    size="small"
+                    freeSolo
+                    options={projectOptions}
+                    value={form.projectRef || ''}
+                    onChange={(_, val) => setForm((p) => ({ ...p, projectRef: val || '', projectCity: '' }))}
+                    onInputChange={(_, val) => setForm((p) => ({ ...p, projectRef: val || '' }))}
+                    renderInput={(params) => (
+                      <TextField {...params} sx={inputSx} placeholder="Link this work order to a project (optional)" />
+                    )}
+                  />
+                </Box>
+                <Box>
+                  <Typography component="label" sx={labelSx}>City</Typography>
+                  <Autocomplete
+                    size="small"
+                    disabled={!form.projectRef}
+                    options={projectCityOptions}
+                    value={form.projectCity || ''}
+                    onChange={(_, val) => setForm((p) => ({ ...p, projectCity: val || '' }))}
+                    renderInput={(params) => (
+                      <TextField {...params} sx={inputSx}
+                        placeholder={form.projectRef ? 'Select a city of this project' : 'Select a project first'} />
+                    )}
+                    noOptionsText="No cities for this project"
+                  />
+                </Box>
+              </Box>
               <Box>
                 <Typography component="label" sx={labelSx}>Work Order Description *</Typography>
                 <TextField
