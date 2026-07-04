@@ -117,7 +117,10 @@ export default function ClientPortalPage() {
                     <ListItem key={a.id}>
                       <ListItemText
                         primary={`${a.title}${a.activityType ? ` · ${a.activityType}` : ''}`}
-                        secondary={[a.date, a.location].filter(Boolean).join(' · ') || null}
+                        secondary={[
+                          (a.startDate && a.endDate) ? `${a.startDate} → ${a.endDate}` : a.date,
+                          a.location,
+                        ].filter(Boolean).join(' · ') || null}
                       />
                       <Chip size="small" label={a.status} />
                     </ListItem>
