@@ -87,7 +87,9 @@ export default function CSRActivityModal({ open, activity, activityTypes, onClos
             disabled={noTypes}
           >
             {(activityTypes || []).map((t) => (
-              <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>
+              <MenuItem key={t.id} value={t.id}>
+                {t.name}{t.isMaster ? ' · master template' : ''}
+              </MenuItem>
             ))}
           </TextField>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>

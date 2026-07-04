@@ -342,7 +342,10 @@ export default function CSRProjectDetailPage() {
                 >
                   <ListItemText
                     primary={a.title}
-                    secondary={[a.date, a.location].filter(Boolean).join(' · ') || null}
+                    secondary={[
+                      (a.startDate && a.endDate) ? `${a.startDate} → ${a.endDate}` : a.date,
+                      a.location,
+                    ].filter(Boolean).join(' · ') || null}
                   />
                   <Chip size="small" label={a.status} sx={{ mr: 1 }} />
                 </ListItem>
