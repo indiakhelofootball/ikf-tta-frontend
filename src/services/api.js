@@ -766,8 +766,13 @@ export const courierAPI = {
     if (filters.status) params.append('status', filters.status);
     if (filters.trial) params.append('trial', filters.trial);
     if (filters.city) params.append('city', filters.city);
+    if (filters.deleted) params.append('deleted', 'true');
     const qs = params.toString();
     return apiService.request(`/courier/shipments/${qs ? `?${qs}` : ''}`);
+  },
+
+  restore: async (id) => {
+    return apiService.request(`/courier/shipments/${id}/restore/`, { method: 'POST' });
   },
 
   getById: async (id) => {
