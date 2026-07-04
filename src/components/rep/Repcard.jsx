@@ -112,7 +112,7 @@ function REPCard({ rep, onEdit, onDelete, onViewDetails }) {
                   {assignments.slice(0, 4).map(a => (
                     <Chip
                       key={a.id}
-                      label={[a.trialSeason, a.trialType, a.city].filter(Boolean).join(' | ')}
+                      label={[a.trialSeason, a.trialType, a.city, a.trialDate].filter(Boolean).join(' | ')}
                       size="small"
                       sx={{ fontSize: '0.72rem', fontWeight: 600, bgcolor: '#dbeafe', color: '#1d4ed8', height: 22 }}
                     />
