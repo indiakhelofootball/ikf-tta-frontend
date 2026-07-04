@@ -35,9 +35,12 @@ export const AuthProvider = ({ children }) => {
         .then((d) => {
           if (!active) return;
           setPerms(d);
-          if (d?.isSuperAdmin || d?.grants?.config?.can_view) {
-            refreshAllFromAPI().catch(() => {});
-          }
+          // Config reference data (dropdown labels — service/entity/vendor types,
+          // banks…) is readable by ANY authenticated user (ReadOpenModulePermission)
+          // and every operational form needs it, so load it regardless of grants.
+          // Was gated on config.can_view, from when config reads 403'd without the
+          // grant; that left a Vendors-only user with blank dropdowns on Add Vendor.
+          refreshAllFromAPI().catch(() => {});
         })
         .catch(() => {
           if (!active) return;
@@ -70,9 +73,8 @@ export const AuthProvider = ({ children }) => {
       permissionsAPI.getMine()
         .then((d) => {
           setPerms(d);
-          if (d?.isSuperAdmin || d?.grants?.config?.can_view) {
-            refreshAllFromAPI().catch(() => {});
-          }
+          // Reload the open config cache for any user (see login effect above).
+          refreshAllFromAPI().catch(() => {});
         })
         .catch(() => {}); // transient failure — keep the last known grants
     };
