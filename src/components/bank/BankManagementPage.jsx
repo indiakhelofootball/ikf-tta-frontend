@@ -212,7 +212,7 @@ function BankManagementPage() {
       // them read-only. Persist the correction on the vendor first, otherwise
       // the re-submitted payment carries the same wrong details that bounced.
       if (updated.vendorId) {
-        await vendorsAPI.patch(updated.vendorId, {
+        await vendorsAPI.updateBankDetails(updated.vendorId, {
           bankName: updated.bankName,
           accountNumber: updated.accountNumber,
           ifscCode: updated.ifscCode,
