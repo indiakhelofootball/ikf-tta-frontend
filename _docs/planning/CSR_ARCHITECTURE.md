@@ -170,3 +170,42 @@ onward (lint), so the one-way dependency never silently inverts.
   (so the deferred roles are an `AlterField`); URL convention is `path('api/', include('<app>.urls'))`.
 - Until Phase 0 clears, the next action is **not** code — it is an owner decision on this doc and
   on the §14 open questions that gate Phases 5–8.
+
+---
+
+## 9. Build progress & findings (updated 2026-06-28)
+
+Built ahead of formal Phase 0 sign-off, at the owner's direction — but strictly the
+**decision-independent, org-side** scope. The external/client surface (Phase 8) remains unbuilt
+and gated. Branches: backend `csr-foundation`, frontend `csr-foundation` (both local, unpushed).
+
+**Done & validated** (Django 3.2.25 venv: `check` clean, 9 csr tests pass; frontend eslint + build + 1 component test):
+- Phase 1 models + migrations; Phase 2 grants (`csr`, `csr_certificate`).
+- Org API: projects, activity-types, activities, reports, expense-tags, client-users — gated by
+  `ModulePermission`; `?project=` filtering; `PageNumberPagination` (page_size 100, `limit` param).
+- Org frontend: Projects list + tabbed detail (Overview / Activities / Reports) with CRUD.
+- Tests: INV-AUDIT (DB + serializer), permission wall (no-grant → 403, grant → 200, super bypass),
+  project filtering, **INV-DEP** (a test scans core apps for any reverse `import csr` — replaces the
+  "discipline only" gap with an enforced check).
+
+**Findings that corrected the plan:**
+- **INV-AUDIT / MariaDB caveat.** The model `CheckConstraint` (payment XOR manual) is **not
+  enforced on production MariaDB 10.1.x** — CHECK is parsed-but-ignored before MariaDB 10.2.1. The
+  `OneToOne` uniqueness (one payment → one project) *is* enforced (unique index). The XOR is held by
+  `CSRExpenseTagSerializer.validate()` at the app layer. So INV-AUDIT = DB(uniqueness) + app(XOR)
+  on 10.1, fully DB-level only on ≥10.2.1.
+- **No FileField in this codebase.** Every attachment is an external-link `TextField`
+  (`mou_document_url`, `rep_logo_url`); there is no `MEDIA_ROOT`. `CSRReport` was corrected from a
+  `FileField` to `file_name` + `file_url` to match. Do not introduce server-side uploads without
+  first adding media config.
+
+**Operational step before CSR is usable in prod:**
+- **Grant seeding.** New modules start with no grant rows, so only `SUPER_ADMIN` sees CSR. Run
+  `python manage.py backfill_permissions` (gives every ADMIN the `csr`/`csr_certificate` grants;
+  REP excluded) **or** assign grants per-user in User Management. The permissions grid is
+  data-driven from the registry, so `csr` appears there automatically.
+
+**Still gated (unchanged):** roles `CSR_CLIENT`/`CSR_PARTNER` (partner model), activity-type catalog
+UI (master org-wide vs per-client — blocks the Activities tab from being usable), Utilisation
+Certificate generator + expense UI (expense model), Phase 8 client/partner surface + white-label
+portal (G4 auth precondition), Phase 9 leak/audit acceptance test.
