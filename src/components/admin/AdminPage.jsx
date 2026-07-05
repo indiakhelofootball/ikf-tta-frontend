@@ -1,6 +1,7 @@
 // src/components/admin/AdminPage.jsx
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box, Container, Typography, Paper, Stack, TextField,
   Button, IconButton, Divider, Tooltip, Alert,
@@ -18,6 +19,8 @@ import {
   Store as VendorIcon,
   AccountBalance as BankingIcon,
   LocalShipping as CourierIcon,
+  VolunteerActivism as CSRIcon,
+  ArrowForward as GoIcon,
 } from '@mui/icons-material';
 import {
   getProjectNames, saveProjectNames,
@@ -494,6 +497,7 @@ function SectionGroup({ icon, label, color, defaultOpen, children }) {
 }
 
 export default function AdminPage() {
+  const navigate = useNavigate();
   const [projectNames, setProjectNames] = useState([]);
   const [seasons, setSeasons] = useState([]);
   const [vendorTypes, setVendorTypes] = useState([]);
@@ -691,6 +695,52 @@ export default function AdminPage() {
               items={courierItems}
               onSave={handleSave(setCourierItems, saveCourierItems)}
             />
+          </SectionGroup>
+
+          {/* ── CSR section ── */}
+          <SectionGroup
+            icon={<CSRIcon sx={{ fontSize: 20, color: '#ec4899' }} />}
+            label="CSR"
+            color="#ec4899"
+            defaultOpen={false}
+          >
+            <Paper elevation={0} sx={{ border: '1.5px solid #e8e8e8', borderRadius: '20px', overflow: 'hidden' }}>
+              <Box sx={{ px: 3.5, py: 2.5, bgcolor: '#fafafa', borderBottom: '1px solid #e8e8e8' }}>
+                <Typography sx={{ fontSize: '1rem', fontWeight: 700, color: '#1d1d1f' }}>Activity Types</Typography>
+                <Typography sx={{ fontSize: '0.82rem', color: '#6e6e73', mt: 0.25 }}>
+                  The catalog of CSR activity types (trials, workshops, trainings). CSR staff pick
+                  from these when adding a project activity; only admins maintain the list.
+                </Typography>
+              </Box>
+              <Box sx={{ px: 3.5, py: 3 }}>
+                <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
+                  <Button
+                    variant="contained"
+                    endIcon={<GoIcon sx={{ fontSize: '1.1rem' }} />}
+                    onClick={() => navigate('/csr/activity-types')}
+                    sx={{
+                      bgcolor: '#ec4899', color: '#fff', borderRadius: '12px',
+                      textTransform: 'none', fontWeight: 700, boxShadow: 'none',
+                      '&:hover': { bgcolor: '#db2777', boxShadow: 'none' },
+                    }}
+                  >
+                    Manage Activity Types
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    endIcon={<GoIcon sx={{ fontSize: '1.1rem' }} />}
+                    onClick={() => navigate('/csr/branding')}
+                    sx={{
+                      color: '#ec4899', borderColor: '#ec4899', borderRadius: '12px',
+                      textTransform: 'none', fontWeight: 700,
+                      '&:hover': { borderColor: '#db2777', bgcolor: '#fdf2f8' },
+                    }}
+                  >
+                    Client Portal Branding
+                  </Button>
+                </Stack>
+              </Box>
+            </Paper>
           </SectionGroup>
         </Stack>
 

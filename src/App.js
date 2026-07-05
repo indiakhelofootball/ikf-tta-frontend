@@ -31,6 +31,9 @@ import VendorAuditReport from "./components/reports/VendorAuditReport";
 import TrialSpendReport from "./components/reports/TrialSpendReport";
 import TrialsReport from "./components/reports/TrialsReport";
 import CourierManagementPage from "./components/courier/CourierManagementPage";
+import { CSRProjectManagementPage, CSRProjectDetailPage, CSRActivityTypesPage, CSRClientsPage, CSRBrandingPage } from "./components/csr";
+import ClientPortalPage from "./components/client/ClientPortalPage";
+import ClientLogin from "./components/client/ClientLogin";
 import PermissionsManagementPage from "./components/permissions/PermissionsManagementPage";
 import RequestAccessPage from "./components/permissions/RequestAccessPage";
 
@@ -39,7 +42,7 @@ import ErrorFallback from "./components/error/ErrorFallback";
 import { logError } from "./utils/errorLogger";
 
 function App() {
-  const { loading, isAuthenticated } = useAuth();
+  const { loading, isAuthenticated, user } = useAuth();
 
   // Error handler function
   const handleError = (error, errorInfo) => {
@@ -83,7 +86,7 @@ function App() {
           path="/"
           element={
             isAuthenticated ? (
-              <Navigate to="/dashboard" replace />
+              <Navigate to={user?.role === ROLES.CSR_CLIENT ? "/client" : "/dashboard"} replace />
             ) : (
               <Navigate to="/login" replace />
             )
@@ -92,6 +95,7 @@ function App() {
 
         {/* PUBLIC */}
         <Route path="/login" element={<Login />} />
+        <Route path="/client/:slug/login" element={<ClientLogin />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
 
         {/* PROTECTED */}
@@ -174,6 +178,35 @@ function App() {
                 <CourierManagementPage />
               </GrantedRoute>
             } />
+            <Route path="/csr" element={
+              <GrantedRoute module="csr">
+                <CSRProjectManagementPage />
+              </GrantedRoute>
+            } />
+            {/* D1: the activity-type catalog is admin-managed (TTA Admin), not a
+                CSR-owned page. Admins reach it from Admin Settings. */}
+            <Route path="/csr/activity-types" element={
+              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+                <CSRActivityTypesPage />
+              </RoleBasedRoute>
+            } />
+            {/* Funder onboarding — admin-only, not csr-grant gated. Static path
+                must precede the dynamic /csr/:id route. */}
+            <Route path="/csr/clients" element={
+              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+                <CSRClientsPage />
+              </RoleBasedRoute>
+            } />
+            <Route path="/csr/branding" element={
+              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+                <CSRBrandingPage />
+              </RoleBasedRoute>
+            } />
+            <Route path="/csr/:id" element={
+              <GrantedRoute module="csr">
+                <CSRProjectDetailPage />
+              </GrantedRoute>
+            } />
             <Route path="/user-management" element={
               <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN]}>
                 <PermissionsManagementPage />
@@ -189,6 +222,13 @@ function App() {
               </RoleBasedRoute>
             } />
           </Route>
+
+          {/* External CSR funder portal — own shell, no TTA sidebar */}
+          <Route path="/client" element={
+            <RoleBasedRoute allowedRoles={[ROLES.CSR_CLIENT]}>
+              <ClientPortalPage />
+            </RoleBasedRoute>
+          } />
         </Route>
 
         {/* FALLBACK */}

@@ -179,6 +179,17 @@ class APIService {
       body: JSON.stringify(profileData),
     });
   }
+
+  async changePassword({ oldPassword, newPassword, newPassword2 }) {
+    return this.request('/auth/change-password/', {
+      method: 'POST',
+      body: JSON.stringify({
+        old_password: oldPassword,
+        new_password: newPassword,
+        new_password2: newPassword2,
+      }),
+    });
+  }
 }
 
 // Export singleton
@@ -850,4 +861,59 @@ export const reportsAPI = {
   vendorAudit: async () => apiService.request('/reports/vendor-audit/'),
   trialSpend: async () => apiService.request('/reports/trial-spend/'),
   trials: async () => apiService.request('/reports/trials/'),
+};
+
+// ============================================
+// CSR API — org side only (/api/csr/...), gated by the `csr` grant.
+// The external client/partner surface (/api/client/) is a later, gated phase.
+// ============================================
+function csrCrud(base) {
+  return {
+    getAll: async (params = {}) => {
+      const qs = new URLSearchParams(params).toString();
+      return apiService.request(`${base}/${qs ? `?${qs}` : ''}`);
+    },
+    getById: async (id) => apiService.request(`${base}/${id}/`),
+    create: async (data) =>
+      apiService.request(`${base}/`, { method: 'POST', body: JSON.stringify(data) }),
+    update: async (id, data) =>
+      apiService.request(`${base}/${id}/`, { method: 'PUT', body: JSON.stringify(data) }),
+    delete: async (id) => apiService.request(`${base}/${id}/`, { method: 'DELETE' }),
+  };
+}
+
+export const csrAPI = {
+  projects: csrCrud('/csr/projects'),
+  activities: csrCrud('/csr/activities'),
+  activityTypes: csrCrud('/csr/activity-types'),
+  reports: csrCrud('/csr/reports'),
+  expenseTags: csrCrud('/csr/expense-tags'),
+  clientUsers: csrCrud('/csr/client-users'),
+  contacts: csrCrud('/csr/contacts'),
+  // Funder onboarding — admin-only endpoint (SUPER_ADMIN/ADMIN). Creates the
+  // CSR_CLIENT login + project link in one atomic call; role is fixed server-side.
+  clients: {
+    list: async () => apiService.request('/csr/clients/'),
+    onboard: async (data) =>
+      apiService.request('/csr/clients/', { method: 'POST', body: JSON.stringify(data) }),
+  },
+  // Server-authoritative Utilisation Certificate (totals computed server-side).
+  utilisationCertificate: async (projectId) =>
+    apiService.request(`/csr/projects/${projectId}/utilisation-certificate/`),
+  // White-label branding — admin-managed CRUD (SUPER_ADMIN/ADMIN).
+  branding: csrCrud('/csr/branding'),
+};
+
+// ============================================
+// CLIENT API — external funder portal (/api/client/...). Read-only, scoped to
+// the caller's one project by the backend (CSR_CLIENT role).
+// ============================================
+export const clientAPI = {
+  project: async () => apiService.request('/client/project/'),
+  activities: async () => apiService.request('/client/activities/'),
+  reports: async () => apiService.request('/client/reports/'),
+  // White-label branding: public by slug (pre-auth login), and the funder's own
+  // branding post-auth (skins the portal without a slug in the URL).
+  brandingBySlug: async (slug) => apiService.request(`/client/branding/${slug}/`),
+  myBranding: async () => apiService.request('/client/my-branding/'),
 };
