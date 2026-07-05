@@ -1,0 +1,13 @@
+{
+  "name": "csr-operator-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Playwright E2E suite for the CSR operator (internal /csr) flow.",
+  "scripts": {
+    "test": "playwright test",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1"
+  }
+}
