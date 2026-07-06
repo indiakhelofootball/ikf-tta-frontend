@@ -1,10 +1,11 @@
 // src/components/layout/DashboardLayout.jsx - BIGGER PROFILE
 import React from "react";
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Outlet, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { IconButton, Avatar, Menu, MenuItem, Divider, ListItemIcon } from "@mui/material";
 import { Logout, Person } from "@mui/icons-material";
 import Sidebar from "./Sidebar";
 import { useAuth } from "../../auth/AuthContext";
+import { ROLES } from "../../auth/roles";
 import "./DashboardLayout.css";
 
 const pageTitles = {
@@ -62,6 +63,14 @@ export default function DashboardLayout() {
     }
     return 'U';
   };
+
+  // External funders belong to the /client portal, never the internal shell.
+  // Route-gating already blocks the data; this keeps them out of the internal
+  // layout (sidebar/module names) if they land on an internal URL directly.
+  // Placed after all hooks so hook order stays stable across renders.
+  if (user?.role === ROLES.CSR_CLIENT) {
+    return <Navigate to="/client" replace />;
+  }
 
   return (
     <div className="dashboard-layout">

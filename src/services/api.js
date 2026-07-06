@@ -35,11 +35,22 @@ class APIService {
         }
         return retryData;
       } else {
-        // Refresh failed — force logout
+        // Refresh failed — force logout. Redirect target depends on WHO expired:
+        // an external funder (CSR_CLIENT) must go back to their branded portal
+        // login, never the internal /login (which does not exist at all in the
+        // split client bundle, and is the wrong door in the shared bundle). Read
+        // the stored role before clearing it.
+        let expiredRole = null;
+        try { expiredRole = JSON.parse(localStorage.getItem('tta_user'))?.role; } catch { /* no stored user */ }
         localStorage.removeItem('tta_token');
         localStorage.removeItem('tta_refresh');
         localStorage.removeItem('tta_user');
-        window.location.href = '/login';
+        if (expiredRole === 'CSR_CLIENT') {
+          const slug = localStorage.getItem('tta_client_slug');
+          window.location.href = slug ? `/client/${slug}/login` : '/client';
+        } else {
+          window.location.href = '/login';
+        }
         throw new Error('Session expired');
       }
     }
