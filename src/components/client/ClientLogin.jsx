@@ -43,8 +43,13 @@ export default function ClientLogin() {
     setError('');
     const result = await login(email.trim(), password);
     setSubmitting(false);
-    if (result?.success) navigate('/client', { replace: true });
-    else setError(result?.message || 'Login failed.');
+    if (result?.success) {
+      // Remember the branded slug so a later session-expiry can bounce the funder
+      // back to THIS login screen (see api.js refresh-failure handling), not the
+      // generic portal entry.
+      if (slug) localStorage.setItem('tta_client_slug', slug);
+      navigate('/client', { replace: true });
+    } else setError(result?.message || 'Login failed.');
   };
 
   const theme = clientThemeFrom(brand);
