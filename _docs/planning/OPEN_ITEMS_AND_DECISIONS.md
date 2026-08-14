@@ -64,7 +64,7 @@ These were written in the 2026-06-20 session and are sitting in the working tree
     editing each trial. Simplest, but contradicts the client's ask.
   - **(c) Make project name a reference (FK to the config row):** a rename is then live
     everywhere automatically. Cleanest long-term; biggest change (model + migration + UI).
-- **Recommendation:** (a) for now; (c) if we ever formalize project/city as structured data.
+- **Recommendation:** (a) for now; (c) if we ever formalize project/city as structured data.------------not backend se kardunga
 
 ### D-2 — TDS double-count: run the audit on prod *(decided by: owner; action: us)*
 - **Why open:** Root cause is legacy duplicate `TDSRecord`s created before fix `cf7b0d5`;
@@ -83,7 +83,7 @@ These were written in the 2026-06-20 session and are sitting in the working tree
   Plan exists in `rep_logo_google_drive_plan.md`; no code.
 - **Decision needed:** which Google account/credentials, and confirm the approach.
 
-### #3 — Courier delete/retrieve *(decided by: client)*
+### #3 — Courier delete/retrieve *(decided by: client)*----2 dhingsara wala
 - **Why open:** Requirement contradicts itself — "nothing should ever be deleted" vs a
   delete/retrieve feature.
 - **Decision needed:** confirm the intent. Likely a reversible **archive + restore**
