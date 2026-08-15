@@ -3,7 +3,9 @@
 // NOW WITH PER-USER PROFILE SUPPORT!
 
 import { createContext, useContext, useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { ROLE_PERMISSIONS, ROLES } from "./roles";
+import { redirectToLoginDoor } from "./loginDoor";
 import api, { permissionsAPI } from "../services/api";
 import { refreshAllFromAPI, clearConfigCache } from "../utils/adminStorage";
 
@@ -13,6 +15,27 @@ const AuthContext = createContext(null);
 // internal RBAC layer denies them every module before any grant lookup, so any
 // internal fetch on their behalf is guaranteed to 403.
 const isExternalRole = (role) => role === ROLES.CSR_CLIENT;
+
+// Modules that constitute "works in TTA". A user holding csr and none of these
+// has no usable TTA landing page (DashboardHome builds its cards from exactly
+// these modules), so they are sent into the CSR app instead. Holding any one of
+// them means they work in both and keep the documented /dashboard landing.
+const TTA_MODULES = [
+  "trials",
+  "reps",
+  "vendors",
+  "workorders",
+  "payments",
+  "courier",
+  "config",
+];
+
+const isCsrOnly = (permsData) => {
+  const grants = permsData?.grants;
+  if (!permsData || permsData.isSuperAdmin || !grants) return false;
+  if (!grants.csr?.can_view) return false;
+  return !TTA_MODULES.some((m) => grants[m]?.can_view || grants[m]?.can_edit);
+};
 
 const SESSION_TIMEOUT = 8 * 60 * 60 * 1000; // 8 hours
 const REMEMBER_ME_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -28,6 +51,10 @@ export const AuthProvider = ({ children }) => {
   // grants fetch settles, so guards never see a stale "not loading" window.
   // perms === null after settling means the fetch failed.
   const permsLoading = !!user?.email && !permsSettled;
+  const navigate = useNavigate();
+  // Set at login, consumed once the grants land — grants arrive asynchronously,
+  // so the landing decision cannot be made inside login() itself.
+  const pendingLandingRedirect = useRef(false);
 
   // Whenever the logged-in user changes, pull their effective grants, then
   // refresh the config dropdown cache only for users allowed to read config —
@@ -63,6 +90,17 @@ export const AuthProvider = ({ children }) => {
     }
     return () => { active = false; };
   }, [user?.email, userRole]);
+
+  // Landing page for a freshly logged-in user. Only runs once per login (the
+  // ref is cleared on consumption, so a later focus-refetch of the grants can
+  // never yank a working user out of the page they are on).
+  useEffect(() => {
+    if (!pendingLandingRedirect.current) return;
+    if (!user?.email || !permsSettled) return; // wait for the grants to settle
+    pendingLandingRedirect.current = false;
+    if (isExternalRole(user.role)) return; // funder portal owns its own landing
+    if (isCsrOnly(perms)) navigate("/csr", { replace: true });
+  }, [user, perms, permsSettled, navigate]);
 
   // Grants and the config cache are otherwise only loaded at login, so a
   // grant change or dropdown edit never reaches an open session. Re-pull both
@@ -115,6 +153,7 @@ export const AuthProvider = ({ children }) => {
           startSessionTimer(timeout - elapsed);
         } else {
           logout();
+          redirectToLoginDoor();
         }
       }
       setLoading(false);
@@ -161,6 +200,7 @@ export const AuthProvider = ({ children }) => {
     const timeout = setTimeout(() => {
       alert("Your session has expired. Please login again.");
       logout();
+      redirectToLoginDoor();
     }, duration);
     
     setSessionTimeout(timeout);
@@ -223,6 +263,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem("tta_login_time", Date.now().toString());
       localStorage.setItem("tta_remember_me", rememberMe.toString());
       
+      pendingLandingRedirect.current = true;
       setUser(userWithProfile);
 
       const duration = rememberMe ? REMEMBER_ME_DURATION : SESSION_TIMEOUT;
@@ -271,6 +312,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('tta_login_time', Date.now().toString());
       localStorage.setItem('tta_remember_me', 'false');
 
+      pendingLandingRedirect.current = true;
       setUser(userWithProfile);
       startSessionTimer(SESSION_TIMEOUT);
 

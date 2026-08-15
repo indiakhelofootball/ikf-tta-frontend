@@ -1,3 +1,4 @@
+import { storedRole, redirectToLoginDoor } from '../auth/loginDoor';
 // src/services/api.js
 // Production API service — all calls go to the real Django backend
 
@@ -40,17 +41,11 @@ class APIService {
         // login, never the internal /login (which does not exist at all in the
         // split client bundle, and is the wrong door in the shared bundle). Read
         // the stored role before clearing it.
-        let expiredRole = null;
-        try { expiredRole = JSON.parse(localStorage.getItem('tta_user'))?.role; } catch { /* no stored user */ }
+        const expiredRole = storedRole();
         localStorage.removeItem('tta_token');
         localStorage.removeItem('tta_refresh');
         localStorage.removeItem('tta_user');
-        if (expiredRole === 'CSR_CLIENT') {
-          const slug = localStorage.getItem('tta_client_slug');
-          window.location.href = slug ? `/client/${slug}/login` : '/client';
-        } else {
-          window.location.href = '/login';
-        }
+        redirectToLoginDoor(expiredRole);
         throw new Error('Session expired');
       }
     }

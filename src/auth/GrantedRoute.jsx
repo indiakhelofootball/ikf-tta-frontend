@@ -5,12 +5,15 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 import { ROLES } from "./roles";
+import { expiredSessionLoginPath } from "./loginDoor";
 
 const GrantedRoute = ({ children, module, anyOf, edit = false, fallbackRoles = [ROLES.SUPER_ADMIN, ROLES.ADMIN] }) => {
   const { user, isAuthenticated, perms, permsLoading } = useAuth();
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    // Not always /login: three platforms share this bundle, so an unauthenticated
+    // visitor is returned to the door that matches where they were headed.
+    return <Navigate to={expiredSessionLoginPath()} replace />;
   }
 
   const isSuper = perms ? perms.isSuperAdmin : user.role === ROLES.SUPER_ADMIN;

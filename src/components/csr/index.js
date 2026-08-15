@@ -1,3 +1,4 @@
+export { default as CSRLogin } from './CSRLogin';
 export { default as CSRDashboard } from './CSRDashboard';
 export { default as CSRProjectManagementPage } from './CSRProjectManagementPage';
 export { default as CSRProjectDetailPage } from './CSRProjectDetailPage';
