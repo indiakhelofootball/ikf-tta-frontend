@@ -26,7 +26,7 @@ import useGrants from '../../auth/useGrants';
 export default function CSRProjectDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { canEdit, canView } = useGrants();
+  const { canEdit, canView, isSuper } = useGrants();
   const editable = canEdit('csr');
   // Seeing the spend and controlling it are different jobs. The CSR manager reads
   // the utilisation total; only the finance-side csr_certificate holder tags or
@@ -474,8 +474,20 @@ export default function CSRProjectDetailPage() {
               {expenses.map((x) => (
                 <ListItem
                   key={x.id}
-                  secondaryAction={canEditCert && (
-                    <IconButton size="small" onClick={() => deleteExpense(x)}>
+                  // An expense tag is audit-bound: permissions/registry.py sets
+                  // can_delete:false on csr_certificate, and the server refuses
+                  // DELETE for everyone except SUPER_ADMIN, who bypasses the
+                  // permission layer entirely. Rendering this for canEditCert
+                  // gave every real operator a button that only ever returned a
+                  // 403 — and it looked fine in testing precisely because the
+                  // owner tests as super-admin. The server rule is the correct
+                  // one; the button was the bug.
+                  secondaryAction={isSuper && (
+                    <IconButton
+                      size="small"
+                      onClick={() => deleteExpense(x)}
+                      title="Remove tag (super-admin only — tags are audit-bound)"
+                    >
                       <DeleteIcon fontSize="small" />
                     </IconButton>
                   )}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, Stack,
-  ToggleButton, ToggleButtonGroup, Autocomplete,
+  ToggleButton, ToggleButtonGroup, Autocomplete, Alert,
 } from '@mui/material';
 
 import { paymentRequestsAPI } from '../../services/api';
@@ -13,18 +13,33 @@ export default function CSRExpenseTagModal({ open, onClose, onSave, saving }) {
   const [manualAmount, setManualAmount] = useState('');
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
+  // Distinguishes "no payments exist" from "you may not see payments". Collapsing
+  // the two into an empty list is what made this modal look merely empty when it
+  // was actually forbidden.
+  const [paymentsDenied, setPaymentsDenied] = useState(false);
 
   useEffect(() => {
     if (!open) return;
-    setMode('payment');
+    // Manual is the CSR-side default. Linking a real payment is a FINANCE action
+    // and lives on the payment screen ("Tag to CSR"), per the client's own split:
+    // "We will show it in finance, not in CSR" / "if you tag him from there".
+    setMode('manual');
     setPaymentId('');
     setManualAmount('');
     setNote('');
     setError('');
+    setPaymentsDenied(false);
     let active = true;
     paymentRequestsAPI.getAll({ limit: 1000 })
       .then((d) => { if (active) setPayments(Array.isArray(d) ? d : d?.results || []); })
-      .catch(() => { if (active) setPayments([]); });
+      .catch((e) => {
+        // Never swallow this into an empty dropdown. A 403 here is expected for a
+        // CSR-side user — say so, rather than showing a picker that silently
+        // offers nothing under helper text promising it works.
+        if (!active) return;
+        setPayments([]);
+        setPaymentsDenied(true);
+      });
     return () => { active = false; };
   }, [open]);
 
@@ -54,13 +69,21 @@ export default function CSRExpenseTagModal({ open, onClose, onSave, saving }) {
             <ToggleButton value="manual">Manual amount</ToggleButton>
           </ToggleButtonGroup>
 
-          {mode === 'payment' ? (
+          {mode === 'payment' && paymentsDenied ? (
+            <Alert severity="info">
+              Linking a real payment is done by the finance team, from the payment
+              itself — open the payment and use <strong>Tag to CSR</strong>. Your
+              access does not include the payments ledger. Use{' '}
+              <strong>Manual amount</strong> here instead.
+            </Alert>
+          ) : mode === 'payment' ? (
             <Autocomplete
               options={payments}
               value={selectedPayment}
               getOptionLabel={pLabel}
               isOptionEqualToValue={(o, v) => o.id === v.id}
               onChange={(e, opt) => { setPaymentId(opt ? opt.id : ''); setError(''); }}
+              noOptionsText="No payments available to tag."
               renderInput={(params) => (
                 <TextField {...params} label="Payment" error={!!error} helperText={error || 'A payment can be tagged to only one project.'} />
               )}
@@ -78,7 +101,7 @@ export default function CSRExpenseTagModal({ open, onClose, onSave, saving }) {
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose} disabled={saving}>Cancel</Button>
-        <Button onClick={handleSave} variant="contained" disabled={saving}>
+        <Button onClick={handleSave} variant="contained" disabled={saving || (mode === 'payment' && paymentsDenied)}>
           {saving ? 'Saving…' : 'Tag'}
         </Button>
       </DialogActions>
