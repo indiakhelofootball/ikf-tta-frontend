@@ -49,7 +49,7 @@ async function saveDialog(page) {
 }
 
 async function openProjectDetail(page, name) {
-  await page.goto('/csr');
+  await page.goto('/csr/projects');
   await expect(page.getByRole('heading', { name: 'CSR Projects' })).toBeVisible();
   await page.getByPlaceholder(/search by project or client/i).fill(name);
   const card = page.locator('.MuiCard-root', { hasText: name }).first();
@@ -64,9 +64,24 @@ async function openProjectDetail(page, name) {
 test.describe.configure({ mode: 'serial' });
 
 test.describe('CSR operator end-to-end', () => {
-  test('S1 — operator logs in and reaches /csr (grant works)', async ({ page }) => {
+  test('S0 — /csr is the CSR app dashboard, in the CSR shell', async ({ page }) => {
     await login(page);
     await page.goto('/csr');
+    // The CSR app got its own shell on 2026-08-15: /csr is the dashboard and the
+    // project list moved to /csr/projects. Assert the shell, not just the page —
+    // a CSR operator must not be looking at TTA's sidebar.
+    await expect(page.getByText(/sanctioned vs utilised/i)).toBeVisible({ timeout: 15_000 });
+    const sidebar = page.locator('aside.sidebar');
+    await expect(sidebar.getByRole('link', { name: 'Projects' })).toBeVisible();
+    // Containment: the CSR shell offers no route into the ledger.
+    for (const forbidden of ['Payments', 'Vendors', 'Work Orders', 'Banking', 'Courier']) {
+      await expect(sidebar.getByRole('link', { name: forbidden })).toHaveCount(0);
+    }
+  });
+
+  test('S1 — operator reaches the project list (grant works)', async ({ page }) => {
+    await login(page);
+    await page.goto('/csr/projects');
     await expect(page.getByRole('heading', { name: 'CSR Projects' })).toBeVisible();
   });
 
@@ -81,7 +96,7 @@ test.describe('CSR operator end-to-end', () => {
 
   test('S2 — create a CSR project from zero', async ({ page }) => {
     await login(page);
-    await page.goto('/csr');
+    await page.goto('/csr/projects');
     await page.getByRole('button', { name: /new project/i }).click();
     const dialog = page.getByRole('dialog');
     await expect(dialog.getByText('New CSR Project')).toBeVisible();
@@ -91,7 +106,7 @@ test.describe('CSR operator end-to-end', () => {
     await dialog.getByLabel('Description').fill('Created by the CSR operator E2E suite.');
     await saveDialog(page);
     // Round-trips: reappears in the list on reload/search.
-    await page.goto('/csr');
+    await page.goto('/csr/projects');
     await page.getByPlaceholder(/search by project or client/i).fill(PROJECT);
     await expect(page.getByText(PROJECT)).toBeVisible();
   });
@@ -171,7 +186,7 @@ test.describe('CSR operator end-to-end', () => {
 
   test('S10 — project remains in the list with correct client', async ({ page }) => {
     await login(page);
-    await page.goto('/csr');
+    await page.goto('/csr/projects');
     await page.getByPlaceholder(/search by project or client/i).fill(PROJECT);
     const card = page.locator('.MuiCard-root', { hasText: PROJECT }).first();
     await expect(card).toBeVisible();

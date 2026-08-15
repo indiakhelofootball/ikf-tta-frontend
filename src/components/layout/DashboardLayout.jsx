@@ -32,8 +32,10 @@ const pageTitles = {
   "/reports/payment-audit": "Payment Audit",
   "/reports/vendor-audit": "Vendor Audit",
   "/reports/trial-spend": "Trial Spend",
-  "/csr": "CSR",
-  "/csr/projects": "CSR Projects",
+  // Header shows WHERE you are; the page renders its own title. Keep the two
+  // distinct — TTA's convention (header "Vendors" / page "Vendor Management").
+  "/csr": "CSR Dashboard",
+  "/csr/projects": "Projects",
   "/csr/clients": "Funders",
   "/csr/activity-types": "Activity Types",
   "/csr/branding": "Branding",

@@ -117,7 +117,9 @@ export default function CSRDashboard() {
 
   return (
     <Box sx={{ maxWidth: 1100, mx: 'auto' }}>
-      <Typography variant="h5" fontWeight={800} sx={{ mb: 0.5 }}>CSR</Typography>
+      {/* No page title here — the layout header already renders "CSR Dashboard".
+          Repeating it produced two identical headings on screen, which the E2E
+          suite caught as a strict-mode ambiguity. */}
       <Typography variant="body2" sx={{ color: '#64748b', mb: 3 }}>
         Project delivery, reporting, and utilisation.
       </Typography>
