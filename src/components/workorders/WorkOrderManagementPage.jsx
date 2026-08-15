@@ -24,6 +24,7 @@ import WorkOrderModal from './WorkOrderModal';
 import WorkOrderDetailView from './WorkOrderDetailView';
 import { vendorsAPI, workOrdersAPI, paymentRequestsAPI } from '../../services/api';
 import { getVendorTypeNames } from '../../utils/adminStorage';
+import useConfigVersion from '../../hooks/useConfigVersion';
 import { WO_STATUSES, isWOFullyPaid, getPeriodLabel } from './workOrderData';
 import useGrants from '../../auth/useGrants';
 import useRefetchOnFocus from '../../hooks/useRefetchOnFocus';
@@ -55,7 +56,9 @@ function WorkOrderManagementPage() {
   const [filterCity, setFilterCity] = useState('');         // project_city filter
   const [sortBy, setSortBy] = useState('newest');           // newest | oldest | amountHigh | amountLow
 
-  const serviceTypes = useMemo(() => getVendorTypeNames(), []);
+  // cfgVersion — re-derive when the config cache loads, instead of freezing seeds.
+  const cfgVersion = useConfigVersion();
+  const serviceTypes = useMemo(() => getVendorTypeNames(), [cfgVersion]);
   // Project/city options derived from the work orders that actually exist, so the filters
   // only ever offer values that match something. City list narrows to the chosen project.
   const projectFilterOptions = useMemo(

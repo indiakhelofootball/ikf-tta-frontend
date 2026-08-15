@@ -17,6 +17,7 @@ import {
 } from '@mui/icons-material';
 import { vendorsAPI } from '../../services/api';
 import { getVendorTypeNames, getEntityTypeNames, getFilteredVendorNames, getBankNamesList, getAccountTypesList } from '../../utils/adminStorage';
+import useConfigVersion from '../../hooks/useConfigVersion';
 import { getStateFromPinCode, getCitiesForState, INDIAN_STATES } from '../../utils/pinCodeToState';
 
 const initialFormData = {
@@ -62,8 +63,10 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
   const formActive = isEdit || !!confirmedVendorName;
   const lSx = formActive ? fLabelSx : fLabelDisabledSx;
 
-  const banks = getBankNamesList();
-  const accountTypeOptions = getAccountTypesList();
+  // cfgVersion — the config cache fills in after mount and used to notify nobody.
+  const cfgVersion = useConfigVersion();
+  const banks = useMemo(() => getBankNamesList(), [cfgVersion]);
+  const accountTypeOptions = useMemo(() => getAccountTypesList(), [cfgVersion]);
 
   useEffect(() => {
     if (open) {
@@ -106,9 +109,9 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
       const matchesEntity = !item.entityType || !searchEntityType || item.entityType === searchEntityType;
       return matchesService && matchesEntity;
     }).map(item => item.name);
-  }, [searchServiceType, searchEntityType]);
-  const serviceTypeOptions = useMemo(() => getVendorTypeNames(), []);
-  const entityTypeOptions = useMemo(() => getEntityTypeNames(), []);
+  }, [searchServiceType, searchEntityType, cfgVersion]);
+  const serviceTypeOptions = useMemo(() => getVendorTypeNames(), [cfgVersion]);
+  const entityTypeOptions = useMemo(() => getEntityTypeNames(), [cfgVersion]);
 
   const filteredVendors = useMemo(() => {
     let pool = [...vendors];

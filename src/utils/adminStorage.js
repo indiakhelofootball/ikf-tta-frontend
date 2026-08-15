@@ -1,5 +1,6 @@
 // src/utils/adminStorage.js
-// Admin-managed dropdown options — API-backed with in-memory cache (no localStorage)
+// Admin-managed dropdown options — API-backed in-memory cache, warm-started from
+// localStorage so a page load renders last-known values instead of racing the fetch.
 
 import { PROJECT_NAMES, SEASONS_PROJECT } from '../components/trials/trialConstants';
 import { configAPI } from '../services/api';
@@ -15,7 +16,7 @@ const CATEGORY_MAP = {
   courierItems: 'courier_item',
 };
 
-// ── In-memory cache (replaces localStorage) ─────────────────────────
+// ── In-memory cache ─────────────────────────────────────────────────
 
 const _cache = {
   projectNames: null,
@@ -26,6 +27,22 @@ const _cache = {
   bankNames: null,
   accountTypes: null,
   courierItems: null,
+};
+
+// Per-key load status. 'loaded' is the ONLY state in which _cache is
+// authoritative — including when it is legitimately []. Anything else falls back
+// to DEFAULTS and stays retryable. Without this, a transient failure that cached
+// [] was indistinguishable from a real empty list and stuck for the whole
+// session, because empty arrays are truthy.
+const _status = {
+  projectNames: 'idle',
+  seasons: 'idle',
+  vendorTypes: 'idle',
+  entityTypes: 'idle',
+  vendorNames: 'idle',
+  bankNames: 'idle',
+  accountTypes: 'idle',
+  courierItems: 'idle',
 };
 
 const DEFAULTS = {
@@ -39,10 +56,87 @@ const DEFAULTS = {
   courierItems: [],
 };
 
+// ── Change notification ─────────────────────────────────────────────
+// refreshAllFromAPI mutates a module-level object and told nobody, so any
+// consumer reading through useMemo(..., []) froze whatever it saw at mount —
+// usually seeds, because the fetch had not resolved yet. A version counter plus
+// useSyncExternalStore lets consumers re-derive when the cache actually changes.
+
+const LS_KEY = 'tta_config_cache_v1';
+const LS_MAX_AGE = 24 * 60 * 60 * 1000;
+
+let _version = 0;
+const _subscribers = new Set();
+
+function _persist() {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify({ at: Date.now(), cache: _cache }));
+  } catch {
+    // quota or private mode — the in-memory cache still works
+  }
+}
+
+function _bump() {
+  _version += 1;
+  _persist();
+  _subscribers.forEach((fn) => fn());
+}
+
+export function getConfigVersion() {
+  return _version;
+}
+
+export function subscribeConfig(fn) {
+  _subscribers.add(fn);
+  return () => _subscribers.delete(fn);
+}
+
+export function getCategoryStatus(key) {
+  return _status[key];
+}
+
+// Warm start: hydrate from the last successful load so the first paint shows
+// real values instead of seeds. The network load then corrects them.
+(function hydrate() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return;
+    const { at, cache } = JSON.parse(raw);
+    if (!at || Date.now() - at > LS_MAX_AGE) return;
+    Object.keys(_cache).forEach((k) => {
+      if (Array.isArray(cache?.[k])) {
+        _cache[k] = cache[k];
+        _status[k] = 'loaded';
+      }
+    });
+  } catch {
+    // corrupt or unavailable storage — start cold, the API load will fill in
+  }
+})();
+
+// Drop the warm-start cache on logout so the next user never sees the previous
+// one's dropdown values.
+export function clearConfigCache() {
+  Object.keys(_cache).forEach((k) => {
+    _cache[k] = null;
+    _status[k] = 'idle';
+  });
+  try {
+    localStorage.removeItem(LS_KEY);
+  } catch {
+    // unavailable storage — in-memory reset above is what matters
+  }
+  _version += 1;
+  _subscribers.forEach((fn) => fn());
+}
+
 function getFromCache(key) {
-  if (_cache[key]) return _cache[key];
-  // Return seeded defaults until API loads
-  return DEFAULTS[key].map((name, i) => ({ id: Date.now() + i, name, comment: '' }));
+  // Trust the cache only after a successful load, so a server-confirmed empty
+  // list renders as empty while a failed or pending load still shows seeds.
+  if (_status[key] === 'loaded') return _cache[key];
+  // Stable synthetic ids — Date.now() minted a NEW id on every call, which broke
+  // React keys and MUI Autocomplete option equality for seeded values.
+  return DEFAULTS[key].map((name, i) => ({ id: `seed-${key}-${i}`, name, comment: '' }));
 }
 
 // ── API shape converters ────────────────────────────────────────────
@@ -69,20 +163,28 @@ function localToApi(category, localItem) {
 
 // ── Generic fetch ───────────────────────────────────────────────────
 
-async function fetchCategory(cacheKey, category, defaults) {
+async function fetchCategory(cacheKey, category) {
+  _status[cacheKey] = 'loading';
   try {
     const res = await configAPI.getByCategory(category);
     const items = (res || []).map(apiToLocal);
-    if (items.length > 0) {
-      _cache[cacheKey] = items;
-      return items;
-    }
+    // Cache the server's answer verbatim, including an empty list — that IS the
+    // truth and must not be overwritten with seeds.
+    _cache[cacheKey] = items;
+    _status[cacheKey] = 'loaded';
+    _bump();
+    return items;
   } catch (err) {
     console.error(`[adminStorage] Failed to fetch "${category}":`, err.message || err);
+    // Leave _cache untouched. A key that already holds a good value keeps it —
+    // a transient failure must never downgrade real data to seeds. Otherwise
+    // mark 'error', which keeps getFromCache on seeds and leaves the key
+    // retryable instead of freezing a blank for the session. (Checking _cache,
+    // not _status: this function sets _status to 'loading' on entry.)
+    _status[cacheKey] = _cache[cacheKey] ? 'loaded' : 'error';
+    _bump();
+    return null;
   }
-  const fallback = defaults.map((name, i) => ({ id: Date.now() + i, name, comment: '' }));
-  _cache[cacheKey] = fallback;
-  return fallback;
 }
 
 async function saveCategory(cacheKey, category, list) {
@@ -91,6 +193,8 @@ async function saveCategory(cacheKey, category, list) {
   const removed = previous.filter((item) => !newIds.has(item.id));
 
   _cache[cacheKey] = list;
+  _status[cacheKey] = 'loaded';
+  _bump();
 
   await Promise.all(
     removed.map((item) => configAPI.delete(item.id).catch((err) => {
@@ -210,16 +314,11 @@ export function getFilteredVendorNames(serviceType, entityType) {
 // ── Async: fetch from API and refresh in-memory cache ───────────────
 
 export async function refreshAllFromAPI() {
-  await Promise.all([
-    fetchCategory('projectNames', CATEGORY_MAP.projectNames, PROJECT_NAMES),
-    fetchCategory('seasons', CATEGORY_MAP.seasons, SEASONS_PROJECT),
-    fetchCategory('vendorTypes', CATEGORY_MAP.vendorTypes, []),
-    fetchCategory('entityTypes', CATEGORY_MAP.entityTypes, []),
-    fetchCategory('vendorNames', CATEGORY_MAP.vendorNames, []),
-    fetchCategory('bankNames', CATEGORY_MAP.bankNames, ['IDFC First Bank']),
-    fetchCategory('accountTypes', CATEGORY_MAP.accountTypes, ['Savings', 'Current']),
-    fetchCategory('courierItems', CATEGORY_MAP.courierItems, []),
-  ]);
+  // Seeds live in DEFAULTS and are applied by getFromCache, so fetchCategory no
+  // longer takes a fallback list — it must never invent data the server did not send.
+  await Promise.all(
+    Object.keys(CATEGORY_MAP).map((key) => fetchCategory(key, CATEGORY_MAP[key]))
+  );
 }
 
 // syncLocalToAPI removed — no longer needed since localStorage is not used

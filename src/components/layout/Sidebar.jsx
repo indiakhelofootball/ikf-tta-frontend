@@ -1,6 +1,4 @@
 import React from "react";
-import { NavLink } from "react-router-dom";
-import { Tooltip } from "@mui/material";
 import {
   Dashboard as DashboardIcon,
   Business as BusinessIcon,
@@ -9,8 +7,6 @@ import {
   Store as StoreIcon,
   Payment as PaymentIcon,
   Settings as SettingsIcon,
-  ChevronLeft as ChevronLeftIcon,
-  ChevronRight as ChevronRightIcon,
   Assignment as WorkOrderIcon,
   AccountBalance as BankIcon,
   Assessment as ReportsIcon,
@@ -18,17 +14,14 @@ import {
   AdminPanelSettings as AccessIcon,
   LockOpen as RequestAccessIcon,
   VolunteerActivism as CSRIcon,
-  GroupAdd as GroupAddIcon,
 } from "@mui/icons-material";
 import useGrants from "../../auth/useGrants";
-import { useAuth } from "../../auth/AuthContext";
-import { REPORT_KEYS, ROLES } from "../../auth/roles";
+import { REPORT_KEYS } from "../../auth/roles";
+import SidebarFrame, { NavItem } from "./SidebarFrame";
 import "./Sidebar.css";
 
 export default function Sidebar({ collapsed, onToggle }) {
   const { isSuper, canView, canEdit } = useGrants();
-  const { user } = useAuth();
-  const isAdminOrSuper = user?.role === ROLES.SUPER_ADMIN || user?.role === ROLES.ADMIN;
 
   const canAccessTrialManagement = canView('trials');
   const canAccessREPManagement = canView('reps');
@@ -44,79 +37,35 @@ export default function Sidebar({ collapsed, onToggle }) {
   const canManageConfig = canEdit('config'); // Admin = config management
   const canAccessControl = isSuper;
 
-  const linkClass = ({ isActive }) =>
-    `sidebar-link ${isActive ? "active" : ""}`;
-
-  const NavItem = ({ to, icon, label, end }) => (
-    <Tooltip
-      title={collapsed ? label : ""}
-      placement="right"
-      arrow
-      slotProps={{
-        tooltip: {
-          sx: {
-            bgcolor: '#1e293b',
-            color: '#f8fafc',
-            fontSize: '0.8rem',
-            fontWeight: 600,
-            px: 1.5,
-            py: 0.75,
-            borderRadius: '8px',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-            letterSpacing: '0.01em',
-          },
-        },
-        arrow: {
-          sx: { color: '#1e293b' },
-        },
-      }}
-    >
-      <span style={{ display: 'block' }}>
-        <NavLink to={to} className={linkClass} end={end}>
-          <span className="sidebar-icon">{icon}</span>
-          {!collapsed && <span className="sidebar-label">{label}</span>}
-        </NavLink>
-      </span>
-    </Tooltip>
-  );
+  const item = (props) => <NavItem {...props} collapsed={collapsed} />;
 
   return (
-    <aside className={`sidebar ${collapsed ? "sidebar-collapsed" : ""}`}>
-      {/* Brand */}
-      <div className="sidebar-brand">
-        {collapsed ? (
-          <div className="sidebar-brand-icon">IKF</div>
-        ) : (
-          <>
-            <h2>India Khelo Football</h2>
-            <span>TTA System</span>
-          </>
-        )}
-      </div>
-
-      {/* Toggle button */}
-      <button className="sidebar-toggle" onClick={onToggle} aria-label="Toggle sidebar">
-        {collapsed ? <ChevronRightIcon fontSize="small" /> : <ChevronLeftIcon fontSize="small" />}
-      </button>
-
-      {/* Navigation */}
-      <nav className="sidebar-nav">
-        <NavItem to="/dashboard" icon={<DashboardIcon fontSize="small" />} label="Dashboard" />
-        {canAccessControl && <NavItem to="/user-management" icon={<AccessIcon fontSize="small" />} label="User Management" />}
-        {canManageConfig && <NavItem to="/admin" icon={<SettingsIcon fontSize="small" />} label="Admin" />}
-        {canEdit('trials') && <NavItem to="/trials/create" icon={<AddIcon fontSize="small" />} label="Project Setup" />}
-        {canAccessTrialManagement && <NavItem to="/trials" icon={<EmojiEventsIcon fontSize="small" />} label="Projects" end />}
-        {canAccessREPManagement && <NavItem to="/rep-management" icon={<BusinessIcon fontSize="small" />} label="REP Management" />}
-        {canAccessVendorManagement && <NavItem to="/vendors" icon={<StoreIcon fontSize="small" />} label="Vendors" />}
-        {canAccessWorkOrders && <NavItem to="/work-orders" icon={<WorkOrderIcon fontSize="small" />} label="Work Orders" />}
-        {canAccessPayments && <NavItem to="/payments" icon={<PaymentIcon fontSize="small" />} label="Payments" />}
-        {canAccessBank && <NavItem to="/bank-tds" icon={<BankIcon fontSize="small" />} label="Banking" />}
-        {canAccessReports && <NavItem to="/reports" icon={<ReportsIcon fontSize="small" />} label="Reports" />}
-        {canAccessCourier && <NavItem to="/courier" icon={<CourierIcon fontSize="small" />} label="Courier" />}
-        {canAccessCSR && <NavItem to="/csr" icon={<CSRIcon fontSize="small" />} label="CSR Projects" />}
-        {isAdminOrSuper && <NavItem to="/csr/clients" icon={<GroupAddIcon fontSize="small" />} label="CSR Clients" />}
-        {!isSuper && <NavItem to="/request-access" icon={<RequestAccessIcon fontSize="small" />} label="Request Access" />}
-      </nav>
-    </aside>
+    <SidebarFrame
+      collapsed={collapsed}
+      onToggle={onToggle}
+      title="India Khelo Football"
+      subtitle="TTA System"
+      mark="IKF"
+    >
+      {item({ to: "/dashboard", icon: <DashboardIcon fontSize="small" />, label: "Dashboard" })}
+      {canAccessControl && item({ to: "/user-management", icon: <AccessIcon fontSize="small" />, label: "User Management" })}
+      {canManageConfig && item({ to: "/admin", icon: <SettingsIcon fontSize="small" />, label: "Admin" })}
+      {canEdit('trials') && item({ to: "/trials/create", icon: <AddIcon fontSize="small" />, label: "Project Setup" })}
+      {canAccessTrialManagement && item({ to: "/trials", icon: <EmojiEventsIcon fontSize="small" />, label: "Projects", end: true })}
+      {canAccessREPManagement && item({ to: "/rep-management", icon: <BusinessIcon fontSize="small" />, label: "REP Management" })}
+      {canAccessVendorManagement && item({ to: "/vendors", icon: <StoreIcon fontSize="small" />, label: "Vendors" })}
+      {canAccessWorkOrders && item({ to: "/work-orders", icon: <WorkOrderIcon fontSize="small" />, label: "Work Orders" })}
+      {canAccessPayments && item({ to: "/payments", icon: <PaymentIcon fontSize="small" />, label: "Payments" })}
+      {canAccessBank && item({ to: "/bank-tds", icon: <BankIcon fontSize="small" />, label: "Banking" })}
+      {canAccessReports && item({ to: "/reports", icon: <ReportsIcon fontSize="small" />, label: "Reports" })}
+      {canAccessCourier && item({ to: "/courier", icon: <CourierIcon fontSize="small" />, label: "Courier" })}
+      {/* One door into the CSR app, per CSR_PRODUCT_DESIGN.md:39 — "give an
+          existing staff user the csr grant and the CSR app appears in their
+          sidebar". Previously two flat items (CSR Projects + CSR Clients), which
+          read as peers and caused the "why are there two CSRs" confusion; funder
+          onboarding now lives inside the CSR app's own menu. */}
+      {canAccessCSR && item({ to: "/csr", icon: <CSRIcon fontSize="small" />, label: "CSR" })}
+      {!isSuper && item({ to: "/request-access", icon: <RequestAccessIcon fontSize="small" />, label: "Request Access" })}
+    </SidebarFrame>
   );
 }

@@ -1,6 +1,6 @@
 // src/components/trials/TrialWizard.jsx
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -25,6 +25,7 @@ import {
 } from '@mui/icons-material';
 
 import { getProjectNames, getSeasons } from '../../utils/adminStorage';
+import useConfigVersion from '../../hooks/useConfigVersion';
 import { generateProjectCode } from '../../utils/trialCodeGenerator';
 import { trialsAPI } from '../../services/api';
 
@@ -64,9 +65,13 @@ const fieldLabelSx = {
 
 function TrialWizard() {
   const navigate = useNavigate();
-  const adminProjects = getProjectNames();
-  const adminProjectNames = adminProjects.map(p => p.name);
-  const adminSeasons = getSeasons().map(s => s.name);
+  // cfgVersion — these are bare reads in the render body, so they self-heal on any
+  // re-render; the subscription makes that re-render actually happen when the
+  // config cache loads.
+  const cfgVersion = useConfigVersion();
+  const adminProjects = useMemo(() => getProjectNames(), [cfgVersion]);
+  const adminProjectNames = useMemo(() => adminProjects.map(p => p.name), [adminProjects]);
+  const adminSeasons = useMemo(() => getSeasons().map(s => s.name), [cfgVersion]);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);

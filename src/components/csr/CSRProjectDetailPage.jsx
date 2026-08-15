@@ -28,7 +28,12 @@ export default function CSRProjectDetailPage() {
   const navigate = useNavigate();
   const { canEdit, canView } = useGrants();
   const editable = canEdit('csr');
-  const canViewCert = canView('csr_certificate');
+  // Seeing the spend and controlling it are different jobs. The CSR manager reads
+  // the utilisation total; only the finance-side csr_certificate holder tags or
+  // untags (05-22: "We will show it in finance, not in CSR" / "if you tag him from
+  // there"). The server mirrors this via MODULE_DEPENDENCIES 'csr': ['csr_certificate'],
+  // which unlocks READ only — writes still demand the csr_certificate edit grant.
+  const canViewCert = canView('csr_certificate') || canView('csr');
   const canEditCert = canEdit('csr_certificate');
 
   const [project, setProject] = useState(null);
@@ -202,7 +207,12 @@ export default function CSRProjectDetailPage() {
     }
   };
 
-  const totalTagged = expenses.reduce((sum, x) => sum + (Number(x.amount) || 0), 0);
+  // Mirror the certificate's rule: only money that actually moved is utilised.
+  // A tag whose payment is still Draft, Sent to Accounts, or Bounced is shown in
+  // the list but excluded here, so this total always matches the PDF.
+  const counting = expenses.filter((x) => x.countsTowardCertificate);
+  const totalTagged = counting.reduce((sum, x) => sum + (Number(x.amount) || 0), 0);
+  const excludedCount = expenses.length - counting.length;
   const sanctioned = Number(project?.sanctionedAmount) || 0;
 
   // The PDF is a download of the server's authoritative figures, not a
@@ -432,9 +442,17 @@ export default function CSRProjectDetailPage() {
             direction={{ xs: 'column', sm: 'row' }} spacing={1}
             sx={{ mb: 2, justifyContent: 'space-between', alignItems: { sm: 'center' } }}
           >
-            <Typography variant="body2">
-              Sanctioned: ₹{sanctioned.toLocaleString('en-IN')} · Utilised: ₹{totalTagged.toLocaleString('en-IN')}
-            </Typography>
+            <Box>
+              <Typography variant="body2">
+                Sanctioned: ₹{sanctioned.toLocaleString('en-IN')} · Utilised: ₹{totalTagged.toLocaleString('en-IN')}
+              </Typography>
+              {excludedCount > 0 && (
+                <Typography variant="caption" color="warning.main">
+                  {excludedCount} tagged {excludedCount === 1 ? 'expense is' : 'expenses are'} not
+                  counted — the payment has not completed.
+                </Typography>
+              )}
+            </Box>
             <Stack direction="row" spacing={1}>
               {canEditCert && (
                 <Button size="small" startIcon={<AddIcon />} onClick={() => setExpenseModalOpen(true)}>
@@ -463,6 +481,12 @@ export default function CSRProjectDetailPage() {
                   )}
                 >
                   <ListItemText primary={x.paymentLabel || 'Manual'} secondary={x.note || null} />
+                  {!x.countsTowardCertificate && (
+                    <Chip
+                      size="small" color="warning" variant="outlined" sx={{ mr: 1 }}
+                      label={x.paymentStatus || 'Not counted'}
+                    />
+                  )}
                   <Chip size="small" label={`₹${(Number(x.amount) || 0).toLocaleString('en-IN')}`} sx={{ mr: 1 }} />
                 </ListItem>
               ))}

@@ -43,6 +43,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
+    "prebuild": "node scripts/genBuildId.js",
     "build": "react-scripts build",
     "build:client": "cross-env REACT_APP_TARGET=client BUILD_PATH=build-client craco build",
     "test": "react-scripts test",

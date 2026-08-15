@@ -503,12 +503,13 @@ function REPModal({ open, onClose, onSave, editingREP }) {
             courierSubArea,
           });
         }
-        // Org fields
+        // Org fields. Only send logo/MOU when a NEW file was actually chosen —
+        // otherwise omit them so the backend preserves the stored value. Re-sending
+        // the existing base64 on every edit bloated the payload (multi-MB) and, if
+        // the edit object ever lacked it, persisted a blank and wiped the logo.
         const repData = { ...orgData };
-        repData.mouDocumentName = mouDocument ? mouDocument.name : (editingREP?.mouDocumentName || '');
-        repData.mouDocumentUrl  = mouDocument ? mouDocumentPreview : (editingREP?.mouDocumentUrl  || '');
-        repData.repLogoName     = repLogo     ? repLogo.name      : (editingREP?.repLogoName     || '');
-        repData.repLogoUrl      = repLogo     ? repLogoPreview    : (editingREP?.repLogoUrl      || '');
+        if (mouDocument) { repData.mouDocumentName = mouDocument.name; repData.mouDocumentUrl = mouDocumentPreview; }
+        if (repLogo)     { repData.repLogoName = repLogo.name; repData.repLogoUrl = repLogoPreview; }
         await onSave(repData);
       } else {
         // Add mode: org + assignment

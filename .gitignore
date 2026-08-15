@@ -146,6 +146,12 @@ dist
 # Claude Code
 .claude/
 
+# Database dumps — these carry real production data (vendor bank details, PAN
+# card images, user records). Never commit one, whatever it is named.
+*.sql
+*.sql.gz
+*.dump
+
 # Local-only debug / conversation / generated artifacts (do not commit to frontend repo)
 convo.md
 check_db.py
@@ -181,3 +187,17 @@ Alibaba*.docx
 TTA Issues*
 Screenshot *.png
 /CSR_VISUAL_FLOW.md
+
+# Local working artefacts — never belong in the repo
+_to_delete/
+project_tta/
+*.zip
+new_track.xlsx
+
+# Security audit passes that quote live credentials / real PII verbatim.
+# Redact before committing (see CSR_CLAIM_VERIFICATION_2026-08-15.md).
+_docs/review/0-1-secrets.md
+_docs/review/FINDINGS.md
+_docs/review/1-3-bulk-export.md
+_docs/review/3-2-pii-at-rest.md
+_docs/review/3-3-pii-leaks.md

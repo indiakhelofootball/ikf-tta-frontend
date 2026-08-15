@@ -18,6 +18,11 @@ function WorkOrderCard({ workOrder, onView, onEdit, onDelete, onRaisePayment, on
   const fullyPaid = isWOFullyPaid(workOrder);
   const bouncedCount = parseInt(workOrder.bouncedPaymentCount || 0, 10);
   const hasBounced = bouncedCount > 0;
+  // Full bounce history (resolved bounces included). When a WO's only bounces are
+  // resolved, bouncedPaymentCount is 0 and the active chip won't show — so a Past
+  // WO would look clean. This surfaces that it once bounced.
+  const bouncedPayments = Array.isArray(workOrder.bouncedPayments) ? workOrder.bouncedPayments : [];
+  const hasResolvedBounceHistory = !hasBounced && bouncedPayments.length > 0;
   const statusStyle = WO_STATUS_COLORS[workOrder.status] || WO_STATUS_COLORS.Issued;
   const isPeriodic = workOrder.type === 'Periodic';
 
@@ -78,6 +83,17 @@ function WorkOrderCard({ workOrder, onView, onEdit, onDelete, onRaisePayment, on
                 sx={{
                   bgcolor: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca',
                   fontWeight: 700, fontSize: '0.78rem',
+                }}
+              />
+            )}
+            {hasResolvedBounceHistory && (
+              <Chip
+                icon={<BouncedIcon sx={{ fontSize: '14px !important', color: '#94a3b8 !important' }} />}
+                label={`Bounced${bouncedPayments.length > 1 ? ` (${bouncedPayments.length})` : ''} · resolved`}
+                size="small"
+                sx={{
+                  bgcolor: '#f8fafc', color: '#64748b', border: '1px solid #e2e8f0',
+                  fontWeight: 600, fontSize: '0.72rem',
                 }}
               />
             )}

@@ -8,7 +8,7 @@ import {
 import {
   Close as CloseIcon, Edit as EditIcon,
   Repeat as PeriodicIcon, AttachMoney as FixedIcon,
-  History as HistoryIcon,
+  History as HistoryIcon, ErrorOutline as BouncedIcon,
 } from '@mui/icons-material';
 import { WO_STATUS_COLORS, getPeriodLabel } from './workOrderData';
 import { workOrdersAPI } from '../../services/api';
@@ -128,6 +128,40 @@ function WorkOrderDetailView({ open, onClose, workOrder, onEdit }) {
           </Typography>
         </Box>
 
+        {/* Contract link (Google Drive) — the agreement this WO is raised against */}
+        {wo.contractDriveLink && (
+          <>
+            <Typography sx={labelSx}>Contract</Typography>
+            <Box sx={sectionSx}>
+              <a
+                href={wo.contractDriveLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: '#0d9488', fontWeight: 600, textDecoration: 'none', wordBreak: 'break-all' }}
+              >
+                Open contract ↗
+              </a>
+            </Box>
+          </>
+        )}
+
+        {/* Invoice link (Google Drive) */}
+        {wo.invoiceDriveLink && (
+          <>
+            <Typography sx={labelSx}>Invoice</Typography>
+            <Box sx={sectionSx}>
+              <a
+                href={wo.invoiceDriveLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: '#0d9488', fontWeight: 600, textDecoration: 'none', wordBreak: 'break-all' }}
+              >
+                Open invoice ↗
+              </a>
+            </Box>
+          </>
+        )}
+
         {/* Amount info */}
         <Typography sx={labelSx}>Amount</Typography>
         <Box sx={sectionSx}>
@@ -198,6 +232,55 @@ function WorkOrderDetailView({ open, onClose, workOrder, onEdit }) {
                   <Typography variant="caption" sx={{ color: '#92400e' }}>
                     changed <strong>{log.fieldName}</strong> from <span style={{ textDecoration: 'line-through' }}>{log.oldValue}</span> → <strong>{log.newValue}</strong>
                   </Typography>
+                </Stack>
+              ))}
+            </Box>
+          </>
+        )}
+
+        {/* Bounced Payments — full history, resolved ones included, so a Past
+            work order still shows which payment bounced. */}
+        {Array.isArray(wo.bouncedPayments) && wo.bouncedPayments.length > 0 && (
+          <>
+            <Typography sx={labelSx}>
+              <Stack direction="row" spacing={0.5} alignItems="center" component="span">
+                <BouncedIcon sx={{ fontSize: 16 }} />
+                <span>Bounced Payments</span>
+              </Stack>
+            </Typography>
+            <Box sx={{ ...sectionSx, bgcolor: '#fef2f2', borderColor: '#fecaca' }}>
+              {wo.bouncedPayments.map((bp) => (
+                <Stack
+                  key={bp.requestNumber}
+                  direction="row"
+                  spacing={1.5}
+                  alignItems="baseline"
+                  flexWrap="wrap"
+                  sx={{ mb: 1, '&:last-child': { mb: 0 } }}
+                >
+                  <Typography variant="caption" fontWeight={700} sx={{ color: '#b91c1c', minWidth: 110 }}>
+                    {bp.requestNumber}
+                  </Typography>
+                  <Typography variant="caption" fontWeight={700} sx={{ color: '#334155' }}>
+                    {fmtAmount(bp.grossAmount)}
+                  </Typography>
+                  {bp.periodLabel && (
+                    <Typography variant="caption" sx={{ color: '#991b1b' }}>{bp.periodLabel}</Typography>
+                  )}
+                  {bp.invoiceDate && (
+                    <Typography variant="caption" sx={{ color: '#991b1b' }}>
+                      {new Date(bp.invoiceDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </Typography>
+                  )}
+                  <Chip
+                    label={bp.resolved ? `Resolved${bp.resolution ? ` · ${bp.resolution}` : ''}` : 'Unresolved'}
+                    size="small"
+                    sx={{
+                      height: 18, fontSize: '0.68rem', fontWeight: 700,
+                      bgcolor: bp.resolved ? '#dcfce7' : '#fee2e2',
+                      color: bp.resolved ? '#16a34a' : '#dc2626',
+                    }}
+                  />
                 </Stack>
               ))}
             </Box>
