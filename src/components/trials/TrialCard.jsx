@@ -15,7 +15,7 @@ const captionSx = {
   fontSize: '0.78rem',
   textTransform: 'uppercase',
   letterSpacing: '0.06em',
-  color: '#86868b',
+  color: '#6e6e73',
   display: 'block',
   mb: 0.3,
   fontWeight: 600,
@@ -98,7 +98,7 @@ function TrialCard({ trial, onEdit, onDelete }) {
         {/* Notes preview */}
         {trial.comment && (
           <Typography sx={{
-            fontSize: '0.78rem', color: '#86868b', mt: 2, lineHeight: 1.5,
+            fontSize: '0.78rem', color: '#6e6e73', mt: 2, lineHeight: 1.5,
             display: '-webkit-box', WebkitLineClamp: 2,
             WebkitBoxOrient: 'vertical', overflow: 'hidden',
           }}>

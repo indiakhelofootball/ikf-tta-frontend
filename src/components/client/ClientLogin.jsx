@@ -56,10 +56,17 @@ export default function ClientLogin() {
   const title = brand?.displayName || 'CSR Portal';
 
   if (brandLoading) {
+    // Inside the ThemeProvider, not outside it. Rendered bare, this spinner fell
+    // through to the global TTA theme and painted amber (#FBBF24) — measured in
+    // the browser — which is the first thing a funder sees on their own branded
+    // login. The brand has not loaded yet, so it is neutral rather than TTA's.
     return (
-      <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <CircularProgress />
-      </Box>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <CircularProgress sx={{ color: 'text.disabled' }} />
+        </Box>
+      </ThemeProvider>
     );
   }
 

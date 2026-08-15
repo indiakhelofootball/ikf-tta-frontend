@@ -59,7 +59,7 @@ function TrialDetailView({ trial, open, onClose, onEdit, onDelete }) {
     });
   };
 
-  const labelSx = { color: '#86868b', fontSize: '0.75rem', letterSpacing: '-0.01em' };
+  const labelSx = { color: '#6e6e73', fontSize: '0.75rem', letterSpacing: '-0.01em' };
   const valueSx = { fontWeight: 600, color: '#1d1d1f', letterSpacing: '-0.01em' };
 
   return (
@@ -215,7 +215,7 @@ function TrialDetailView({ trial, open, onClose, onEdit, onDelete }) {
 
         {trial.tierType === 'Not Any' ? (
           <Box sx={{ p: 3, bgcolor: '#f5f5f7', borderRadius: 2.5, border: '1px dashed rgba(0,0,0,0.12)', textAlign: 'center', mb: 3 }}>
-            <Typography variant="body2" sx={{ color: '#86868b' }}>No Tier / Pricing applied</Typography>
+            <Typography variant="body2" sx={{ color: '#6e6e73' }}>No Tier / Pricing applied</Typography>
           </Box>
         ) : (
           <Grid container spacing={3} sx={{ mb: 3 }}>
@@ -383,7 +383,7 @@ function TrialDetailView({ trial, open, onClose, onEdit, onDelete }) {
           </TableContainer>
         ) : (
           <Box sx={{ textAlign: 'center', py: 4, bgcolor: '#f5f5f7', borderRadius: 2.5, border: '1px dashed rgba(0,0,0,0.12)' }}>
-            <Typography variant="body2" sx={{ color: '#86868b' }}>No cities assigned yet</Typography>
+            <Typography variant="body2" sx={{ color: '#6e6e73' }}>No cities assigned yet</Typography>
           </Box>
         )}
 

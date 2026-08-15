@@ -70,7 +70,7 @@ function StatCard({ icon, value, label, color }) {
         <Typography variant="h5" fontWeight={700} sx={{ letterSpacing: '-0.025em', color: '#1d1d1f' }}>
           {value}
         </Typography>
-        <Typography variant="caption" sx={{ color: '#86868b', fontWeight: 500 }}>{label}</Typography>
+        <Typography variant="caption" sx={{ color: '#6e6e73', fontWeight: 500 }}>{label}</Typography>
       </Box>
     </Box>
   );

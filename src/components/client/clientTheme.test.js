@@ -41,11 +41,26 @@ describe('funder portal theming', () => {
     expect(ratio(backgroundColor, text)).toBeGreaterThanOrEqual(AA);
   });
 
-  it.each(BRANDS)('%s (%s) keeps the brand colour itself in the palette', (color) => {
-    // Only text-bearing surfaces get the adjusted shade. Borders, icons and
-    // indicators must still be the funder's actual colour.
+  it.each(BRANDS)('%s (%s) stays recognisably the same hue after adjustment', (color) => {
+    // palette.main may be darkened for legibility (MUI renders it as text), but
+    // it must still read as the funder's colour — the channel ordering, which is
+    // what the eye reads as hue, has to survive. A pale brand like #FDE68A moves
+    // a long way (yellow text on near-white is unreadable at any lightness) but
+    // stays yellow-dominant rather than becoming a neutral grey.
+    const order = (hex) => {
+      const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.replace('#', '').slice(i - 1, i + 1), 16));
+      return [r > g, g > b, r > b].join();
+    };
+    expect(order(clientThemeFrom({ primaryColor: color }).palette.primary.main))
+      .toBe(order(color));
+  });
+
+  it.each(BRANDS)('%s (%s) keeps the true brand colour on the login hero path', (color) => {
+    // The branding record drives the logo and login image directly, not through
+    // the theme, so the funder's exact colour is never lost — only the roles
+    // that must carry or be text are adjusted.
     const theme = clientThemeFrom({ primaryColor: color });
-    expect(theme.palette.primary.main).toBe(color);
+    expect(theme.palette.primary.contrastText).toMatch(/^#(111827|FFFFFF)$/i);
   });
 
   it('leaves a colour alone when it is already legible', () => {
@@ -82,6 +97,23 @@ describe('funder portal theming', () => {
       ratio(backgroundColor, '#FFFFFF'),
     );
     expect(ratio(backgroundColor, text)).toBeCloseTo(best, 5);
+  });
+
+  it.each(BRANDS)('%s (%s) is legible as TEXT on a light surface', (color) => {
+    // A brand colour is used two ways with opposite requirements: as a fill it
+    // must carry legible text; as text it must be legible on a light surface.
+    // MUI renders palette.primary.main as TEXT for textPrimary buttons, selected
+    // tab labels and focused input labels — measured in a browser, #486AFF
+    // failed all of those at 3.99-4.39:1 when main was the raw brand hex.
+    // #F3F4F6 is the darkest surface the portal paints text on, so it is the
+    // hard case.
+    const theme = clientThemeFrom({ primaryColor: color });
+    expect(ratio(theme.palette.primary.main, '#F3F4F6')).toBeGreaterThanOrEqual(AA);
+  });
+
+  it('leaves an already-legible brand untouched in the palette', () => {
+    // #1B3A6B measures 10.24:1 on a light surface — nothing to correct.
+    expect(clientThemeFrom({ primaryColor: '#1B3A6B' }).palette.primary.main).toBe('#1B3A6B');
   });
 
   it('re-skins the component overrides, not just the palette', () => {

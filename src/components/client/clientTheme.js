@@ -95,6 +95,30 @@ function legibleFill(hex) {
   return { fill: hex, text: contrastTextFor(hex) };
 }
 
+// The lightest surfaces the portal paints text onto. The DARKEST of these is the
+// hard case for dark text, so it is what we measure against.
+const LIGHT_SURFACE = '#F3F4F6';
+
+// A brand colour is used two ways, and they have opposite requirements:
+//   as a FILL   — needs text placed ON it to be legible  -> legibleFill()
+//   as TEXT     — needs to be legible on a light surface -> legibleOnLight()
+//
+// Measured in a browser across both seeded funders: with only the fill case
+// handled, #486AFF still failed at five places that render primary.main as text
+// — the header's Change password / Sign out buttons (3.99:1), the selected tab
+// label (4.20:1), the focused input label and the dialog Close button (4.39:1).
+// Darkening only where needed keeps the hue; a brand that is already legible
+// (#1B3A6B measures 10.24:1) is returned untouched.
+function legibleOnLight(hex) {
+  if (!parseHex(hex)) return INK;
+  if (contrastRatio(hex, LIGHT_SURFACE) >= AA) return hex;
+  for (let step = 1; step <= 20; step += 1) {
+    const candidate = shade(hex, step * 0.05);
+    if (contrastRatio(candidate, LIGHT_SURFACE) >= AA) return candidate;
+  }
+  return INK;
+}
+
 // ---------------------------------------------------------------------------
 // The problem this file exists to solve
 // ---------------------------------------------------------------------------
@@ -114,14 +138,21 @@ function legibleFill(hex) {
 //
 // The greys, greens, blues and reds in muiTheme are deliberately NOT remapped —
 // they carry semantics (success, error, info) that must not change per funder.
+//
+// The three accent values split by ROLE, and the split matters: #fbbf24 and
+// #f59e0b paint bars and icons (WCAG wants 3:1), while #d97706 and #b45309 are
+// used as TEXT — selected tab labels, focused input labels, helper text — and
+// need 4.5:1. Mapping all of them to the raw brand left Tata's selected tab at
+// 4.20:1, measured in the browser, after the palette fix had already corrected
+// everything else. The text roles therefore take the on-light-legible variant.
 const AMBER_RAMP = {
   '#fef3c7': (c) => tint(c, 0.92),
   '#fde68a': (c) => tint(c, 0.72),
   '#fcd34d': (c) => tint(c, 0.55),
-  '#fbbf24': (c) => c, // Tabs indicator
-  '#f59e0b': (c) => c,
-  '#d97706': (c) => c,
-  '#b45309': (c) => shade(c, 0.25),
+  '#fbbf24': (c) => c,                        // Tabs indicator — a bar, not text
+  '#f59e0b': (c) => c,                        // Alert icon/border
+  '#d97706': (c) => legibleOnLight(c),        // accent TEXT
+  '#b45309': (c) => shade(legibleOnLight(c), 0.25), // dark accent TEXT
 };
 
 function rebrand(node, primary) {
@@ -186,13 +217,16 @@ export default function clientThemeFrom(brand) {
     ...muiTheme,
     palette: {
       ...muiTheme.palette,
-      // palette.main stays the funder's true colour — it tints borders, icons and
-      // indicators that carry no text. contrastText is the legible pair.
+      // main is what MUI renders as TEXT for textPrimary buttons, selected tabs
+      // and focused labels, so it must be the on-light-legible variant. The
+      // untouched brand colour is still used for fills (see buttonOverrides) and
+      // survives on the login hero and logo, which come from the branding record
+      // rather than the theme.
       ...(primary
-        ? { primary: { main: primary, contrastText: primaryFill.text } }
+        ? { primary: { main: legibleOnLight(primary), contrastText: primaryFill.text } }
         : {}),
       ...(secondary
-        ? { secondary: { main: secondary, contrastText: secondaryFill.text } }
+        ? { secondary: { main: legibleOnLight(secondary), contrastText: secondaryFill.text } }
         : {}),
     },
     components: {

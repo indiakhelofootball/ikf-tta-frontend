@@ -176,7 +176,7 @@ function TrialManagementPage() {
                       <Typography variant="h4" fontWeight={700} sx={{ color: '#1d1d1f', letterSpacing: '-0.025em' }}>
                         {stat.value}
                       </Typography>
-                      <Typography variant="caption" sx={{ color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 500 }}>
+                      <Typography variant="caption" sx={{ color: '#6e6e73', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 500 }}>
                         {stat.label}
                       </Typography>
                     </Box>

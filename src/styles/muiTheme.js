@@ -57,7 +57,7 @@ const muiTheme = createTheme({
     },
     text: {
       primary: '#1d1d1f',
-      secondary: '#86868b',
+      secondary: '#6e6e73',
       disabled: '#9CA3AF',
     },
   },
@@ -128,7 +128,7 @@ const muiTheme = createTheme({
     caption: {
       fontSize: '0.75rem',
       lineHeight: 1.5,
-      color: '#86868b',
+      color: '#6e6e73',
       letterSpacing: '0.04em',
       textTransform: 'uppercase',
       fontWeight: 600,
@@ -147,7 +147,7 @@ const muiTheme = createTheme({
       fontWeight: 700,
       letterSpacing: '0.08em',
       textTransform: 'uppercase',
-      color: '#86868b',
+      color: '#6e6e73',
     },
   },
 
