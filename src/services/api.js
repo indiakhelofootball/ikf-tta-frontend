@@ -915,14 +915,22 @@ function csrCrud(base) {
   };
 }
 
-export const csrAPI = {
-  projects: csrCrud('/csr/projects'),
-  activities: csrCrud('/csr/activities'),
-  activityTypes: csrCrud('/csr/activity-types'),
-  reports: csrCrud('/csr/reports'),
-  expenseTags: csrCrud('/csr/expense-tags'),
-  clientUsers: csrCrud('/csr/client-users'),
-  contacts: csrCrud('/csr/contacts'),
+// /*#__PURE__*/ is load-bearing, not decoration. These objects are built by
+// calling a factory at module scope, and a bundler cannot prove such a call is
+// side-effect-free on its own — so it keeps every one of them, in every bundle
+// that touches this file. That is how the external funder's build came to
+// contain all 40 internal CSR endpoints plus the module inventory: ClientApp
+// imports AuthContext, which imports this module for login/refresh, and the
+// whole domain surface rode along. The annotation lets the funder build drop
+// what it never calls. Keep it on any new export here.
+export const csrAPI = /*#__PURE__*/ {
+  projects: /*#__PURE__*/ csrCrud('/csr/projects'),
+  activities: /*#__PURE__*/ csrCrud('/csr/activities'),
+  activityTypes: /*#__PURE__*/ csrCrud('/csr/activity-types'),
+  reports: /*#__PURE__*/ csrCrud('/csr/reports'),
+  expenseTags: /*#__PURE__*/ csrCrud('/csr/expense-tags'),
+  clientUsers: /*#__PURE__*/ csrCrud('/csr/client-users'),
+  contacts: /*#__PURE__*/ csrCrud('/csr/contacts'),
   // Funder onboarding — admin-only endpoint (SUPER_ADMIN/ADMIN). Creates the
   // CSR_CLIENT login + project link in one atomic call; role is fixed server-side.
   clients: {
@@ -941,7 +949,7 @@ export const csrAPI = {
   utilisationCertificate: async (projectId) =>
     apiService.request(`/csr/projects/${projectId}/utilisation-certificate/`),
   // White-label branding — admin-managed CRUD (SUPER_ADMIN/ADMIN).
-  branding: csrCrud('/csr/branding'),
+  branding: /*#__PURE__*/ csrCrud('/csr/branding'),
 };
 
 // ============================================
