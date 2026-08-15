@@ -103,7 +103,7 @@ export default function DashboardHome() {
           Welcome back, {user?.name || user?.email?.split('@')[0]}!
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-          <Typography variant="body1" sx={{ color: '#86868b' }}>Role:</Typography>
+          <Typography variant="body1" sx={{ color: '#6e6e73' }}>Role:</Typography>
           <Chip
             label={user?.role}
             size="small"
@@ -164,7 +164,7 @@ export default function DashboardHome() {
                         <Typography
                           variant="caption"
                           sx={{
-                            color: '#86868b',
+                            color: '#6e6e73',
                             fontWeight: 500,
                             fontSize: '0.75rem',
                             textTransform: 'uppercase',
@@ -204,7 +204,7 @@ export default function DashboardHome() {
                       </Box>
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1 }}>
-                      <Typography variant="caption" sx={{ color: '#86868b' }}>{stat.sub}</Typography>
+                      <Typography variant="caption" sx={{ color: '#6e6e73' }}>{stat.sub}</Typography>
                     </Box>
                   </Box>
                 </CardContent>

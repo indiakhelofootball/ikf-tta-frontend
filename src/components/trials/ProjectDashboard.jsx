@@ -48,7 +48,7 @@ const fieldLabelSx = {
 
 const captionSx = {
   fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.06em',
-  color: '#86868b', fontWeight: 600,
+  color: '#6e6e73', fontWeight: 600,
 };
 
 function makeCityCode(stateName, cityName, existingCities) {
@@ -507,7 +507,7 @@ function ProjectDashboard() {
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
               <Typography sx={{ fontSize: '1rem', fontWeight: 700, color: '#1d1d1f' }}>
                 Trial Locations
-                <Typography component="span" sx={{ ml: 1.5, fontSize: '0.78rem', color: '#86868b', fontWeight: 500 }}>
+                <Typography component="span" sx={{ ml: 1.5, fontSize: '0.78rem', color: '#6e6e73', fontWeight: 500 }}>
                   {filteredCities.length !== cityCount
                     ? `${filteredCities.length} of ${cityCount}`
                     : cityCount}
@@ -836,7 +836,7 @@ function ProjectDashboard() {
                                   </Tooltip>
                                   <Tooltip title="Cancel">
                                     <IconButton onClick={() => setEditingCode(null)} disabled={editSaving} aria-label="Cancel edit"
-                                      sx={{ color: '#86868b', '&:hover': { bgcolor: '#f5f5f7' } }}>
+                                      sx={{ color: '#6e6e73', '&:hover': { bgcolor: '#f5f5f7' } }}>
                                       <CloseIcon sx={{ fontSize: 20 }} />
                                     </IconButton>
                                   </Tooltip>
@@ -896,7 +896,7 @@ function ProjectDashboard() {
                     </Button>
                   </Stack>
                 )}
-                <Typography sx={{ textAlign: 'center', fontSize: '0.75rem', color: '#86868b', mt: 1 }}>
+                <Typography sx={{ textAlign: 'center', fontSize: '0.75rem', color: '#6e6e73', mt: 1 }}>
                   Showing {Math.min((page - 1) * PAGE_SIZE + 1, filteredCities.length)}–{Math.min(page * PAGE_SIZE, filteredCities.length)} of {filteredCities.length}
                 </Typography>
               </>
@@ -982,7 +982,7 @@ function ProjectDashboard() {
         <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', px: 4, py: 3, borderBottom: '1.5px solid #f0f0f0' }}>
           <Box>
             <Typography sx={{ fontWeight: 700, fontSize: '1.1rem', color: '#1e293b' }}>Bulk Add Cities</Typography>
-            <Typography sx={{ fontSize: '0.8rem', color: '#86868b', mt: 0.25 }}>
+            <Typography sx={{ fontSize: '0.8rem', color: '#6e6e73', mt: 0.25 }}>
               {bulkRows.length} rows · blank rows skipped · state & city required · no date = 10 July default
             </Typography>
           </Box>
