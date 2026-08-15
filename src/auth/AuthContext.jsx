@@ -3,11 +3,16 @@
 // NOW WITH PER-USER PROFILE SUPPORT!
 
 import { createContext, useContext, useState, useEffect, useRef } from "react";
-import { ROLE_PERMISSIONS } from "./roles";
+import { ROLE_PERMISSIONS, ROLES } from "./roles";
 import api, { permissionsAPI } from "../services/api";
 import { refreshAllFromAPI, clearConfigCache } from "../utils/adminStorage";
 
 const AuthContext = createContext(null);
+
+// CSR_CLIENT is an EXTERNAL funder living in the same user table as staff. The
+// internal RBAC layer denies them every module before any grant lookup, so any
+// internal fetch on their behalf is guaranteed to 403.
+const isExternalRole = (role) => role === ROLES.CSR_CLIENT;
 
 const SESSION_TIMEOUT = 8 * 60 * 60 * 1000; // 8 hours
 const REMEMBER_ME_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -27,6 +32,8 @@ export const AuthProvider = ({ children }) => {
   // Whenever the logged-in user changes, pull their effective grants, then
   // refresh the config dropdown cache only for users allowed to read config —
   // blind refreshes 403 for non-granted users and spam the console.
+  const userRole = user?.role;
+
   useEffect(() => {
     let active = true;
     if (user?.email) {
@@ -36,7 +43,10 @@ export const AuthProvider = ({ children }) => {
       // and every operational form needs it, so it must not ride on the grants
       // call. While it was chained inside getMine(), a failed grants fetch meant
       // non-admins loaded no config at all and every dropdown came up blank.
-      refreshAllFromAPI().catch(() => {});
+      // External funders never see an internal form, so they need no dropdown
+      // labels — and every internal module is denied to them before any grant
+      // lookup, so asking produced 8 x 403 on every portal login.
+      if (!isExternalRole(userRole)) refreshAllFromAPI().catch(() => {});
       permissionsAPI.getMine()
         .then((d) => {
           if (!active) return;
@@ -52,7 +62,7 @@ export const AuthProvider = ({ children }) => {
       setPermsSettled(false);
     }
     return () => { active = false; };
-  }, [user?.email, user?.role]);
+  }, [user?.email, userRole]);
 
   // Grants and the config cache are otherwise only loaded at login, so a
   // grant change or dropdown edit never reaches an open session. Re-pull both
@@ -67,7 +77,7 @@ export const AuthProvider = ({ children }) => {
       if (now - lastFocusRefetch.current < REFETCH_MIN_GAP) return;
       lastFocusRefetch.current = now;
       // Independent of the grants call, for the same reason as the login effect.
-      refreshAllFromAPI().catch(() => {});
+      if (!isExternalRole(userRole)) refreshAllFromAPI().catch(() => {});
       permissionsAPI.getMine()
         .then((d) => setPerms(d))
         .catch(() => {}); // transient failure — keep the last known grants
@@ -78,7 +88,7 @@ export const AuthProvider = ({ children }) => {
       window.removeEventListener("focus", refetch);
       document.removeEventListener("visibilitychange", refetch);
     };
-  }, [user?.email]);
+  }, [user?.email, userRole]);
 
   // Check for stored user on mount
   useEffect(() => {
