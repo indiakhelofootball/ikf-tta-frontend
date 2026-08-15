@@ -12,8 +12,11 @@ import {
   AccountBalance as BankIcon,
   Edit as EditIcon,
   Save as SaveIcon,
+  VolunteerActivism as VolunteerActivismIcon,
 } from '@mui/icons-material';
 import { PR_STATUS_COLORS, PR_STATUSES } from './paymentData';
+import useGrants from '../../auth/useGrants';
+import TagToCSRProjectDialog from './TagToCSRProjectDialog';
 
 const fmtINR = (n) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n || 0);
@@ -35,6 +38,12 @@ function PaymentDetailDialog({ open, onClose, payment, onUpdate, mode: initialMo
   const [editStatus, setEditStatus] = useState('');
   const [editNotes, setEditNotes] = useState('');
   const [editInvoiceDate, setEditInvoiceDate] = useState('');
+  const [tagOpen, setTagOpen] = useState(false);
+  // Tagging a payment into a CSR project is a finance action, not a CSR one
+  // (05-22: "We will show it in finance, not in CSR"). It is gated on the
+  // csr_certificate EDIT grant, so a payments operator without it never sees it.
+  const { canEdit } = useGrants();
+  const canTagToCSR = canEdit('csr_certificate');
 
   useEffect(() => {
     if (open && payment) {
@@ -280,6 +289,18 @@ function PaymentDetailDialog({ open, onClose, payment, onUpdate, mode: initialMo
           Close
         </Button>
 
+        {mode === 'view' && canTagToCSR && (
+          <Button onClick={() => setTagOpen(true)} variant="outlined"
+            startIcon={<VolunteerActivismIcon fontSize="small" />}
+            sx={{
+              textTransform: 'none', fontWeight: 600, borderColor: '#c7d2fe',
+              color: '#4338ca', borderRadius: 1.5,
+              '&:hover': { borderColor: '#5B63D3', bgcolor: '#eef2ff' },
+            }}>
+            Tag to CSR
+          </Button>
+        )}
+
         {mode === 'view' && (
           <Button onClick={() => setMode('edit')} variant="contained" startIcon={<EditIcon fontSize="small" />}
             sx={{
@@ -302,6 +323,12 @@ function PaymentDetailDialog({ open, onClose, payment, onUpdate, mode: initialMo
           </Button>
         )}
       </DialogActions>
+
+      <TagToCSRProjectDialog
+        open={tagOpen}
+        onClose={() => setTagOpen(false)}
+        payment={payment}
+      />
     </Dialog>
   );
 }

@@ -21,6 +21,7 @@ import {
 } from '@mui/icons-material';
 import { generateWorkOrderNumber } from './workOrderData';
 import { getVendorTypeNames, getEntityTypeNames, getProjectNames } from '../../utils/adminStorage';
+import useConfigVersion from '../../hooks/useConfigVersion';
 import { vendorsAPI, trialsAPI } from '../../services/api';
 
 /* ── Design tokens ── */
@@ -77,6 +78,8 @@ const EMPTY_FORM = {
   projectRef: '',
   projectCity: '',
   serviceDescription: '',
+  invoiceDriveLink: '',
+  contractDriveLink: '',
   amount: '',
   amountPerPeriod: '',
   numberOfPeriods: '',
@@ -153,9 +156,12 @@ function WorkOrderModal({ open, onClose, onSave, workOrder, saving, allVendors: 
   }, [open, workOrder, allVendors]);
 
   /* ── Search filter logic ── */
-  const serviceTypeOptions = useMemo(() => getVendorTypeNames(), []);
-  const entityTypeOptions = useMemo(() => getEntityTypeNames(), []);
-  const projectOptions = useMemo(() => getProjectNames().map((p) => p.name), []);
+  // cfgVersion, not [] — the config cache loads asynchronously after mount, and
+  // an empty dep array froze whatever was there at mount (usually seeds).
+  const cfgVersion = useConfigVersion();
+  const serviceTypeOptions = useMemo(() => getVendorTypeNames(), [cfgVersion]);
+  const entityTypeOptions = useMemo(() => getEntityTypeNames(), [cfgVersion]);
+  const projectOptions = useMemo(() => getProjectNames().map((p) => p.name), [cfgVersion]);
   // Cities of the selected project = distinct city names across trials whose trialType
   // matches the chosen project name.
   const projectCityOptions = useMemo(() => {
@@ -332,6 +338,8 @@ function WorkOrderModal({ open, onClose, onSave, workOrder, saving, allVendors: 
       type: form.type,
       amount: totalAmount,
       serviceDescription: form.serviceDescription,
+      invoiceDriveLink: form.invoiceDriveLink || '',
+      contractDriveLink: form.contractDriveLink || '',
       projectRef: form.projectRef || '',
       projectCity: form.projectCity || '',
       status: 'Issued',
@@ -874,6 +882,26 @@ function WorkOrderModal({ open, onClose, onSave, workOrder, saving, allVendors: 
                   error={!!errors.serviceDescription}
                   helperText={errors.serviceDescription || `${form.serviceDescription.length}/30 — bank narration limit`}
                   inputProps={{ maxLength: 30 }}
+                />
+              </Box>
+              <Box sx={{ mt: 2 }}>
+                <Typography component="label" sx={labelSx}>Invoice Link (Google Drive)</Typography>
+                <TextField
+                  size="small" fullWidth sx={inputSx} type="url"
+                  placeholder="https://drive.google.com/…"
+                  value={form.invoiceDriveLink}
+                  onChange={(e) => setForm((p) => ({ ...p, invoiceDriveLink: e.target.value }))}
+                  helperText="Optional — paste a shareable Drive link to the vendor invoice"
+                />
+              </Box>
+              <Box sx={{ mt: 2 }}>
+                <Typography component="label" sx={labelSx}>Contract Link (Google Drive)</Typography>
+                <TextField
+                  size="small" fullWidth sx={inputSx} type="url"
+                  placeholder="https://drive.google.com/…"
+                  value={form.contractDriveLink}
+                  onChange={(e) => setForm((p) => ({ ...p, contractDriveLink: e.target.value }))}
+                  helperText="Optional — the signed contract this work order is raised against"
                 />
               </Box>
             </Box>

@@ -1,0 +1,50 @@
+# TTA stack — backend (gunicorn) + frontend (nginx). Database is the NEW box's
+# native MySQL 8.4 (not a container), reached via host.docker.internal so we don't
+# run a second MySQL on a box shared with IKF.
+#
+# Backend build context = ./tta_backend  (separate git repo, gitignored here)
+# Frontend build context = .              (this repo)
+#
+# Server run:  docker compose up -d --build
+# Local test:  docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
+services:
+  backend:
+    build:
+      context: ./tta_backend
+    image: tta-backend:latest
+    env_file:
+      - ./tta_backend/backend/.env
+    expose:
+      - "8020"
+    volumes:
+      - static_volume:/app/staticfiles
+    extra_hosts:
+      # lets the container reach the host's native MySQL as host.docker.internal
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      args:
+        REACT_APP_API_URL: /api
+        # Stamped into the sidebar so a running bundle is identifiable. .git is not
+        # in the build context, so it has to come from the host:
+        #   BUILD_ID=$(git rev-parse --short HEAD) docker compose up -d --build
+        # Falls back to "docker" if unset, which means "nobody passed a hash".
+        BUILD_ID: ${BUILD_ID:-docker}
+    image: tta-frontend:latest
+    ports:
+      # Bound to loopback on purpose: host nginx terminates TLS and proxies here.
+      # Publishing on 0.0.0.0 would answer on http://<public-ip>:8080 directly,
+      # bypassing Cloudflare and TLS — and Docker's iptables rules sit ahead of
+      # ufw, so a firewall deny on 8080 would not have stopped it.
+      - "127.0.0.1:8080:80"
+    volumes:
+      - static_volume:/staticfiles:ro
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  static_volume:

@@ -241,7 +241,9 @@ export default function PermissionsManagementPage() {
       await permissionsAPI.setUserPermissions(selectedUser.id, grants);
       setToast({ severity: 'success', msg: `Saved for ${selectedUser.name}` });
       setUsers((prev) => prev.map((u) => u.id === selectedUser.id
-        ? { ...u, grantedModules: Object.keys(grants).filter((k) => grants[k].can_view || grants[k].can_edit).sort() }
+        // Count only grantable modules — mirror the backend so a stale legacy grant
+        // (e.g. 'reports'/'bank', hidden from the grid) never inflates the "# mod" chip.
+        ? { ...u, grantedModules: Object.keys(grants).filter((k) => (grants[k].can_view || grants[k].can_edit) && modules.some((m) => m.key === k)).sort() }
         : u));
       setAuditLogs(null);
     } catch (e) {

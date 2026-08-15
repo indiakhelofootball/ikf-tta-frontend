@@ -85,6 +85,19 @@
   overflow-x: hidden;
 }
 
+/* Build stamp */
+.sidebar-build {
+  flex-shrink: 0;
+  padding: 0.5rem 1rem;
+  border-top: 1px solid #E5E7EB;
+  font-size: 0.6875rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #9CA3AF;
+  text-align: center;
+  letter-spacing: 0.02em;
+  user-select: text;
+}
+
 /* Links */
 .sidebar-link {
   display: flex;

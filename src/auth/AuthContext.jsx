@@ -3,9 +3,9 @@
 // NOW WITH PER-USER PROFILE SUPPORT!
 
 import { createContext, useContext, useState, useEffect, useRef } from "react";
-import { ROLES, ROLE_PERMISSIONS } from "./roles";
+import { ROLE_PERMISSIONS } from "./roles";
 import api, { permissionsAPI } from "../services/api";
-import { refreshAllFromAPI } from "../utils/adminStorage";
+import { refreshAllFromAPI, clearConfigCache } from "../utils/adminStorage";
 
 const AuthContext = createContext(null);
 
@@ -31,24 +31,20 @@ export const AuthProvider = ({ children }) => {
     let active = true;
     if (user?.email) {
       setPermsSettled(false);
+      // Config reference data (dropdown labels — service/entity/vendor types,
+      // banks…) is readable by ANY authenticated user (ReadOpenModulePermission)
+      // and every operational form needs it, so it must not ride on the grants
+      // call. While it was chained inside getMine(), a failed grants fetch meant
+      // non-admins loaded no config at all and every dropdown came up blank.
+      refreshAllFromAPI().catch(() => {});
       permissionsAPI.getMine()
         .then((d) => {
           if (!active) return;
           setPerms(d);
-          // Config reference data (dropdown labels — service/entity/vendor types,
-          // banks…) is readable by ANY authenticated user (ReadOpenModulePermission)
-          // and every operational form needs it, so load it regardless of grants.
-          // Was gated on config.can_view, from when config reads 403'd without the
-          // grant; that left a Vendors-only user with blank dropdowns on Add Vendor.
-          refreshAllFromAPI().catch(() => {});
         })
         .catch(() => {
           if (!active) return;
           setPerms(null);
-          // Grants unavailable (offline / pre-backfill server) — legacy behavior.
-          if (user.role === ROLES.SUPER_ADMIN || user.role === ROLES.ADMIN) {
-            refreshAllFromAPI().catch(() => {});
-          }
         })
         .finally(() => { if (active) setPermsSettled(true); });
     } else {
@@ -70,12 +66,10 @@ export const AuthProvider = ({ children }) => {
       const now = Date.now();
       if (now - lastFocusRefetch.current < REFETCH_MIN_GAP) return;
       lastFocusRefetch.current = now;
+      // Independent of the grants call, for the same reason as the login effect.
+      refreshAllFromAPI().catch(() => {});
       permissionsAPI.getMine()
-        .then((d) => {
-          setPerms(d);
-          // Reload the open config cache for any user (see login effect above).
-          refreshAllFromAPI().catch(() => {});
-        })
+        .then((d) => setPerms(d))
         .catch(() => {}); // transient failure — keep the last known grants
     };
     window.addEventListener("focus", refetch);
@@ -321,6 +315,9 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem("tta_user");
     localStorage.removeItem("tta_login_time");
     localStorage.removeItem("tta_remember_me");
+    // The warm-start config cache is per-session data, not per-user profile —
+    // drop it so the next login never renders the previous user's dropdowns.
+    clearConfigCache();
     // 👤 PROFILE SUPPORT: Profiles stay in localStorage (per-user keys)
     // Each user has their own profile key like: tta_profile_user@example.com
     if (sessionTimeout) clearTimeout(sessionTimeout);

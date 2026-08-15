@@ -117,6 +117,21 @@ export default function CSRClientsPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  const toggleAccess = async (c) => {
+    const revoking = c.isActive;
+    const message = revoking
+      ? `Revoke portal access for ${c.email}? They are signed out immediately. Their reports and certificate are kept, and you can restore access later.`
+      : `Restore portal access for ${c.email}?`;
+    if (!window.confirm(message)) return;
+    try {
+      await csrAPI.clients.setAccess(c.id, !c.isActive);
+      notify(revoking ? 'Access revoked.' : 'Access restored.');
+      load();
+    } catch (e) {
+      notify(e.message || 'Could not update access.', 'error');
+    }
+  };
+
   const handleSave = async (payload) => {
     setSaving(true);
     try {
@@ -170,6 +185,10 @@ export default function CSRClientsPage() {
                   <Typography variant="body2" color="text.secondary" noWrap>{c.email}</Typography>
                 </Box>
                 <Chip size="small" label={c.projectName} />
+                {!c.isActive && <Chip size="small" color="warning" label="Revoked" />}
+                <Button size="small" onClick={() => toggleAccess(c)}>
+                  {c.isActive ? 'Revoke' : 'Restore'}
+                </Button>
               </Box>
             </CardContent>
           </Card>

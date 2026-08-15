@@ -14,6 +14,7 @@ import { ROLES, REPORT_KEYS } from "./auth/roles";
 import Unauthorized from "./components/Unauthorized";
 
 import DashboardLayout from "./components/layout/DashboardLayout";
+import CSRSidebar from "./components/layout/CSRSidebar";
 import DashboardHome from "./components/dashboard/DashboardHome";
 import REPManagementPage from "./components/rep/REPManagementPage";
 import { TrialManagementPage, TrialWizard, ProjectDashboard } from "./components/trials";
@@ -31,7 +32,7 @@ import VendorAuditReport from "./components/reports/VendorAuditReport";
 import TrialSpendReport from "./components/reports/TrialSpendReport";
 import TrialsReport from "./components/reports/TrialsReport";
 import CourierManagementPage from "./components/courier/CourierManagementPage";
-import { CSRProjectManagementPage, CSRProjectDetailPage, CSRActivityTypesPage, CSRClientsPage, CSRBrandingPage } from "./components/csr";
+import { CSRDashboard, CSRProjectManagementPage, CSRProjectDetailPage, CSRActivityTypesPage, CSRClientsPage, CSRBrandingPage } from "./components/csr";
 import ClientPortalPage from "./components/client/ClientPortalPage";
 import ClientLogin from "./components/client/ClientLogin";
 import PermissionsManagementPage from "./components/permissions/PermissionsManagementPage";
@@ -178,35 +179,6 @@ function App() {
                 <CourierManagementPage />
               </GrantedRoute>
             } />
-            <Route path="/csr" element={
-              <GrantedRoute module="csr">
-                <CSRProjectManagementPage />
-              </GrantedRoute>
-            } />
-            {/* D1: the activity-type catalog is admin-managed (TTA Admin), not a
-                CSR-owned page. Admins reach it from Admin Settings. */}
-            <Route path="/csr/activity-types" element={
-              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
-                <CSRActivityTypesPage />
-              </RoleBasedRoute>
-            } />
-            {/* Funder onboarding — admin-only, not csr-grant gated. Static path
-                must precede the dynamic /csr/:id route. */}
-            <Route path="/csr/clients" element={
-              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
-                <CSRClientsPage />
-              </RoleBasedRoute>
-            } />
-            <Route path="/csr/branding" element={
-              <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
-                <CSRBrandingPage />
-              </RoleBasedRoute>
-            } />
-            <Route path="/csr/:id" element={
-              <GrantedRoute module="csr">
-                <CSRProjectDetailPage />
-              </GrantedRoute>
-            } />
             <Route path="/user-management" element={
               <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN]}>
                 <PermissionsManagementPage />
@@ -221,6 +193,48 @@ function App() {
                 <AdminPage />
               </RoleBasedRoute>
             } />
+          </Route>
+
+          {/* CSR app — its own shell. CSR_COMPLETE_REFERENCE.md §8 specifies
+              /csr/* under CSRSidebar; it was routed inside TTA's outlet until
+              2026-08-15, which is why CSR read as two sidebar items instead of
+              an app. Paths are unchanged, so bookmarks and e2e specs still hold.
+              Static /csr/... routes MUST stay before /csr/:id. */}
+          <Route element={<DashboardLayout sidebar={CSRSidebar} />}>
+          <Route path="/csr" element={
+            <GrantedRoute module="csr">
+              <CSRDashboard />
+            </GrantedRoute>
+          } />
+          <Route path="/csr/projects" element={
+            <GrantedRoute module="csr">
+              <CSRProjectManagementPage />
+            </GrantedRoute>
+          } />
+          {/* D1: the activity-type catalog is admin-managed (TTA Admin), not a
+              CSR-owned page. Admins reach it from Admin Settings. */}
+          <Route path="/csr/activity-types" element={
+            <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+              <CSRActivityTypesPage />
+            </RoleBasedRoute>
+          } />
+          {/* Funder onboarding — admin-only, not csr-grant gated. Static path
+              must precede the dynamic /csr/:id route. */}
+          <Route path="/csr/clients" element={
+            <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+              <CSRClientsPage />
+            </RoleBasedRoute>
+          } />
+          <Route path="/csr/branding" element={
+            <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+              <CSRBrandingPage />
+            </RoleBasedRoute>
+          } />
+          <Route path="/csr/:id" element={
+            <GrantedRoute module="csr">
+              <CSRProjectDetailPage />
+            </GrantedRoute>
+          } />
           </Route>
 
           {/* External CSR funder portal — own shell, no TTA sidebar */}

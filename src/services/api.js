@@ -97,27 +97,44 @@ class APIService {
    * Attempt to refresh the access token using the stored refresh token.
    */
   async refreshToken() {
-    const refresh = localStorage.getItem('tta_refresh');
-    if (!refresh) return false;
+    // Every screen fires several requests in parallel on load, so when the access
+    // token expires they all get a 401 at the same instant and each one used to
+    // start its own refresh with the SAME refresh token. SimpleJWT is configured
+    // with ROTATE_REFRESH_TOKENS + BLACKLIST_AFTER_ROTATION, so the first refresh
+    // to land blacklists that token and every sibling refresh is then rejected —
+    // which the caller reads as "session expired" and force-logs-out a user whose
+    // session is perfectly valid. Collapsing concurrent callers onto one in-flight
+    // request means the rotation happens exactly once and everyone reads the result.
+    if (this._refreshInFlight) return this._refreshInFlight;
 
-    try {
-      const res = await fetch(`${API_BASE_URL}/auth/token/refresh/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh }),
-      });
+    this._refreshInFlight = (async () => {
+      const refresh = localStorage.getItem('tta_refresh');
+      if (!refresh) return false;
 
-      if (!res.ok) return false;
+      try {
+        const res = await fetch(`${API_BASE_URL}/auth/token/refresh/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh }),
+        });
 
-      const data = await res.json();
-      localStorage.setItem('tta_token', data.access);
-      if (data.refresh) {
-        localStorage.setItem('tta_refresh', data.refresh);
+        if (!res.ok) return false;
+
+        const data = await res.json();
+        localStorage.setItem('tta_token', data.access);
+        if (data.refresh) {
+          localStorage.setItem('tta_refresh', data.refresh);
+        }
+        return true;
+      } catch {
+        return false;
+      } finally {
+        // Cleared only after the result is settled, so a later 401 can refresh again.
+        this._refreshInFlight = null;
       }
-      return true;
-    } catch {
-      return false;
-    }
+    })();
+
+    return this._refreshInFlight;
   }
 
   /**
@@ -192,7 +209,7 @@ class APIService {
   }
 
   async changePassword({ oldPassword, newPassword, newPassword2 }) {
-    return this.request('/auth/change-password/', {
+    const data = await this.request('/auth/change-password/', {
       method: 'POST',
       body: JSON.stringify({
         old_password: oldPassword,
@@ -200,6 +217,16 @@ class APIService {
         new_password2: newPassword2,
       }),
     });
+    // The server ends every session on a password change, including this one.
+    // Adopt the fresh pair it returns so the current tab stays signed in while
+    // any other device is logged out.
+    if (data?.tokens?.access) {
+      localStorage.setItem('tta_token', data.tokens.access);
+      if (data.tokens.refresh) {
+        localStorage.setItem('tta_refresh', data.tokens.refresh);
+      }
+    }
+    return data;
   }
 }
 
@@ -907,6 +934,13 @@ export const csrAPI = {
     list: async () => apiService.request('/csr/clients/'),
     onboard: async (data) =>
       apiService.request('/csr/clients/', { method: 'POST', body: JSON.stringify(data) }),
+    // Revoke / restore a funder's access. Reversible flag, not a delete — the
+    // funder keeps their reports and certificate when access is restored.
+    setAccess: async (id, isActive) =>
+      apiService.request(`/csr/clients/${id}/access/`, {
+        method: 'PATCH',
+        body: JSON.stringify({ isActive }),
+      }),
   },
   // Server-authoritative Utilisation Certificate (totals computed server-side).
   utilisationCertificate: async (projectId) =>

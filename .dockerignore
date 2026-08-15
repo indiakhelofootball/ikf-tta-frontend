@@ -1,0 +1,11 @@
+node_modules
+build
+tta_backend
+*.sql
+.git
+_docs
+project_tta
+project_intuiva
+new_track.xlsx
+npm-debug.log*
+.env*

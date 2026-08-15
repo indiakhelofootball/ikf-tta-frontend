@@ -8,18 +8,43 @@ import { useAuth } from "../../auth/AuthContext";
 import { ROLES } from "../../auth/roles";
 import "./DashboardLayout.css";
 
+// Every route that renders inside this layout needs an entry, or its header and
+// breadcrumb silently read "Dashboard". Twelve routes were missing until
+// 2026-08-15 — including every /csr page, Vendors, Work Orders and Banking.
 const pageTitles = {
   "/dashboard": "Dashboard",
   "/trials/create": "Project Setup",
   "/trials": "Projects",
+  "/rep-management": "REP Management",
+  "/vendors": "Vendors",
+  "/work-orders": "Work Orders",
   "/payments": "Payments",
+  "/bank-tds": "Banking",
+  "/reports": "Reports",
+  "/courier": "Courier",
   "/logistics": "Logistics",
   "/profile": "Profile",
+  "/admin": "Admin",
+  "/user-management": "User Management",
+  "/request-access": "Request Access",
   "/reports/social-media": "REP Report",
   "/reports/trials": "Trials Report",
+  "/reports/payment-audit": "Payment Audit",
+  "/reports/vendor-audit": "Vendor Audit",
+  "/reports/trial-spend": "Trial Spend",
+  "/csr": "CSR",
+  "/csr/projects": "CSR Projects",
+  "/csr/clients": "Funders",
+  "/csr/activity-types": "Activity Types",
+  "/csr/branding": "Branding",
 };
 
-export default function DashboardLayout() {
+// `sidebar` takes a COMPONENT, not an element. The collapse state lives here and
+// is passed down as collapsed/onToggle, which an element could not receive
+// without cloneElement — CSR_IMPLEMENTATION.md §3.3 wrote it as an element, and
+// following that literally would silently break the toggle. Defaulting to
+// Sidebar keeps every existing call site unchanged.
+export default function DashboardLayout({ sidebar: SidebarComponent = Sidebar }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -74,7 +99,7 @@ export default function DashboardLayout() {
 
   return (
     <div className="dashboard-layout">
-      <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(v => !v)} />
+      <SidebarComponent collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(v => !v)} />
 
       <div className="dashboard-content" style={{ marginLeft: sidebarCollapsed ? 64 : 260, transition: 'margin-left 0.25s ease' }}>
         {/* Header */}
