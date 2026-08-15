@@ -45,7 +45,7 @@
     "start": "react-scripts start",
     "prebuild": "node scripts/genBuildId.js",
     "build": "react-scripts build",
-    "build:client": "cross-env REACT_APP_TARGET=client BUILD_PATH=build-client craco build",
+    "build:client": "cross-env REACT_APP_TARGET=client BUILD_PATH=build-client PUBLIC_URL=/client craco build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "lint": "eslint src/",

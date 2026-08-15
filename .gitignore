@@ -39,6 +39,8 @@ build/Release
 
 # React build output (built on server)
 build/
+# G3 separate funder bundle (npm run build:client)
+build-client/
 
 # Backend code (separate repo)
 tta_backend/
