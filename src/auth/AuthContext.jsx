@@ -73,17 +73,28 @@ export const AuthProvider = ({ children }) => {
       // External funders never see an internal form, so they need no dropdown
       // labels — and every internal module is denied to them before any grant
       // lookup, so asking produced 8 x 403 on every portal login.
-      if (!isExternalRole(userRole)) refreshAllFromAPI().catch(() => {});
-      permissionsAPI.getMine()
-        .then((d) => {
-          if (!active) return;
-          setPerms(d);
-        })
-        .catch(() => {
-          if (!active) return;
-          setPerms(null);
-        })
-        .finally(() => { if (active) setPermsSettled(true); });
+      if (isExternalRole(userRole)) {
+        // An external funder holds no module grants by construction — the RBAC
+        // layer denies them every internal module before any grant lookup — so
+        // the grants call can only ever 403. Skipping it also keeps the internal
+        // permissions endpoint out of the funder's JS bundle (G3): what is never
+        // called is never bundled.
+        setPerms(null);
+        setPermsSettled(true);
+      } else {
+        // Config reference data must not ride on the grants call — see above.
+        refreshAllFromAPI().catch(() => {});
+        permissionsAPI.getMine()
+          .then((d) => {
+            if (!active) return;
+            setPerms(d);
+          })
+          .catch(() => {
+            if (!active) return;
+            setPerms(null);
+          })
+          .finally(() => { if (active) setPermsSettled(true); });
+      }
     } else {
       setPerms(null);
       setPermsSettled(false);
