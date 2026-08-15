@@ -32,7 +32,7 @@ import VendorAuditReport from "./components/reports/VendorAuditReport";
 import TrialSpendReport from "./components/reports/TrialSpendReport";
 import TrialsReport from "./components/reports/TrialsReport";
 import CourierManagementPage from "./components/courier/CourierManagementPage";
-import { CSRDashboard, CSRProjectManagementPage, CSRProjectDetailPage, CSRActivityTypesPage, CSRClientsPage, CSRBrandingPage } from "./components/csr";
+import { CSRLogin, CSRDashboard, CSRProjectManagementPage, CSRProjectDetailPage, CSRActivityTypesPage, CSRClientsPage, CSRBrandingPage } from "./components/csr";
 import ClientPortalPage from "./components/client/ClientPortalPage";
 import ClientLogin from "./components/client/ClientLogin";
 import PermissionsManagementPage from "./components/permissions/PermissionsManagementPage";
@@ -96,6 +96,11 @@ function App() {
 
         {/* PUBLIC */}
         <Route path="/login" element={<Login />} />
+        {/* Three front doors, one auth engine. /csr/login MUST be declared here
+            — before the /csr outlet below — or the dynamic /csr/:id route
+            captures "login" as a project id. It must also stay OUTSIDE
+            RequireAuth, or nobody can reach it to log in. */}
+        <Route path="/csr/login" element={<CSRLogin />} />
         <Route path="/client/:slug/login" element={<ClientLogin />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
 
