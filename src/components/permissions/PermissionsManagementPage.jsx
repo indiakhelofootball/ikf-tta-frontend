@@ -577,13 +577,13 @@ function UsersTab(props) {
               )}
             </ListItemButton>
           ))}
-          {filteredUsers.length === 0 && <Box sx={{ p: 2, color: '#94a3b8', fontSize: '0.85rem' }}>No users match.</Box>}
+          {filteredUsers.length === 0 && <Box sx={{ p: 2, color: '#5A6B82', fontSize: '0.85rem' }}>No users match.</Box>}
         </List>
       </Paper>
 
       <Paper variant="outlined" sx={{ flex: 1, borderRadius: 3, width: '100%', minWidth: 0, overflow: 'hidden' }}>
         {!selectedUser ? (
-          <Box sx={{ p: 6, textAlign: 'center', color: '#94a3b8' }}>
+          <Box sx={{ p: 6, textAlign: 'center', color: '#5A6B82' }}>
             <PeopleIcon sx={{ fontSize: 40, mb: 1, opacity: 0.5 }} />
             <Typography>Select a user to manage their access.</Typography>
           </Box>
@@ -619,7 +619,7 @@ function UsersTab(props) {
                   <TableCell sx={labelSx}>Module</TableCell>
                   <TableCell align="center" sx={{ ...labelSx, width: 90 }}>View</TableCell>
                   <TableCell align="center" sx={{ ...labelSx, width: 90 }}>Edit</TableCell>
-                  <TableCell sx={{ ...labelSx, color: '#94a3b8' }}>Edit includes</TableCell>
+                  <TableCell sx={{ ...labelSx, color: '#5A6B82' }}>Edit includes</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -650,7 +650,7 @@ function UsersTab(props) {
                           <Checkbox size="small" checked={!!cell.can_edit} disabled={m.viewOnly}
                             onChange={(e) => setCell(m.key, 'can_edit', e.target.checked)} />
                         </TableCell>
-                        <TableCell sx={{ color: '#94a3b8', fontSize: '0.8rem' }}>{includes}</TableCell>
+                        <TableCell sx={{ color: '#5A6B82', fontSize: '0.8rem' }}>{includes}</TableCell>
                       </TableRow>
                     </Fragment>
                   );
@@ -668,7 +668,7 @@ function UsersTab(props) {
 function RequestsTab({ requests, moduleLabel, onReview }) {
   if (requests.length === 0) {
     return (
-      <Paper variant="outlined" sx={{ borderRadius: 3, p: 6, textAlign: 'center', color: '#94a3b8' }}>
+      <Paper variant="outlined" sx={{ borderRadius: 3, p: 6, textAlign: 'center', color: '#5A6B82' }}>
         <InboxIcon sx={{ fontSize: 44, mb: 1, opacity: 0.5 }} />
         <Typography sx={{ fontWeight: 600 }}>No pending requests</Typography>
         <Typography variant="body2">When a user requests access, it shows up here.</Typography>
@@ -715,7 +715,7 @@ function AuditTab({ logs, total, loading, moduleLabel, onLoadMore }) {
   }
   if (logs.length === 0) {
     return (
-      <Paper variant="outlined" sx={{ borderRadius: 3, p: 6, textAlign: 'center', color: '#94a3b8' }}>
+      <Paper variant="outlined" sx={{ borderRadius: 3, p: 6, textAlign: 'center', color: '#5A6B82' }}>
         <HistoryIcon sx={{ fontSize: 44, mb: 1, opacity: 0.5 }} />
         <Typography sx={{ fontWeight: 600 }}>No grant changes yet</Typography>
         <Typography variant="body2">Every permission change lands here — who, whom, and what changed.</Typography>
@@ -749,7 +749,7 @@ function AuditTab({ logs, total, loading, moduleLabel, onLoadMore }) {
             {Object.entries(log.changes).map(([mod, diff]) => (
               <Typography key={mod} sx={{ fontSize: '0.84rem', color: SLATE }}>
                 <Box component="span" sx={{ fontWeight: 600 }}>{moduleLabel(mod)}:</Box>{' '}
-                <Box component="span" sx={{ color: diff.before ? MUTED : '#94a3b8' }}>{cellLabel(diff.before)}</Box>
+                <Box component="span" sx={{ color: diff.before ? MUTED : '#5A6B82' }}>{cellLabel(diff.before)}</Box>
                 {' → '}
                 <Box component="span" sx={{ color: diff.after ? '#15803d' : '#b91c1c', fontWeight: 600 }}>
                   {cellLabel(diff.after)}

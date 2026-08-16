@@ -270,7 +270,7 @@ function TrialSpendReport() {
               size="small" placeholder="Search trial / code / type..." value={search}
               onChange={(e) => setSearch(e.target.value)}
               InputProps={{ startAdornment: (
-                <InputAdornment position="start"><SearchIcon sx={{ fontSize: 18, color: '#94a3b8' }} /></InputAdornment>
+                <InputAdornment position="start"><SearchIcon sx={{ fontSize: 18, color: '#5A6B82' }} /></InputAdornment>
               )}}
               sx={{ flex: 2, '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
             />
@@ -382,7 +382,7 @@ function TrialSpendReport() {
               <TableBody>
                 {filteredSorted.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={10} sx={{ textAlign: 'center', py: 6, color: '#94a3b8' }}>
+                    <TableCell colSpan={10} sx={{ textAlign: 'center', py: 6, color: '#5A6B82' }}>
                       No trials match the current filters.
                     </TableCell>
                   </TableRow>
@@ -402,8 +402,8 @@ function TrialSpendReport() {
                       <TableCell sx={{ fontSize: '0.82rem' }}>{r.woCount}</TableCell>
                       <TableCell sx={{ fontSize: '0.82rem' }}>{fmtINR(r.committed)}</TableCell>
                       <TableCell sx={{ fontSize: '0.82rem', fontWeight: 600, color: '#16a34a' }}>{fmtINR(r.paidGross)}</TableCell>
-                      <TableCell sx={{ fontSize: '0.82rem', fontWeight: 600, color: r.pending > 0 ? '#d97706' : '#94a3b8' }}>{fmtINR(r.pending)}</TableCell>
-                      <TableCell sx={{ fontSize: '0.82rem', color: r.bounces > 0 ? '#dc2626' : '#94a3b8', fontWeight: r.bounces > 0 ? 700 : 400 }}>
+                      <TableCell sx={{ fontSize: '0.82rem', fontWeight: 600, color: r.pending > 0 ? '#d97706' : '#5A6B82' }}>{fmtINR(r.pending)}</TableCell>
+                      <TableCell sx={{ fontSize: '0.82rem', color: r.bounces > 0 ? '#dc2626' : '#5A6B82', fontWeight: r.bounces > 0 ? 700 : 400 }}>
                         {r.bounces || '—'}
                       </TableCell>
                       <TableCell sx={{ fontSize: '0.78rem' }}>{r.trial.status || '—'}</TableCell>
@@ -481,7 +481,7 @@ function TrialDetailTile({ row, onClose }) {
           </Box>
           <Box sx={{ flex: 1 }}>
             <Typography variant="caption" color="text.secondary">Pending</Typography>
-            <Typography variant="body1" fontWeight={700} sx={{ color: pending > 0 ? '#d97706' : '#94a3b8' }}>{fmt(pending)}</Typography>
+            <Typography variant="body1" fontWeight={700} sx={{ color: pending > 0 ? '#d97706' : '#5A6B82' }}>{fmt(pending)}</Typography>
           </Box>
         </Stack>
         <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
@@ -491,7 +491,7 @@ function TrialDetailTile({ row, onClose }) {
           </Box>
           <Box sx={{ flex: 1 }}>
             <Typography variant="caption" color="text.secondary">Bounces</Typography>
-            <Typography variant="body2" fontWeight={700} sx={{ color: bounces > 0 ? '#dc2626' : '#94a3b8' }}>{bounces || '—'}</Typography>
+            <Typography variant="body2" fontWeight={700} sx={{ color: bounces > 0 ? '#dc2626' : '#5A6B82' }}>{bounces || '—'}</Typography>
           </Box>
           <Box sx={{ flex: 1 }}>
             <Typography variant="caption" color="text.secondary">Cities</Typography>

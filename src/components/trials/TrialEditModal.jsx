@@ -106,7 +106,7 @@ function TrialEditModal({ open, onClose, trial, onSave }) {
             disabled={saving} sx={inputSx}
           >
             {TIER_TYPES.map(t => (
-              <MenuItem key={t} value={t} sx={{ fontSize: '0.95rem', color: t === 'Not Any' ? '#6B7280' : 'inherit' }}>
+              <MenuItem key={t} value={t} sx={{ fontSize: '0.95rem', color: t === 'Not Any' ? '#5B6270' : 'inherit' }}>
                 {t === 'Not Any' ? 'Not Any (No Tier)' : t}
               </MenuItem>
             ))}

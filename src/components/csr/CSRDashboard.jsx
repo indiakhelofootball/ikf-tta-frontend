@@ -41,7 +41,7 @@ function StatCard({ icon, label, value, sub, tone = '#5B63D3' }) {
           {icon}
         </Box>
         <Typography sx={{
-          fontWeight: 700, color: '#94a3b8', fontSize: '0.75rem',
+          fontWeight: 700, color: '#5A6B82', fontSize: '0.75rem',
           letterSpacing: '0.5px', textTransform: 'uppercase',
         }}>
           {label}
@@ -190,7 +190,7 @@ export default function CSRDashboard() {
           >
             <Box>
               <Typography variant="body2" fontWeight={600}>{p.name}</Typography>
-              <Typography variant="caption" sx={{ color: '#94a3b8' }}>
+              <Typography variant="caption" sx={{ color: '#5A6B82' }}>
                 {p.clientName} · {fmtINR(p.sanctionedAmount)}
               </Typography>
             </Box>

@@ -38,14 +38,14 @@ function VendorDetailView({ open, onClose, vendor, onEdit }) {
 
   const sectionLabelSx = {
     fontWeight: 700,
-    color: '#94a3b8',
+    color: '#5A6B82',
     fontSize: '0.82rem',
     letterSpacing: '0.5px',
     textTransform: 'uppercase',
     mb: 1.5,
   };
 
-  const captionSx = { display: 'block', color: '#94a3b8', fontSize: '0.82rem', mb: 0.25 };
+  const captionSx = { display: 'block', color: '#5A6B82', fontSize: '0.82rem', mb: 0.25 };
   const valueSx = { color: '#334155', lineHeight: 1.6 };
 
   const isPanCardPdf = vendor.panCardImageUrl && !vendor.panCardImageUrl.startsWith('data:image');
@@ -248,7 +248,7 @@ function VendorDetailView({ open, onClose, vendor, onEdit }) {
             borderColor: '#e2e8f0',
             color: '#475569',
             borderRadius: 1.5,
-            '&:hover': { borderColor: '#94a3b8', bgcolor: '#f8fafc' },
+            '&:hover': { borderColor: '#5A6B82', bgcolor: '#f8fafc' },
           }}
         >
           Close
@@ -256,7 +256,7 @@ function VendorDetailView({ open, onClose, vendor, onEdit }) {
         {isRep ? (
           <Typography
             variant="caption"
-            sx={{ color: '#94a3b8', fontStyle: 'italic', px: 2 }}
+            sx={{ color: '#5A6B82', fontStyle: 'italic', px: 2 }}
           >
             Edit this vendor from REP Management
           </Typography>

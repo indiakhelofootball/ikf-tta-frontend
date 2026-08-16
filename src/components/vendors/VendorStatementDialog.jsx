@@ -106,7 +106,7 @@ function VendorStatementDialog({ open, onClose, vendor }) {
                     <TableRow sx={{ bgcolor: '#f8fafc' }}>
                       {['DATE', 'REQUEST ID', 'WORK ORDER', 'GROSS', 'TDS', 'NET', 'STATUS', 'TDS DEPOSIT'].map(h => (
                         <TableCell key={h} sx={{
-                          fontWeight: 700, fontSize: '0.7rem', color: '#6b7280',
+                          fontWeight: 700, fontSize: '0.7rem', color: '#5B6270',
                           letterSpacing: '0.05em',
                         }}>{h}</TableCell>
                       ))}
@@ -195,7 +195,7 @@ function VendorStatementDialog({ open, onClose, vendor }) {
         <Button onClick={onClose} variant="outlined" sx={{
           textTransform: 'none', fontWeight: 600, borderRadius: 1.5,
           borderColor: '#e2e8f0', color: '#475569',
-          '&:hover': { borderColor: '#94a3b8', bgcolor: '#f8fafc' },
+          '&:hover': { borderColor: '#5A6B82', bgcolor: '#f8fafc' },
         }}>
           Close
         </Button>

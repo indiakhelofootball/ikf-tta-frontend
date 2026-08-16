@@ -32,7 +32,7 @@ function WorkOrderCard({ workOrder, onView, onEdit, onDelete, onRaisePayment, on
   return (
     <Card variant="outlined" sx={{
       borderRadius: 2, borderColor: '#e2e8f0', transition: 'all 0.15s ease',
-      '&:hover': { borderColor: '#94a3b8', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' },
+      '&:hover': { borderColor: '#5A6B82', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' },
     }}>
       <CardContent sx={{ p: 2.5, '&:last-child': { pb: 2.5 } }}>
 
@@ -59,7 +59,7 @@ function WorkOrderCard({ workOrder, onView, onEdit, onDelete, onRaisePayment, on
               {workOrder.vendorName}
             </Typography>
             {(workOrder.vendorType || workOrder.companyType) && (
-              <Typography variant="caption" sx={{ color: '#94a3b8', display: 'block' }}>
+              <Typography variant="caption" sx={{ color: '#5A6B82', display: 'block' }}>
                 {workOrder.vendorType}
                 {workOrder.companyType ? ` · ${workOrder.companyType}` : ''}
               </Typography>
@@ -88,7 +88,7 @@ function WorkOrderCard({ workOrder, onView, onEdit, onDelete, onRaisePayment, on
             )}
             {hasResolvedBounceHistory && (
               <Chip
-                icon={<BouncedIcon sx={{ fontSize: '14px !important', color: '#94a3b8 !important' }} />}
+                icon={<BouncedIcon sx={{ fontSize: '14px !important', color: '#5A6B82 !important' }} />}
                 label={`Bounced${bouncedPayments.length > 1 ? ` (${bouncedPayments.length})` : ''} · resolved`}
                 size="small"
                 sx={{
@@ -106,7 +106,7 @@ function WorkOrderCard({ workOrder, onView, onEdit, onDelete, onRaisePayment, on
             {fmtINR(workOrder.amount)}
           </Typography>
           {workOrder.createdAt && (
-            <Typography variant="caption" sx={{ color: '#94a3b8' }}>
+            <Typography variant="caption" sx={{ color: '#5A6B82' }}>
               {new Date(workOrder.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
             </Typography>
           )}
@@ -138,7 +138,7 @@ function WorkOrderCard({ workOrder, onView, onEdit, onDelete, onRaisePayment, on
             sx={{
               textTransform: 'none', fontWeight: 600, fontSize: '0.82rem',
               borderColor: '#e2e8f0', color: '#475569', borderRadius: 1.5,
-              '&:hover': { borderColor: '#94a3b8', bgcolor: '#f8fafc' },
+              '&:hover': { borderColor: '#5A6B82', bgcolor: '#f8fafc' },
             }}>
             View
           </Button>
@@ -192,7 +192,7 @@ function WorkOrderCard({ workOrder, onView, onEdit, onDelete, onRaisePayment, on
                   textTransform: 'none', fontWeight: 600, fontSize: '0.82rem',
                   borderColor: '#bbf7d0', color: '#15803d', borderRadius: 1.5,
                   '&:hover': { borderColor: '#86efac', bgcolor: '#f0fdf4' },
-                  '&.Mui-disabled': { borderColor: '#e2e8f0', color: '#94a3b8' },
+                  '&.Mui-disabled': { borderColor: '#e2e8f0', color: '#5A6B82' },
                 }}
               >
                 Raise Payment

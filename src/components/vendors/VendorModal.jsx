@@ -36,7 +36,7 @@ const sectionSx = {
   textTransform: 'uppercase', letterSpacing: '0.8px', fontSize: '0.75rem',
 };
 const fLabelSx = { mb: 0.5, display: 'block', fontWeight: 600, color: '#64748b', fontSize: '0.8rem' };
-const fLabelDisabledSx = { ...fLabelSx, color: '#94a3b8' };
+const fLabelDisabledSx = { ...fLabelSx, color: '#5A6B82' };
 const disabledSx = { opacity: 0.45, pointerEvents: 'none', filter: 'grayscale(30%)' };
 const inputSx = { '& .MuiOutlinedInput-root': { borderRadius: 1.5 } };
 const selectSx = { borderRadius: 1.5 };
@@ -248,7 +248,7 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
                   <Typography variant="caption" sx={{ ...fLabelSx, fontSize: '0.75rem' }}>Service Type</Typography>
                   <FormControl fullWidth size="small">
                     <Select value={searchServiceType} onChange={(e) => handleServiceTypeChange(e.target.value)}
-                      displayEmpty renderValue={(v) => v || <em style={{ color: '#94a3b8' }}>All service types</em>}
+                      displayEmpty renderValue={(v) => v || <em style={{ color: '#5A6B82' }}>All service types</em>}
                       sx={selectSx} MenuProps={menuMaxH}>
                       <MenuItem value=""><em>All service types</em></MenuItem>
                       {serviceTypeOptions.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}
@@ -259,7 +259,7 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
                   <Typography variant="caption" sx={{ ...fLabelSx, fontSize: '0.75rem' }}>Entity Type</Typography>
                   <FormControl fullWidth size="small">
                     <Select value={searchEntityType} onChange={(e) => handleEntityTypeChange(e.target.value)}
-                      displayEmpty renderValue={(v) => v || <em style={{ color: '#94a3b8' }}>All entity types</em>}
+                      displayEmpty renderValue={(v) => v || <em style={{ color: '#5A6B82' }}>All entity types</em>}
                       sx={selectSx} MenuProps={menuMaxH}>
                       <MenuItem value=""><em>All entity types</em></MenuItem>
                       {entityTypeOptions.map(t => <MenuItem key={t} value={t} sx={{ fontSize: '0.85rem' }}>{t}</MenuItem>)}
@@ -361,13 +361,13 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
                         <Typography variant="caption" sx={{ color: '#16a34a', fontWeight: 600 }}>{searchServiceType}</Typography>
                       )}
                       {searchServiceType && searchEntityType && (
-                        <Typography variant="caption" sx={{ color: '#94a3b8' }}>·</Typography>
+                        <Typography variant="caption" sx={{ color: '#5A6B82' }}>·</Typography>
                       )}
                       {searchEntityType && (
                         <Typography variant="caption" sx={{ color: '#16a34a', fontWeight: 600 }}>{searchEntityType}</Typography>
                       )}
                       {!searchServiceType && !searchEntityType && (
-                        <Typography variant="caption" sx={{ color: '#6b7280' }}>
+                        <Typography variant="caption" sx={{ color: '#5B6270' }}>
                           {selectedVendor ? 'Existing vendor' : 'New vendor'}
                         </Typography>
                       )}
@@ -530,7 +530,7 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
               <FormControl fullWidth size="small">
                 <Select value={formData.accountType} onChange={handleChange('accountType')}
                   displayEmpty disabled={!formActive}
-                  renderValue={(v) => v || <em style={{ color: '#94a3b8' }}>Select account type</em>}
+                  renderValue={(v) => v || <em style={{ color: '#5A6B82' }}>Select account type</em>}
                   sx={selectSx}>
                   <MenuItem value=""><em>None</em></MenuItem>
                   {accountTypeOptions.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}
@@ -570,7 +570,7 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
 
       <DialogActions sx={{ px: 3, py: 2 }}>
         <Button onClick={onClose} variant="outlined"
-          sx={{ textTransform: 'none', fontWeight: 600, borderColor: '#e2e8f0', color: '#475569', borderRadius: 1.5, px: 3, '&:hover': { borderColor: '#94a3b8', bgcolor: '#f8fafc' } }}>
+          sx={{ textTransform: 'none', fontWeight: 600, borderColor: '#e2e8f0', color: '#475569', borderRadius: 1.5, px: 3, '&:hover': { borderColor: '#5A6B82', bgcolor: '#f8fafc' } }}>
           Cancel
         </Button>
         <Button onClick={handleSubmit} variant="contained" disabled={saving || !formActive}

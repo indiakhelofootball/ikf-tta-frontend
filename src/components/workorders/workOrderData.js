@@ -6,7 +6,7 @@ export const WO_STATUSES = ['Issued', 'Partially Paid', 'Fully Paid', 'Completed
 export const WO_STATUS_COLORS = {
   Draft:            { bg: '#f1f5f9', color: '#64748b', border: '#e2e8f0' },
   Issued:           { bg: '#eff6ff', color: '#2563eb', border: '#bfdbfe' },
-  'Partially Paid': { bg: '#fffbeb', color: '#d97706', border: '#fde68a' },
+  'Partially Paid': { bg: '#fffbeb', color: '#A35905', border: '#fde68a' },
   'Fully Paid':     { bg: '#f0fdf4', color: '#16a34a', border: '#bbf7d0' },
   Completed:        { bg: '#f0fdf4', color: '#16a34a', border: '#bbf7d0' },
   Cancelled:        { bg: '#fef2f2', color: '#dc2626', border: '#fecaca' },

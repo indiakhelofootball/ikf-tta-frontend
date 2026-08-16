@@ -323,7 +323,7 @@ const labelSx = { fontSize: '0.75rem', fontWeight: 700, color: '#64748b', mb: 0.
 const secHeaderSx = { fontSize: '0.75rem', fontWeight: 700, color: '#3B82F6', textTransform: 'uppercase', letterSpacing: '0.05em', mb: 1.5 };
 
 const STAT_COLORS = {
-  grey:    { bg: '#f3f4f6', fg: '#6b7280' },
+  grey:    { bg: '#f3f4f6', fg: '#5B6270' },
   warning: { bg: '#fef3c7', fg: '#d97706' },
   info:    { bg: '#dbeafe', fg: '#2563eb' },
   success: { bg: '#dcfce7', fg: '#16a34a' },
@@ -350,7 +350,7 @@ function StatCard({ icon, label, value, color, active, onClick }) {
         {icon}
       </Box>
       <Box>
-        <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</Typography>
+        <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: '#5A6B82', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</Typography>
         <Typography sx={{ fontSize: '1.5rem', fontWeight: 700, color: '#1e293b', lineHeight: 1.2 }}>{value}</Typography>
       </Box>
     </Box>
@@ -360,7 +360,7 @@ function StatCard({ icon, label, value, color, active, onClick }) {
 function AddressCard({ assignment }) {
   if (!assignment) {
     return (
-      <Box sx={{ bgcolor: '#f8fafc', border: '1.5px dashed #e2e8f0', borderRadius: '10px', p: 2, color: '#94a3b8', fontSize: '0.82rem', textAlign: 'center' }}>
+      <Box sx={{ bgcolor: '#f8fafc', border: '1.5px dashed #e2e8f0', borderRadius: '10px', p: 2, color: '#5A6B82', fontSize: '0.82rem', textAlign: 'center' }}>
         Select a REP and city to see courier address
       </Box>
     );
@@ -779,7 +779,7 @@ export default function CourierManagementPage() {
         <Stack direction={{ xs: 'column', sm: 'row' }} gap={1.5} alignItems="center">
           <TextField size="small" placeholder="Search by ID, REP, city, AWB…" value={search}
             onChange={e => setSearch(e.target.value)}
-            slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchIcon sx={{ fontSize: 18, color: '#94a3b8' }} /></InputAdornment> } }}
+            slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchIcon sx={{ fontSize: 18, color: '#5A6B82' }} /></InputAdornment> } }}
             sx={{ flex: 1, minWidth: 220 }} />
           <Stack direction="row" gap={1} flexWrap="wrap">
             {[...STATUS_FILTERS, ...(isSuper ? ['deleted'] : [])].map(s => (
@@ -808,7 +808,7 @@ export default function CourierManagementPage() {
           <TableBody>
             {!filtered.length ? (
               <TableRow>
-                <TableCell colSpan={10} sx={{ textAlign: 'center', py: 6, color: '#94a3b8' }}>
+                <TableCell colSpan={10} sx={{ textAlign: 'center', py: 6, color: '#5A6B82' }}>
                   <BoxIcon sx={{ fontSize: 36, display: 'block', mx: 'auto', mb: 1, opacity: 0.4 }} />
                   No shipments found.
                 </TableCell>
@@ -841,7 +841,7 @@ export default function CourierManagementPage() {
                   </TableCell>
                   <TableCell sx={{ fontSize: '0.82rem' }}>
                     {(s.items || []).length} item{(s.items || []).length !== 1 ? 's' : ''}{' '}
-                    <Typography component="span" sx={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                    <Typography component="span" sx={{ fontSize: '0.75rem', color: '#5A6B82' }}>
                       ({(s.items || []).reduce((a, b) => a + Number(b.quantity || 0), 0)} qty)
                     </Typography>
                     {(s.items || []).some(i => i.isCustom) && (
@@ -974,7 +974,7 @@ export default function CourierManagementPage() {
                 <Typography sx={labelSx}>REP <span style={{ color: '#ef4444' }}>*</span></Typography>
                 <TextField select fullWidth size="small" value={fRepId} onChange={e => onRepChange(e.target.value)}
                   disabled={!!editingId}>
-                  <MenuItem value="" disabled sx={{ color: '#94a3b8' }}>— Select REP —</MenuItem>
+                  <MenuItem value="" disabled sx={{ color: '#5A6B82' }}>— Select REP —</MenuItem>
                   {reps.map(r => <MenuItem key={r.id} value={r.id}>{r.repName}</MenuItem>)}
                 </TextField>
               </Box>
@@ -982,7 +982,7 @@ export default function CourierManagementPage() {
                 <Typography sx={labelSx}>City <span style={{ color: '#ef4444' }}>*</span></Typography>
                 <TextField select fullWidth size="small" value={fAsgId} disabled={!selectedRep || !!editingId}
                   onChange={e => setFAsgId(e.target.value)}>
-                  <MenuItem value="" disabled sx={{ color: '#94a3b8' }}>
+                  <MenuItem value="" disabled sx={{ color: '#5A6B82' }}>
                     {selectedRep ? '— Select city —' : 'Pick a REP first'}
                   </MenuItem>
                   {(selectedRep?.cityAssignments || []).map(a => (
@@ -1019,11 +1019,11 @@ export default function CourierManagementPage() {
                   slotProps={{ paper: { sx: { maxHeight: 320, minWidth: 220 } } }}
                 >
                   {!adminItems.length ? (
-                    <MenuItem disabled sx={{ fontSize: '0.82rem', color: '#94a3b8' }}>
+                    <MenuItem disabled sx={{ fontSize: '0.82rem', color: '#5A6B82' }}>
                       No items configured by admin
                     </MenuItem>
                   ) : !availableAdminItems.length ? (
-                    <MenuItem disabled sx={{ fontSize: '0.82rem', color: '#94a3b8' }}>
+                    <MenuItem disabled sx={{ fontSize: '0.82rem', color: '#5A6B82' }}>
                       All items already added
                     </MenuItem>
                   ) : availableAdminItems.map(a => (
@@ -1037,7 +1037,7 @@ export default function CourierManagementPage() {
             </Stack>
 
             {!fItems.length ? (
-              <Box sx={{ bgcolor: '#f8fafc', border: '1.5px dashed #e2e8f0', borderRadius: '10px', p: 3, textAlign: 'center', color: '#94a3b8', fontSize: '0.82rem' }}>
+              <Box sx={{ bgcolor: '#f8fafc', border: '1.5px dashed #e2e8f0', borderRadius: '10px', p: 3, textAlign: 'center', color: '#5A6B82', fontSize: '0.82rem' }}>
                 {adminItems.length
                   ? 'No items yet — click "Add All Items" or pick from "+ Add Item"'
                   : 'No courier items configured yet — add them in Admin → Courier Items first.'}
@@ -1046,7 +1046,7 @@ export default function CourierManagementPage() {
               <>
                 <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 80px auto 1fr 36px', gap: 1, px: 1, mb: 0.5 }}>
                   {['Item Name', 'Qty', 'Custom?', 'Remarks / Production Status', ''].map(h => (
-                    <Typography key={h} sx={{ fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</Typography>
+                    <Typography key={h} sx={{ fontSize: '0.68rem', fontWeight: 700, color: '#5A6B82', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</Typography>
                   ))}
                 </Box>
                 {fItems.map((it, i) => (
@@ -1102,7 +1102,7 @@ export default function CourierManagementPage() {
             <Box>
               <Typography sx={labelSx}>Courier Company <span style={{ color: '#ef4444' }}>*</span></Typography>
               <TextField select fullWidth size="small" value={dispCourier} onChange={e => setDispCourier(e.target.value)}>
-                <MenuItem value="" disabled sx={{ color: '#94a3b8' }}>— Select courier —</MenuItem>
+                <MenuItem value="" disabled sx={{ color: '#5A6B82' }}>— Select courier —</MenuItem>
                 {COURIERS.map(c => <MenuItem key={c} value={c}>{c}</MenuItem>)}
               </TextField>
               {dispCourier === 'Other' && (
@@ -1134,7 +1134,7 @@ export default function CourierManagementPage() {
                 </Typography>
                 <TextField select fullWidth size="small" value={dispTshirtReason}
                   onChange={e => setDispTshirtReason(e.target.value)}>
-                  <MenuItem value="" disabled sx={{ color: '#94a3b8', fontSize: '0.82rem' }}>— Select reason —</MenuItem>
+                  <MenuItem value="" disabled sx={{ color: '#5A6B82', fontSize: '0.82rem' }}>— Select reason —</MenuItem>
                   {ZERO_REASON_OPTIONS.map(o => (
                     <MenuItem key={o.value} value={o.value} sx={{ fontSize: '0.82rem' }}>{o.label}</MenuItem>
                   ))}
@@ -1219,7 +1219,7 @@ export default function CourierManagementPage() {
                   <input type="file" accept="image/*" hidden onChange={onDeliveryImageChange} />
                 </Button>
               )}
-              <Typography sx={{ fontSize: '0.72rem', color: '#94a3b8', mt: 0.5 }}>
+              <Typography sx={{ fontSize: '0.72rem', color: '#5A6B82', mt: 0.5 }}>
                 WhatsApp confirmation screenshot or photo of received package. Max 4MB.
               </Typography>
             </Box>

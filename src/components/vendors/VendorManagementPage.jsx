@@ -253,7 +253,7 @@ function VendorManagementPage() {
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <SearchIcon sx={{ color: '#94a3b8', fontSize: 20 }} />
+                  <SearchIcon sx={{ color: '#5A6B82', fontSize: 20 }} />
                 </InputAdornment>
               ),
             }}
@@ -277,7 +277,7 @@ function VendorManagementPage() {
                 borderColor: '#e2e8f0',
                 color: '#475569',
                 borderRadius: 1.5,
-                '&:hover': { borderColor: '#94a3b8' },
+                '&:hover': { borderColor: '#5A6B82' },
               }}
             >
               Filter
@@ -288,7 +288,7 @@ function VendorManagementPage() {
               onClose={() => setFilterMenuAnchor(null)}
               PaperProps={{ sx: { borderRadius: 1.5, minWidth: 180 } }}
             >
-              <MenuItem disabled sx={{ fontSize: '0.75rem', fontWeight: 600, color: '#94a3b8' }}>
+              <MenuItem disabled sx={{ fontSize: '0.75rem', fontWeight: 600, color: '#5A6B82' }}>
                 BY TYPE
               </MenuItem>
               {[...new Set(vendors.map((v) => v.vendorType).filter(Boolean))].sort().map((t) => (
@@ -315,7 +315,7 @@ function VendorManagementPage() {
                 borderColor: '#e2e8f0',
                 color: '#475569',
                 borderRadius: 1.5,
-                '&:hover': { borderColor: '#94a3b8' },
+                '&:hover': { borderColor: '#5A6B82' },
               }}
             >
               Sort

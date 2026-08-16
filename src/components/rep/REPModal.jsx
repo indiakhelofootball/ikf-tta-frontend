@@ -805,7 +805,7 @@ function REPModal({ open, onClose, onSave, editingREP }) {
                           <HighlightMatch text={option.name} query={lookupCityInput} />
                           <Box sx={{ display: 'flex', gap: 0.5 }}>
                             {option._assigned && (
-                              <Typography sx={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 600, ml: 1 }}>ASSIGNED</Typography>
+                              <Typography sx={{ fontSize: '0.65rem', color: '#5A6B82', fontWeight: 600, ml: 1 }}>ASSIGNED</Typography>
                             )}
                             {option.isProjectCity && (
                               <Typography sx={{ fontSize: '0.68rem', color: '#3B82F6', fontWeight: 600, bgcolor: '#dbeafe', px: 0.75, py: 0.1, borderRadius: 1, ml: 1 }}>Project</Typography>

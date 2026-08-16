@@ -124,7 +124,7 @@ function OptionPanel({ title, subtitle, items, onSave, onRename = null, autoCode
       {/* Current items */}
       <Box sx={{ px: 3.5, pt: 2.5, pb: 1 }}>
         {list.length === 0 ? (
-          <Typography sx={{ fontSize: '0.85rem', color: '#94a3b8', py: 1.5 }}>
+          <Typography sx={{ fontSize: '0.85rem', color: '#5A6B82', py: 1.5 }}>
             No options added yet.
           </Typography>
         ) : (
@@ -152,7 +152,7 @@ function OptionPanel({ title, subtitle, items, onSave, onRename = null, autoCode
                       </Tooltip>
                       <Tooltip title="Cancel">
                         <IconButton size="small" onClick={handleCancelEdit}
-                          sx={{ color: '#94a3b8', '&:hover': { bgcolor: '#f5f5f7' } }}>
+                          sx={{ color: '#5A6B82', '&:hover': { bgcolor: '#f5f5f7' } }}>
                           <CloseIcon sx={{ fontSize: 18 }} />
                         </IconButton>
                       </Tooltip>
@@ -177,7 +177,7 @@ function OptionPanel({ title, subtitle, items, onSave, onRename = null, autoCode
                       </Tooltip>
                       <Tooltip title="Delete">
                         <IconButton size="small" onClick={() => handleDelete(item.id)}
-                          sx={{ color: '#94a3b8', '&:hover': { bgcolor: '#fef2f2', color: '#ef4444' } }}>
+                          sx={{ color: '#5A6B82', '&:hover': { bgcolor: '#fef2f2', color: '#ef4444' } }}>
                           <DeleteIcon sx={{ fontSize: 16 }} />
                         </IconButton>
                       </Tooltip>
@@ -194,7 +194,7 @@ function OptionPanel({ title, subtitle, items, onSave, onRename = null, autoCode
 
       {/* Add new */}
       <Box sx={{ px: 3.5, pb: 3 }}>
-        <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', mb: 1.5 }}>
+        <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: '#5A6B82', textTransform: 'uppercase', letterSpacing: '0.06em', mb: 1.5 }}>
           Add New
         </Typography>
         {dupeError && (
@@ -311,7 +311,7 @@ function VendorNamePanel({ items, onSave, serviceTypes, entityTypes }) {
       {/* Current items */}
       <Box sx={{ px: 3.5, pt: 2.5, pb: 1 }}>
         {list.length === 0 ? (
-          <Typography sx={{ fontSize: '0.85rem', color: '#94a3b8', py: 1.5 }}>No vendor names added yet.</Typography>
+          <Typography sx={{ fontSize: '0.85rem', color: '#5A6B82', py: 1.5 }}>No vendor names added yet.</Typography>
         ) : (
           <Stack spacing={1.5}>
             {list.map((item) => (
@@ -323,7 +323,7 @@ function VendorNamePanel({ items, onSave, serviceTypes, entityTypes }) {
                       <FormControl fullWidth size="small">
                         <Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b', fontSize: '0.72rem', mb: 0.5 }}>Service Type</Typography>
                         <Select value={editServiceType} onChange={(e) => { setEditServiceType(e.target.value); setDupeError(''); }}
-                          displayEmpty renderValue={(v) => v || <em style={{ color: '#94a3b8' }}>Any</em>}
+                          displayEmpty renderValue={(v) => v || <em style={{ color: '#5A6B82' }}>Any</em>}
                           sx={selectSx} MenuProps={menuMaxH}>
                           <MenuItem value=""><em>Any</em></MenuItem>
                           {serviceTypes.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}
@@ -332,7 +332,7 @@ function VendorNamePanel({ items, onSave, serviceTypes, entityTypes }) {
                       <FormControl fullWidth size="small">
                         <Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b', fontSize: '0.72rem', mb: 0.5 }}>Entity Type</Typography>
                         <Select value={editEntityType} onChange={(e) => { setEditEntityType(e.target.value); setDupeError(''); }}
-                          displayEmpty renderValue={(v) => v || <em style={{ color: '#94a3b8' }}>Any</em>}
+                          displayEmpty renderValue={(v) => v || <em style={{ color: '#5A6B82' }}>Any</em>}
                           sx={selectSx} MenuProps={menuMaxH}>
                           <MenuItem value=""><em>Any</em></MenuItem>
                           {entityTypes.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}
@@ -353,7 +353,7 @@ function VendorNamePanel({ items, onSave, serviceTypes, entityTypes }) {
                         </Tooltip>
                         <Tooltip title="Cancel">
                           <IconButton size="small" onClick={handleCancelEdit}
-                            sx={{ color: '#94a3b8', '&:hover': { bgcolor: '#f5f5f7' } }}>
+                            sx={{ color: '#5A6B82', '&:hover': { bgcolor: '#f5f5f7' } }}>
                             <CloseIcon sx={{ fontSize: 18 }} />
                           </IconButton>
                         </Tooltip>
@@ -380,7 +380,7 @@ function VendorNamePanel({ items, onSave, serviceTypes, entityTypes }) {
                         )}
                         {!item.serviceType && !item.entityType && (
                           <Chip label="Any type" size="small"
-                            sx={{ fontSize: '0.68rem', height: 22, bgcolor: '#f1f5f9', color: '#94a3b8' }} />
+                            sx={{ fontSize: '0.68rem', height: 22, bgcolor: '#f1f5f9', color: '#5A6B82' }} />
                         )}
                       </Stack>
                     </Box>
@@ -393,7 +393,7 @@ function VendorNamePanel({ items, onSave, serviceTypes, entityTypes }) {
                       </Tooltip>
                       <Tooltip title="Delete">
                         <IconButton size="small" onClick={() => handleDelete(item.id)}
-                          sx={{ color: '#94a3b8', '&:hover': { bgcolor: '#fef2f2', color: '#ef4444' } }}>
+                          sx={{ color: '#5A6B82', '&:hover': { bgcolor: '#fef2f2', color: '#ef4444' } }}>
                           <DeleteIcon sx={{ fontSize: 16 }} />
                         </IconButton>
                       </Tooltip>
@@ -410,7 +410,7 @@ function VendorNamePanel({ items, onSave, serviceTypes, entityTypes }) {
 
       {/* Add new */}
       <Box sx={{ px: 3.5, pb: 3 }}>
-        <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', mb: 1.5 }}>
+        <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: '#5A6B82', textTransform: 'uppercase', letterSpacing: '0.06em', mb: 1.5 }}>
           Add New Vendor Name
         </Typography>
         {dupeError && (
@@ -420,7 +420,7 @@ function VendorNamePanel({ items, onSave, serviceTypes, entityTypes }) {
           <FormControl fullWidth size="small">
             <Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b', fontSize: '0.72rem', mb: 0.5 }}>Service Type</Typography>
             <Select value={newServiceType} onChange={(e) => setNewServiceType(e.target.value)}
-              displayEmpty renderValue={(v) => v || <em style={{ color: '#94a3b8' }}>Any (all service types)</em>}
+              displayEmpty renderValue={(v) => v || <em style={{ color: '#5A6B82' }}>Any (all service types)</em>}
               sx={{ borderRadius: '12px', fontSize: '0.85rem' }} MenuProps={menuMaxH}>
               <MenuItem value=""><em>Any (all service types)</em></MenuItem>
               {serviceTypes.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}
@@ -429,7 +429,7 @@ function VendorNamePanel({ items, onSave, serviceTypes, entityTypes }) {
           <FormControl fullWidth size="small">
             <Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b', fontSize: '0.72rem', mb: 0.5 }}>Entity Type</Typography>
             <Select value={newEntityType} onChange={(e) => setNewEntityType(e.target.value)}
-              displayEmpty renderValue={(v) => v || <em style={{ color: '#94a3b8' }}>Any (all entity types)</em>}
+              displayEmpty renderValue={(v) => v || <em style={{ color: '#5A6B82' }}>Any (all entity types)</em>}
               sx={{ borderRadius: '12px', fontSize: '0.85rem' }} MenuProps={menuMaxH}>
               <MenuItem value=""><em>Any (all entity types)</em></MenuItem>
               {entityTypes.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}
