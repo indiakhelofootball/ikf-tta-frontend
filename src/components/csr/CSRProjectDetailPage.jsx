@@ -10,6 +10,7 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   OpenInNew as OpenIcon,
+  Lock as LockIcon,
 } from '@mui/icons-material';
 
 import jsPDF from 'jspdf';
@@ -20,6 +21,8 @@ import CSRActivityModal from './CSRActivityModal';
 import CSRReportModal from './CSRReportModal';
 import CSRContactModal from './CSRContactModal';
 import CSRExpenseTagModal from './CSRExpenseTagModal';
+import CSRContractManagementPage from './CSRContractManagementPage';
+import { certificateFreezeState, formatFrozenAt } from './csrContractRules';
 import { csrAPI } from '../../services/api';
 import useGrants from '../../auth/useGrants';
 
@@ -214,6 +217,7 @@ export default function CSRProjectDetailPage() {
   const totalTagged = counting.reduce((sum, x) => sum + (Number(x.amount) || 0), 0);
   const excludedCount = expenses.length - counting.length;
   const sanctioned = Number(project?.sanctionedAmount) || 0;
+  const freeze = certificateFreezeState(project);
 
   // The PDF is a download of the server's authoritative figures, not a
   // browser-side sum — fetch the certificate, then render it.
@@ -234,8 +238,14 @@ export default function CSRProjectDetailPage() {
     doc.text(`Client / Funder: ${cert.clientName}`, 14, 34);
     doc.text(`Sanctioned: INR ${num(cert.sanctionedAmount)}`, 14, 40);
     doc.text(`Total Utilised: INR ${num(cert.totalUtilised)}`, 14, 46);
+    // The downloaded document has to carry the same distinction the screen
+    // makes, or a filed PDF cannot be told apart from a still-moving one.
+    const stamp = cert.frozen
+      ? `Frozen v${cert.certificateVersion} — figures as at ${formatFrozenAt(cert.frozenAt)}`
+      : 'Live — figures may still change';
+    doc.text(stamp, 14, 52);
     autoTable(doc, {
-      startY: 54,
+      startY: 60,
       head: [['Source', 'Note', 'Amount (INR)']],
       body: (cert.lineItems || []).map((x) => [
         x.source || 'Manual',
@@ -278,6 +288,7 @@ export default function CSRProjectDetailPage() {
         <Tab label={`Contacts (${contacts.length})`} />
         <Tab label={`Activities (${activities.length})`} />
         <Tab label={`Reports (${reports.length})`} />
+        <Tab label="Contracts" />
         {canViewCert && <Tab label="Utilisation" />}
       </Tabs>
 
@@ -420,6 +431,8 @@ export default function CSRProjectDetailPage() {
         </Box>
       )}
 
+      {tab === 4 && <CSRContractManagementPage projectId={id} />}
+
       <CSRActivityModal
         open={activityModal.open}
         activity={activityModal.editing}
@@ -436,8 +449,28 @@ export default function CSRProjectDetailPage() {
         onSave={saveReport}
         saving={saving}
       />
-      {tab === 4 && canViewCert && (
+      {tab === 5 && canViewCert && (
         <Box>
+          <Alert
+            severity={freeze.frozen ? 'info' : 'success'}
+            icon={freeze.frozen ? <LockIcon fontSize="inherit" /> : undefined}
+            sx={{ mb: 2 }}
+            action={
+              <Chip
+                size="small"
+                label={freeze.label}
+                color={freeze.frozen ? 'default' : 'success'}
+                variant={freeze.frozen ? 'filled' : 'outlined'}
+              />
+            }
+          >
+            {freeze.description}
+            {freeze.frozen && (
+              <Typography variant="caption" component="div">
+                Tagging further expenses will not change this certificate.
+              </Typography>
+            )}
+          </Alert>
           <Stack
             direction={{ xs: 'column', sm: 'row' }} spacing={1}
             sx={{ mb: 2, justifyContent: 'space-between', alignItems: { sm: 'center' } }}
@@ -446,8 +479,13 @@ export default function CSRProjectDetailPage() {
               <Typography variant="body2">
                 Sanctioned: ₹{sanctioned.toLocaleString('en-IN')} · Utilised: ₹{totalTagged.toLocaleString('en-IN')}
               </Typography>
+              {freeze.frozen && (
+                <Typography variant="caption" color="text.secondary" component="div">
+                  Live totals. The frozen certificate reports the figures as at {freeze.frozenAtLabel}.
+                </Typography>
+              )}
               {excludedCount > 0 && (
-                <Typography variant="caption" color="warning.main">
+                <Typography variant="caption" color="warning.dark">
                   {excludedCount} tagged {excludedCount === 1 ? 'expense is' : 'expenses are'} not
                   counted — the payment has not completed.
                 </Typography>
@@ -463,7 +501,7 @@ export default function CSRProjectDetailPage() {
                 size="small" variant="outlined"
                 onClick={generateCertificate} disabled={expenses.length === 0}
               >
-                Generate Certificate
+                {freeze.frozen ? 'Download Frozen Certificate' : 'Generate Certificate'}
               </Button>
             </Stack>
           </Stack>

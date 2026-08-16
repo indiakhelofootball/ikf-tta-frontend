@@ -928,6 +928,11 @@ export const csrAPI = /*#__PURE__*/ {
   activities: /*#__PURE__*/ csrCrud('/csr/activities'),
   activityTypes: /*#__PURE__*/ csrCrud('/csr/activity-types'),
   reports: /*#__PURE__*/ csrCrud('/csr/reports'),
+  // The funder's INBOUND grant contract and its promised outputs. Internal
+  // surface only — there is deliberately no /api/client/ counterpart, so these
+  // must never be reached from anything the funder portal renders.
+  workOrders: /*#__PURE__*/ csrCrud('/csr/work-orders'),
+  deliverables: /*#__PURE__*/ csrCrud('/csr/deliverables'),
   expenseTags: /*#__PURE__*/ csrCrud('/csr/expense-tags'),
   clientUsers: /*#__PURE__*/ csrCrud('/csr/client-users'),
   contacts: /*#__PURE__*/ csrCrud('/csr/contacts'),

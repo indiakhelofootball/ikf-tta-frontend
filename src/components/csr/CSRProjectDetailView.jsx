@@ -1,5 +1,8 @@
 import React from 'react';
-import { Box, Typography, Divider, Stack, Link } from '@mui/material';
+import { Box, Typography, Divider, Stack, Link, Chip, Tooltip } from '@mui/material';
+import { Lock as LockIcon } from '@mui/icons-material';
+
+import { certificateFreezeState } from './csrContractRules';
 
 function Field({ label, value, children }) {
   return (
@@ -20,6 +23,7 @@ export default function CSRProjectDetailView({ project }) {
     project.workOrderNumber || `#${project.workOrderId}`,
     project.workOrderVendorName,
   ].filter(Boolean).join(' — ');
+  const freeze = certificateFreezeState(project);
 
   return (
     <Box sx={{ px: 2, pb: 2 }}>
@@ -45,6 +49,17 @@ export default function CSRProjectDetailView({ project }) {
           ) : (
             <Typography variant="body2">—</Typography>
           )}
+        </Field>
+        <Field label="Certificate">
+          <Tooltip title={freeze.description}>
+            <Chip
+              size="small"
+              label={freeze.label}
+              icon={freeze.frozen ? <LockIcon fontSize="small" /> : undefined}
+              color={freeze.frozen ? 'default' : 'success'}
+              variant={freeze.frozen ? 'filled' : 'outlined'}
+            />
+          </Tooltip>
         </Field>
       </Stack>
       {project.description && (
