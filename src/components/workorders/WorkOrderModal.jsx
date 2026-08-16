@@ -421,7 +421,7 @@ function WorkOrderModal({ open, onClose, onSave, workOrder, saving, allVendors: 
                 value={searchServiceType}
                 onChange={(e) => handleServiceTypeChange(e.target.value)}
                 displayEmpty
-                renderValue={(val) => val || <em style={{ color: '#94a3b8' }}>All service types</em>}
+                renderValue={(val) => val || <em style={{ color: '#5A6B82' }}>All service types</em>}
                 sx={{ borderRadius: 1.5 }}
               >
                 <MenuItem value=""><em>All service types</em></MenuItem>
@@ -435,7 +435,7 @@ function WorkOrderModal({ open, onClose, onSave, workOrder, saving, allVendors: 
                 value={searchEntityType}
                 onChange={(e) => handleEntityTypeChange(e.target.value)}
                 displayEmpty
-                renderValue={(val) => val || <em style={{ color: '#94a3b8' }}>All entity types</em>}
+                renderValue={(val) => val || <em style={{ color: '#5A6B82' }}>All entity types</em>}
                 sx={{ borderRadius: 1.5 }}
               >
                 <MenuItem value=""><em>All entity types</em></MenuItem>
@@ -566,7 +566,7 @@ function WorkOrderModal({ open, onClose, onSave, workOrder, saving, allVendors: 
                               textTransform: 'none', fontWeight: 600, fontSize: '0.82rem',
                               borderColor: '#e2e8f0', color: '#475569', borderRadius: 1.5,
                               flexShrink: 0, whiteSpace: 'nowrap', py: 0.5,
-                              '&:hover': { borderColor: '#94a3b8', bgcolor: '#fff' },
+                              '&:hover': { borderColor: '#5A6B82', bgcolor: '#fff' },
                             }}
                           >
                             Open
@@ -994,7 +994,7 @@ function WorkOrderModal({ open, onClose, onSave, workOrder, saving, allVendors: 
           sx={{
             textTransform: 'none', fontWeight: 600, borderColor: '#e2e8f0',
             color: '#475569', borderRadius: 1.5, px: 3,
-            '&:hover': { borderColor: '#94a3b8', bgcolor: '#f8fafc' },
+            '&:hover': { borderColor: '#5A6B82', bgcolor: '#f8fafc' },
           }}
         >
           Cancel
@@ -1009,7 +1009,7 @@ function WorkOrderModal({ open, onClose, onSave, workOrder, saving, allVendors: 
               textTransform: 'none', fontWeight: 600, bgcolor: '#FDE68A',
               color: '#1e293b', borderRadius: 1.5, px: 4, boxShadow: 'none',
               '&:hover': { bgcolor: '#FCD34D', boxShadow: 'none' },
-              '&:disabled': { bgcolor: '#f1f5f9', color: '#94a3b8' },
+              '&:disabled': { bgcolor: '#f1f5f9', color: '#5A6B82' },
             }}
           >
             {saving ? 'Saving...' : isEdit ? 'Update Work Order' : 'Save Work Order'}

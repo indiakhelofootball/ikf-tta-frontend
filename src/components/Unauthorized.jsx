@@ -48,7 +48,7 @@ export default function Unauthorized() {
           Access Denied
         </Typography>
 
-        <Typography variant="body1" sx={{ color: '#6B7280', mb: 4, lineHeight: 1.6 }}>
+        <Typography variant="body1" sx={{ color: '#5B6270', mb: 4, lineHeight: 1.6 }}>
           You don't have permission to access this page. Please contact your
           administrator if you believe this is an error.
         </Typography>

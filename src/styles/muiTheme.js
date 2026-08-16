@@ -1,19 +1,56 @@
 import { createTheme } from '@mui/material/styles';
 
+// ===== ACCENT AMBER =====
+// TTA's amber has two jobs with opposite requirements, and one hex cannot do
+// both. As a FILL (#FDE68A behind #111827 ink) it measures 11.75:1 and is fine.
+// As TEXT on the app's light grounds it is not: #FBBF24 measures 1.60:1 on the
+// page ground #F9FAFB and #D97706 measures 3.05:1 — both below the 4.5:1 AA
+// minimum for normal text, and #FBBF24 is below 3:1 even for the tabs
+// indicator, which is a UI boundary rather than text.
+//
+// AMBER_TEXT is #D97706 darkened 25% along its own hue, so it still reads as
+// the brand amber. Measured against every ground this app paints text on:
+//   #FFFFFF 5.27 · #F9FAFB 5.04 · #F5F5F7 4.84 · #F3F4F6 4.78 · #FFFBEB 5.08
+// It is used for every amber TEXT/accent role — text buttons, links, the
+// selected tab label, the tabs indicator, focused labels. Fills keep the light
+// amber ramp untouched; do not swap one for the other.
+//
+// It also carries the non-text UI roles, which are judged at 3:1 rather than
+// 4.5:1: checked checkbox/radio/switch, progress bars, hover borders. #FBBF24
+// measures 1.52–1.67 across the four grounds and fails even that lower bar, so
+// a checked control was near-invisible. AMBER_TEXT clears it everywhere
+// (4.78–5.27). #D97706 was rejected: it passes on #FFFFFF (3.19) and #F9FAFB
+// (3.05) but fails on the tinted grounds #F5F5F7 (2.93) and #F3F4F6 (2.89).
+const AMBER_TEXT = '#A35905';
+
+// Greys, likewise measured. The old values fail on the tinted grounds this app
+// actually uses, not just on white:
+//   #94A3B8 2.45 on #F9FAFB · #9CA3AF 2.43 on #F9FAFB
+//   #6B7280 4.83 on white but 4.44 on #F5F5F7 — no headroom, fails on any tint.
+// Replacements keep their hue family and clear 4.5:1 on the darkest ground:
+//   GREY_SLATE #5A6B82 → 5.21 on #F9FAFB, 5.00 on #F5F5F7
+//   GREY_MUTED #5F6672 → 5.54 on #F9FAFB, 5.31 on #F5F5F7
+//   GREY_LABEL #5B6270 → 5.87 on #F9FAFB, 5.63 on #F5F5F7
+const GREY_MUTED = '#5F6672';
+const GREY_LABEL = '#5B6270';
+
 const muiTheme = createTheme({
   // ===== COLOR PALETTE =====
   palette: {
     primary: {
-      main: '#FBBF24',
+      // `main` is what MUI renders as TEXT for text buttons, links, focused
+      // labels and selected tabs, so it must be the on-light-legible amber.
+      // The fill amber survives as `light` and in containedPrimary below.
+      main: AMBER_TEXT,
       light: '#FDE68A',
-      dark: '#D97706',
+      dark: '#7E3A06',
       contrastText: '#111827',
     },
     secondary: {
       main: '#22C55E',
       light: '#86EFAC',
       dark: '#16A34A',
-      contrastText: '#FFFFFF',
+      contrastText: '#111827',
     },
     info: {
       main: '#3B82F6',
@@ -30,14 +67,17 @@ const muiTheme = createTheme({
     warning: {
       main: '#F59E0B',
       light: '#FCD34D',
-      dark: '#D97706',
+      // `main` (2.06:1 on the page ground) and the old `#D97706` (3.05:1) are
+      // both below AA as text, so `dark` is the only warning value safe to
+      // render words in.
+      dark: AMBER_TEXT,
       contrastText: '#111827',
     },
     success: {
       main: '#22C55E',
       light: '#86EFAC',
       dark: '#16A34A',
-      contrastText: '#FFFFFF',
+      contrastText: '#111827',
     },
     grey: {
       50: '#F9FAFB',
@@ -58,7 +98,7 @@ const muiTheme = createTheme({
     text: {
       primary: '#1d1d1f',
       secondary: '#6e6e73',
-      disabled: '#9CA3AF',
+      disabled: GREY_MUTED,
     },
   },
 
@@ -230,18 +270,23 @@ const muiTheme = createTheme({
             boxShadow: 'none',
           },
         },
+        // White ink on #22C55E measures 2.28:1; the same green under #111827 ink
+        // measures 7.79:1. The fill is kept, the ink is flipped — same pattern
+        // the amber contained button already uses.
         containedSecondary: {
           backgroundColor: '#22C55E',
-          color: '#FFFFFF',
+          color: '#111827',
           '&:hover': {
             backgroundColor: '#16A34A',
           },
         },
+        // White on #3B82F6 measures 3.68:1 ("Send to Payment" on /payments).
+        // #2563EB — the ramp's own hover shade — carries white at 5.17:1.
         containedInfo: {
-          backgroundColor: '#3B82F6',
+          backgroundColor: '#2563EB',
           color: '#FFFFFF',
           '&:hover': {
-            backgroundColor: '#2563EB',
+            backgroundColor: '#1D4ED8',
           },
         },
         containedError: {
@@ -252,11 +297,11 @@ const muiTheme = createTheme({
           },
         },
         outlinedPrimary: {
-          borderColor: '#FBBF24',
-          color: '#D97706',
+          borderColor: AMBER_TEXT,
+          color: AMBER_TEXT,
           '&:hover': {
             backgroundColor: '#FEF3C7',
-            borderColor: '#D97706',
+            borderColor: AMBER_TEXT,
           },
         },
         outlinedError: {
@@ -291,10 +336,10 @@ const muiTheme = createTheme({
             fontSize: '0.9375rem',
             transition: 'border-color 0.2s ease',
             '&:hover fieldset': {
-              borderColor: '#FBBF24',
+              borderColor: AMBER_TEXT,
             },
             '&.Mui-focused fieldset': {
-              borderColor: '#D97706',
+              borderColor: AMBER_TEXT,
               borderWidth: '2px',
             },
             '&.Mui-error fieldset': {
@@ -310,10 +355,10 @@ const muiTheme = createTheme({
         root: {
           borderRadius: '0.75rem',
           '&:hover .MuiOutlinedInput-notchedOutline': {
-            borderColor: '#FBBF24',
+            borderColor: AMBER_TEXT,
           },
           '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-            borderColor: '#D97706',
+            borderColor: AMBER_TEXT,
             borderWidth: '2px',
           },
         },
@@ -325,9 +370,9 @@ const muiTheme = createTheme({
         root: {
           fontSize: '0.9rem',
           fontWeight: 500,
-          color: '#6B7280',
+          color: GREY_LABEL,
           '&.Mui-focused': {
-            color: '#D97706',
+            color: AMBER_TEXT,
             fontWeight: 600,
           },
           '&.Mui-error': {
@@ -344,7 +389,7 @@ const muiTheme = createTheme({
           fontWeight: 600,
           color: '#3c3c43',
           '&.Mui-focused': {
-            color: '#D97706',
+            color: AMBER_TEXT,
           },
         },
       },
@@ -394,7 +439,7 @@ const muiTheme = createTheme({
         },
         noOptions: {
           fontSize: '0.875rem',
-          color: '#6B7280',
+          color: GREY_LABEL,
         },
       },
     },
@@ -404,7 +449,7 @@ const muiTheme = createTheme({
         root: {
           color: '#D1D5DB',
           '&.Mui-checked': {
-            color: '#FBBF24',
+            color: AMBER_TEXT,
           },
           '&:hover': {
             backgroundColor: 'rgba(251, 191, 36, 0.08)',
@@ -418,7 +463,7 @@ const muiTheme = createTheme({
         root: {
           color: '#D1D5DB',
           '&.Mui-checked': {
-            color: '#FBBF24',
+            color: AMBER_TEXT,
           },
           '&:hover': {
             backgroundColor: 'rgba(251, 191, 36, 0.08)',
@@ -430,8 +475,12 @@ const muiTheme = createTheme({
     MuiSwitch: {
       styleOverrides: {
         switchBase: {
+          // Thumb reads against its own track, not the page: AMBER_TEXT on the
+          // #FDE68A track measures 4.23, and 5.27 against white where the thumb
+          // overhangs. #FBBF24 was 1.34 against the track — thumb and track were
+          // the same colour, so "on" and "off" were indistinguishable.
           '&.Mui-checked': {
-            color: '#FBBF24',
+            color: AMBER_TEXT,
             '& + .MuiSwitch-track': {
               backgroundColor: '#FDE68A',
             },
@@ -543,7 +592,7 @@ const muiTheme = createTheme({
         head: {
           fontWeight: 700,
           backgroundColor: '#F5F5F7',
-          color: '#6B7280',
+          color: GREY_LABEL,
           fontSize: '0.7rem',
           textTransform: 'uppercase',
           letterSpacing: '0.06em',
@@ -597,7 +646,7 @@ const muiTheme = createTheme({
               backgroundColor: '#FDE68A',
             },
             '& .MuiListItemIcon-root': {
-              color: '#D97706',
+              color: AMBER_TEXT,
             },
           },
         },
@@ -608,7 +657,7 @@ const muiTheme = createTheme({
       styleOverrides: {
         root: {
           minWidth: '36px',
-          color: '#6B7280',
+          color: GREY_LABEL,
         },
       },
     },
@@ -662,14 +711,16 @@ const muiTheme = createTheme({
         label: {
           fontSize: '0.875rem',
           fontWeight: 500,
-          color: '#9CA3AF',
+          color: GREY_MUTED,
           '&.Mui-active': {
             fontWeight: 700,
-            color: '#D97706',
+            color: AMBER_TEXT,
           },
           '&.Mui-completed': {
             fontWeight: 600,
-            color: '#16A34A',
+            // #16A34A is 3.30:1 on white — fine for an icon, short of 4.5:1 for
+            // a label. #15803D is the same green ramp at 5.02:1.
+            color: '#15803D',
           },
         },
       },
@@ -679,8 +730,17 @@ const muiTheme = createTheme({
       styleOverrides: {
         root: {
           color: '#E5E7EB',
+          // The step numeral sits ON this fill, so fill and numeral have to move
+          // together. Darkening to AMBER_TEXT takes the circle from 1.67 to 5.27
+          // against the page, but drops the #111827 numeral to 3.37 — under the
+          // 4.5 text bar. White on AMBER_TEXT restores it at 5.27, so the numeral
+          // is inverted for this state only. The inactive (#E5E7EB, 14.33) and
+          // completed (#22C55E, 7.79) states keep the dark numeral below.
           '&.Mui-active': {
-            color: '#FBBF24',
+            color: AMBER_TEXT,
+            '& .MuiStepIcon-text': {
+              fill: '#FFFFFF',
+            },
           },
           '&.Mui-completed': {
             color: '#22C55E',
@@ -802,10 +862,10 @@ const muiTheme = createTheme({
           fontWeight: 500,
           fontSize: '0.9375rem',
           letterSpacing: '-0.01em',
-          color: '#6B7280',
+          color: GREY_LABEL,
           '&.Mui-selected': {
             fontWeight: 700,
-            color: '#D97706',
+            color: AMBER_TEXT,
           },
         },
       },
@@ -814,7 +874,9 @@ const muiTheme = createTheme({
     MuiTabs: {
       styleOverrides: {
         indicator: {
-          backgroundColor: '#FBBF24',
+          // A UI boundary, so 3:1 is the bar — but #FBBF24 measured 1.60:1 on
+          // the page ground and failed even that.
+          backgroundColor: AMBER_TEXT,
           height: '3px',
           borderRadius: '9999px',
         },
@@ -866,7 +928,7 @@ const muiTheme = createTheme({
           backgroundColor: '#F3F4F6',
         },
         barColorPrimary: {
-          backgroundColor: '#FBBF24',
+          backgroundColor: AMBER_TEXT,
         },
         barColorSecondary: {
           backgroundColor: '#22C55E',
@@ -877,7 +939,7 @@ const muiTheme = createTheme({
     MuiCircularProgress: {
       styleOverrides: {
         colorPrimary: {
-          color: '#FBBF24',
+          color: AMBER_TEXT,
         },
       },
     },

@@ -26,11 +26,11 @@ const sectionSx = {
 };
 
 const labelSx = {
-  fontWeight: 700, color: '#94a3b8', fontSize: '0.8rem',
+  fontWeight: 700, color: '#5A6B82', fontSize: '0.8rem',
   letterSpacing: '0.5px', textTransform: 'uppercase', mb: 1, display: 'block',
 };
 
-const captionSx = { display: 'block', color: '#94a3b8', fontSize: '0.82rem', mb: 0.25 };
+const captionSx = { display: 'block', color: '#5A6B82', fontSize: '0.82rem', mb: 0.25 };
 const valSx = { color: '#334155', lineHeight: 1.6 };
 
 function PaymentDetailDialog({ open, onClose, payment, onUpdate, mode: initialMode = 'view' }) {
@@ -198,8 +198,8 @@ function PaymentDetailDialog({ open, onClose, payment, onUpdate, mode: initialMo
             <>
               <Divider sx={{ my: 1.5 }} />
               <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 1 }}>
-                <BankIcon sx={{ fontSize: 13, color: '#94a3b8' }} />
-                <Typography variant="caption" fontWeight={700} sx={{ color: '#94a3b8' }}>
+                <BankIcon sx={{ fontSize: 13, color: '#5A6B82' }} />
+                <Typography variant="caption" fontWeight={700} sx={{ color: '#5A6B82' }}>
                   Bank Details
                 </Typography>
               </Stack>
@@ -284,7 +284,7 @@ function PaymentDetailDialog({ open, onClose, payment, onUpdate, mode: initialMo
         <Button onClick={onClose} variant="outlined" sx={{
           textTransform: 'none', fontWeight: 600, borderColor: '#e2e8f0',
           color: '#475569', borderRadius: 1.5,
-          '&:hover': { borderColor: '#94a3b8', bgcolor: '#f8fafc' },
+          '&:hover': { borderColor: '#5A6B82', bgcolor: '#f8fafc' },
         }}>
           Close
         </Button>

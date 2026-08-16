@@ -426,7 +426,7 @@ function PaymentManagementPage() {
             icon={<PayIcon fontSize="inherit" />}
             value={fmtINR(totalNet)}
             label="Total Net Payable"
-            color="#16a34a"
+            color="#15803D"
           />
           <StatCard
             icon={<InvoiceIcon fontSize="inherit" />}
@@ -476,7 +476,7 @@ function PaymentManagementPage() {
               <TableRow sx={{ bgcolor: '#f8fafc' }}>
                 {['REQUEST ID', 'WORK ORDER', 'VENDOR', 'GROSS', 'TDS', 'NET', 'INVOICE DATE', 'ACTIONS'].map(h => (
                   <TableCell key={h} sx={{
-                    fontWeight: 700, fontSize: '0.82rem', color: '#6b7280',
+                    fontWeight: 700, fontSize: '0.82rem', color: '#5B6270',
                     letterSpacing: '0.05em',
                   }}>
                     {h}
@@ -521,7 +521,7 @@ function PaymentManagementPage() {
                       <Typography variant="caption" color="text.secondary">({r.tdsRate}%)</Typography>
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2" fontWeight={700} sx={{ color: '#16a34a' }}>
+                      <Typography variant="body2" fontWeight={700} sx={{ color: '#15803D' }}>
                         {fmtINR(r.netAmount)}
                       </Typography>
                     </TableCell>
@@ -585,7 +585,7 @@ function PaymentManagementPage() {
                   </Box>
                   <Box sx={{ textAlign: 'right' }}>
                     <Typography variant="caption" color="text.secondary">Net Payable</Typography>
-                    <Typography variant="h6" fontWeight={800} sx={{ color: '#16a34a' }}>
+                    <Typography variant="h6" fontWeight={800} sx={{ color: '#15803D' }}>
                       {fmtINR(filtered.reduce((s, r) => s + (parseFloat(r.netAmount) || 0), 0))}
                     </Typography>
                   </Box>
@@ -599,12 +599,12 @@ function PaymentManagementPage() {
                 startIcon={<PayIcon />}
                 onClick={handleSendToPayment}
                 sx={{
-                  bgcolor: '#3B82F6', color: '#fff',
+                  bgcolor: '#2563EB', color: '#fff',
                   textTransform: 'none', fontWeight: 700,
                   borderRadius: 1.5, px: 4, py: 1.2,
                   fontSize: '0.9rem',
                   boxShadow: '0 2px 8px rgba(59,130,246,0.3)',
-                  '&:hover': { bgcolor: '#2563EB', boxShadow: '0 4px 12px rgba(59,130,246,0.4)' },
+                  '&:hover': { bgcolor: '#1D4ED8', boxShadow: '0 4px 12px rgba(37,99,235,0.4)' },
                 }}
               >
                 Send to Payment
@@ -645,7 +645,7 @@ function PaymentManagementPage() {
                         }}
                       >
                         <Stack direction="row" spacing={2} alignItems="center">
-                          <ExcelIcon sx={{ color: '#16a34a', fontSize: 22 }} />
+                          <ExcelIcon sx={{ color: '#15803D', fontSize: 22 }} />
                           <Box>
                             <Typography variant="body2" fontWeight={700} sx={{ color: '#1e293b' }}>
                               {batch.fileName}
@@ -658,7 +658,7 @@ function PaymentManagementPage() {
                         <Stack direction="row" spacing={3} alignItems="center">
                           <Box sx={{ textAlign: 'right' }}>
                             <Typography variant="caption" color="text.secondary">Net Total</Typography>
-                            <Typography variant="body2" fontWeight={700} sx={{ color: '#16a34a' }}>
+                            <Typography variant="body2" fontWeight={700} sx={{ color: '#15803D' }}>
                               {fmtINR(batch.totalNet)}
                             </Typography>
                           </Box>
@@ -679,7 +679,7 @@ function PaymentManagementPage() {
                               <DownloadIcon sx={{ fontSize: 18 }} />
                             </IconButton>
                           </Tooltip>
-                          {isExpanded ? <ExpandLessIcon sx={{ color: '#94a3b8' }} /> : <ExpandMoreIcon sx={{ color: '#94a3b8' }} />}
+                          {isExpanded ? <ExpandLessIcon sx={{ color: '#5A6B82' }} /> : <ExpandMoreIcon sx={{ color: '#5A6B82' }} />}
                         </Stack>
                       </Box>
 
@@ -691,7 +691,7 @@ function PaymentManagementPage() {
                             <TableHead>
                               <TableRow sx={{ bgcolor: '#f8fafc' }}>
                                 {['REQUEST ID', 'WORK ORDER', 'VENDOR', 'GROSS', 'TDS', 'NET', 'INVOICE DATE'].map(h => (
-                                  <TableCell key={h} sx={{ fontWeight: 700, fontSize: '0.78rem', color: '#94a3b8', letterSpacing: '0.05em', py: 1 }}>
+                                  <TableCell key={h} sx={{ fontWeight: 700, fontSize: '0.78rem', color: '#5A6B82', letterSpacing: '0.05em', py: 1 }}>
                                     {h}
                                   </TableCell>
                                 ))}
@@ -721,7 +721,7 @@ function PaymentManagementPage() {
                                     <Typography variant="caption" color="text.secondary">({r.tdsRate}%)</Typography>
                                   </TableCell>
                                   <TableCell>
-                                    <Typography variant="body2" fontWeight={700} sx={{ color: '#16a34a', fontSize: '0.85rem' }}>{fmtINR(r.netAmount)}</Typography>
+                                    <Typography variant="body2" fontWeight={700} sx={{ color: '#15803D', fontSize: '0.85rem' }}>{fmtINR(r.netAmount)}</Typography>
                                   </TableCell>
                                   <TableCell sx={{ fontSize: '0.85rem' }}>{r.invoiceDate || '—'}</TableCell>
                                 </TableRow>
@@ -738,7 +738,7 @@ function PaymentManagementPage() {
                                   <Typography variant="body2" fontWeight={700} sx={{ color: '#dc2626' }}>− {fmtINR(batch.totalTds)}</Typography>
                                 </TableCell>
                                 <TableCell>
-                                  <Typography variant="body2" fontWeight={800} sx={{ color: '#16a34a' }}>{fmtINR(batch.totalNet)}</Typography>
+                                  <Typography variant="body2" fontWeight={800} sx={{ color: '#15803D' }}>{fmtINR(batch.totalNet)}</Typography>
                                 </TableCell>
                                 <TableCell />
                               </TableRow>
@@ -837,7 +837,7 @@ function PaymentManagementPage() {
       >
         <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
           <Stack direction="row" spacing={1.5} alignItems="center">
-            <ExcelIcon sx={{ color: '#16a34a', fontSize: 28 }} />
+            <ExcelIcon sx={{ color: '#15803D', fontSize: 28 }} />
             <Box>
               <Typography variant="h6" fontWeight={700} sx={{ color: '#1e293b', lineHeight: 1.2 }}>
                 Payments Sent
@@ -858,12 +858,12 @@ function PaymentManagementPage() {
           {/* File info */}
           <Box sx={{ p: 2, bgcolor: '#f0fdf4', borderRadius: 2, border: '1px solid #bbf7d0', mb: 2.5 }}>
             <Stack direction="row" spacing={1.5} alignItems="center">
-              <CheckIcon sx={{ color: '#16a34a' }} />
+              <CheckIcon sx={{ color: '#15803D' }} />
               <Box>
                 <Typography variant="body2" fontWeight={700} sx={{ color: '#15803d' }}>
                   {exportModal.fileName}
                 </Typography>
-                <Typography variant="caption" sx={{ color: '#16a34a' }}>
+                <Typography variant="caption" sx={{ color: '#15803D' }}>
                   {exportModal.count} payment request{exportModal.count !== 1 ? 's' : ''} sent for payment
                 </Typography>
               </Box>
@@ -878,7 +878,7 @@ function PaymentManagementPage() {
           </Box>
 
           {/* Excel structure explanation */}
-          <Typography variant="caption" sx={{ fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', mb: 1.5, display: 'block' }}>
+          <Typography variant="caption" sx={{ fontWeight: 700, color: '#5A6B82', textTransform: 'uppercase', letterSpacing: '0.5px', mb: 1.5, display: 'block' }}>
             About the Excel File
           </Typography>
           <Box sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: 2, border: '1px solid #e2e8f0', mb: 2.5 }}>
@@ -905,13 +905,13 @@ function PaymentManagementPage() {
           </Box>
 
           {/* What's pre-filled vs manual */}
-          <Typography variant="caption" sx={{ fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', mb: 1.5, display: 'block' }}>
+          <Typography variant="caption" sx={{ fontWeight: 700, color: '#5A6B82', textTransform: 'uppercase', letterSpacing: '0.5px', mb: 1.5, display: 'block' }}>
             What You Need to Fill
           </Typography>
           <Box sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: 2, border: '1px solid #e2e8f0', mb: 2.5 }}>
             <Grid container spacing={1.5}>
               <Grid item xs={6}>
-                <Typography variant="caption" sx={{ color: '#16a34a', fontWeight: 700, display: 'block', mb: 0.5 }}>Auto-filled by TTA</Typography>
+                <Typography variant="caption" sx={{ color: '#15803D', fontWeight: 700, display: 'block', mb: 0.5 }}>Auto-filled by TTA</Typography>
                 <Stack spacing={0.5}>
                   {['Beneficiary Name', 'Account Number', 'IFSC Code', 'Amount (Net)', 'Currency (INR)', 'Transaction Date', 'Remarks (PR + WO)', 'PAN Number'].map(f => (
                     <Typography key={f} variant="body2" sx={{ color: '#334155', fontSize: '0.85rem' }}>{f}</Typography>
@@ -931,7 +931,7 @@ function PaymentManagementPage() {
           </Box>
 
           {/* Next steps */}
-          <Typography variant="caption" sx={{ fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', mb: 1.5, display: 'block' }}>
+          <Typography variant="caption" sx={{ fontWeight: 700, color: '#5A6B82', textTransform: 'uppercase', letterSpacing: '0.5px', mb: 1.5, display: 'block' }}>
             Next Steps
           </Typography>
           <Box sx={{ p: 2, bgcolor: '#fffbeb', borderRadius: 2, border: '1px solid #fde68a' }}>

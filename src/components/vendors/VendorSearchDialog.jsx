@@ -131,7 +131,7 @@ function VendorSearchDialog({ open, onClose, vendors, onEdit, onView }) {
               value={serviceType}
               onChange={(e) => handleServiceTypeChange(e.target.value)}
               displayEmpty
-              renderValue={(val) => val || <em style={{ color: '#94a3b8' }}>All service types</em>}
+              renderValue={(val) => val || <em style={{ color: '#5A6B82' }}>All service types</em>}
               sx={{ borderRadius: 1.5 }}
             >
               <MenuItem value=""><em>All service types</em></MenuItem>
@@ -148,7 +148,7 @@ function VendorSearchDialog({ open, onClose, vendors, onEdit, onView }) {
               value={entityType}
               onChange={(e) => setEntityType(e.target.value)}
               displayEmpty
-              renderValue={(val) => val || <em style={{ color: '#94a3b8' }}>All entity types</em>}
+              renderValue={(val) => val || <em style={{ color: '#5A6B82' }}>All entity types</em>}
               sx={{ borderRadius: 1.5 }}
             >
               <MenuItem value=""><em>All entity types</em></MenuItem>
@@ -218,7 +218,7 @@ function VendorSearchDialog({ open, onClose, vendors, onEdit, onView }) {
                 {results.map((v) => (
                   <Box key={v._id || v.id} sx={{
                     p: 2, borderRadius: 2, border: '1px solid #e2e8f0',
-                    '&:hover': { borderColor: '#94a3b8', bgcolor: '#f8fafc' },
+                    '&:hover': { borderColor: '#5A6B82', bgcolor: '#f8fafc' },
                     transition: 'all 0.15s',
                   }}>
                     <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
@@ -238,7 +238,7 @@ function VendorSearchDialog({ open, onClose, vendors, onEdit, onView }) {
                           )}
                           {v.companyType && (
                             <Chip label={v.companyType} size="small" variant="outlined"
-                              sx={{ fontSize: '0.65rem', height: 20, borderColor: '#94a3b8', color: '#64748b' }} />
+                              sx={{ fontSize: '0.65rem', height: 20, borderColor: '#5A6B82', color: '#64748b' }} />
                           )}
                           {v.status && (
                             <Chip label={v.status} size="small"
@@ -259,7 +259,7 @@ function VendorSearchDialog({ open, onClose, vendors, onEdit, onView }) {
                           startIcon={<ViewIcon sx={{ fontSize: 14 }} />}
                           onClick={() => { handleClose(); onView(v); }}
                           sx={{ textTransform: 'none', fontSize: '0.72rem', fontWeight: 600, borderRadius: 1.5,
-                            borderColor: '#e2e8f0', color: '#475569', '&:hover': { borderColor: '#94a3b8' } }}>
+                            borderColor: '#e2e8f0', color: '#475569', '&:hover': { borderColor: '#5A6B82' } }}>
                           View
                         </Button>
                         <Button size="small" variant="contained"

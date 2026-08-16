@@ -279,7 +279,7 @@ function TrialsReport() {
                 <TableBody>
                   {matrix.projects.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={matrix.monthsUsed.length + 2} align="center" sx={{ py: 4, color: '#94a3b8' }}>
+                      <TableCell colSpan={matrix.monthsUsed.length + 2} align="center" sx={{ py: 4, color: '#5A6B82' }}>
                         No trials match the current filters.
                       </TableCell>
                     </TableRow>
@@ -352,7 +352,7 @@ function TrialsReport() {
                 <TableBody>
                   {filteredRows.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} align="center" sx={{ py: 5, color: '#94a3b8' }}>
+                      <TableCell colSpan={9} align="center" sx={{ py: 5, color: '#5A6B82' }}>
                         No trial cities match the current filters.
                       </TableCell>
                     </TableRow>

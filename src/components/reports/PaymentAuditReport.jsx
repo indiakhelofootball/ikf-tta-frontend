@@ -430,7 +430,7 @@ function PaymentAuditReport() {
               size="small" placeholder="Search vendor..." value={searchVendor}
               onChange={(e) => setSearchVendor(e.target.value)}
               InputProps={{ startAdornment: (
-                <InputAdornment position="start"><SearchIcon sx={{ fontSize: 18, color: '#94a3b8' }} /></InputAdornment>
+                <InputAdornment position="start"><SearchIcon sx={{ fontSize: 18, color: '#5A6B82' }} /></InputAdornment>
               )}}
               sx={{ flex: 2, '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
             />
@@ -480,7 +480,7 @@ function PaymentAuditReport() {
             />
           </Stack>
           <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mt: 1.25 }}>
-            <Typography variant="caption" sx={{ color: '#94a3b8', fontWeight: 600, mr: 0.5 }}>Quick:</Typography>
+            <Typography variant="caption" sx={{ color: '#5A6B82', fontWeight: 600, mr: 0.5 }}>Quick:</Typography>
             {[
               { label: 'This Month',  fn: () => { const n = new Date(); setDateFrom(`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-01`); setDateTo(new Date(n.getFullYear(), n.getMonth()+1, 0).toISOString().slice(0,10)); } },
               { label: 'Last Month',  fn: () => { const n = new Date(); const y = n.getMonth() === 0 ? n.getFullYear()-1 : n.getFullYear(); const m = n.getMonth() === 0 ? 12 : n.getMonth(); setDateFrom(`${y}-${String(m).padStart(2,'0')}-01`); setDateTo(new Date(y, m, 0).toISOString().slice(0,10)); } },
@@ -603,7 +603,7 @@ function PaymentAuditReport() {
               <TableBody>
                 {filteredSorted.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} sx={{ textAlign: 'center', py: 6, color: '#94a3b8' }}>
+                    <TableCell colSpan={9} sx={{ textAlign: 'center', py: 6, color: '#5A6B82' }}>
                       No payments match the current filters.
                     </TableCell>
                   </TableRow>

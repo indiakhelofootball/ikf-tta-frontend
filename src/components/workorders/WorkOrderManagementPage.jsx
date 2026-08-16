@@ -459,7 +459,7 @@ function WorkOrderManagementPage() {
                     bgcolor: filterType ? '#5B63D3' : undefined,
                     color: filterType ? '#fff' : undefined,
                     '& .MuiOutlinedInput-notchedOutline': { borderColor: filterType ? '#5B63D3' : '#e2e8f0' },
-                    '& .MuiSelect-icon': { color: filterType ? '#fff' : '#94a3b8' },
+                    '& .MuiSelect-icon': { color: filterType ? '#fff' : '#5A6B82' },
                   }}
                 >
                   <MenuItem value="">All Types</MenuItem>
@@ -479,7 +479,7 @@ function WorkOrderManagementPage() {
                     bgcolor: filterService ? '#5B63D3' : undefined,
                     color: filterService ? '#fff' : undefined,
                     '& .MuiOutlinedInput-notchedOutline': { borderColor: filterService ? '#5B63D3' : '#e2e8f0' },
-                    '& .MuiSelect-icon': { color: filterService ? '#fff' : '#94a3b8' },
+                    '& .MuiSelect-icon': { color: filterService ? '#fff' : '#5A6B82' },
                   }}
                 >
                   <MenuItem value="">All Service Types</MenuItem>
@@ -499,7 +499,7 @@ function WorkOrderManagementPage() {
                     bgcolor: filterProject ? '#5B63D3' : undefined,
                     color: filterProject ? '#fff' : undefined,
                     '& .MuiOutlinedInput-notchedOutline': { borderColor: filterProject ? '#5B63D3' : '#e2e8f0' },
-                    '& .MuiSelect-icon': { color: filterProject ? '#fff' : '#94a3b8' },
+                    '& .MuiSelect-icon': { color: filterProject ? '#fff' : '#5A6B82' },
                   }}
                 >
                   <MenuItem value="">All Projects</MenuItem>
@@ -520,7 +520,7 @@ function WorkOrderManagementPage() {
                     bgcolor: filterCity ? '#5B63D3' : undefined,
                     color: filterCity ? '#fff' : undefined,
                     '& .MuiOutlinedInput-notchedOutline': { borderColor: filterCity ? '#5B63D3' : '#e2e8f0' },
-                    '& .MuiSelect-icon': { color: filterCity ? '#fff' : '#94a3b8' },
+                    '& .MuiSelect-icon': { color: filterCity ? '#fff' : '#5A6B82' },
                   }}
                 >
                   <MenuItem value="">All Cities</MenuItem>
@@ -541,7 +541,7 @@ function WorkOrderManagementPage() {
                     bgcolor: filterStatus ? '#5B63D3' : undefined,
                     color: filterStatus ? '#fff' : undefined,
                     '& .MuiOutlinedInput-notchedOutline': { borderColor: filterStatus ? '#5B63D3' : '#e2e8f0' },
-                    '& .MuiSelect-icon': { color: filterStatus ? '#fff' : '#94a3b8' },
+                    '& .MuiSelect-icon': { color: filterStatus ? '#fff' : '#5A6B82' },
                   }}
                 >
                   <MenuItem value="">All Statuses</MenuItem>
@@ -562,7 +562,7 @@ function WorkOrderManagementPage() {
                     bgcolor: filterPayment ? (filterPayment === 'Unpaid' ? '#dc2626' : filterPayment === 'Partial' ? '#f59e0b' : '#16a34a') : undefined,
                     color: filterPayment ? '#fff' : undefined,
                     '& .MuiOutlinedInput-notchedOutline': { borderColor: filterPayment ? 'transparent' : '#e2e8f0' },
-                    '& .MuiSelect-icon': { color: filterPayment ? '#fff' : '#94a3b8' },
+                    '& .MuiSelect-icon': { color: filterPayment ? '#fff' : '#5A6B82' },
                   }}
                 >
                   <MenuItem value="">All Payments</MenuItem>
@@ -690,7 +690,7 @@ function WorkOrderManagementPage() {
               sx={{
                 textTransform: 'none', fontWeight: 600, fontSize: '0.9rem',
                 borderColor: '#e2e8f0', color: '#64748b', borderRadius: 1.5, mb: 2,
-                '&:hover': { borderColor: '#94a3b8', bgcolor: '#f8fafc' },
+                '&:hover': { borderColor: '#5A6B82', bgcolor: '#f8fafc' },
               }}
             >
               Past Work Orders ({pastWorkOrders.length})

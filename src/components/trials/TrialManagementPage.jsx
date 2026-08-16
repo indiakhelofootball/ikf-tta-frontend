@@ -198,7 +198,7 @@ function TrialManagementPage() {
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <SearchIcon sx={{ color: '#94a3b8', fontSize: '1.1rem' }} />
+                  <SearchIcon sx={{ color: '#5A6B82', fontSize: '1.1rem' }} />
                 </InputAdornment>
               ),
             }}

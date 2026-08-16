@@ -256,8 +256,8 @@ export default function DashboardHome() {
                 onClick={() => navigate('/work-orders')}
                 sx={{
                   py: 1.75, borderRadius: 2.5, textTransform: 'none', fontWeight: 600, fontSize: '0.9375rem',
-                  color: '#3B82F6', borderColor: '#3B82F6', borderWidth: 2,
-                  '&:hover': { borderColor: '#2563EB', borderWidth: 2, bgcolor: '#EFF6FF' },
+                  color: '#2563EB', borderColor: '#2563EB', borderWidth: 2,
+                  '&:hover': { borderColor: '#1D4ED8', borderWidth: 2, bgcolor: '#EFF6FF' },
                 }}
               >
                 Work Orders
@@ -271,8 +271,8 @@ export default function DashboardHome() {
                 onClick={() => navigate('/vendors')}
                 sx={{
                   py: 1.75, borderRadius: 2.5, textTransform: 'none', fontWeight: 600, fontSize: '0.9375rem',
-                  color: '#F59E0B', borderColor: '#F59E0B', borderWidth: 2,
-                  '&:hover': { borderColor: '#D97706', borderWidth: 2, bgcolor: '#FFFBEB' },
+                  color: '#A35905', borderColor: '#A35905', borderWidth: 2,
+                  '&:hover': { borderColor: '#7E3A06', borderWidth: 2, bgcolor: '#FFFBEB' },
                 }}
               >
                 Vendors
@@ -286,8 +286,8 @@ export default function DashboardHome() {
                 onClick={() => navigate('/payments')}
                 sx={{
                   py: 1.75, borderRadius: 2.5, textTransform: 'none', fontWeight: 600, fontSize: '0.9375rem',
-                  color: '#8B5CF6', borderColor: '#8B5CF6', borderWidth: 2,
-                  '&:hover': { borderColor: '#7C3AED', borderWidth: 2, bgcolor: '#F5F3FF' },
+                  color: '#7C3AED', borderColor: '#7C3AED', borderWidth: 2,
+                  '&:hover': { borderColor: '#6D28D9', borderWidth: 2, bgcolor: '#F5F3FF' },
                 }}
               >
                 Payments

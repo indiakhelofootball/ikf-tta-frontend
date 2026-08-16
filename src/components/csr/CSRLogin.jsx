@@ -95,7 +95,7 @@ export default function CSRLogin() {
     >
       <Paper elevation={3} sx={{ p: 4, width: '100%', maxWidth: 400 }}>
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3 }}>
-          <Avatar sx={{ bgcolor: 'primary.main', mb: 1 }}>
+          <Avatar sx={{ bgcolor: 'primary.light', color: '#111827', mb: 1 }}>
             <CSRIcon fontSize="small" />
           </Avatar>
           <Typography variant="h6" align="center">CSR</Typography>

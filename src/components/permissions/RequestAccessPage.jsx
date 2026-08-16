@@ -101,7 +101,7 @@ export default function RequestAccessPage() {
                   onChange={() => toggle(m.key)} />}
                 label={
                   <Stack direction="row" spacing={1} alignItems="center">
-                    <Typography sx={{ fontWeight: 600, color: access ? '#94a3b8' : SLATE }}>{m.label}</Typography>
+                    <Typography sx={{ fontWeight: 600, color: access ? '#5A6B82' : SLATE }}>{m.label}</Typography>
                     {access && <Chip size="small" label={`You have: ${access}`} sx={{ height: 20, fontSize: '0.65rem', bgcolor: '#dcfce7', color: '#166534' }} />}
                   </Stack>
                 }
@@ -120,7 +120,7 @@ export default function RequestAccessPage() {
 
       <Typography sx={{ fontWeight: 700, color: SLATE, mb: 1.5 }}>Your requests</Typography>
       {myRequests.length === 0 ? (
-        <Typography sx={{ color: '#94a3b8', fontSize: '0.9rem' }}>No requests yet.</Typography>
+        <Typography sx={{ color: '#5A6B82', fontSize: '0.9rem' }}>No requests yet.</Typography>
       ) : (
         <Stack spacing={1}>
           {myRequests.map((r) => {

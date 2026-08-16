@@ -44,7 +44,7 @@ const subLabelSx = {
 
 const labelSx = {
   fontSize: '0.72rem',
-  color: '#94a3b8',
+  color: '#5A6B82',
   fontWeight: 500,
   mb: 0.25,
   textTransform: 'uppercase',
@@ -348,7 +348,7 @@ function REPDetailView({ rep, open, onClose, onEdit }) {
                 <Box key={key}>
                   <Typography sx={labelSx}>{label}</Typography>
                   {rep[naKey] ? (
-                    <Typography sx={{ fontSize: '0.82rem', color: '#94a3b8', fontStyle: 'italic' }}>
+                    <Typography sx={{ fontSize: '0.82rem', color: '#5A6B82', fontStyle: 'italic' }}>
                       Not Available
                     </Typography>
                   ) : (

@@ -63,7 +63,7 @@ function VendorCard({ vendor, onEdit, onViewDetails, onDelete, onViewStatement }
         />
 
         {vendor.entityName && (
-          <Typography variant="caption" sx={{ color: '#94a3b8', display: 'block', mb: 1.5, mt: -1 }}>
+          <Typography variant="caption" sx={{ color: '#5A6B82', display: 'block', mb: 1.5, mt: -1 }}>
             {vendor.entityName}
           </Typography>
         )}
@@ -74,7 +74,7 @@ function VendorCard({ vendor, onEdit, onViewDetails, onDelete, onViewStatement }
             {vendor.panNumber && (
               <Box>
                 <Stack direction="row" spacing={0.5} alignItems="center">
-                  <Typography variant="caption" sx={{ color: '#94a3b8', fontSize: '0.78rem', lineHeight: 1 }}>PAN</Typography>
+                  <Typography variant="caption" sx={{ color: '#5A6B82', fontSize: '0.78rem', lineHeight: 1 }}>PAN</Typography>
                   {vendor.panVerified && <CheckIcon sx={{ fontSize: 12, color: '#22c55e' }} />}
                 </Stack>
                 <Typography variant="caption" fontWeight={700} sx={{ fontSize: '0.82rem', color: '#334155', fontFamily: 'monospace' }}>
@@ -85,7 +85,7 @@ function VendorCard({ vendor, onEdit, onViewDetails, onDelete, onViewStatement }
             {vendor.gstNumber && (
               <Box>
                 <Stack direction="row" spacing={0.5} alignItems="center">
-                  <Typography variant="caption" sx={{ color: '#94a3b8', fontSize: '0.78rem', lineHeight: 1 }}>GST</Typography>
+                  <Typography variant="caption" sx={{ color: '#5A6B82', fontSize: '0.78rem', lineHeight: 1 }}>GST</Typography>
                   {vendor.gstVerified && <CheckIcon sx={{ fontSize: 12, color: '#22c55e' }} />}
                 </Stack>
                 <Typography variant="caption" fontWeight={700} sx={{ fontSize: '0.82rem', color: '#334155', fontFamily: 'monospace' }}>
@@ -100,22 +100,22 @@ function VendorCard({ vendor, onEdit, onViewDetails, onDelete, onViewStatement }
         <Stack spacing={0.75} sx={{ mb: 2 }}>
           <Stack direction="row" spacing={3}>
             <Stack direction="row" spacing={0.75} alignItems="center">
-              <PersonIcon sx={{ fontSize: 16, color: '#94a3b8' }} />
+              <PersonIcon sx={{ fontSize: 16, color: '#5A6B82' }} />
               <Typography variant="caption" color="text.secondary">{vendor.contactPerson || 'N/A'}</Typography>
             </Stack>
             <Stack direction="row" spacing={0.75} alignItems="center">
-              <PhoneIcon sx={{ fontSize: 16, color: '#94a3b8' }} />
+              <PhoneIcon sx={{ fontSize: 16, color: '#5A6B82' }} />
               <Typography variant="caption" color="text.secondary">{vendor.phone || 'N/A'}</Typography>
             </Stack>
           </Stack>
           <Stack direction="row" spacing={3}>
             <Stack direction="row" spacing={0.75} alignItems="center">
-              <EmailIcon sx={{ fontSize: 16, color: '#94a3b8' }} />
+              <EmailIcon sx={{ fontSize: 16, color: '#5A6B82' }} />
               <Typography variant="caption" color="text.secondary" noWrap>{vendor.email || 'N/A'}</Typography>
             </Stack>
             {vendor.bankName && (
               <Stack direction="row" spacing={0.75} alignItems="center">
-                <BankIcon sx={{ fontSize: 16, color: '#94a3b8' }} />
+                <BankIcon sx={{ fontSize: 16, color: '#5A6B82' }} />
                 <Typography variant="caption" color="text.secondary">{vendor.bankName}</Typography>
               </Stack>
             )}
@@ -139,7 +139,7 @@ function VendorCard({ vendor, onEdit, onViewDetails, onDelete, onViewStatement }
                 borderColor: '#e2e8f0',
                 color: '#475569',
                 borderRadius: 1.5,
-                '&:hover': { borderColor: '#94a3b8', bgcolor: '#f8fafc' },
+                '&:hover': { borderColor: '#5A6B82', bgcolor: '#f8fafc' },
               }}
             >
               View
@@ -157,7 +157,7 @@ function VendorCard({ vendor, onEdit, onViewDetails, onDelete, onViewStatement }
                   borderColor: '#e2e8f0',
                   color: '#475569',
                   borderRadius: 1.5,
-                  '&:hover': { borderColor: '#94a3b8', bgcolor: '#f8fafc' },
+                  '&:hover': { borderColor: '#5A6B82', bgcolor: '#f8fafc' },
                 }}
               >
                 Edit

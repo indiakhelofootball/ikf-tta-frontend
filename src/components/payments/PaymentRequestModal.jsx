@@ -29,7 +29,7 @@ const STEPS = ['Vendor & Work Order', 'Payment Amount', 'Preview & Submit'];
 
 const fieldSx = { '& .MuiOutlinedInput-root': { borderRadius: 1.5 } };
 const labelSx = {
-  fontWeight: 700, color: '#94a3b8', fontSize: '0.82rem',
+  fontWeight: 700, color: '#5A6B82', fontSize: '0.82rem',
   letterSpacing: '0.5px', textTransform: 'uppercase', mb: 1, display: 'block',
 };
 const sectionSx = {
@@ -500,7 +500,7 @@ function PaymentRequestModal({
                   </Typography>
                   <FormControl fullWidth size="small">
                     <Select value={searchServiceType} onChange={(e) => handleServiceTypeChange(e.target.value)}
-                      displayEmpty renderValue={(val) => val || <em style={{ color: '#94a3b8' }}>All service types</em>}
+                      displayEmpty renderValue={(val) => val || <em style={{ color: '#5A6B82' }}>All service types</em>}
                       sx={{ borderRadius: 1.5 }} MenuProps={{ PaperProps: { sx: { maxHeight: 300 } } }}>
                       <MenuItem value=""><em>All service types</em></MenuItem>
                       {serviceTypeOptions.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}
@@ -513,7 +513,7 @@ function PaymentRequestModal({
                   </Typography>
                   <FormControl fullWidth size="small">
                     <Select value={searchEntityType} onChange={(e) => handleEntityTypeChange(e.target.value)}
-                      displayEmpty renderValue={(val) => val || <em style={{ color: '#94a3b8' }}>All entity types</em>}
+                      displayEmpty renderValue={(val) => val || <em style={{ color: '#5A6B82' }}>All entity types</em>}
                       sx={{ borderRadius: 1.5 }} MenuProps={{ PaperProps: { sx: { maxHeight: 300 } } }}>
                       <MenuItem value=""><em>All entity types</em></MenuItem>
                       {entityTypeOptions.map(t => <MenuItem key={t} value={t} sx={{ fontSize: '0.85rem' }}>{t}</MenuItem>)}
@@ -645,7 +645,7 @@ function PaymentRequestModal({
                             sx={{
                               fontWeight: 600, cursor: paid ? 'not-allowed' : 'pointer',
                               bgcolor: paid ? '#f1f5f9' : selected ? '#5B63D3' : '#fff',
-                              color: paid ? '#94a3b8' : selected ? '#fff' : '#1e293b',
+                              color: paid ? '#5A6B82' : selected ? '#fff' : '#1e293b',
                               border: `1px solid ${paid ? '#e2e8f0' : selected ? '#5B63D3' : '#cbd5e1'}`,
                               textDecoration: paid ? 'line-through' : 'none',
                             }}
@@ -905,7 +905,7 @@ function PaymentRequestModal({
           sx={{
             textTransform: 'none', fontWeight: 600, borderColor: '#e2e8f0',
             color: '#475569', borderRadius: 1.5,
-            '&:hover': { borderColor: '#94a3b8', bgcolor: '#f8fafc' },
+            '&:hover': { borderColor: '#5A6B82', bgcolor: '#f8fafc' },
           }}>
           {step === 0 ? 'Cancel' : 'Back'}
         </Button>
@@ -919,7 +919,7 @@ function PaymentRequestModal({
                 textTransform: 'none', fontWeight: 600, bgcolor: '#5B63D3',
                 borderRadius: 1.5, px: 3, boxShadow: 'none',
                 '&:hover': { bgcolor: '#4338ca', boxShadow: 'none' },
-                '&:disabled': { bgcolor: '#f1f5f9', color: '#94a3b8' },
+                '&:disabled': { bgcolor: '#f1f5f9', color: '#5A6B82' },
               }}>
               Next
             </Button>
@@ -933,7 +933,7 @@ function PaymentRequestModal({
                 textTransform: 'none', fontWeight: 600, bgcolor: '#FDE68A',
                 color: '#1e293b', borderRadius: 1.5, px: 3, boxShadow: 'none',
                 '&:hover': { bgcolor: '#FCD34D', boxShadow: 'none' },
-                '&:disabled': { bgcolor: '#f1f5f9', color: '#94a3b8' },
+                '&:disabled': { bgcolor: '#f1f5f9', color: '#5A6B82' },
               }}>
               {submitting ? 'Raising...' : 'Raise Payment'}
             </Button>

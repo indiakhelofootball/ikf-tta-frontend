@@ -143,7 +143,7 @@ function REPReportCard({ rep, selected, onSelect }) {
               <DownloadIcon sx={{ fontSize: 18 }} />
             </IconButton>
           ) : (
-            <Typography sx={{ fontSize: '0.85rem', color: '#94a3b8' }}>N/A</Typography>
+            <Typography sx={{ fontSize: '0.85rem', color: '#5A6B82' }}>N/A</Typography>
           )}
 
           <Box sx={{ width: '1px', height: 20, bgcolor: '#d1d5db' }} />
@@ -158,7 +158,7 @@ function REPReportCard({ rep, selected, onSelect }) {
               <DownloadIcon sx={{ fontSize: 18 }} />
             </IconButton>
           ) : (
-            <Typography sx={{ fontSize: '0.85rem', color: '#94a3b8' }}>N/A</Typography>
+            <Typography sx={{ fontSize: '0.85rem', color: '#5A6B82' }}>N/A</Typography>
           )}
 
           {/* MOU Status */}
@@ -250,7 +250,7 @@ function REPReportCard({ rep, selected, onSelect }) {
                 ))}
               </Stack>
             ) : (
-              <Typography sx={{ fontSize: '0.9rem', color: '#94a3b8', fontStyle: 'italic' }}>
+              <Typography sx={{ fontSize: '0.9rem', color: '#5A6B82', fontStyle: 'italic' }}>
                 No assignments
               </Typography>
             )}
@@ -437,7 +437,7 @@ export default function SocialMediaReport() {
             slotProps={{
               input: {
                 startAdornment: (
-                  <InputAdornment position="start"><SearchIcon sx={{ fontSize: 18, color: '#94a3b8' }} /></InputAdornment>
+                  <InputAdornment position="start"><SearchIcon sx={{ fontSize: 18, color: '#5A6B82' }} /></InputAdornment>
                 ),
               },
             }}

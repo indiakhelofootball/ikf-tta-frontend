@@ -584,7 +584,7 @@ function ProjectDashboard() {
                 </Box>
 
                 <Divider sx={{ my: 2 }}>
-                  <Typography sx={{ fontSize: '0.65rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                  <Typography sx={{ fontSize: '0.65rem', fontWeight: 700, color: '#5A6B82', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                     Schedule
                   </Typography>
                 </Divider>
@@ -657,7 +657,7 @@ function ProjectDashboard() {
                       startAdornment: (
                         <>
                           <InputAdornment position="start">
-                            <SearchIcon sx={{ color: '#94a3b8', fontSize: '1rem' }} />
+                            <SearchIcon sx={{ color: '#5A6B82', fontSize: '1rem' }} />
                           </InputAdornment>
                           {params.InputProps.startAdornment}
                         </>
@@ -818,7 +818,7 @@ function ProjectDashboard() {
                                   ...(canEditTrials && { cursor: 'pointer', '&:hover': { bgcolor: '#f0fdf4', borderColor: '#bbf7d0' } }) }}
                                   onClick={canEditTrials ? () => handleToggleConfirmed(city) : undefined}
                                 >
-                                  <Box component="span" sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: '#94a3b8', flexShrink: 0 }} />
+                                  <Box component="span" sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: '#5A6B82', flexShrink: 0 }} />
                                   <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>Not Confirmed</Typography>
                                 </Box>
                               )}
@@ -1003,7 +1003,7 @@ function ProjectDashboard() {
               <TableBody>
                 {bulkRows.map((row, idx) => (
                   <TableRow key={row.id} sx={{ '& td': { py: 1.25 } }}>
-                    <TableCell sx={{ color: '#94a3b8', fontSize: '0.85rem', width: 36, fontWeight: 600 }}>{idx + 1}</TableCell>
+                    <TableCell sx={{ color: '#5A6B82', fontSize: '0.85rem', width: 36, fontWeight: 600 }}>{idx + 1}</TableCell>
                     <TableCell sx={{ minWidth: 200 }}>
                       <Autocomplete
                         options={indianStates} getOptionLabel={o => o.name || ''}

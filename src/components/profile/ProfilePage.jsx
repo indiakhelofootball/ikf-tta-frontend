@@ -336,7 +336,7 @@ export default function ProfilePage() {
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <PersonIcon sx={{ color: '#6B7280' }} />
+          <PersonIcon sx={{ color: '#5B6270' }} />
           <Box>
             <Typography variant="body2" fontWeight={600} color="text.primary">
               Account Role
