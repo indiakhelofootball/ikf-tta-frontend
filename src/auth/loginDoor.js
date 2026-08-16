@@ -1,4 +1,5 @@
-// Which login screen an expired session returns to.
+// Which login screen a session returns to when it ends — whether it expired or
+// the user signed out deliberately. Both need the same answer.
 //
 // Three platforms share one bundle and one auth engine, but they have three
 // separate front doors:
