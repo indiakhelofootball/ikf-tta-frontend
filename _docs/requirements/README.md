@@ -148,7 +148,14 @@ Marked `verified` where checked against code on 2026-08-13; `transcript only` wh
   actual spend against sanctioned money for a government audit (*"in one year, we have to show the
   expense against the money that has been given"*). A bounced payment is not an expense — the money
   came back. A draft never left. `Sent to Accounts` is a bank file, not a confirmed disbursement.
-  The code currently applies **no status filter at all** — see "built wrong" below.
+  **Implemented** in `csr/certificate_rules.py` — `counts_toward_certificate()`, read by both
+  `csr/certificate.py` and the expense-tag serializer so the document and the operator's running
+  total cannot diverge. A manual amount always counts: it is a typed figure with no PaymentRequest
+  behind it, so there is no status to check. The certificate also **freezes** on the Active→Closed
+  transition (`CSRProject.save()`, migration `csr/0006`), so a certificate the funder has already
+  filed cannot silently change; reopening retains the snapshot and re-closing bumps its version.
+  *(This line previously read "the code currently applies no status filter at all". That was true
+  when written and stopped being true with the 2026-08-13 build. Verified in code 2026-08-16.)*
 
 ### Not addressed anywhere in the source
 
