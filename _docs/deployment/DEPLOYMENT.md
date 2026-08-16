@@ -1,362 +1,226 @@
 # TTA Deployment Guide
 
-**Project:** Trial Tracking App (TTA)
-**Author:** Abhishek Anshuman
-**Server:** 47.245.98.149 (Alibaba Cloud)
-**Domain:** tta.indiakhelofootball.com
+**Status:** rewritten 2026-08-15 for the Docker stack.
+**Live host:** `47.237.115.74` (Alibaba Cloud, Ubuntu, Docker + native MySQL 8.4)
+**Domain:** tta.indiakhelofootball.com (behind Cloudflare)
+
+> The previous revision of this file described the **decommissioned** box
+> `47.245.98.149`: build locally, `pscp` the `build/` folder, `systemctl restart tta`,
+> gunicorn on `/run/tta.sock`, MariaDB 10.1. None of that exists any more. TTA moved
+> to `47.237.115.74` on 2026-07-24. Do not follow any copy of the old steps.
+>
+> **What is verified from this repo** (and therefore trustworthy here): `Dockerfile`,
+> `nginx.conf`, `docker-compose.yml`, `docker-compose.local.yml`,
+> `tta_backend/Dockerfile`, `tta_backend/docker-entrypoint.sh`, and the frontend image
+> build (run and grepped 2026-08-15).
+> **What is NOT verified from this repo:** the server-side directory that holds
+> `docker-compose.yml`, the host-nginx/TLS vhost, and the Cloudflare configuration.
+> Those live on the box, not in git. Confirm them on the server before quoting them.
 
 ---
 
-## Architecture Overview
+## Architecture
 
 ```
-Local (Windows 11)
-├── D:\tta_frontend-main\          → Frontend (React)
-│   └── tta_backend\               → Backend (Django 3.2)
-│
-Server (Linux - 47.245.98.149)
-├── /root/TTA/frontend/ikf-tta-frontend/   → Frontend build files
-├── /root/TTA/backend/ikf-tta-backend/     → Backend code (Git repo)
-├── /root/TTA/backend/venv/                → Python 3.13 virtual env
-├── Nginx                                  → Serves frontend + proxies API
-└── Gunicorn (tta.sock)                    → Runs Django backend
+Cloudflare  ──►  host nginx on 47.237.115.74 (terminates TLS)
+                    └─► 127.0.0.1:8080  ──►  frontend container (nginx:1.27-alpine)
+                                                 ├── /            → internal React build   (/usr/share/nginx/html)
+                                                 ├── /client/     → funder portal build    (/usr/share/nginx/html/client)
+                                                 ├── /api/        → proxy_pass backend:8020
+                                                 └── /static/     → shared static_volume (Django admin/DRF)
+                                              backend container (gunicorn, 4 workers, :8020)
+                                                 └── native MySQL 8.4 on the host, via host.docker.internal
 ```
 
-**Key points:**
-- Frontend and backend are **separate Git repos** pushed independently
-- Frontend is built locally (Node.js 16) and uploaded as static files — **no Node.js on server**
-- Backend is pushed to GitHub and pulled on server
-- Server runs MariaDB 10.1.48, Django 3.2, Python 3.13
+Two images, one compose project:
+
+| service    | build context | image                | published |
+|------------|---------------|----------------------|-----------|
+| `frontend` | `.`           | `tta-frontend:latest`| `127.0.0.1:8080:80` |
+| `backend`  | `./tta_backend` | `tta-backend:latest` | internal `expose: 8020` only |
+
+`frontend` is published on **loopback only** on purpose — the host nginx terminates
+TLS in front of it. Docker's iptables rules sit ahead of ufw, so binding `0.0.0.0`
+would answer on `http://<public-ip>:8080` and bypass both TLS and Cloudflare even
+with a firewall deny in place.
+
+The backend DB lives on the host, not in a container (the box is shared with IKF, so
+a second MySQL is not run); it is reached via the `host.docker.internal:host-gateway`
+extra_host.
 
 ---
 
-## Prerequisites
+## The frontend is built INSIDE the image — never uploaded
 
-### Local machine
-- Node.js 16+ (for `npm run build`)
-- Git
-- PuTTY installed (provides `pscp` and `plink` for file transfer)
+There is no `scp` step any more, and `build/` on your laptop is **not** the deploy
+artefact. `deploy.bat` has been retired accordingly.
 
-### Server
-- Python 3.13 with virtualenv
-- Nginx
-- Gunicorn
-- MariaDB 10.1.48
-- Git
+This is also a correctness requirement, not just a convenience:
 
----
+- CRA loads `.env` files in this order, first definition wins
+  (`node_modules/react-scripts/config/env.js`; dotenv never overrides an already-set value):
 
-## Step 1: Build Frontend Locally
+  | mode | order |
+  |------|-------|
+  | production (`npm run build`) | `.env.production.local` → `.env.local` → `.env.production` → `.env` |
+  | development (`npm start`)    | `.env.development.local` → `.env.local` → `.env.development` → `.env` |
+  | test (`npm test`)            | `.env.test.local` → `.env.test` → `.env`  (`.env.local` is skipped) |
 
-```bash
-cd D:\tta_frontend-main
+  Note slot 2: **`.env.local` outranks `.env.production`.** A dev override left in
+  `.env.local` therefore leaks into a production build — and did: both `build/` and
+  `build-client/` were emitting `http://localhost:8000/api`. Put machine-local
+  overrides in `.env.development.local`, which only applies to `npm start`.
 
-# Ensure .env has the production API URL
-# .env should contain:
-# REACT_APP_API_URL=https://tta.indiakhelofootball.com/api
+- The image build is immune to all of that: `.dockerignore` excludes `.env*` from the
+  build context, and the Dockerfile sets `ENV REACT_APP_API_URL=$REACT_APP_API_URL`
+  (default `/api`) as a real process env var, which dotenv cannot override.
+  Verified 2026-08-15: `docker build` → grep of both bundles inside the image →
+  zero occurrences of `localhost:8000`.
 
-# Install dependencies (if not already done)
-npm install
-
-# Build production bundle
-npm run build
-```
-
-This creates the `build/` folder with static HTML/CSS/JS files.
-**No Node.js is needed on the server** — the build output is plain static files served by Nginx.
+`/api` is deliberately **relative**: the container's own nginx reverse-proxies `/api/`
+to `backend:8020`, so the bundle needs no absolute host and works behind Cloudflare
+without a CORS or mixed-content problem.
 
 ---
 
-## Step 2: Upload Frontend Build to Server
+## Deploying
 
-Using `pscp` (PuTTY's SCP tool) to copy files directly from local to server.
-**No GitHub involved — direct upload.**
+Both repos are pulled on the server; the images are built there.
 
 ```bash
-# Upload build folder contents to server
-pscp -pw "YOUR_PASSWORD" -r D:\tta_frontend-main\build\* root@47.245.98.149:/root/TTA/frontend/ikf-tta-frontend/build/
+# on 47.237.115.74, in the directory holding docker-compose.yml
+#   (confirm it with: docker compose ls)
+
+# 1. frontend repo
+git pull
+
+# 2. backend repo (separate repo, checked out at ./tta_backend)
+cd tta_backend && git pull && cd ..
+
+# 3. rebuild + restart
+BUILD_ID=$(git rev-parse --short HEAD) docker compose up -d --build
+
+# 4. watch it come up
+docker compose ps
+docker compose logs -f --tail=100
 ```
 
-Or using `plink` + `pscp` from Git Bash:
+`BUILD_ID` is stamped into the UI so a running bundle can be identified in the field.
+`.git` is not in the frontend build context, so the hash cannot be read inside the
+image — it has to be passed in. It falls back to the literal `docker`, which means
+"nobody passed a hash".
+
+Frontend only: `docker compose up -d --build frontend`.
+Backend only: `docker compose up -d --build backend`.
+
+### Migrations run themselves
+
+`tta_backend/docker-entrypoint.sh` runs on **every** backend container start, before
+gunicorn:
+
+```sh
+python manage.py collectstatic --no-input
+python manage.py migrate --no-input
+```
+
+So a backend restart applies migrations. There is no separate migrate step. Verify:
+
 ```bash
-powershell.exe -Command "echo y | pscp -pw 'YOUR_PASSWORD' -r 'D:/tta_frontend-main/build' root@47.245.98.149:/root/TTA/frontend/ikf-tta-frontend/"
+docker compose exec backend python manage.py showmigrations | grep -v '\[X\]'
 ```
 
-### Verify upload
-```bash
-powershell.exe -Command "echo y | plink -ssh -pw 'YOUR_PASSWORD' root@47.245.98.149 'ls -la /root/TTA/frontend/ikf-tta-frontend/build/'"
-```
+### Backend configuration
 
-Expected output:
-```
-index.html
-asset-manifest.json
-favicon.ico
-static/
-  css/
-  js/
-manifest.json
-robots.txt
-```
+The backend reads `./tta_backend/backend/.env` via compose `env_file:`. That file is
+gitignored and lives only on the server (and on dev machines). `SECRET_KEY` is
+mandatory — `backend/settings.py` raises `ImproperlyConfigured` when it is missing
+and `DEBUG` is false.
 
 ---
 
-## Step 3: Push Backend Code to GitHub & Pull on Server
+## After deploying: purge Cloudflare
 
-### From local machine
-```bash
-cd D:\tta_frontend-main\tta_backend
-git add .
-git commit -m "Your commit message"
-git push origin main
-```
+Cloudflare has served stale JS chunks on this deployment before. The SPA shells
+(`index.html`, `client/index.html`) are already sent `no-store` by `nginx.conf`, but
+purge anyway if users report a blank page:
 
-### On server (via SSH or plink)
-```bash
-cd /root/TTA/backend/ikf-tta-backend
-git pull origin main
-```
+- Cloudflare dashboard → Caching → Purge Everything
+- A hard refresh fixes an individual user; the purge fixes everyone.
+
+If you change the **host** nginx config on the box, use `systemctl restart nginx` —
+a reload has been observed not to apply on this host.
 
 ---
 
-## Step 4: Run Backend Migrations on Server
-
-After pulling new backend code with model changes:
+## Running the whole stack locally
 
 ```bash
-cd /root/TTA/backend/ikf-tta-backend/backend
-source /root/TTA/backend/venv/bin/activate
-python manage.py migrate
+docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
 ```
 
-Or run specific app migrations:
-```bash
-python manage.py migrate vendors
-python manage.py migrate trialcities
-python manage.py migrate reps
-```
+The local override adds a throwaway MySQL 8.4 (`db` service) and repoints the
+backend's `DB_*` at it, so nothing touches production. It is published on
+`127.0.0.1:13306` only — the volume holds a copy of production data and the root
+password is trivial. This override file is **not** used on the server.
+
+App at http://localhost:8080 — the funder portal at http://localhost:8080/client.
 
 ---
 
-## Step 5: Restart Gunicorn
+## The two frontend bundles (G3)
 
-After backend code changes:
+`npm run build` emits the internal staff app (~26 MB, five JS chunks).
+`npm run build:client` emits a **separate** funder portal bundle from
+`src/client-index.js` via `craco.config.js` (~3.5 MB, one chunk, zero internal
+modules) with `PUBLIC_URL=/client`. The Dockerfile runs both and copies
+`build-client` to `/usr/share/nginx/html/client`, **after** the internal build so it
+is never overwritten.
 
-```bash
-sudo systemctl restart tta
-```
-
-Verify it's running:
-```bash
-sudo systemctl status tta
-```
-
-Expected: `Active: active (running)`
-
-The gunicorn service config is at `/etc/systemd/system/tta.service`:
-```ini
-[Unit]
-Description=gunicorn tta daemon
-Requires=tta.socket
-After=network.target
-
-[Service]
-User=root
-Group=www-data
-WorkingDirectory=/root/TTA/backend/ikf-tta-backend/backend
-ExecStart=/root/TTA/backend/venv/bin/gunicorn \
-          --access-logfile - \
-          --workers 3 \
-          --bind unix:/run/tta.sock \
-          backend.wsgi:application
-
-[Install]
-WantedBy=multi-user.target
-```
-
----
-
-## Step 6: Nginx Configuration
-
-Nginx config file: `/etc/nginx/sites-enabled/tta.indiakhelofootball.com`
-
-```nginx
-server{
-    listen 80;
-    server_name www.tta.indiakhelofootball.com tta.indiakhelofootball.com;
-    return 301 https://tta.indiakhelofootball.com$request_uri;
-}
-
-server {
-    listen 443;
-    server_name www.tta.indiakhelofootball.com tta.indiakhelofootball.com;
-    client_max_body_size 16M;
-
-    # Serve React frontend build
-    root /root/TTA/frontend/ikf-tta-frontend/build;
-    index index.html;
-
-    # React app — all routes fall back to index.html
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-
-    # Proxy API requests to Django backend
-    location /api/ {
-        include proxy_params;
-        proxy_pass http://unix:/run/tta.sock;
-    }
-
-    # Proxy Django admin
-    location /admin/ {
-        include proxy_params;
-        proxy_pass http://unix:/run/tta.sock;
-    }
-
-    # Serve Django admin static files
-    location /static/admin/ {
-        include proxy_params;
-        proxy_pass http://unix:/run/tta.sock;
-    }
-
-    ssl on;
-    ssl_certificate /etc/letsencrypt/live/indiakhelofootball.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/indiakhelofootball.com/privkey.pem;
-    ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
-    ssl_ciphers EECDH+CHACHA20:EECDH+AES128:RSA+AES128:EECDH+AES256:RSA+AES256:EECDH+3DES:RSA+3DES:!MD5;
-    ssl_prefer_server_ciphers on;
-}
-```
-
-### How it works:
-| URL Path | Handled by |
-|----------|-----------|
-| `/` (and all React routes) | Nginx serves `build/index.html` |
-| `/api/*` | Proxied to Django via gunicorn socket |
-| `/admin/*` | Proxied to Django admin |
-| `/static/admin/*` | Django admin static files |
-
-### After changing Nginx config:
-```bash
-# Test config syntax
-sudo nginx -t
-
-# Reload (no downtime)
-sudo systemctl reload nginx
-```
-
----
-
-## Quick Deploy Checklist
-
-### Frontend-only changes (UI/React code):
-1. `npm run build` (local)
-2. `pscp` build files to server
-3. Done — Nginx serves new files immediately
-
-### Backend-only changes (Django/API):
-1. `git push` from local `tta_backend/`
-2. `git pull` on server
-3. `python manage.py migrate` (if model changes)
-4. `sudo systemctl restart tta`
-
-### Both frontend + backend:
-1. Do backend steps first (push, pull, migrate, restart)
-2. Then frontend steps (build, upload)
-
----
-
-## Useful Commands Reference
-
-### SSH into server
-```bash
-ssh root@47.245.98.149
-# Or via plink:
-plink -ssh -pw "YOUR_PASSWORD" root@47.245.98.149
-```
-
-### Upload a single file
-```bash
-pscp -pw "YOUR_PASSWORD" "D:/path/to/file" root@47.245.98.149:/server/path/
-```
-
-### Run a command on server remotely
-```bash
-powershell.exe -Command "echo y | plink -ssh -pw 'YOUR_PASSWORD' root@47.245.98.149 'your command here'"
-```
-
-### Check Django logs
-```bash
-sudo journalctl -u tta --no-pager -n 50
-```
-
-### Check Nginx logs
-```bash
-tail -50 /var/log/nginx/access.log
-tail -50 /var/log/nginx/error.log
-```
-
-### Django shell on server
-```bash
-cd /root/TTA/backend/ikf-tta-backend/backend
-source /root/TTA/backend/venv/bin/activate
-python manage.py shell
-```
-
-### Check/change user roles
-```python
-from accounts.models import User
-u = User.objects.get(email='user@example.com')
-print(u.role)       # Check role
-u.role = 'SUPER_ADMIN'  # SUPER_ADMIN, ADMIN, or REP
-u.save()
-```
-
----
-
-## Server Details
-
-| Item | Value |
-|------|-------|
-| IP | 47.245.98.149 |
-| SSH Port | 22 |
-| User | root |
-| Domain | tta.indiakhelofootball.com |
-| SSL | Let's Encrypt (shared with indiakhelofootball.com) |
-| Python | 3.13 |
-| Django | 3.2 |
-| Database | MariaDB 10.1.48 |
-| Gunicorn Socket | /run/tta.sock |
-| Frontend Path | /root/TTA/frontend/ikf-tta-frontend/build/ |
-| Backend Path | /root/TTA/backend/ikf-tta-backend/backend/ |
-| Virtualenv | /root/TTA/backend/venv/ |
+Route-gating hides an external funder's *data*; the separate bundle is what hides the
+internal *code*. Without the `/client` blocks in `nginx.conf` the second build is dead
+code and funders get served the staff bundle. See `_docs/deployment/CLIENT_BUILD.md`.
 
 ---
 
 ## Troubleshooting
 
-### Frontend shows blank page
-- Check browser console for errors
-- Verify `build/index.html` exists on server
-- Verify Nginx `root` points to correct build path
-- Check `REACT_APP_API_URL` in `.env` before building
+**Blank page after a deploy** — stale chunk from Cloudflare. Purge everything; hard
+refresh confirms it for one user.
 
-### API calls return 502
-- Gunicorn is not running: `sudo systemctl restart tta`
-- Check socket exists: `ls -la /run/tta.sock`
+**Frontend loads, every API call fails** — check the API base actually baked into the
+bundle:
+```bash
+docker compose exec frontend grep -o "localhost:8000" /usr/share/nginx/html/static/js/main.*.js
+```
+Any hit means the image was built from a context that leaked a `.env*` file. Rebuild;
+`.dockerignore` must contain `.env*`.
 
-### API calls return 404
-- Django URLs might not match — check `backend/urls.py`
-- Ensure Nginx proxies `/api/` correctly
+**`/api` returns 502** — backend container is down or crash-looping:
+`docker compose logs backend --tail=100`. Most often `SECRET_KEY` missing from
+`tta_backend/backend/.env`, or MySQL unreachable on `host.docker.internal`.
 
-### Login works but sidebar is empty
-- User role is not SUPER_ADMIN or ADMIN
-- Fix via Django shell (see commands above)
+**Main app works, `/client` serves the staff bundle** — the `location = /client` exact
+match in `nginx.conf` is missing or was overridden. That is the exact leak G3 exists
+to stop; treat it as a security bug, not a routing nit.
 
-### Build fails locally
-- Check Node.js version (16+)
-- Delete `node_modules` and reinstall: `rm -rf node_modules && npm install`
+**Django admin loses its CSS** — `static_volume` is stale. The backend writes it on
+start via `collectstatic`; restart the backend, not the frontend.
 
-### Migration fails on server
-- MariaDB 10.1 compatibility issue — Django 3.2 is required
-- Check `.env` on server has correct DB credentials
+**Absolute URLs come out as `http://`** — `SECURE_PROXY_SSL_HEADER` in
+`backend/settings.py` depends on every proxy in the chain setting
+`X-Forwarded-Proto`. The container nginx does; check the host vhost too.
+
+---
+
+## Old-box facts that no longer apply
+
+Kept only so stale notes elsewhere can be recognised as stale:
+
+- IP `47.245.98.149`, Ubuntu 18.04, MariaDB 10.1.48
+- `pscp`/`plink` upload of `build/` to `/root/TTA/frontend/ikf-tta-frontend/build/`
+- gunicorn under systemd (`tta.service`, `tta.socket`, `/run/tta.sock`)
+- `sudo systemctl restart tta`
+- host nginx vhost with `ssl on;` and `root /root/TTA/frontend/...`
+- `source /root/TTA/backend/venv/bin/activate && python manage.py migrate`
+
+None of these exist on `47.237.115.74`.
