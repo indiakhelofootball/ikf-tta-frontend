@@ -6,6 +6,7 @@ import { Logout, Person } from "@mui/icons-material";
 import Sidebar from "./Sidebar";
 import { useAuth } from "../../auth/AuthContext";
 import { ROLES } from "../../auth/roles";
+import { expiredSessionLoginPath } from "../../auth/loginDoor";
 import "./DashboardLayout.css";
 
 // Every route that renders inside this layout needs an entry, or its header and
@@ -64,9 +65,13 @@ export default function DashboardLayout({ sidebar: SidebarComponent = Sidebar })
     setAnchorEl(null);
   };
 
+  // Signing out returns you to the door you came in through, the same rule an
+  // expired session uses. The destination must be resolved BEFORE logout(),
+  // which clears the stored user the rule reads.
   const handleLogout = () => {
+    const target = expiredSessionLoginPath();
     logout();
-    navigate('/login');
+    navigate(target);
   };
 
   const handleProfile = () => {
