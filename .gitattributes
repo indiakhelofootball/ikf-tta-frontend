@@ -1,0 +1,68 @@
+# Line-ending normalisation.
+#
+# `* text=auto` stores every file git detects as text with LF **in the index**, and
+# leaves the working copy to git's platform default (core.autocrlf) — so Windows
+# checkouts still get CRLF and nothing about local editing changes. This is what
+# stops the endless "LF will be replaced by CRLF" warnings, which are caused by the
+# index and the working tree disagreeing.
+* text=auto
+
+# Files that must keep a specific ending regardless of platform.
+*.sh          text eol=lf
+*.bash        text eol=lf
+Dockerfile    text eol=lf
+*.dockerfile  text eol=lf
+*.bat         text eol=crlf
+*.cmd         text eol=crlf
+*.ps1         text eol=crlf
+
+# ── Binary: never normalise, never diff as text ──────────────────────────────
+# `binary` is shorthand for `-text -diff`. A single normalisation pass over any of
+# these would corrupt the file.
+*.xls    binary
+*.xlsx   binary
+*.xlsm   binary
+*.doc    binary
+*.docx   binary
+*.ppt    binary
+*.pptx   binary
+*.pdf    binary
+
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.webp   binary
+*.bmp    binary
+*.ico    binary
+
+*.woff   binary
+*.woff2  binary
+*.ttf    binary
+*.otf    binary
+*.eot    binary
+
+*.zip    binary
+*.gz     binary
+*.tgz    binary
+*.tar    binary
+*.7z     binary
+*.rar    binary
+*.bz2    binary
+*.xz     binary
+
+*.m4a    binary
+*.mp3    binary
+*.wav    binary
+*.ogg    binary
+*.mp4    binary
+*.mov    binary
+*.webm   binary
+
+*.sqlite  binary
+*.sqlite3 binary
+*.db      binary
+*.pyc     binary
+
+# Lockfile: text, but noisy and machine-owned — keep it out of diffs by default.
+package-lock.json linguist-generated=true
