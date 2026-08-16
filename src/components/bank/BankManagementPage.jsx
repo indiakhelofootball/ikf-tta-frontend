@@ -22,6 +22,7 @@ import { PR_STATUS_COLORS } from '../payments/paymentData';
 import { paymentRequestsAPI, tdsAPI, vendorsAPI } from '../../services/api';
 import useGrants from '../../auth/useGrants';
 import useRefetchOnFocus from '../../hooks/useRefetchOnFocus';
+import { tdsDueDate, daysUntilTDSDue, fmtDueDate, buildTDSDueInfo } from './tdsDueDate';
 
 /* ── helpers ── */
 const fmtINR = (n) =>
@@ -277,13 +278,15 @@ function BankManagementPage() {
 
   const tdsPending = tdsRecords.filter((t) => t.status === 'Pending');
   const tdsPendingTotal = tdsPending.reduce((s, t) => s + (parseFloat(t.tdsAmount) || 0), 0);
-  const pendingMonths = [...new Set(tdsPending.map((t) => t.month))];
+  const pendingMonthNames = [...new Set(tdsPending.map((t) => t.month))];
 
-  // TDS due date — 7th of next month
-  const now = new Date();
-  const due = new Date(now.getFullYear(), now.getMonth() + 1, 7);
-  const dueStr = due.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
-  const daysUntilDue = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
+  // Each pending month carries its own deadline: 7th of the month after deduction.
+  const dueInfo = buildTDSDueInfo(pendingMonthNames);
+  const dueInfoByMonth = Object.fromEntries(dueInfo.map((d) => [d.month, d]));
+  const pendingMonths = dueInfo.map((d) => d.month);
+  const overdueMonths = dueInfo.filter((d) => d.overdue);
+  const nextDue = dueInfo.find((d) => d.due) || null;
+  const isUrgent = overdueMonths.length > 0 || (nextDue && nextDue.days <= 7);
 
   return (
     <Box sx={{ py: 4 }}>
@@ -447,7 +450,7 @@ function BankManagementPage() {
                                     <Tooltip title="Edit status (e.g. if payment bounced)">
                                       <IconButton size="small" onClick={() => setStatusEditDialog({ open: true, record: r })}
                                         sx={{ color: '#64748b', ml: 0.5, border: '1px solid #e2e8f0', borderRadius: '8px',
-                                          '&:hover': { bgcolor: '#f1f5f9', borderColor: '#94a3b8' } }}>
+                                          '&:hover': { bgcolor: '#f1f5f9', borderColor: '#5A6B82' } }}>
                                         <EditIcon sx={{ fontSize: 16 }} />
                                       </IconButton>
                                     </Tooltip>
@@ -471,15 +474,20 @@ function BankManagementPage() {
           <>
             {/* TDS due alert */}
             {tdsPendingTotal > 0 && (
-              <Alert severity={daysUntilDue <= 7 ? 'error' : 'warning'} icon={<WarnIcon />}
-                action={<Button size="small" color={daysUntilDue <= 7 ? 'error' : 'warning'} startIcon={<DownloadIcon />}
+              <Alert severity={isUrgent ? 'error' : 'warning'} icon={<WarnIcon />}
+                action={<Button size="small" color={isUrgent ? 'error' : 'warning'} startIcon={<DownloadIcon />}
                   onClick={() => downloadTDSExcel(tdsRecords)}>Export TDS</Button>}
                 sx={{ mb: 3, borderRadius: 1.5 }}>
                 <Typography variant="body2" fontWeight={700}>
-                  TDS Deposit Due: {dueStr} ({daysUntilDue} day{daysUntilDue !== 1 ? 's' : ''} remaining)
+                  {overdueMonths.length > 0
+                    ? `TDS Deposit Overdue: ${overdueMonths[0].month} was due ${overdueMonths[0].dueStr} (${Math.abs(overdueMonths[0].days)} day${Math.abs(overdueMonths[0].days) !== 1 ? 's' : ''} late)`
+                    : nextDue
+                      ? `TDS Deposit Due: ${nextDue.dueStr} for ${nextDue.month} (${nextDue.days} day${nextDue.days !== 1 ? 's' : ''} remaining)`
+                      : 'TDS Deposit Due'}
                 </Typography>
                 <Typography variant="caption">
                   {fmtINR(tdsPendingTotal)} pending across {tdsPending.length} deduction{tdsPending.length !== 1 ? 's' : ''}
+                  {overdueMonths.length > 1 ? ` — ${overdueMonths.length} months overdue` : ''}
                 </Typography>
               </Alert>
             )}
@@ -500,6 +508,8 @@ function BankManagementPage() {
                   {pendingMonths.map((month) => {
                     const monthRecords = tdsPending.filter((t) => t.month === month);
                     const monthTotal = monthRecords.reduce((s, t) => s + (parseFloat(t.tdsAmount) || 0), 0);
+                    const info = dueInfoByMonth[month];
+                    const isOverdue = Boolean(info && info.overdue);
                     return (
                       <Button
                         key={month}
@@ -513,11 +523,16 @@ function BankManagementPage() {
                         })}
                         sx={{
                           textTransform: 'none', fontWeight: 600, borderRadius: 1.5,
-                          borderColor: '#16a34a', color: '#16a34a',
-                          '&:hover': { bgcolor: '#f0fdf4', borderColor: '#15803d' },
+                          borderColor: isOverdue ? '#dc2626' : '#16a34a',
+                          color: isOverdue ? '#dc2626' : '#16a34a',
+                          '&:hover': {
+                            bgcolor: isOverdue ? '#fef2f2' : '#f0fdf4',
+                            borderColor: isOverdue ? '#b91c1c' : '#15803d',
+                          },
                         }}
                       >
                         {month} — {fmtINR(monthTotal)} ({monthRecords.length} record{monthRecords.length !== 1 ? 's' : ''})
+                        {info && info.due ? (isOverdue ? ` · overdue since ${info.dueStr}` : ` · due ${info.dueStr}`) : ''}
                       </Button>
                     );
                   })}
@@ -555,7 +570,7 @@ function BankManagementPage() {
                           <TableCell sx={{ fontSize: '0.82rem', fontWeight: 600 }}>
                             {parseFloat(t.grossAmount) > 0 ? fmtINR(t.grossAmount) : '—'}
                           </TableCell>
-                          <TableCell sx={{ fontSize: '0.85rem', fontWeight: 700, color: parseFloat(t.tdsAmount) > 0 ? '#dc2626' : '#94a3b8' }}>
+                          <TableCell sx={{ fontSize: '0.85rem', fontWeight: 700, color: parseFloat(t.tdsAmount) > 0 ? '#dc2626' : '#5A6B82' }}>
                             {parseFloat(t.tdsAmount) > 0 ? fmtINR(t.tdsAmount) : '—'}
                           </TableCell>
                         </TableRow>
@@ -606,7 +621,18 @@ function BankManagementPage() {
                             <Chip label={t.rate} size="small"
                               sx={{ bgcolor: '#fef2f2', color: '#dc2626', fontWeight: 700, fontSize: '0.68rem', mt: 0.5 }} />
                           </TableCell>
-                          <TableCell sx={{ fontSize: '0.82rem' }}>{t.month}</TableCell>
+                          <TableCell sx={{ fontSize: '0.82rem' }}>
+                            {t.month}
+                            {t.status === 'Pending' && tdsDueDate(t.month) && (
+                              <Typography variant="caption" sx={{
+                                display: 'block',
+                                color: daysUntilTDSDue(t.month) < 0 ? '#dc2626' : '#64748b',
+                              }}>
+                                {daysUntilTDSDue(t.month) < 0 ? 'overdue since ' : 'due '}
+                                {fmtDueDate(tdsDueDate(t.month))}
+                              </Typography>
+                            )}
+                          </TableCell>
                           <TableCell sx={{ fontSize: '0.85rem', fontWeight: 700, color: '#dc2626' }}>
                             {fmtINR(t.tdsAmount)}
                           </TableCell>
