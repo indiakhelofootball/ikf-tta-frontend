@@ -7,9 +7,9 @@
 // objects stay reachable only from inside a CSR project — in the act of
 // attaching one — never as a place to navigate to. The absence IS the spec.
 //
-// "Back to TTA" points at /dashboard, which carries no grant gate, so it cannot
-// become a door into the ledger. Without it an admin who enters CSR has no way
-// out.
+// There is deliberately no "Back to TTA" link either: CSR is its own front door
+// at /csr/login, not a room inside TTA. An internal admin who needs the ledger
+// signs into it at /login.
 
 import React from 'react';
 import { matchRoutes, useLocation } from 'react-router-dom';
@@ -19,7 +19,6 @@ import {
   GroupAdd as FundersIcon,
   Category as CatalogIcon,
   Palette as BrandingIcon,
-  ArrowBack as BackIcon,
 } from '@mui/icons-material';
 import useGrants from '../../auth/useGrants';
 import { useAuth } from '../../auth/AuthContext';
@@ -65,7 +64,6 @@ export default function CSRSidebar({ collapsed, onToggle }) {
       {isAdminOrSuper && item({ to: '/csr/clients', icon: <FundersIcon fontSize="small" />, label: 'Funders' })}
       {isAdminOrSuper && item({ to: '/csr/activity-types', icon: <CatalogIcon fontSize="small" />, label: 'Activity Types' })}
       {isAdminOrSuper && item({ to: '/csr/branding', icon: <BrandingIcon fontSize="small" />, label: 'Branding' })}
-      {item({ to: '/dashboard', icon: <BackIcon fontSize="small" />, label: 'Back to TTA' })}
     </SidebarFrame>
   );
 }
