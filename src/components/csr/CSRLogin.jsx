@@ -99,9 +99,6 @@ export default function CSRLogin() {
             <CSRIcon fontSize="small" />
           </Avatar>
           <Typography variant="h6" align="center">CSR</Typography>
-          <Typography variant="body2" align="center" color="text.secondary">
-            Project Delivery
-          </Typography>
         </Box>
 
         {errors.general && <Alert severity="error" sx={{ mb: 2 }}>{errors.general}</Alert>}
