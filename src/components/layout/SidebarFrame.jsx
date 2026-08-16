@@ -19,8 +19,15 @@ import './Sidebar.css';
 const buildId = process.env.REACT_APP_BUILD_ID || 'dev';
 const buildTime = process.env.REACT_APP_BUILD_TIME || '';
 
-export function NavItem({ to, icon, label, end, collapsed }) {
-  const linkClass = ({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`;
+// `forceActive` lets a sidebar claim a route that NavLink's own `to`/`end`
+// matching cannot reach — a detail page such as /csr/:id or /trials/:id, which
+// belongs to the list item the user navigated from but shares no matchable
+// prefix with it once `end` is set. The caller decides ownership (see each
+// sidebar's route table); NavItem stays generic and defaults to plain NavLink
+// behaviour.
+export function NavItem({ to, icon, label, end, collapsed, forceActive }) {
+  const linkClass = ({ isActive }) =>
+    `sidebar-link ${isActive || forceActive ? 'active' : ''}`;
   return (
     <Tooltip
       title={collapsed ? label : ''}

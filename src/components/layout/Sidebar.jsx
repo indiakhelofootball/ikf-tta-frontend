@@ -1,4 +1,5 @@
 import React from "react";
+import { matchRoutes, useLocation } from "react-router-dom";
 import {
   Dashboard as DashboardIcon,
   Business as BusinessIcon,
@@ -20,7 +21,21 @@ import { REPORT_KEYS } from "../../auth/roles";
 import SidebarFrame, { NavItem } from "./SidebarFrame";
 import "./Sidebar.css";
 
+// Mirrors App.js's /trials* routes. Projects is pinned with `end` so it does not
+// steal /trials/create from Project Setup, which also leaves a trial detail page
+// (/trials/:id) with nothing highlighted. matchRoutes ranks the three the way the
+// router already ranked them, so /trials/create still resolves to Project Setup
+// and only a real detail page hands Projects the highlight.
+const TRIAL_ROUTES = [
+  { path: "/trials" },
+  { path: "/trials/create" },
+  { path: "/trials/:id" },
+];
+
 export default function Sidebar({ collapsed, onToggle }) {
+  const location = useLocation();
+  const matchedPath = matchRoutes(TRIAL_ROUTES, location)?.[0]?.route?.path;
+  const onTrialDetail = matchedPath === "/trials/:id";
   const { isSuper, canView, canEdit } = useGrants();
 
   const canAccessTrialManagement = canView('trials');
@@ -51,7 +66,7 @@ export default function Sidebar({ collapsed, onToggle }) {
       {canAccessControl && item({ to: "/user-management", icon: <AccessIcon fontSize="small" />, label: "User Management" })}
       {canManageConfig && item({ to: "/admin", icon: <SettingsIcon fontSize="small" />, label: "Admin" })}
       {canEdit('trials') && item({ to: "/trials/create", icon: <AddIcon fontSize="small" />, label: "Project Setup" })}
-      {canAccessTrialManagement && item({ to: "/trials", icon: <EmojiEventsIcon fontSize="small" />, label: "Projects", end: true })}
+      {canAccessTrialManagement && item({ to: "/trials", icon: <EmojiEventsIcon fontSize="small" />, label: "Projects", end: true, forceActive: onTrialDetail })}
       {canAccessREPManagement && item({ to: "/rep-management", icon: <BusinessIcon fontSize="small" />, label: "REP Management" })}
       {canAccessVendorManagement && item({ to: "/vendors", icon: <StoreIcon fontSize="small" />, label: "Vendors" })}
       {canAccessWorkOrders && item({ to: "/work-orders", icon: <WorkOrderIcon fontSize="small" />, label: "Work Orders" })}
