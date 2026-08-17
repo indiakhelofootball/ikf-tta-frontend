@@ -3,6 +3,7 @@ import { ThemeProvider } from '@mui/material/styles';
 import {
   Box, Container, Typography, Tabs, Tab, List, ListItem, ListItemText, Chip,
   CircularProgress, AppBar, Toolbar, Button, Link, Stack, Alert, Divider, Tooltip,
+  LinearProgress,
 } from '@mui/material';
 import { OpenInNew as OpenIcon } from '@mui/icons-material';
 
@@ -10,6 +11,20 @@ import { clientAPI } from '../../services/api';
 import { useAuth } from '../../auth/AuthContext';
 import clientThemeFrom from './clientTheme';
 import ClientChangePasswordDialog from './ClientChangePasswordDialog';
+
+// Deliverable statuses are stored as readable labels server-side
+// (Pending / In Progress / Completed), so only the colour is mapped here.
+const DELIVERABLE_STATUS_COLOR = {
+  Completed: 'success',
+  'In Progress': 'info',
+  Pending: 'default',
+};
+
+const deliverablePercent = (d) => {
+  const target = Number(d.targetCount) || 0;
+  if (target <= 0) return null;
+  return Math.min(100, Math.round(((Number(d.completedCount) || 0) / target) * 100));
+};
 
 function Field({ label, value }) {
   return (
@@ -25,6 +40,7 @@ export default function ClientPortalPage() {
   const [project, setProject] = useState(null);
   const [activities, setActivities] = useState([]);
   const [reports, setReports] = useState([]);
+  const [deliverables, setDeliverables] = useState([]);
   const [brand, setBrand] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -37,14 +53,15 @@ export default function ClientPortalPage() {
     let active = true;
     (async () => {
       try {
-        const [p, acts, reps, b] = await Promise.all([
+        const [p, acts, reps, dels, b] = await Promise.all([
           clientAPI.project(), clientAPI.activities(), clientAPI.reports(),
-          clientAPI.myBranding().catch(() => null),
+          clientAPI.deliverables(), clientAPI.myBranding().catch(() => null),
         ]);
         if (!active) return;
         setProject(asList(p)[0] || null);
         setActivities(asList(acts));
         setReports(asList(reps));
+        setDeliverables(asList(dels));
         setBrand(b && b.slug ? b : null);
       } catch (e) {
         if (active) setError(e.message || 'Failed to load your project.');
@@ -88,6 +105,7 @@ export default function ClientPortalPage() {
               <Tab label="My Project" />
               <Tab label={`Activities (${activities.length})`} />
               <Tab label={`Reports (${reports.length})`} />
+              <Tab label={`Deliverables (${deliverables.length})`} />
             </Tabs>
 
             {tab === 0 && (
@@ -146,6 +164,50 @@ export default function ClientPortalPage() {
                       )}
                     </ListItem>
                   ))}
+                </List>
+              )
+            )}
+
+            {tab === 3 && (
+              deliverables.length === 0 ? (
+                <Typography color="text.secondary" sx={{ py: 2 }}>No deliverables recorded yet.</Typography>
+              ) : (
+                <List>
+                  {deliverables.map((d) => {
+                    const percent = deliverablePercent(d);
+                    return (
+                      <ListItem key={d.id} sx={{ display: 'block', py: 2 }}>
+                        <Stack
+                          direction="row"
+                          spacing={2}
+                          sx={{ alignItems: 'center', justifyContent: 'space-between' }}
+                        >
+                          <ListItemText
+                            primary={d.title}
+                            secondary={[
+                              d.targetCount != null
+                                ? `${d.completedCount ?? 0} of ${d.targetCount} completed`
+                                : null,
+                              d.dueDate ? `Due ${d.dueDate}` : null,
+                            ].filter(Boolean).join(' · ') || null}
+                          />
+                          <Chip
+                            size="small"
+                            label={d.status}
+                            color={DELIVERABLE_STATUS_COLOR[d.status] || 'default'}
+                          />
+                        </Stack>
+                        {percent != null && (
+                          <LinearProgress
+                            variant="determinate"
+                            value={percent}
+                            aria-label={`Progress for ${d.title}`}
+                            sx={{ mt: 1, height: 6, borderRadius: 3 }}
+                          />
+                        )}
+                      </ListItem>
+                    );
+                  })}
                 </List>
               )
             )}
