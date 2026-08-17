@@ -20,6 +20,7 @@ import {
   ReceiptLong as PRIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import ExcelJS from 'exceljs';
 import { reportsAPI } from '../../services/api';
 import {
   computePaymentFlags, topSeverity,
@@ -38,6 +39,39 @@ const fmtDate = (d) => {
 };
 
 const STATUS_OPTIONS = ['Sent to Accounts', 'Payment Done', 'Payment Bounced'];
+
+// Shared column set for both exports (CSV and Excel)
+const EXPORT_HEADERS = [
+  'PR Number', 'Date', 'Vendor', 'Work Order', 'Period',
+  'Gross', 'TDS', 'Net', 'Status', 'Batch', 'Issue',
+];
+
+// Indian lakh/crore grouping for real numeric cells — Excel's own equivalent of fmtINR
+const INR_NUM_FMT = '##,##,##0.00';
+
+// One place computes the cumulative figures: totals strip, table total row, Excel totals row
+const computeTotals = (rows) => rows.reduce((acc, p) => {
+  acc.gross += parseFloat(p.grossAmount) || 0;
+  acc.tds += parseFloat(p.tdsAmount) || 0;
+  acc.net += parseFloat(p.netAmount) || 0;
+  if (p.status === 'Sent to Accounts') acc.sent += 1;
+  else if (p.status === 'Payment Done') acc.done += 1;
+  else if (p.status === 'Payment Bounced') acc.bounced += 1;
+  return acc;
+}, { gross: 0, tds: 0, net: 0, sent: 0, done: 0, bounced: 0 });
+
+async function triggerXlsxDownload(wb, fileName) {
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 
 // ── Convert a flag into one short, plain-English line for the Issue column ──
 
@@ -232,35 +266,44 @@ function PaymentAuditReport() {
     return Array.from(set).sort((a, b) => (ISSUE_TITLES[a] || a).localeCompare(ISSUE_TITLES[b] || b));
   }, [flagsByPR]);
 
-  // ── CSV export ───────────────────────────────────────────────────────────
+  // ── Exports ──────────────────────────────────────────────────────────────
+
+  // Flattens exactly what the user is looking at (filteredSorted) into the
+  // shared export column set. Amounts stay raw so each writer can decide
+  // whether it needs a string (CSV) or a real number (Excel).
+  const buildExportRows = () => filteredSorted.map((p) => {
+    const v = vendorById.get(p.vendorId || p.vendor);
+    const wo = woById.get(p.workOrderId || p.workOrder);
+    const batch = p.batchId ? batchById.get(p.batchId) : null;
+    const flags = flagsByPR.get(p._id || p.id) || [];
+    const issueSummary = flags.length === 0
+      ? ''
+      : flags.map((f) => {
+          const related = (f.relatedIds || []).map((rid) => prById.get(rid)?.requestNumber).filter(Boolean);
+          return flagToIssueText(f, related);
+        }).join(' | ');
+    return {
+      prNumber: p.requestNumber || '',
+      date: p.invoiceDate || '',
+      vendor: v?.vendorName || p.vendorName || '',
+      workOrder: wo?.workOrderNumber || p.workOrderNumber || '',
+      period: p.periodLabel || '',
+      gross: p.grossAmount,
+      tds: p.tdsAmount,
+      net: p.netAmount,
+      status: p.status || '',
+      batch: batch?.fileName || batch?.batchNumber || '',
+      issue: issueSummary,
+    };
+  });
 
   const exportCSV = () => {
-    const header = ['PR Number', 'Date', 'Vendor', 'Work Order', 'Period', 'Gross', 'TDS', 'Net', 'Status', 'Batch', 'Issue'];
-    const rows = filteredSorted.map((p) => {
-      const v = vendorById.get(p.vendorId || p.vendor);
-      const wo = woById.get(p.workOrderId || p.workOrder);
-      const batch = p.batchId ? batchById.get(p.batchId) : null;
-      const flags = flagsByPR.get(p._id || p.id) || [];
-      const issueSummary = flags.length === 0
-        ? ''
-        : flags.map((f) => {
-            const related = (f.relatedIds || []).map((rid) => prById.get(rid)?.requestNumber).filter(Boolean);
-            return flagToIssueText(f, related);
-          }).join(' | ');
-      return [
-        p.requestNumber || '',
-        p.invoiceDate || '',
-        v?.vendorName || p.vendorName || '',
-        wo?.workOrderNumber || p.workOrderNumber || '',
-        p.periodLabel || '',
-        p.grossAmount || 0,
-        p.tdsAmount || 0,
-        p.netAmount || 0,
-        p.status || '',
-        batch?.fileName || batch?.batchNumber || '',
-        issueSummary,
-      ];
-    });
+    const header = EXPORT_HEADERS;
+    const rows = buildExportRows().map((r) => [
+      r.prNumber, r.date, r.vendor, r.workOrder, r.period,
+      r.gross || 0, r.tds || 0, r.net || 0,
+      r.status, r.batch, r.issue,
+    ]);
     const csv = [header, ...rows].map((r) => r.map((cell) => {
       const s = String(cell ?? '');
       return s.includes(',') || s.includes('"') || s.includes('\n')
@@ -274,6 +317,69 @@ function PaymentAuditReport() {
     a.download = `payment_audit_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const exportExcel = async () => {
+    const rows = buildExportRows();
+    if (rows.length === 0) return;
+    const totals = computeTotals(filteredSorted);
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Payment Audit');
+
+    const summaryRow = ws.addRow([
+      `Payment Audit — ${rows.length} payments · Gross ${fmtINR(totals.gross)} · TDS ${fmtINR(totals.tds)} · Net ${fmtINR(totals.net)}`,
+    ]);
+    summaryRow.getCell(1).font = { bold: true };
+
+    const headerRow = ws.addRow(EXPORT_HEADERS);
+    headerRow.eachCell((cell) => {
+      cell.font = { bold: true };
+      cell.alignment = { vertical: 'middle', horizontal: 'left' };
+      cell.border = { bottom: { style: 'thin' } };
+    });
+    headerRow.height = 22;
+
+    rows.forEach((r) => {
+      ws.addRow([
+        r.prNumber,
+        r.date,
+        r.vendor,
+        r.workOrder,
+        r.period,
+        parseFloat(r.gross) || 0,
+        parseFloat(r.tds) || 0,
+        parseFloat(r.net) || 0,
+        r.status,
+        r.batch,
+        r.issue,
+      ]);
+    });
+
+    const widths = [16, 14, 26, 18, 14, 16, 14, 16, 18, 22, 40];
+    widths.forEach((w, i) => { ws.getColumn(i + 1).width = w; });
+
+    const moneyCols = [6, 7, 8];
+    const firstDataRow = 3;
+    const lastDataRow = 2 + rows.length;
+    for (let R = firstDataRow; R <= lastDataRow; R++) {
+      moneyCols.forEach((C) => { ws.getRow(R).getCell(C).numFmt = INR_NUM_FMT; });
+    }
+
+    ws.views = [{ state: 'frozen', ySplit: 2 }];
+
+    const totalsRow = ws.addRow([
+      '', '', '', '', 'TOTALS',
+      totals.gross, totals.tds, totals.net,
+      '', '', `${rows.length} rows`,
+    ]);
+    totalsRow.eachCell((cell) => {
+      cell.font = { bold: true };
+      cell.border = { top: { style: 'thin' } };
+    });
+    moneyCols.forEach((C) => { totalsRow.getCell(C).numFmt = INR_NUM_FMT; });
+
+    await triggerXlsxDownload(wb, `payment_audit_${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
   const clearFilters = () => {
@@ -367,6 +473,11 @@ function PaymentAuditReport() {
               disabled={filteredSorted.length === 0}
               sx={{ textTransform: 'none', borderRadius: 1.5, borderColor: '#5B63D3', color: '#5B63D3' }}>
               Export CSV
+            </Button>
+            <Button size="small" variant="outlined" startIcon={<DownloadIcon />} onClick={exportExcel}
+              disabled={filteredSorted.length === 0}
+              sx={{ textTransform: 'none', borderRadius: 1.5, borderColor: '#5B63D3', color: '#5B63D3' }}>
+              Export Excel
             </Button>
           </Stack>
         </Stack>
@@ -514,15 +625,7 @@ function PaymentAuditReport() {
 
         {/* Totals strip — cumulative for the current filtered view */}
         {!loading && filteredSorted.length > 0 && (() => {
-          const totals = filteredSorted.reduce((acc, p) => {
-            acc.gross += parseFloat(p.grossAmount) || 0;
-            acc.tds += parseFloat(p.tdsAmount) || 0;
-            acc.net += parseFloat(p.netAmount) || 0;
-            if (p.status === 'Sent to Accounts') acc.sent += 1;
-            else if (p.status === 'Payment Done') acc.done += 1;
-            else if (p.status === 'Payment Bounced') acc.bounced += 1;
-            return acc;
-          }, { gross: 0, tds: 0, net: 0, sent: 0, done: 0, bounced: 0 });
+          const totals = computeTotals(filteredSorted);
           return (
             <Paper variant="outlined" sx={{
               p: 1.5, mb: 2, borderRadius: 2,
@@ -641,12 +744,7 @@ function PaymentAuditReport() {
                   })}
                   {/* Consolidated total row */}
                   {(() => {
-                    const t = filteredSorted.reduce((acc, p) => {
-                      acc.gross += parseFloat(p.grossAmount) || 0;
-                      acc.tds += parseFloat(p.tdsAmount) || 0;
-                      acc.net += parseFloat(p.netAmount) || 0;
-                      return acc;
-                    }, { gross: 0, tds: 0, net: 0 });
+                    const t = computeTotals(filteredSorted);
                     return (
                       <TableRow sx={{
                         bgcolor: '#f8fafc',

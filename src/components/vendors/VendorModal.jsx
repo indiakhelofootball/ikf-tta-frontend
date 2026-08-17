@@ -62,6 +62,9 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
 
   const formActive = isEdit || !!confirmedVendorName;
   const lSx = formActive ? fLabelSx : fLabelDisabledSx;
+  const existingVendorId = vendor?._id || vendor?.id || selectedVendor?._id || selectedVendor?.id;
+  const companyType = isEdit ? formData.companyType : searchEntityType;
+  const showEntityName = !!companyType && companyType !== 'Individual';
 
   // cfgVersion — the config cache fills in after mount and used to notify nobody.
   const cfgVersion = useConfigVersion();
@@ -169,6 +172,7 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
     if (!file.type.startsWith('image/') && file.type !== 'application/pdf') { setFileError('PAN card must be an image (PNG/JPG) or PDF'); e.target.value = ''; return; }
     if (file.size > 3 * 1024 * 1024) { setFileError('PAN card file must be less than 3MB'); e.target.value = ''; return; }
     setPanCardImage(file);
+    setErrors(prev => ({ ...prev, panCardImage: '' }));
     const r = new FileReader();
     r.onloadend = () => setPanCardImagePreview(r.result);
     r.readAsDataURL(file);
@@ -181,6 +185,8 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
     const e = {};
     if (!formData.panNumber.trim()) e.panNumber = 'PAN number is required';
     else if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/i.test(formData.panNumber.trim())) e.panNumber = 'Invalid PAN format (e.g. AABCU9603R)';
+    // Only when creating a brand-new vendor — records that predate this rule may have no document on file
+    if (!existingVendorId && !panCardImage) e.panCardImage = 'PAN card document is required';
     if (formData.gstNumber.trim() && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/i.test(formData.gstNumber.trim())) e.gstNumber = 'Invalid GST format (e.g. 27AABCU9603R1ZM)';
     if (!formData.contactPerson.trim()) e.contactPerson = 'Contact person is required';
     if (!formData.phone.trim()) e.phone = 'Phone is required';
@@ -199,7 +205,8 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
       ...formData,
       vendorName: isEdit ? formData.vendorName : confirmedVendorName,
       vendorType: isEdit ? formData.vendorType : searchServiceType,
-      companyType: isEdit ? formData.companyType : searchEntityType,
+      companyType,
+      entityName: showEntityName ? formData.entityName.trim() : '',
       status: 'Verified',
     };
     if (panCardImage) {
@@ -209,8 +216,7 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
       data.panCardImageName = vendor?.panCardImageName || '';
       data.panCardImageUrl = vendor?.panCardImageUrl || '';
     }
-    const vendorId = vendor?._id || vendor?.id || selectedVendor?._id || selectedVendor?.id;
-    onSave(data, vendorId);
+    onSave(data, existingVendorId);
   };
 
   const isPanCardPdf = panCardImagePreview && !panCardImagePreview.startsWith('data:image');
@@ -397,6 +403,19 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
             </Box>
           )}
 
+          {/* ── ENTITY ── */}
+          {showEntityName && (
+            <>
+              <Typography variant="subtitle2" sx={sectionSx}>ENTITY</Typography>
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="caption" sx={lSx}>Entity Name</Typography>
+                <TextField fullWidth size="small" placeholder={`Registered name of the ${companyType}`}
+                  value={formData.entityName} onChange={handleChange('entityName')}
+                  disabled={!formActive} sx={inputSx} />
+              </Box>
+            </>
+          )}
+
           {/* ── DOCUMENTS ── */}
           <Typography variant="subtitle2" sx={sectionSx}>DOCUMENTS</Typography>
           <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 3 }}>
@@ -414,7 +433,7 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
                 inputProps={{ style: { textTransform: 'uppercase' } }} sx={inputSx} />
             </Box>
             <Box>
-              <Typography variant="caption" sx={lSx}>PAN Card Upload</Typography>
+              <Typography variant="caption" sx={lSx}>PAN Card Upload *</Typography>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Button component="label" variant="outlined" startIcon={<UploadIcon />} size="small"
                   disabled={!formActive} sx={{ borderRadius: 1.5, textTransform: 'none' }}>
@@ -440,6 +459,9 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
                   )
                 )}
               </Box>
+              {errors.panCardImage && (
+                <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>{errors.panCardImage}</Typography>
+              )}
             </Box>
             <Box>
               <FormControlLabel disabled={!formActive || !formData.gstNumber.trim()}

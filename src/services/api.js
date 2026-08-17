@@ -965,6 +965,8 @@ export const clientAPI = {
   project: async () => apiService.request('/client/project/'),
   activities: async () => apiService.request('/client/activities/'),
   reports: async () => apiService.request('/client/reports/'),
+  // Deliverable progress only — the grant contract behind them stays internal.
+  deliverables: async () => apiService.request('/client/deliverables/'),
   // White-label branding: public by slug (pre-auth login), and the funder's own
   // branding post-auth (skins the portal without a slug in the URL).
   brandingBySlug: async (slug) => apiService.request(`/client/branding/${slug}/`),
