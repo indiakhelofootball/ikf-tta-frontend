@@ -32,6 +32,8 @@
   },
   "devDependencies": {
     "@craco/craco": "^7.1.0",
+    "@mkatogui/universal-design-system": "^0.6.2",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "autoprefixer": "^10.4.23",
     "cross-env": "^7.0.3",
     "eslint-config-prettier": "^10.1.8",
@@ -50,6 +52,9 @@
     "eject": "react-scripts eject",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
+    "lint:design": "node scripts/designLint.js",
+    "lint:design:warn": "node scripts/designLint.js --warn",
+    "ui:audit": "node scripts/uiAudit.js",
     "format": "prettier --write src/",
     "prepare": "husky install"
   },
@@ -63,7 +68,24 @@
     "extends": [
       "react-app",
       "react-app/jest"
-    ]
+    ],
+    "rules": {
+      "no-restricted-globals": [
+        "warn",
+        {
+          "name": "confirm",
+          "message": "Native confirm() cannot be styled or branded and blocks the main thread. Use a MUI Dialog — and prefer Undo over confirmation for reversible actions."
+        },
+        {
+          "name": "alert",
+          "message": "Native alert() cannot be styled or branded. Use a Snackbar for transient feedback or an inline Alert for anything the user must read."
+        },
+        {
+          "name": "prompt",
+          "message": "Native prompt() cannot be styled, validated, or made accessible. Use a MUI Dialog with a real form field."
+        }
+      ]
+    }
   },
   "browserslist": {
     "production": [

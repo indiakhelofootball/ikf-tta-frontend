@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DESIGN.md — three screens</title>
+<style>
+  :root{
+    /* tokens, straight from DESIGN.md */
+    --canvas:#F8FAFC; --surface:#FFFFFF; --surface-sunken:#F1F5F9; --surface-inverse:#0E0B07;
+    --ink-900:#171310;
+    --text-primary:#12100C; --text-secondary:#475569; --text-muted:#64748B;
+    --text-on-inverse:#FFFDF7; --text-on-amber:#231603;
+    --hairline:#E2E8F0; --hairline-strong:#CBD5E1;
+    --action:#F59E0B; --action-hover:#D97706; --action-subtle:#FEF3C7; --brand-mark:#FBBF24;
+    --success:#16A34A; --success-subtle:#DCFCE7;
+    --warning:#C2410C; --warning-subtle:#FFEDD5;
+    --danger:#DC2626;
+    --money:#0F172A;
+    --r-sm:4px; --r-md:8px; --r-lg:12px; --r-xl:16px; --r-pill:9999px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#EEEFF2;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  .page{max-width:1240px;margin:0 auto;padding:44px 24px 88px}
+  h1.t{font-size:24px;font-weight:800;letter-spacing:-.03em;margin:0 0 6px;color:#111}
+  .lead{color:#5B6270;font-size:15px;line-height:1.55;margin:0 0 36px;max-width:74ch}
+  .blk{margin:0 0 52px}
+  .hd{display:flex;gap:12px;align-items:baseline;margin:0 0 4px}
+  .n{font-size:12px;font-weight:800;letter-spacing:.08em;color:#8A8F9A}
+  .nm{font-size:17px;font-weight:700;letter-spacing:-.02em;color:#111}
+  .cap{color:#5B6270;font-size:14px;line-height:1.5;margin:0 0 14px;max-width:78ch}
+  .frame{position:relative;width:100%;aspect-ratio:1180/720;border-radius:14px;overflow:hidden;
+         box-shadow:0 1px 2px rgba(16,20,28,.06),0 12px 32px -12px rgba(16,20,28,.22)}
+  .sc{position:absolute;inset:0;width:1180px;height:720px;transform-origin:0 0;display:flex;background:var(--canvas)}
+
+  /* ---- shared chrome ---- */
+  .rail{width:212px;background:var(--surface-inverse);padding:20px 12px;display:flex;flex-direction:column;flex:none}
+  .brand{display:flex;align-items:center;gap:9px;padding:0 8px 20px}
+  .mk{width:28px;height:28px;border-radius:var(--r-md);background:var(--brand-mark);color:#1B1206;
+      display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;letter-spacing:-.02em}
+  .bn{color:var(--text-on-inverse);font-weight:700;font-size:13.5px;letter-spacing:-.01em}
+  .bs{color:#8C8074;font-size:10.5px;margin-top:1px}
+  .nav{display:flex;flex-direction:column;gap:2px}
+  .ni{display:flex;align-items:center;gap:10px;height:38px;padding:0 10px;border-radius:var(--r-md);
+      color:#A9A096;font-size:13.5px;font-weight:500}
+  .ni.on{background:rgba(251,191,36,.14);color:#FFF3D6;font-weight:500}
+  .dot{width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.5;flex:none}
+  .ni.on .dot{background:var(--brand-mark);opacity:1}
+  .main{flex:1;display:flex;flex-direction:column;min-width:0}
+  .top{height:64px;background:var(--surface);border-bottom:1px solid var(--hairline);
+       display:flex;align-items:center;padding:0 26px;gap:14px;flex:none}
+  .lbl{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted)}
+  .av{width:30px;height:30px;border-radius:var(--r-pill);background:var(--action-subtle);color:var(--text-on-amber);
+      display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700}
+  .body{flex:1;padding:24px 26px;overflow:hidden}
+
+  .card{background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-lg);padding:18px}
+  .stat{font-weight:800;font-size:32px;line-height:1.1;letter-spacing:-.02em;
+        font-variant-numeric:tabular-nums;color:var(--money)}
+  .num{font-variant-numeric:tabular-nums}
+  .btn{height:38px;padding:0 16px;border-radius:var(--r-md);background:var(--action);color:var(--text-on-amber);
+       font-size:14px;font-weight:650;display:inline-flex;align-items:center;letter-spacing:-.01em}
+  .btn2{height:38px;padding:0 14px;border-radius:var(--r-md);background:var(--surface);
+        border:1px solid var(--hairline-strong);color:var(--text-primary);font-size:14px;font-weight:600;
+        display:inline-flex;align-items:center}
+  .pill{border-radius:var(--r-pill);padding:3px 10px;font-size:11.5px;font-weight:650}
+  .p-ok{background:var(--success-subtle);color:var(--success)}
+  .p-wn{background:var(--warning-subtle);color:var(--warning)}
+  .bar{height:7px;border-radius:var(--r-pill);background:var(--surface-sunken);overflow:hidden}
+  .bar > i{display:block;height:100%;background:var(--action);border-radius:var(--r-pill)}
+  table{width:100%;border-collapse:collapse}
+  th{font-size:11.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);
+     background:var(--surface-sunken);padding:9px 12px;text-align:left}
+  td{padding:11px 12px;font-size:13.5px;color:var(--text-primary);border-bottom:1px solid var(--hairline)}
+  .rt{text-align:right;font-variant-numeric:tabular-nums}
+  .note{margin-top:13px;font-size:13.5px;color:#5B6270;line-height:1.55;max-width:80ch}
+  .note b{color:#111;font-weight:650}
+</style>
+</head>
+<body><div class="page">
+
+<h1 class="t">DESIGN.md — three screens</h1>
+<p class="lead">Same token file, three different jobs. Watch the four surface tiers do the work that drop
+shadows used to, and watch where amber is allowed to appear.</p>
+
+<!-- 1 -->
+<div class="blk">
+  <div class="hd"><span class="n">01</span><span class="nm">CSR Dashboard — workspace, dense</span></div>
+  <p class="cap">Staff, many times a day. The money is the largest thing on screen. Amber appears exactly
+  four times: the mark, the active nav pill, the primary button, and the utilisation bar.</p>
+  <div class="frame"><div class="sc">
+    <div class="rail">
+      <div class="brand"><div class="mk">IKF</div><div><div class="bn">CSR</div><div class="bs">Project delivery</div></div></div>
+      <div class="nav">
+        <div class="ni on"><span class="dot"></span>Dashboard</div>
+        <div class="ni"><span class="dot"></span>Projects</div>
+        <div class="ni"><span class="dot"></span>Funders</div>
+        <div class="ni"><span class="dot"></span>Activity types</div>
+        <div class="ni"><span class="dot"></span>Branding</div>
+      </div>
+      <div style="margin-top:auto;color:#5E564D;font-size:10.5px;padding:0 10px">build 4a91c</div>
+    </div>
+    <div class="main">
+      <div class="top">
+        <div><div style="font-size:15px;font-weight:700;letter-spacing:-.02em;color:var(--text-primary)">CSR Dashboard</div></div>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:12px">
+          <div style="font-size:12.5px;color:var(--text-muted)" class="num">Updated 14:20</div>
+          <div class="av">AB</div>
+        </div>
+      </div>
+      <div class="body">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px">
+          <div class="card">
+            <div class="lbl">Sanctioned</div>
+            <div class="stat" style="margin:6px 0 2px">₹4.20<span style="font-size:19px;font-weight:700">Cr</span></div>
+            <div style="font-size:12.5px;color:var(--text-muted)">across 7 active projects</div>
+          </div>
+          <div class="card">
+            <div class="lbl">Utilised</div>
+            <div class="stat" style="margin:6px 0 2px">₹2.61<span style="font-size:19px;font-weight:700">Cr</span></div>
+            <div style="font-size:12.5px;color:var(--success);font-weight:600">62% · on pace</div>
+          </div>
+          <div class="card">
+            <div class="lbl">Tagged, not certifiable</div>
+            <div class="stat" style="margin:6px 0 2px;color:var(--warning)">₹18.4<span style="font-size:19px;font-weight:700">L</span></div>
+            <div style="font-size:12.5px;color:var(--text-muted)">41 expenses awaiting payment</div>
+          </div>
+          <div class="card">
+            <div class="lbl">Reports pending</div>
+            <div class="stat" style="margin:6px 0 2px">6</div>
+            <div style="font-size:12.5px;color:var(--text-muted)">not yet visible to funders</div>
+          </div>
+        </div>
+        <div class="card" style="margin-bottom:16px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:9px">
+            <div style="font-size:14px;font-weight:700;color:var(--text-primary)">Utilisation across active projects</div>
+            <div style="font-size:12.5px;color:var(--text-muted)" class="num">62% utilised · 74% of window elapsed</div>
+          </div>
+          <div class="bar"><i style="width:62%"></i></div>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden">
+          <table>
+            <tr><th>Project</th><th>Funder</th><th class="rt">Sanctioned</th><th class="rt">Utilised</th><th>Ends</th><th>Status</th></tr>
+            <tr><td>Girls Football — Maharashtra</td><td>Tata Trusts</td><td class="rt">₹1,20,00,000</td><td class="rt">₹84,50,000</td><td class="num">31 Mar</td><td><span class="pill p-ok">Active</span></td></tr>
+            <tr><td>Grassroots Trials — Karnataka</td><td>Infosys Foundation</td><td class="rt">₹96,00,000</td><td class="rt">₹51,20,000</td><td class="num">30 Jun</td><td><span class="pill p-ok">Active</span></td></tr>
+            <tr><td>Coach Certification — North East</td><td>Mahindra &amp; Mahindra Ltd.</td><td class="rt">₹74,00,000</td><td class="rt">₹68,90,000</td><td class="num">28 Feb</td><td><span class="pill p-wn">Closing</span></td></tr>
+            <tr style="border:0"><td style="border:0">School Leagues — Kerala</td><td style="border:0">HDFC Bank CSR</td><td class="rt" style="border:0">₹58,00,000</td><td class="rt" style="border:0">₹22,10,000</td><td class="num" style="border:0">15 Sep</td><td style="border:0"><span class="pill p-ok">Active</span></td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div></div>
+  <p class="note"><b>Four surface tiers visible at once:</b> near-black rail, slate page floor, white cards,
+  and the sunken table header. That's the value structure the live app has none of — and it's doing all the
+  depth work with a single hairline and zero shadows.</p>
+</div>
+
+<!-- 2 -->
+<div class="blk">
+  <div class="hd"><span class="n">02</span><span class="nm">Funder portal — same tokens, airy</span></div>
+  <p class="cap">A corporate CSR officer, four times a year. Outcomes before inputs, one certificate button,
+  and a block designed to be screenshotted into a board deck.</p>
+  <div class="frame"><div class="sc" style="flex-direction:column;background:var(--canvas)">
+    <div style="height:60px;background:var(--surface-inverse);display:flex;align-items:center;padding:0 40px;gap:11px;flex:none">
+      <div class="mk" style="background:#2F6DB5;color:#fff">TT</div>
+      <div style="color:var(--text-on-inverse);font-weight:700;font-size:14px">Tata Trusts · CSR Portal</div>
+      <div style="margin-left:auto;display:flex;gap:20px;color:#9C948B;font-size:13px">
+        <span style="color:#fff;font-weight:600">Overview</span><span>Activities</span><span>Reports</span><span>Sign out</span></div>
+    </div>
+    <div style="padding:34px 40px;flex:1">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:26px">
+        <div>
+          <div class="lbl" style="margin-bottom:7px">Girls Football Development · Maharashtra</div>
+          <div style="font-size:15px;color:var(--text-secondary);max-width:52ch;line-height:1.55">
+            Apr 2025 – Mar 2026 · ₹1,20,00,000 sanctioned</div>
+        </div>
+        <div class="btn">Download utilisation certificate</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-xl);padding:28px 30px;margin-bottom:18px">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:26px">
+          <div><div class="lbl">Girls trialled</div><div class="stat" style="margin-top:7px">3,412</div></div>
+          <div><div class="lbl">Cities reached</div><div class="stat" style="margin-top:7px">11<span style="font-size:19px;font-weight:700;color:var(--text-muted)"> of 14</span></div></div>
+          <div><div class="lbl">Cost per participant</div><div class="stat" style="margin-top:7px">₹2,476</div></div>
+          <div><div class="lbl">Funds utilised</div><div class="stat" style="margin-top:7px">70<span style="font-size:19px;font-weight:700">%</span></div></div>
+        </div>
+        <div style="margin-top:22px;padding-top:18px;border-top:1px solid var(--hairline)">
+          <div class="bar" style="margin-bottom:9px"><i style="width:70%"></i></div>
+          <div style="font-size:13.5px;color:var(--text-secondary)">
+            <b style="color:var(--text-primary);font-weight:650">₹84,50,000 of ₹1,20,00,000 deployed</b> — 70% utilised
+            against 75% of the project window elapsed. On pace for full deployment by March.</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1.35fr 1fr;gap:18px">
+        <div class="card" style="border-radius:var(--r-xl);padding:20px 22px">
+          <div style="font-size:14px;font-weight:700;margin-bottom:13px;color:var(--text-primary)">Recent activity</div>
+          <div style="display:flex;gap:11px;padding:9px 0;border-bottom:1px solid var(--hairline)">
+            <div style="width:7px;height:7px;border-radius:50%;background:var(--success);margin-top:6px;flex:none"></div>
+            <div><div style="font-size:13.5px;font-weight:600">District trial — Nashik</div>
+              <div style="font-size:12.5px;color:var(--text-muted)" class="num">412 participants · 14 Aug 2026</div></div></div>
+          <div style="display:flex;gap:11px;padding:9px 0;border-bottom:1px solid var(--hairline)">
+            <div style="width:7px;height:7px;border-radius:50%;background:var(--success);margin-top:6px;flex:none"></div>
+            <div><div style="font-size:13.5px;font-weight:600">Coach workshop — Pune</div>
+              <div style="font-size:12.5px;color:var(--text-muted)" class="num">38 coaches certified · 02 Aug 2026</div></div></div>
+          <div style="display:flex;gap:11px;padding:9px 0">
+            <div style="width:7px;height:7px;border-radius:50%;background:var(--success);margin-top:6px;flex:none"></div>
+            <div><div style="font-size:13.5px;font-weight:600">Equipment distribution — Nagpur</div>
+              <div style="font-size:12.5px;color:var(--text-muted)" class="num">6 schools · 27 Jul 2026</div></div></div>
+        </div>
+        <div class="card" style="border-radius:var(--r-xl);padding:20px 22px">
+          <div style="font-size:14px;font-weight:700;margin-bottom:13px;color:var(--text-primary)">Reports</div>
+          <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--hairline)">
+            <div style="flex:1"><div style="font-size:13.5px;font-weight:600">Quarterly progress — Q2 FY26</div>
+              <div style="font-size:12.5px;color:var(--text-muted)" class="num">Published 08 Aug 2026</div></div>
+            <div style="color:var(--action-hover);font-size:12.5px;font-weight:650">Open</div></div>
+          <div style="display:flex;align-items:center;gap:10px;padding:9px 0">
+            <div style="flex:1"><div style="font-size:13.5px;font-weight:600">Impact summary — H1 FY26</div>
+              <div style="font-size:12.5px;color:var(--text-muted)" class="num">Published 30 Jun 2026</div></div>
+            <div style="color:var(--action-hover);font-size:12.5px;font-weight:650">Open</div></div>
+        </div>
+      </div>
+    </div>
+  </div></div>
+  <p class="note"><b>Identical tokens, different density.</b> Funder's blue has replaced amber on the mark only —
+  three tokens move under white-label, so nothing else can break. Outcomes lead; the sanctioned amount is
+  demoted to a subtitle. And the reports say what they are, not what the file is called.</p>
+</div>
+
+<!-- 3 -->
+<div class="blk">
+  <div class="hd"><span class="n">03</span><span class="nm">Empty state — the screen nobody designs</span></div>
+  <p class="cap">Where a new staff member and a new funder both land first. Currently a grey sentence in
+  four places across the app.</p>
+  <div class="frame"><div class="sc">
+    <div class="rail">
+      <div class="brand"><div class="mk">IKF</div><div><div class="bn">CSR</div><div class="bs">Project delivery</div></div></div>
+      <div class="nav">
+        <div class="ni"><span class="dot"></span>Dashboard</div>
+        <div class="ni on"><span class="dot"></span>Projects</div>
+        <div class="ni"><span class="dot"></span>Funders</div>
+        <div class="ni"><span class="dot"></span>Activity types</div>
+        <div class="ni"><span class="dot"></span>Branding</div>
+      </div>
+    </div>
+    <div class="main">
+      <div class="top">
+        <div style="font-size:15px;font-weight:700;letter-spacing:-.02em;color:var(--text-primary)">Projects</div>
+        <div style="margin-left:auto"><div class="av">AB</div></div>
+      </div>
+      <div class="body" style="display:flex;align-items:center;justify-content:center">
+        <div style="max-width:430px;text-align:center">
+          <div style="width:62px;height:62px;border-radius:var(--r-xl);background:var(--action-subtle);
+                      margin:0 auto 18px;display:flex;align-items:center;justify-content:center">
+            <div style="width:22px;height:22px;border-radius:var(--r-sm);border:2.5px solid var(--action-hover)"></div>
+          </div>
+          <div style="font-size:19px;font-weight:750;letter-spacing:-.02em;color:var(--text-primary);margin-bottom:7px">
+            No CSR projects yet</div>
+          <div style="font-size:14.5px;color:var(--text-secondary);line-height:1.6;margin-bottom:20px">
+            A CSR project groups the trials, work orders and expenses funded by one grant — and is what a
+            funder sees when they sign in. Create the first one to start tagging spend against it.</div>
+          <div style="display:flex;gap:10px;justify-content:center">
+            <div class="btn">Create a project</div>
+            <div class="btn2">How CSR projects work</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div></div>
+  <p class="note"><b>An on-ramp, not a dead end.</b> It explains what the thing is, why it matters, and gives
+  one clear action plus a way to learn more. Reported activation lift for doing this is around 60% — and it's
+  the cheapest screen in the whole system to build.</p>
+</div>
+
+</div>
+<script>
+  function fit(){document.querySelectorAll('.frame').forEach(f=>{
+    const s=f.querySelector('.sc'); if(s) s.style.transform='scale('+(f.clientWidth/1180)+')';});}
+  fit(); addEventListener('resize',fit);
+</script>
+</body></html>

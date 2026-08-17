@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "universal-design-system": {
+      "command": "node",
+      "args": [
+        "node_modules/@mkatogui/universal-design-system/src/mcp/index.js"
+      ]
+    }
+  }
+}
