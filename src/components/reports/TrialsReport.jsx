@@ -51,12 +51,45 @@ const fmtDate = (d) => {
   return dt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 };
 
-// Full address string for a row = venue (ground location) + city + state.
-const addressOf = (r) => [r.location, r.city, r.state].filter(Boolean).join(', ');
+// Full address for a row, PIN code included.
+//
+// The REP's city assignment is the only place a trial address is ever entered,
+// so it wins. `TrialCity.ground_location` — what this used to rely on — is never
+// written by anything: the add-city endpoint hardcodes it to '' and no screen
+// offers the field, so it is blank on every row in production. Falling back to
+// city + state is what made the report show a partial address.
+//
+// City, state and PIN live in their own columns, and whether the typed address
+// already repeats them varies by who entered it — some rows are a full postal
+// address ending in ", Mathura, Uttar Pradesh", others are a bare venue name. So
+// each part is appended only when the text does not already contain it, rather
+// than assumed present or assumed absent.
+//
+// physical_address is a TextField, so it can hold newlines; those are folded into
+// the comma list or they would break a CSV row.
+const addressOf = (r) => {
+  const base = (r.physicalAddress || '')
+    .replace(/\s*[\r\n]+\s*/g, ', ')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+    .replace(/,\s*,/g, ',')
+    .replace(/^,|,$/g, '')
+    .trim();
 
-// Google Maps search link for the row's address (no API key needed). Empty when
-// there is nothing locatable.
+  const seen = norm(base);
+  const missing = [r.city, r.state].filter((v) => v && !seen.includes(norm(v)));
+  let out = [base, ...missing].filter(Boolean).join(', ');
+
+  const pin = r.groundPinCode;
+  if (pin && !out.includes(pin)) out = out ? `${out} - ${pin}` : pin;
+  return out;
+};
+
+// Map link. The REP's assignment carries a real per-ground Google Maps URL;
+// prefer it over a search built from the address, which resolves only to the
+// centre of the city and is why the map appeared to ignore the venue.
 const mapUrl = (r) => {
+  if (r.googleMapLink) return r.googleMapLink;
   const q = addressOf(r);
   return q ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}` : '';
 };
@@ -95,14 +128,34 @@ function TrialsReport() {
 
   useEffect(() => { loadAll(); }, []);
 
-  // (trialId, city) -> [repName]
+  // (trialId, city) -> { reps: [repName], physicalAddress, googleMapLink }
+  //
+  // The assignment carries the address and map link as well as the REP, and this
+  // join already existed to find the REP name — everything else on it used to be
+  // thrown away, which is why an address entered against a city never reached
+  // the report. First addressed assignment for a city wins; a second REP on the
+  // same city adds a name, not a competing address.
   const repsByTrialCity = useMemo(() => {
     const m = new Map();
     reps.forEach((r) => {
       (r.cityAssignments || []).forEach((a) => {
         const key = `${a.trialId}||${norm(a.city)}`;
-        if (!m.has(key)) m.set(key, []);
-        m.get(key).push(r.repName);
+        if (!m.has(key)) {
+          m.set(key, {
+            reps: [], physicalAddress: '', googleMapLink: '',
+            groundLocation: '', groundPinCode: '',
+          });
+        }
+        const entry = m.get(key);
+        entry.reps.push(r.repName);
+        if (!entry.physicalAddress && a.physicalAddress) entry.physicalAddress = a.physicalAddress;
+        if (!entry.googleMapLink && a.googleMapLink) entry.googleMapLink = a.googleMapLink;
+        if (!entry.groundLocation && a.groundLocation) entry.groundLocation = a.groundLocation;
+        // The PIN belongs to the ground, so groundPinCode first; pinCode is the
+        // REP's own and only stands in when the ground has none recorded.
+        if (!entry.groundPinCode && (a.groundPinCode || a.pinCode)) {
+          entry.groundPinCode = a.groundPinCode || a.pinCode;
+        }
       });
     });
     return m;
@@ -114,7 +167,8 @@ function TrialsReport() {
     trials.forEach((t) => {
       const projectName = t.trialName || t.trialType || '—';
       (t.assignedCities || []).forEach((c) => {
-        const assignedReps = repsByTrialCity.get(`${t.id}||${norm(c.cityName)}`) || [];
+        const assignment = repsByTrialCity.get(`${t.id}||${norm(c.cityName)}`);
+        const assignedReps = assignment ? assignment.reps : [];
         out.push({
           trialId: t.id,
           projectName,
@@ -122,13 +176,34 @@ function TrialsReport() {
           season: t.season || '',
           state: c.state || '',
           city: c.cityName || '',
-          location: c.groundLocation || '',
+          // The venue, kept whole. NOT truncated to the first comma segment --
+          // there is no Address column on screen, so this is the only place the
+          // address appears there. Falls back to the trial city's own field,
+          // which is blank on every production row (see addressOf).
+          location:
+            (assignment && assignment.groundLocation)
+            || c.groundLocation
+            || (assignment ? assignment.physicalAddress : '')
+            || '',
+          // All from the REP's city assignment, the only place any of them are
+          // entered. groundPinCode completes the address; without it "full
+          // address" is missing its last component.
+          physicalAddress: assignment ? assignment.physicalAddress : '',
+          googleMapLink: assignment ? assignment.googleMapLink : '',
+          groundPinCode: assignment ? assignment.groundPinCode : '',
           month: monthOf(c),
           date: c.tentativeDate || '',
           confirmed: !!c.confirmed,
           reps: assignedReps,
           assigned: assignedReps.length > 0,
         });
+        // addressOf runs a handful of regexes, and the cell, the map link, the
+        // search filter and the CSV all want the same answer. Compute it once
+        // here instead of per render -- the search box was re-deriving it for
+        // every row on every keystroke.
+        const justAdded = out[out.length - 1];
+        justAdded.address = addressOf(justAdded);
+        justAdded.mapHref = mapUrl(justAdded);
       });
     });
     return out;
@@ -152,6 +227,8 @@ function TrialsReport() {
           norm(r.city).includes(q) ||
           norm(r.state).includes(q) ||
           norm(r.location).includes(q) ||
+          // Search the address and PIN too, now that they are shown.
+          norm(r.address).includes(q) ||
           r.reps.some((n) => norm(n).includes(q))
         );
       })
@@ -192,10 +269,10 @@ function TrialsReport() {
   }), [rows]);
 
   const exportCSV = () => {
-    const header = ['Project', 'Season', 'State', 'City', 'Location', 'Address', 'Date', 'Map', 'Confirmed', 'REP(s)', 'Assignment'];
+    const header = ['Project', 'Season', 'State', 'City', 'Venue', 'Address', 'Date', 'Map', 'Confirmed', 'REP(s)', 'Assignment'];
     const lines = filteredRows.map((r) => [
-      r.projectName, r.season, r.state, r.city, r.location, addressOf(r),
-      r.date ? fmtDate(r.date) : '', mapUrl(r), r.confirmed ? 'Yes' : 'No',
+      r.projectName, r.season, r.state, r.city, r.location, r.address,
+      r.date ? fmtDate(r.date) : '', r.mapHref, r.confirmed ? 'Yes' : 'No',
       r.reps.join('; '), r.assigned ? 'Assigned' : 'Unassigned',
     ].map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','));
     const csv = [header.join(','), ...lines].join('\n');
@@ -206,7 +283,10 @@ function TrialsReport() {
     a.click();
   };
 
-  const cellSx = { fontSize: '0.82rem', py: 1 };
+  // Rows have to accommodate a wrapped multi-line address now that the full one
+  // is shown, so cells get more vertical padding and align to the top — centring
+  // a one-word cell against a four-line address reads as misaligned.
+  const cellSx = { fontSize: '0.82rem', py: 1.25, verticalAlign: 'top', lineHeight: 1.5 };
   const headSx = { fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b' };
 
   return (
@@ -344,7 +424,7 @@ function TrialsReport() {
               <Table size="small">
                 <TableHead>
                   <TableRow sx={{ bgcolor: '#f8fafc' }}>
-                    {['Project', 'Season', 'State', 'City', 'Location', 'Date', 'Map', 'REP', 'Status'].map((h) => (
+                    {['Project', 'Season', 'State', 'City', 'Address', 'Date', 'Map', 'REP', 'Status'].map((h) => (
                       <TableCell key={h} sx={headSx}>{h}</TableCell>
                     ))}
                   </TableRow>
@@ -361,13 +441,22 @@ function TrialsReport() {
                       <TableRow key={`${r.trialId}-${r.city}-${i}`} hover>
                         <TableCell sx={{ ...cellSx, fontWeight: 600 }}>{r.projectName}</TableCell>
                         <TableCell sx={cellSx}>{r.season || '—'}</TableCell>
-                        <TableCell sx={cellSx}>{r.state || '—'}</TableCell>
-                        <TableCell sx={cellSx}>{r.city || '—'}</TableCell>
-                        <TableCell sx={cellSx}>{r.location || <span style={{ color: '#cbd5e1' }}>—</span>}</TableCell>
-                        <TableCell sx={cellSx}>{fmtDate(r.date)}</TableCell>
+                        {/* nowrap on these two: they were each stacking onto
+                            2-3 lines and inflating row height while the address
+                            went short of width. */}
+                        <TableCell sx={{ ...cellSx, whiteSpace: 'nowrap' }}>{r.state || '—'}</TableCell>
+                        <TableCell sx={{ ...cellSx, minWidth: 120 }}>{r.city || '—'}</TableCell>
+                        {/* The full address, PIN included. There is no separate
+                            Address column on screen, so this cell has to carry
+                            the whole thing — truncating it here is what made the
+                            report look like it was still missing the address. */}
+                        <TableCell sx={{ ...cellSx, minWidth: 260 }}>
+                          {r.address || <span style={{ color: '#cbd5e1' }}>—</span>}
+                        </TableCell>
+                        <TableCell sx={{ ...cellSx, whiteSpace: 'nowrap' }}>{fmtDate(r.date)}</TableCell>
                         <TableCell sx={cellSx}>
-                          {mapUrl(r)
-                            ? <a href={mapUrl(r)} target="_blank" rel="noopener noreferrer" style={{ color: '#0d9488', fontWeight: 600, textDecoration: 'none' }}>Map</a>
+                          {r.mapHref
+                            ? <a href={r.mapHref} target="_blank" rel="noopener noreferrer" style={{ color: '#0d9488', fontWeight: 600, textDecoration: 'none' }}>Map</a>
                             : <span style={{ color: '#cbd5e1' }}>—</span>}
                         </TableCell>
                         <TableCell sx={cellSx}>{r.reps.length ? r.reps.join(', ') : <span style={{ color: '#dc2626', fontWeight: 600 }}>Unassigned</span>}</TableCell>
