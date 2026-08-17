@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IKF Login — 7 directions</title>
+<style>
+  :root{
+    --amber-50:#FFFBEB; --amber-100:#FEF3C7; --amber-200:#FDE68A; --amber-300:#FCD34D;
+    --amber-400:#FBBF24; --amber-500:#F59E0B; --amber-600:#D97706; --amber-700:#B45309;
+    --amber-900:#78350F;
+    --ink:#0E0B07; --ink-2:#171310;
+    --slate-900:#0F172A; --slate-800:#1E293B; --slate-700:#334155; --slate-500:#64748B;
+    --slate-200:#E2E8F0; --slate-100:#F1F5F9; --slate-50:#F8FAFC;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:#EEEFF2; color:#111;
+    font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Inter',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .page{max-width:1240px;margin:0 auto;padding:48px 24px 96px}
+  h1.title{font-size:26px;font-weight:800;letter-spacing:-.03em;margin:0 0 6px}
+  .sub{color:#5B6270;font-size:15px;margin:0 0 40px;max-width:70ch;line-height:1.55}
+  .dir{margin:0 0 56px}
+  .dirhead{display:flex;gap:12px;align-items:baseline;margin:0 0 4px}
+  .num{font-size:12px;font-weight:800;letter-spacing:.08em;color:#8A8F9A}
+  .name{font-size:18px;font-weight:700;letter-spacing:-.02em}
+  .bet{color:#5B6270;font-size:14px;line-height:1.5;margin:0 0 14px;max-width:78ch}
+  .frame{
+    position:relative;width:100%;aspect-ratio:1100/620;border-radius:14px;overflow:hidden;
+    box-shadow:0 1px 2px rgba(16,20,28,.06),0 12px 32px -12px rgba(16,20,28,.22);
+    background:#fff;
+  }
+  .scaler{position:absolute;inset:0;width:1100px;height:620px;transform-origin:0 0}
+  /* ---------- shared login primitives ---------- */
+  .screen{display:flex;width:1100px;height:620px}
+  .panelL{position:relative;overflow:hidden}
+  .panelR{display:flex;align-items:center;justify-content:center}
+  .form{width:340px}
+  .kicker{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}
+  .h{font-size:27px;font-weight:800;letter-spacing:-.03em;margin:0 0 5px;line-height:1.15}
+  .hsub{font-size:14px;margin:0 0 26px}
+  .field{width:100%;height:46px;border-radius:9px;padding:0 13px;font-size:14px;
+         display:flex;align-items:center;margin-bottom:11px}
+  .lbl{font-size:12px;font-weight:600;margin:0 0 5px;display:block}
+  .row{display:flex;align-items:center;gap:8px;margin:14px 0 18px;font-size:13px}
+  .box{width:15px;height:15px;border-radius:4px;flex:none}
+  .cta{width:100%;height:46px;border-radius:9px;display:flex;align-items:center;
+       justify-content:center;font-size:14.5px;font-weight:700;letter-spacing:-.01em}
+  .alt{text-align:center;font-size:13px;font-weight:600;margin-top:16px}
+  .mark{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;
+        justify-content:center;font-weight:800;font-size:13px;letter-spacing:-.02em}
+  .ball{width:9px;height:9px;border-radius:50%;flex:none}
+  .featrow{display:flex;align-items:center;gap:10px;font-size:14px;margin-bottom:13px}
+  .note{margin-top:14px;font-size:13px;color:#5B6270;line-height:1.55;max-width:78ch}
+  .note b{color:#111;font-weight:650}
+  .verdict{background:#fff;border:1px solid #E3E5EA;border-radius:14px;padding:24px 26px;margin-top:8px}
+  .verdict h2{margin:0 0 10px;font-size:16px;font-weight:750;letter-spacing:-.02em}
+  .verdict p{margin:0 0 10px;font-size:14.5px;line-height:1.6;color:#333}
+  .verdict p:last-child{margin:0}
+  code{font:600 12.5px ui-monospace,SFMono-Regular,Menlo,monospace;background:#F1F2F5;
+       padding:1px 5px;border-radius:4px}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <h1 class="title">India Khelo Football — login, seven directions</h1>
+  <p class="sub">Same copy, same fields, same screen every time, so they're comparable. Each tests a different
+  answer to the diagnosis: the live page has no dark anchor, and its primary button is paler than the panel
+  behind it (1.21:1), so nothing leads and the CTA reads as disabled.</p>
+
+  <!-- 1 -->
+  <div class="dir">
+    <div class="dirhead"><span class="num">01</span><span class="name">Dark anchor</span></div>
+    <p class="bet">The bet: the only real problem is the missing dark value — keep the amber entirely, just give it
+    something to sit against. Smallest change, largest gain.</p>
+    <div class="frame"><div class="scaler" id="s1"><div class="screen">
+      <div class="panelL" style="width:46%;background:radial-gradient(120% 90% at 18% 22%, #2A1B08 0%, #140D04 60%, #0E0B07 100%)">
+        <div style="position:absolute;inset:0;padding:52px 46px;display:flex;flex-direction:column">
+          <div style="display:flex;align-items:center;gap:11px">
+            <div class="mark" style="background:var(--amber-400);color:#1B1206">IKF</div>
+            <div style="color:#FFF7E6;font-weight:700;font-size:14.5px;letter-spacing:-.01em">India Khelo Football</div>
+          </div>
+          <div style="margin-top:auto">
+            <div class="kicker" style="color:var(--amber-400);margin-bottom:14px">Trial Tracking Application</div>
+            <div style="color:#FFFDF7;font-size:34px;font-weight:800;letter-spacing:-.035em;line-height:1.15;margin-bottom:26px">
+              Every trial,<br>every city,<br>accounted for.</div>
+            <div class="featrow" style="color:#D9CDBA"><span class="ball" style="background:var(--amber-400)"></span>Manage REPs across India</div>
+            <div class="featrow" style="color:#D9CDBA"><span class="ball" style="background:var(--amber-400)"></span>Track work orders &amp; vendors</div>
+            <div class="featrow" style="color:#D9CDBA"><span class="ball" style="background:var(--amber-400)"></span>Payment &amp; invoice tracking</div>
+          </div>
+        </div>
+      </div>
+      <div class="panelR" style="width:54%;background:#fff">
+        <div class="form">
+          <h2 class="h" style="color:#12100C">Welcome back</h2>
+          <p class="hsub" style="color:#6B6А78;color:#6B7280">Sign in to continue</p>
+          <label class="lbl" style="color:#374151">Email address</label>
+          <div class="field" style="border:1px solid #DDE0E5;background:#fff;color:#9AA0AA">you@indiakhelofootball.com</div>
+          <label class="lbl" style="color:#374151;margin-top:6px">Password</label>
+          <div class="field" style="border:1px solid #DDE0E5;background:#fff;color:#9AA0AA">••••••••••</div>
+          <div class="row" style="color:#4B5563"><span class="box" style="border:1.5px solid #C6CAD1"></span>Remember me for 7 days
+            <span style="margin-left:auto;color:var(--amber-700);font-weight:600">Forgot password?</span></div>
+          <div class="cta" style="background:var(--amber-500);color:#231603">Sign in</div>
+          <div class="alt" style="color:#6B7280">Or <span style="color:var(--amber-700)">sign in with OTP</span></div>
+        </div>
+      </div>
+    </div></div></div>
+    <p class="note"><b>Amber kept, amber promoted.</b> It's now the brightest thing on a dark ground rather than a
+    pale shape on cream. Button is <code>#F59E0B</code> — the CTA finally advances.</p>
+  </div>
+
+  <!-- 2 -->
+  <div class="dir">
+    <div class="dirhead"><span class="num">02</span><span class="name">Institutional</span></div>
+    <p class="bet">The bet: this app moves grant money and faces corporate funders, so it should read like a
+    financial system. Cool neutral chassis, amber demoted to a single accent.</p>
+    <div class="frame"><div class="scaler" id="s2"><div class="screen">
+      <div class="panelL" style="width:46%;background:linear-gradient(160deg,#12203A 0%,#0F172A 58%,#0B1120 100%)">
+        <div style="position:absolute;inset:0;padding:52px 46px;display:flex;flex-direction:column">
+          <div style="display:flex;align-items:center;gap:11px">
+            <div class="mark" style="background:var(--amber-400);color:#1B1206">IKF</div>
+            <div style="color:#E8EDF6;font-weight:700;font-size:14.5px;letter-spacing:-.01em">India Khelo Football</div>
+          </div>
+          <div style="margin-top:auto">
+            <div style="color:#F5F8FF;font-size:30px;font-weight:750;letter-spacing:-.032em;line-height:1.22;margin-bottom:22px">
+              The operating record<br>for grassroots football<br>in India.</div>
+            <div style="display:flex;gap:34px;padding-top:20px;border-top:1px solid rgba(255,255,255,.11)">
+              <div><div style="color:#fff;font-size:23px;font-weight:800;letter-spacing:-.03em">142</div>
+                   <div class="kicker" style="color:#93A2BD;margin-top:3px">Cities</div></div>
+              <div><div style="color:#fff;font-size:23px;font-weight:800;letter-spacing:-.03em">38,400</div>
+                   <div class="kicker" style="color:#93A2BD;margin-top:3px">Players trialled</div></div>
+              <div><div style="color:var(--amber-300);font-size:23px;font-weight:800;letter-spacing:-.03em">₹4.2Cr</div>
+                   <div class="kicker" style="color:#93A2BD;margin-top:3px">Deployed</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="panelR" style="width:54%;background:var(--slate-50)">
+        <div class="form" style="background:#fff;border:1px solid var(--slate-200);border-radius:14px;padding:30px 28px;width:352px">
+          <h2 class="h" style="color:var(--slate-900);font-size:23px">Sign in</h2>
+          <p class="hsub" style="color:var(--slate-500);margin-bottom:22px">Use your IKF account</p>
+          <label class="lbl" style="color:var(--slate-700)">Email address</label>
+          <div class="field" style="border:1px solid #D6DDE7;background:#fff;color:#98A2B3">you@indiakhelofootball.com</div>
+          <label class="lbl" style="color:var(--slate-700);margin-top:6px">Password</label>
+          <div class="field" style="border:1px solid #D6DDE7;background:#fff;color:#98A2B3">••••••••••</div>
+          <div class="row" style="color:var(--slate-700)"><span class="box" style="border:1.5px solid #C3CBD8"></span>Remember me
+            <span style="margin-left:auto;color:#1D4ED8;font-weight:600">Forgot password?</span></div>
+          <div class="cta" style="background:var(--slate-900);color:#fff">Sign in</div>
+          <div class="alt" style="color:var(--slate-500)">Or <span style="color:#1D4ED8">sign in with OTP</span></div>
+        </div>
+      </div>
+    </div></div></div>
+    <p class="note"><b>The trust direction.</b> Financial products converge on cool neutrals for a reason. Amber
+    survives on the mark and the money figure — where it now <i>means</i> something.</p>
+  </div>
+
+  <!-- 3 -->
+  <div class="dir">
+    <div class="dirhead"><span class="num">03</span><span class="name">Photographic</span></div>
+    <p class="bet">The bet: the clipart is the single biggest liability, and you run a real football programme —
+    so use a real photograph. Authenticity beats illustration for credibility every time.</p>
+    <div class="frame"><div class="scaler" id="s3"><div class="screen">
+      <div class="panelL" style="width:52%;background:
+        linear-gradient(180deg,rgba(10,8,4,.30) 0%,rgba(10,8,4,.62) 55%,rgba(10,8,4,.90) 100%),
+        radial-gradient(60% 45% at 68% 22%, #F2A93B 0%, #C4731A 45%, #6B3B10 100%),
+        linear-gradient(30deg,#2F5B2A 0%,#477A38 100%)">
+        <div style="position:absolute;inset:0;padding:46px 44px;display:flex;flex-direction:column">
+          <div style="display:flex;align-items:center;gap:11px">
+            <div class="mark" style="background:rgba(255,255,255,.15);color:#fff;backdrop-filter:blur(6px)">IKF</div>
+            <div style="color:#fff;font-weight:700;font-size:14.5px;letter-spacing:-.01em">India Khelo Football</div>
+          </div>
+          <div style="margin-top:auto">
+            <div style="color:#fff;font-size:29px;font-weight:750;letter-spacing:-.03em;line-height:1.25;max-width:400px">
+              38,400 players. 142 cities.<br>One record of it all.</div>
+            <div style="color:rgba(255,255,255,.72);font-size:13px;margin-top:12px">
+              Trial Tracking Application · Season 2026</div>
+          </div>
+        </div>
+        <div style="position:absolute;left:44px;bottom:0;height:5px;width:56px;background:var(--amber-400)"></div>
+      </div>
+      <div class="panelR" style="width:48%;background:#fff">
+        <div class="form" style="width:318px">
+          <h2 class="h" style="color:#12100C">Welcome back</h2>
+          <p class="hsub" style="color:#6B7280">Sign in to continue</p>
+          <label class="lbl" style="color:#374151">Email address</label>
+          <div class="field" style="border:1px solid #DDE0E5;color:#9AA0AA">you@indiakhelofootball.com</div>
+          <label class="lbl" style="color:#374151;margin-top:6px">Password</label>
+          <div class="field" style="border:1px solid #DDE0E5;color:#9AA0AA">••••••••••</div>
+          <div class="row" style="color:#4B5563"><span class="box" style="border:1.5px solid #C6CAD1"></span>Remember me
+            <span style="margin-left:auto;color:var(--amber-700);font-weight:600">Forgot password?</span></div>
+          <div class="cta" style="background:#12100C;color:#fff">Sign in</div>
+          <div class="alt" style="color:#6B7280">Or <span style="color:var(--amber-700)">sign in with OTP</span></div>
+        </div>
+      </div>
+    </div></div></div>
+    <p class="note"><b>The gradient here stands in for a photo</b> — a real trial shot, scrimmed dark so type stays
+    legible. This is the only direction that gets stronger the better your photography is.</p>
+  </div>
+
+  <!-- 4 -->
+  <div class="dir">
+    <div class="dirhead"><span class="num">04</span><span class="name">Centred minimal</span></div>
+    <p class="bet">The bet: the split-screen is itself the dated part. Staff sign in daily and don't need a sales
+    pitch — one quiet card, nothing else. The Linear/Vercel position.</p>
+    <div class="frame"><div class="scaler" id="s4"><div class="screen" style="background:#F6F7F9;align-items:center;justify-content:center;position:relative">
+      <div style="position:absolute;inset:0;background-image:radial-gradient(#DFE2E7 1px,transparent 1px);background-size:22px 22px;opacity:.55"></div>
+      <div style="position:relative;width:352px">
+        <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:22px">
+          <div class="mark" style="background:#12100C;color:var(--amber-400);width:38px;height:38px;border-radius:11px;font-size:14px">IKF</div>
+          <div style="margin-top:12px;font-weight:750;font-size:16px;letter-spacing:-.02em;color:#12100C">Sign in to IKF</div>
+          <div style="font-size:13.5px;color:#6B7280;margin-top:3px">Trial Tracking Application</div>
+        </div>
+        <div style="background:#fff;border:1px solid #E4E7EC;border-radius:15px;padding:26px 24px;
+                    box-shadow:0 1px 2px rgba(16,24,40,.05)">
+          <label class="lbl" style="color:#374151">Email address</label>
+          <div class="field" style="border:1px solid #DDE0E5;color:#9AA0AA">you@indiakhelofootball.com</div>
+          <label class="lbl" style="color:#374151;margin-top:6px">Password</label>
+          <div class="field" style="border:1px solid #DDE0E5;color:#9AA0AA">••••••••••</div>
+          <div class="row" style="color:#4B5563;margin:12px 0 16px"><span class="box" style="border:1.5px solid #C6CAD1"></span>Remember me
+            <span style="margin-left:auto;color:var(--amber-700);font-weight:600">Forgot password?</span></div>
+          <div class="cta" style="background:#12100C;color:#fff">Sign in</div>
+        </div>
+        <div class="alt" style="color:#6B7280;margin-top:14px">Or <span style="color:var(--amber-700)">sign in with OTP</span></div>
+      </div>
+    </div></div></div>
+    <p class="note"><b>Most restrained option.</b> Near-black CTA, amber only on the mark and the two links.
+    Fastest to build — no illustration, no photography, no half-page to maintain.</p>
+  </div>
+
+  <!-- 5 -->
+  <div class="dir">
+    <div class="dirhead"><span class="num">05</span><span class="name">Amber, committed</span></div>
+    <p class="bet">The bet: you don't want less yellow, you want yellow done properly. So commit fully — full
+    saturated field, white card floating on it, near-black type. The opposite escape route.</p>
+    <div class="frame"><div class="scaler" id="s5"><div class="screen" style="position:relative;align-items:center;justify-content:center;
+        background:radial-gradient(115% 85% at 22% 10%, #FFC53D 0%, #F59E0B 48%, #C2700A 100%)">
+      <div style="position:absolute;left:54px;top:46px;display:flex;align-items:center;gap:11px">
+        <div class="mark" style="background:#1A1206;color:var(--amber-300)">IKF</div>
+        <div style="color:#2A1B06;font-weight:750;font-size:14.5px;letter-spacing:-.01em">India Khelo Football</div>
+      </div>
+      <div style="position:absolute;left:54px;bottom:46px;color:#3A2708;font-size:13px;font-weight:600">
+        Trial Tracking Application · Season 2026</div>
+      <div style="width:364px;background:#fff;border-radius:17px;padding:32px 30px;
+                  box-shadow:0 24px 60px -18px rgba(70,40,0,.45),0 2px 6px rgba(70,40,0,.14)">
+        <h2 class="h" style="color:#12100C;font-size:24px">Welcome back</h2>
+        <p class="hsub" style="color:#6B7280;margin-bottom:22px">Sign in to continue</p>
+        <label class="lbl" style="color:#374151">Email address</label>
+        <div class="field" style="border:1px solid #E1E4E9;background:#FAFAFB;color:#9AA0AA">you@indiakhelofootball.com</div>
+        <label class="lbl" style="color:#374151;margin-top:6px">Password</label>
+        <div class="field" style="border:1px solid #E1E4E9;background:#FAFAFB;color:#9AA0AA">••••••••••</div>
+        <div class="row" style="color:#4B5563"><span class="box" style="border:1.5px solid #C6CAD1"></span>Remember me
+          <span style="margin-left:auto;color:var(--amber-700);font-weight:600">Forgot password?</span></div>
+        <div class="cta" style="background:#12100C;color:#fff">Sign in</div>
+        <div class="alt" style="color:#6B7280">Or <span style="color:var(--amber-700)">sign in with OTP</span></div>
+      </div>
+    </div></div></div>
+    <p class="note"><b>Maximum brand.</b> Works because the value structure is now amber-field → white-card →
+    near-black-button: three clear tiers. The current page has the same colours and no tiers.</p>
+  </div>
+
+  <!-- 6 -->
+  <div class="dir">
+    <div class="dirhead"><span class="num">06</span><span class="name">Editorial</span></div>
+    <p class="bet">The bet: the brand should be carried by typography, not decoration. No illustration at all —
+    scale, weight and space do the work.</p>
+    <div class="frame"><div class="scaler" id="s6"><div class="screen" style="background:#FBFAF8">
+      <div class="panelL" style="width:56%;padding:52px 50px;display:flex;flex-direction:column;background:#FBFAF8">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="mark" style="background:#12100C;color:var(--amber-400);width:30px;height:30px;border-radius:8px;font-size:11.5px">IKF</div>
+          <div class="kicker" style="color:#8A8069">Trial Tracking Application</div>
+        </div>
+        <div style="margin-top:auto;margin-bottom:6px">
+          <div style="font-size:58px;font-weight:850;letter-spacing:-.05em;line-height:.94;color:#12100C">
+            India<br>Khelo<br><span style="color:var(--amber-600)">Football</span></div>
+          <div style="height:1px;background:#E6E2DA;margin:26px 0 18px;width:70%"></div>
+          <div style="display:flex;gap:30px;color:#6E675A;font-size:12.5px;font-weight:600">
+            <span>REPs</span><span>Work orders</span><span>Vendors</span><span>Payments</span></div>
+        </div>
+      </div>
+      <div class="panelR" style="width:44%;background:#fff;border-left:1px solid #EDE9E1">
+        <div class="form" style="width:312px">
+          <h2 class="h" style="color:#12100C;font-size:21px">Sign in</h2>
+          <p class="hsub" style="color:#8A8069;margin-bottom:24px">Season 2026</p>
+          <label class="lbl" style="color:#3F3A31">Email address</label>
+          <div class="field" style="border:0;border-bottom:1.5px solid #E0DCD3;border-radius:0;padding:0 0 4px;color:#A79F91;height:36px">you@indiakhelofootball.com</div>
+          <label class="lbl" style="color:#3F3A31;margin-top:16px">Password</label>
+          <div class="field" style="border:0;border-bottom:1.5px solid #E0DCD3;border-radius:0;padding:0 0 4px;color:#A79F91;height:36px">••••••••••</div>
+          <div class="row" style="color:#6E675A;margin-top:22px"><span class="box" style="border:1.5px solid #D2CCC1"></span>Remember me
+            <span style="margin-left:auto;color:var(--amber-700);font-weight:600">Forgot?</span></div>
+          <div class="cta" style="background:#12100C;color:#fff;border-radius:0">Sign in</div>
+          <div class="alt" style="color:#8A8069">Or <span style="color:var(--amber-700)">use OTP</span></div>
+        </div>
+      </div>
+    </div></div></div>
+    <p class="note"><b>Most distinctive, most fragile.</b> Underlined fields and square buttons are a strong
+    stance — it will look dated fastest if the rest of the app doesn't follow it.</p>
+  </div>
+
+  <!-- 7 -->
+  <div class="dir">
+    <div class="dirhead"><span class="num">07</span><span class="name">Dark</span></div>
+    <p class="bet">The bet: your users are operators inside this thing for hours. Dark reduces fatigue and reads
+    as a serious tool — and amber is at its best on dark.</p>
+    <div class="frame"><div class="scaler" id="s7"><div class="screen" style="background:#0C0D10;align-items:center;justify-content:center;position:relative">
+      <div style="position:absolute;inset:0;background:radial-gradient(70% 55% at 50% 0%, rgba(251,191,36,.13) 0%, transparent 62%)"></div>
+      <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.028) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.028) 1px,transparent 1px);background-size:44px 44px"></div>
+      <div style="position:relative;width:356px">
+        <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:22px">
+          <div class="mark" style="background:var(--amber-400);color:#1B1206;width:38px;height:38px;border-radius:11px;font-size:14px">IKF</div>
+          <div style="margin-top:13px;font-weight:750;font-size:16.5px;letter-spacing:-.02em;color:#F4F5F7">Sign in to IKF</div>
+          <div style="font-size:13px;color:#8E939E;margin-top:3px">Trial Tracking Application</div>
+        </div>
+        <div style="background:#141619;border:1px solid #23262C;border-radius:15px;padding:26px 24px">
+          <label class="lbl" style="color:#C2C7D0">Email address</label>
+          <div class="field" style="border:1px solid #2B2F36;background:#0F1114;color:#71767F">you@indiakhelofootball.com</div>
+          <label class="lbl" style="color:#C2C7D0;margin-top:6px">Password</label>
+          <div class="field" style="border:1px solid #2B2F36;background:#0F1114;color:#71767F">••••••••••</div>
+          <div class="row" style="color:#A8AEB8;margin:12px 0 16px"><span class="box" style="border:1.5px solid #3A3F47"></span>Remember me
+            <span style="margin-left:auto;color:var(--amber-300);font-weight:600">Forgot password?</span></div>
+          <div class="cta" style="background:var(--amber-400);color:#1B1206">Sign in</div>
+        </div>
+        <div class="alt" style="color:#8E939E;margin-top:14px">Or <span style="color:var(--amber-300)">sign in with OTP</span></div>
+      </div>
+    </div></div></div>
+    <p class="note"><b>Amber is most legible here</b> — <code>#FBBF24</code> on near-black clears contrast easily,
+    where on cream it never could. Caveat: dark signals "developer tool," which may be wrong for funders.</p>
+  </div>
+
+  <div class="verdict">
+    <h2>Which I'd pick, and why</h2>
+    <p><b>01 for staff, 02 for funders.</b> Direction 01 keeps everything you already own and fixes the actual
+    defect — it's a background colour and a button colour, deployable this week. Direction 02 is where I'd take
+    the funder-facing portal, because a corporate CSR head deciding on next year's grant reads cool neutrals as
+    competence and warm saturation as informality.</p>
+    <p>Every direction above shares one change, and it's the whole diagnosis: <b>three clear value tiers, and a
+    primary button that is the darkest or most saturated thing in the form.</b> On the live page the button is
+    the palest element and measures 1.21:1 against its own panel, which is why it reads as disabled.</p>
+    <p><b>What I dropped:</b> a glassmorphism direction — it failed my own contrast check on every text layer and
+    couldn't be fixed without abandoning the effect that defined it.</p>
+  </div>
+
+</div>
+<script>
+  // Scale each 1100x620 composition to its container without distorting proportions.
+  function fit(){
+    document.querySelectorAll('.frame').forEach(f=>{
+      const s=f.querySelector('.scaler');
+      if(s) s.style.transform='scale('+(f.clientWidth/1100)+')';
+    });
+  }
+  fit(); addEventListener('resize',fit);
+</script>
+</body>
+</html>
