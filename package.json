@@ -31,6 +31,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@craco/craco": "^7.1.0",
     "@mkatogui/universal-design-system": "^0.6.2",
     "@modelcontextprotocol/sdk": "^1.30.0",
@@ -39,6 +40,7 @@
     "eslint-config-prettier": "^10.1.8",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.7",
+    "playwright": "^1.62.1",
     "postcss": "^8.5.6",
     "prettier": "^3.4.2",
     "prop-types": "^15.8.1"
