@@ -8,6 +8,7 @@ import {
   Search as SearchIcon,
 } from '@mui/icons-material';
 
+import ConfirmDialog from '../common/ConfirmDialog';
 import CSRContractCard from './CSRContractCard';
 import CSRContractModal from './CSRContractModal';
 import CSRDeliverableModal from './CSRDeliverableModal';
@@ -43,6 +44,9 @@ export default function CSRContractManagementPage({ projectId }) {
     open: false, editing: null, contract: null,
   });
   const [serverErrors, setServerErrors] = useState({});
+  // One shared slot for whichever delete is being confirmed:
+  // { title, message, confirmLabel, onConfirm }.
+  const [confirmState, setConfirmState] = useState(null);
 
   const notify = (message, severity = 'success') => setToast({ open: true, message, severity });
 
@@ -99,15 +103,25 @@ export default function CSRContractManagementPage({ projectId }) {
     }
   };
 
-  const deleteContract = async (contract) => {
-    if (!window.confirm(`Delete grant contract "${contractLabel(contract)}"? Its deliverables go with it.`)) return;
-    try {
-      await csrAPI.workOrders.delete(contract.id);
-      notify('Grant contract deleted.');
-      load();
-    } catch (e) {
-      notify(e.message || 'Delete failed.', 'error');
-    }
+  const deleteContract = (contract) => {
+    setConfirmState({
+      title: 'Delete grant contract',
+      message: `Delete grant contract "${contractLabel(contract)}"? Its deliverables go with it.`,
+      confirmLabel: 'Delete',
+      onConfirm: async () => {
+        setSaving(true);
+        try {
+          await csrAPI.workOrders.delete(contract.id);
+          notify('Grant contract deleted.');
+          load();
+        } catch (e) {
+          notify(e.message || 'Delete failed.', 'error');
+        } finally {
+          setSaving(false);
+          setConfirmState(null);
+        }
+      },
+    });
   };
 
   const openCreateDeliverable = (contract) => {
@@ -149,15 +163,25 @@ export default function CSRContractManagementPage({ projectId }) {
     }
   };
 
-  const deleteDeliverable = async (deliverable) => {
-    if (!window.confirm(`Delete deliverable "${deliverable.title}"?`)) return;
-    try {
-      await csrAPI.deliverables.delete(deliverable.id);
-      notify('Deliverable deleted.');
-      load();
-    } catch (e) {
-      notify(e.message || 'Delete failed.', 'error');
-    }
+  const deleteDeliverable = (deliverable) => {
+    setConfirmState({
+      title: 'Delete deliverable',
+      message: `Delete deliverable "${deliverable.title}"?`,
+      confirmLabel: 'Delete',
+      onConfirm: async () => {
+        setSaving(true);
+        try {
+          await csrAPI.deliverables.delete(deliverable.id);
+          notify('Deliverable deleted.');
+          load();
+        } catch (e) {
+          notify(e.message || 'Delete failed.', 'error');
+        } finally {
+          setSaving(false);
+          setConfirmState(null);
+        }
+      },
+    });
   };
 
   const filtered = filterContracts(contracts, { search, progress });
@@ -248,6 +272,16 @@ export default function CSRContractManagementPage({ projectId }) {
         onSave={saveDeliverable}
         saving={saving}
         serverErrors={serverErrors}
+      />
+
+      <ConfirmDialog
+        open={Boolean(confirmState)}
+        title={confirmState?.title}
+        message={confirmState?.message}
+        confirmLabel={confirmState?.confirmLabel}
+        busy={saving}
+        onConfirm={() => confirmState?.onConfirm()}
+        onClose={() => setConfirmState(null)}
       />
 
       <Snackbar

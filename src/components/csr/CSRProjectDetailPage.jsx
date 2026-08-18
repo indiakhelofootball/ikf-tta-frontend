@@ -22,6 +22,7 @@ import CSRReportModal from './CSRReportModal';
 import CSRContactModal from './CSRContactModal';
 import CSRExpenseTagModal from './CSRExpenseTagModal';
 import CSRContractManagementPage from './CSRContractManagementPage';
+import ConfirmDialog from '../common/ConfirmDialog';
 import { certificateFreezeState, formatFrozenAt } from './csrContractRules';
 import { csrAPI } from '../../services/api';
 import useGrants from '../../auth/useGrants';
@@ -54,6 +55,9 @@ export default function CSRProjectDetailPage() {
   const [contactModal, setContactModal] = useState({ open: false, editing: null });
   const [expenseModalOpen, setExpenseModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  // One dialog, one slot of state: { title, message, confirmLabel, onConfirm }.
+  // Each delete asks by filling this in; the dialog is a view of it.
+  const [confirmState, setConfirmState] = useState(null);
 
   const notify = (message, severity = 'success') => setToast({ open: true, message, severity });
 
@@ -112,16 +116,20 @@ export default function CSRProjectDetailPage() {
     }
   };
 
-  const deleteActivity = async (a) => {
-    if (!window.confirm(`Delete activity "${a.title}"?`)) return;
-    try {
-      await csrAPI.activities.delete(a.id);
-      notify('Activity deleted.');
-      load();
-    } catch (e) {
-      notify(e.message || 'Delete failed.', 'error');
-    }
-  };
+  const deleteActivity = (a) => setConfirmState({
+    title: 'Delete activity',
+    message: `Delete activity "${a.title}"?`,
+    confirmLabel: 'Delete',
+    onConfirm: async () => {
+      try {
+        await csrAPI.activities.delete(a.id);
+        notify('Activity deleted.');
+        load();
+      } catch (e) {
+        notify(e.message || 'Delete failed.', 'error');
+      }
+    },
+  });
 
   const saveReport = async (payload) => {
     setSaving(true);
@@ -143,16 +151,20 @@ export default function CSRProjectDetailPage() {
     }
   };
 
-  const deleteReport = async (r) => {
-    if (!window.confirm(`Delete report "${r.fileName}"?`)) return;
-    try {
-      await csrAPI.reports.delete(r.id);
-      notify('Report deleted.');
-      load();
-    } catch (e) {
-      notify(e.message || 'Delete failed.', 'error');
-    }
-  };
+  const deleteReport = (r) => setConfirmState({
+    title: 'Delete report',
+    message: `Delete report "${r.fileName}"?`,
+    confirmLabel: 'Delete',
+    onConfirm: async () => {
+      try {
+        await csrAPI.reports.delete(r.id);
+        notify('Report deleted.');
+        load();
+      } catch (e) {
+        notify(e.message || 'Delete failed.', 'error');
+      }
+    },
+  });
 
   const saveContact = async (payload) => {
     setSaving(true);
@@ -174,16 +186,20 @@ export default function CSRProjectDetailPage() {
     }
   };
 
-  const deleteContact = async (c) => {
-    if (!window.confirm(`Delete contact "${c.name}"?`)) return;
-    try {
-      await csrAPI.contacts.delete(c.id);
-      notify('Contact deleted.');
-      load();
-    } catch (e) {
-      notify(e.message || 'Delete failed.', 'error');
-    }
-  };
+  const deleteContact = (c) => setConfirmState({
+    title: 'Delete contact',
+    message: `Delete contact "${c.name}"?`,
+    confirmLabel: 'Delete',
+    onConfirm: async () => {
+      try {
+        await csrAPI.contacts.delete(c.id);
+        notify('Contact deleted.');
+        load();
+      } catch (e) {
+        notify(e.message || 'Delete failed.', 'error');
+      }
+    },
+  });
 
   const saveExpense = async (payload) => {
     setSaving(true);
@@ -199,14 +215,31 @@ export default function CSRProjectDetailPage() {
     }
   };
 
-  const deleteExpense = async (x) => {
-    if (!window.confirm('Remove this expense tag?')) return;
+  const deleteExpense = (x) => setConfirmState({
+    title: 'Remove expense tag',
+    message: 'Remove this expense tag?',
+    confirmLabel: 'Remove',
+    onConfirm: async () => {
+      try {
+        await csrAPI.expenseTags.delete(x.id);
+        notify('Expense tag removed.');
+        load();
+      } catch (e) {
+        notify(e.message || 'Delete failed.', 'error');
+      }
+    },
+  });
+
+  // The dialog closes in `finally`, so a delete that throws still releases it
+  // instead of stranding the user on a dead prompt.
+  const runConfirm = async () => {
+    if (!confirmState) return;
+    setSaving(true);
     try {
-      await csrAPI.expenseTags.delete(x.id);
-      notify('Expense tag removed.');
-      load();
-    } catch (e) {
-      notify(e.message || 'Delete failed.', 'error');
+      await confirmState.onConfirm();
+    } finally {
+      setSaving(false);
+      setConfirmState(null);
     }
   };
 
@@ -572,6 +605,15 @@ export default function CSRProjectDetailPage() {
         onClose={() => setExpenseModalOpen(false)}
         onSave={saveExpense}
         saving={saving}
+      />
+      <ConfirmDialog
+        open={Boolean(confirmState)}
+        title={confirmState?.title}
+        message={confirmState?.message}
+        confirmLabel={confirmState?.confirmLabel}
+        busy={saving}
+        onConfirm={runConfirm}
+        onClose={() => setConfirmState(null)}
       />
 
       <Snackbar
