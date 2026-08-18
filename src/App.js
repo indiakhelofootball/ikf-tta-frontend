@@ -15,6 +15,7 @@ import Unauthorized from "./components/Unauthorized";
 
 import DashboardLayout from "./components/layout/DashboardLayout";
 import CSRSidebar from "./components/layout/CSRSidebar";
+import CSRThemeProvider from "./components/csr/CSRThemeProvider";
 import DashboardHome from "./components/dashboard/DashboardHome";
 import REPManagementPage from "./components/rep/REPManagementPage";
 import { TrialManagementPage, TrialWizard, ProjectDashboard } from "./components/trials";
@@ -100,7 +101,7 @@ function App() {
             — before the /csr outlet below — or the dynamic /csr/:id route
             captures "login" as a project id. It must also stay OUTSIDE
             RequireAuth, or nobody can reach it to log in. */}
-        <Route path="/csr/login" element={<CSRLogin />} />
+        <Route path="/csr/login" element={<CSRThemeProvider><CSRLogin /></CSRThemeProvider>} />
         <Route path="/client/:slug/login" element={<ClientLogin />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
 
@@ -205,7 +206,7 @@ function App() {
               2026-08-15, which is why CSR read as two sidebar items instead of
               an app. Paths are unchanged, so bookmarks and e2e specs still hold.
               Static /csr/... routes MUST stay before /csr/:id. */}
-          <Route element={<DashboardLayout sidebar={CSRSidebar} />}>
+          <Route element={<CSRThemeProvider><DashboardLayout sidebar={CSRSidebar} /></CSRThemeProvider>}>
           <Route path="/csr" element={
             <GrantedRoute module="csr">
               <CSRDashboard />

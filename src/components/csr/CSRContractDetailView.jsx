@@ -88,7 +88,9 @@ export default function CSRContractDetailView({
             variant="determinate"
             value={progress.percent}
             aria-label="Deliverable completion"
-            sx={{ mb: 1, height: 6, borderRadius: 3 }}
+            // Pill radius comes from the theme; a 24px override on a 6px bar
+            // was only ever rounding to the same shape less predictably.
+            sx={{ mb: 1, height: 6 }}
           />
         )}
 
