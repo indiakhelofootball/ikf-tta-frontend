@@ -10,6 +10,7 @@ import {
 } from '@mui/icons-material';
 
 import { csrAPI } from '../../services/api';
+import ConfirmDialog from '../common/ConfirmDialog';
 
 const EMPTY = {
   projectId: '', slug: '', displayName: '',
@@ -26,6 +27,7 @@ export default function CSRBrandingPage() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
+  const [confirmState, setConfirmState] = useState(null);
 
   const notify = (message, severity = 'success') => setToast({ open: true, message, severity });
   const asList = (d) => (Array.isArray(d) ? d : d?.results || []);
@@ -81,16 +83,24 @@ export default function CSRBrandingPage() {
     }
   };
 
-  const remove = async (r) => {
-    if (!window.confirm(`Delete branding "${r.displayName}"?`)) return;
-    try {
-      await csrAPI.branding.delete(r.id);
-      notify('Branding deleted.');
-      load();
-    } catch (e) {
-      notify(e.message || 'Delete failed.', 'error');
-    }
-  };
+  const remove = (r) => setConfirmState({
+    title: 'Delete branding',
+    message: `Delete branding "${r.displayName}"?`,
+    confirmLabel: 'Delete',
+    onConfirm: async () => {
+      setSaving(true);
+      try {
+        await csrAPI.branding.delete(r.id);
+        notify('Branding deleted.');
+        load();
+      } catch (e) {
+        notify(e.message || 'Delete failed.', 'error');
+      } finally {
+        setSaving(false);
+        setConfirmState(null);
+      }
+    },
+  });
 
   return (
     <Container maxWidth="sm" sx={{ py: 3 }}>
@@ -159,6 +169,16 @@ export default function CSRBrandingPage() {
           <Button onClick={save} variant="contained" disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
         </DialogActions>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!confirmState}
+        title={confirmState?.title}
+        message={confirmState?.message}
+        confirmLabel={confirmState?.confirmLabel}
+        busy={saving}
+        onConfirm={() => confirmState?.onConfirm()}
+        onClose={() => setConfirmState(null)}
+      />
 
       <Snackbar
         open={toast.open} autoHideDuration={4000}

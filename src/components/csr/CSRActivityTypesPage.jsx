@@ -9,6 +9,7 @@ import {
 } from '@mui/icons-material';
 
 import { csrAPI } from '../../services/api';
+import ConfirmDialog from '../common/ConfirmDialog';
 
 export default function CSRActivityTypesPage() {
   const navigate = useNavigate();
@@ -22,6 +23,7 @@ export default function CSRActivityTypesPage() {
   const [isMaster, setIsMaster] = useState(false);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
+  const [confirmState, setConfirmState] = useState(null);
 
   const notify = (message, severity = 'success') => setToast({ open: true, message, severity });
   const asList = (d) => (Array.isArray(d) ? d : d?.results || []);
@@ -55,16 +57,24 @@ export default function CSRActivityTypesPage() {
     }
   };
 
-  const remove = async (t) => {
-    if (!window.confirm(`Delete activity type "${t.name}"?`)) return;
-    try {
-      await csrAPI.activityTypes.delete(t.id);
-      notify('Activity type deleted.');
-      load();
-    } catch (e) {
-      notify(e.message || 'Delete failed.', 'error');
-    }
-  };
+  const remove = (t) => setConfirmState({
+    title: 'Delete activity type',
+    message: `Delete activity type "${t.name}"?`,
+    confirmLabel: 'Delete',
+    onConfirm: async () => {
+      setSaving(true);
+      try {
+        await csrAPI.activityTypes.delete(t.id);
+        notify('Activity type deleted.');
+        load();
+      } catch (e) {
+        notify(e.message || 'Delete failed.', 'error');
+      } finally {
+        setSaving(false);
+        setConfirmState(null);
+      }
+    },
+  });
 
   return (
     <Container maxWidth="sm" sx={{ py: 3 }}>
@@ -128,6 +138,16 @@ export default function CSRActivityTypesPage() {
           ))}
         </List>
       )}
+
+      <ConfirmDialog
+        open={!!confirmState}
+        title={confirmState?.title}
+        message={confirmState?.message}
+        confirmLabel={confirmState?.confirmLabel}
+        busy={saving}
+        onConfirm={() => confirmState?.onConfirm()}
+        onClose={() => setConfirmState(null)}
+      />
 
       <Snackbar
         open={toast.open}

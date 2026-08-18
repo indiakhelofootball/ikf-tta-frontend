@@ -9,6 +9,7 @@ import {
   Search as SearchIcon,
 } from '@mui/icons-material';
 
+import ConfirmDialog from '../common/ConfirmDialog';
 import CSRProjectCard from './CSRProjectCard';
 import CSRProjectModal from './CSRProjectModal';
 import { csrAPI } from '../../services/api';
@@ -26,6 +27,9 @@ export default function CSRProjectManagementPage() {
   const [editing, setEditing] = useState(null);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
+  // One shared slot for whichever delete is being confirmed:
+  // { title, message, confirmLabel, onConfirm }.
+  const [confirmState, setConfirmState] = useState(null);
 
   const notify = (message, severity = 'success') => setToast({ open: true, message, severity });
 
@@ -67,15 +71,25 @@ export default function CSRProjectManagementPage() {
     }
   };
 
-  const handleDelete = async (project) => {
-    if (!window.confirm(`Delete CSR project "${project.name}"? This cannot be undone.`)) return;
-    try {
-      await csrAPI.projects.delete(project.id);
-      notify('Project deleted.');
-      load();
-    } catch (e) {
-      notify(e.message || 'Delete failed.', 'error');
-    }
+  const handleDelete = (project) => {
+    setConfirmState({
+      title: 'Delete CSR project',
+      message: `Delete CSR project "${project.name}"? This cannot be undone.`,
+      confirmLabel: 'Delete',
+      onConfirm: async () => {
+        setSaving(true);
+        try {
+          await csrAPI.projects.delete(project.id);
+          notify('Project deleted.');
+          load();
+        } catch (e) {
+          notify(e.message || 'Delete failed.', 'error');
+        } finally {
+          setSaving(false);
+          setConfirmState(null);
+        }
+      },
+    });
   };
 
   const filtered = projects.filter((p) => {
@@ -147,6 +161,16 @@ export default function CSRProjectManagementPage() {
         onClose={() => { setModalOpen(false); setEditing(null); }}
         onSave={handleSave}
         saving={saving}
+      />
+
+      <ConfirmDialog
+        open={Boolean(confirmState)}
+        title={confirmState?.title}
+        message={confirmState?.message}
+        confirmLabel={confirmState?.confirmLabel}
+        busy={saving}
+        onConfirm={() => confirmState?.onConfirm()}
+        onClose={() => setConfirmState(null)}
       />
 
       <Snackbar

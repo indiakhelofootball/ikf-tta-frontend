@@ -11,6 +11,7 @@ import {
 } from '@mui/icons-material';
 
 import { csrAPI } from '../../services/api';
+import ConfirmDialog from '../common/ConfirmDialog';
 
 const EMPTY = { projectId: '', firstName: '', lastName: '', email: '', password: '' };
 
@@ -98,6 +99,7 @@ export default function CSRClientsPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
+  const [confirmState, setConfirmState] = useState(null);
 
   const notify = (message, severity = 'success') => setToast({ open: true, message, severity });
   const asList = (data) => (Array.isArray(data) ? data : data?.results || []);
@@ -117,19 +119,30 @@ export default function CSRClientsPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const toggleAccess = async (c) => {
+  const toggleAccess = (c) => {
     const revoking = c.isActive;
     const message = revoking
       ? `Revoke portal access for ${c.email}? They are signed out immediately. Their reports and certificate are kept, and you can restore access later.`
       : `Restore portal access for ${c.email}?`;
-    if (!window.confirm(message)) return;
-    try {
-      await csrAPI.clients.setAccess(c.id, !c.isActive);
-      notify(revoking ? 'Access revoked.' : 'Access restored.');
-      load();
-    } catch (e) {
-      notify(e.message || 'Could not update access.', 'error');
-    }
+    setConfirmState({
+      title: revoking ? 'Revoke portal access' : 'Restore portal access',
+      message,
+      confirmLabel: revoking ? 'Revoke' : 'Restore',
+      destructive: revoking,
+      onConfirm: async () => {
+        setSaving(true);
+        try {
+          await csrAPI.clients.setAccess(c.id, !c.isActive);
+          notify(revoking ? 'Access revoked.' : 'Access restored.');
+          load();
+        } catch (e) {
+          notify(e.message || 'Could not update access.', 'error');
+        } finally {
+          setSaving(false);
+          setConfirmState(null);
+        }
+      },
+    });
   };
 
   const handleSave = async (payload) => {
@@ -201,6 +214,17 @@ export default function CSRClientsPage() {
         onClose={() => setModalOpen(false)}
         onSave={handleSave}
         saving={saving}
+      />
+
+      <ConfirmDialog
+        open={!!confirmState}
+        title={confirmState?.title}
+        message={confirmState?.message}
+        confirmLabel={confirmState?.confirmLabel}
+        destructive={confirmState?.destructive !== false}
+        busy={saving}
+        onConfirm={() => confirmState?.onConfirm()}
+        onClose={() => setConfirmState(null)}
       />
 
       <Snackbar
