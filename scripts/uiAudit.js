@@ -260,8 +260,12 @@ async function main() {
       await page.goto(`${BASE}${route}`, { waitUntil: 'networkidle' });
       const loadMs = Date.now() - t0;
 
-      const cls = await page.evaluate(CLS_PROBE);
-      const probes = await page.evaluate(PROBES);
+      // Both probes are stored as the SOURCE of an arrow function. Playwright
+      // evaluates a string as an expression, so passing it bare returns the
+      // function object itself — non-serializable, which arrives as undefined.
+      // Wrap and invoke so what crosses the boundary is the plain result.
+      const cls = await page.evaluate(`(${CLS_PROBE})()`);
+      const probes = await page.evaluate(`(${PROBES})()`);
 
       const shot = path.join(OUT, 'shots', `${slug}@${width}.png`);
       await page.screenshot({ path: shot, fullPage: true });

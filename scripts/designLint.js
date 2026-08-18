@@ -233,7 +233,12 @@ function walk(dir, files = []) {
     if (entry.isDirectory()) {
       if (entry.name === 'node_modules' || entry.name === 'graphify-out') continue;
       walk(full, files);
-    } else if (/\.(jsx?|css)$/.test(entry.name)) {
+    } else if (/\.(jsx?|tsx?|css|scss|html?)$/.test(entry.name)) {
+      // .html matters as much as .jsx here. A standalone review screen, a
+      // prototype or an email template carries exactly the same defects —
+      // native dialogs, transition:all, a weight shift on hover — and the
+      // walker used to skip them silently, which reads as a clean pass rather
+      // than as "not checked". Silence and a green tick must not look alike.
       files.push(full);
     }
   }
@@ -257,7 +262,9 @@ function main() {
     if (CHECK_TOKENS && !allowed) violations.push(...checkColours(rel, source));
     violations.push(...checkTransitionAll(rel, source));
     violations.push(...checkNativeDialog(rel, source));
-    if (rel.endsWith('.css')) violations.push(...checkWeightShift(rel, source));
+    // Stylesheets and anything that can carry a <style> block. An HTML file
+    // with an inline rule shifts weight on hover just as visibly as a .css one.
+    if (/\.(css|scss|html?)$/.test(rel)) violations.push(...checkWeightShift(rel, source));
   }
 
   // Group by rule so the output reads as four problems, not two thousand lines.
