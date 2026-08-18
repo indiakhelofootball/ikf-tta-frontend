@@ -1,0 +1,950 @@
+{
+  "base": "http://localhost:3000",
+  "ranAt": "2026-08-18T19:57:26.775Z",
+  "routes": {
+    "/csr/login": {
+      "widths": {
+        "360": {
+          "loadMs": 1862,
+          "cls": {
+            "cls": 0,
+            "shifts": []
+          },
+          "screenshot": "shots\\csr-login@360.png",
+          "axe": null,
+          "consoleErrors": [],
+          "counts": {
+            "elements": 24
+          },
+          "contrastFailures": [],
+          "smallTargets": [
+            {
+              "tag": "input",
+              "label": "",
+              "w": 264,
+              "h": 42,
+              "failsWCAG22": false,
+              "failsApple": true,
+              "failsMD3": true
+            },
+            {
+              "tag": "input",
+              "label": "",
+              "w": 264,
+              "h": 42,
+              "failsWCAG22": false,
+              "failsApple": true,
+              "failsMD3": true
+            },
+            {
+              "tag": "a",
+              "label": "Sign in here",
+              "w": 73,
+              "h": 19,
+              "failsWCAG22": true,
+              "failsApple": true,
+              "failsMD3": true
+            }
+          ],
+          "tokens": {
+            "radii": [
+              [
+                "7px",
+                5
+              ],
+              [
+                "10px",
+                1
+              ],
+              [
+                "50%",
+                1
+              ]
+            ],
+            "shadows": [
+              [
+                "rgba(20, 28, 24, 0.08) 0px 4px 12px 0px",
+                1
+              ]
+            ],
+            "fontSizes": [
+              [
+                "14px",
+                4
+              ],
+              [
+                "15px",
+                2
+              ]
+            ],
+            "fontWeights": [
+              [
+                "400",
+                2
+              ],
+              [
+                "500",
+                2
+              ],
+              [
+                "600",
+                2
+              ]
+            ],
+            "textColors": [
+              [
+                "rgb(78, 90, 84)",
+                3
+              ],
+              [
+                "rgb(26, 38, 32)",
+                1
+              ],
+              [
+                "rgb(243, 248, 245)",
+                1
+              ],
+              [
+                "rgb(44, 106, 79)",
+                1
+              ]
+            ],
+            "backgrounds": [
+              [
+                "rgb(250, 251, 248)",
+                3
+              ],
+              [
+                "rgb(249, 250, 251)",
+                1
+              ],
+              [
+                "rgb(239, 241, 236)",
+                1
+              ],
+              [
+                "rgb(225, 235, 228)",
+                1
+              ],
+              [
+                "rgb(44, 106, 79)",
+                1
+              ]
+            ],
+            "borderColors": [
+              [
+                "rgb(219, 222, 214)",
+                2
+              ]
+            ]
+          },
+          "layoutAnimatingTransitions": [
+            {
+              "selector": "html",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "body",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "div",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "div.MuiBox-root",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "div.MuiBox-root",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "div.MuiAvatar-root",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "path",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "h6.MuiTypography-root",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "form.MuiBox-root",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "div.MuiFormControl-root",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "label.MuiFormLabel-root",
+              "property": "color, transform, max-width",
+              "duration": "0.2s, 0.2s, 0.2s"
+            },
+            {
+              "selector": "input.MuiInputBase-input",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "fieldset.MuiOutlinedInput-notchedOutline",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "div.MuiFormControl-root",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "label.MuiFormLabel-root",
+              "property": "color, transform, max-width",
+              "duration": "0.2s, 0.2s, 0.2s"
+            },
+            {
+              "selector": "input.MuiInputBase-input",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "fieldset.MuiOutlinedInput-notchedOutline",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "p.MuiTypography-root",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "a.MuiTypography-root",
+              "property": "all",
+              "duration": "0s"
+            }
+          ],
+          "nonTabularNumerals": [],
+          "horizontalOverflow": null,
+          "imageIssues": []
+        },
+        "768": {
+          "loadMs": 667,
+          "cls": {
+            "cls": 0,
+            "shifts": []
+          },
+          "screenshot": "shots\\csr-login@768.png",
+          "axe": null,
+          "consoleErrors": [],
+          "counts": {
+            "elements": 24
+          },
+          "contrastFailures": [],
+          "smallTargets": [
+            {
+              "tag": "input",
+              "label": "",
+              "w": 336,
+              "h": 42,
+              "failsWCAG22": false,
+              "failsApple": true,
+              "failsMD3": true
+            },
+            {
+              "tag": "input",
+              "label": "",
+              "w": 336,
+              "h": 42,
+              "failsWCAG22": false,
+              "failsApple": true,
+              "failsMD3": true
+            },
+            {
+              "tag": "a",
+              "label": "Sign in here",
+              "w": 73,
+              "h": 19,
+              "failsWCAG22": true,
+              "failsApple": true,
+              "failsMD3": true
+            }
+          ],
+          "tokens": {
+            "radii": [
+              [
+                "7px",
+                5
+              ],
+              [
+                "10px",
+                1
+              ],
+              [
+                "50%",
+                1
+              ]
+            ],
+            "shadows": [
+              [
+                "rgba(20, 28, 24, 0.08) 0px 4px 12px 0px",
+                1
+              ]
+            ],
+            "fontSizes": [
+              [
+                "14px",
+                4
+              ],
+              [
+                "15px",
+                2
+              ]
+            ],
+            "fontWeights": [
+              [
+                "400",
+                2
+              ],
+              [
+                "500",
+                2
+              ],
+              [
+                "600",
+                2
+              ]
+            ],
+            "textColors": [
+              [
+                "rgb(78, 90, 84)",
+                3
+              ],
+              [
+                "rgb(26, 38, 32)",
+                1
+              ],
+              [
+                "rgb(243, 248, 245)",
+                1
+              ],
+              [
+                "rgb(44, 106, 79)",
+                1
+              ]
+            ],
+            "backgrounds": [
+              [
+                "rgb(250, 251, 248)",
+                3
+              ],
+              [
+                "rgb(249, 250, 251)",
+                1
+              ],
+              [
+                "rgb(239, 241, 236)",
+                1
+              ],
+              [
+                "rgb(225, 235, 228)",
+                1
+              ],
+              [
+                "rgb(44, 106, 79)",
+                1
+              ]
+            ],
+            "borderColors": [
+              [
+                "rgb(219, 222, 214)",
+                2
+              ]
+            ]
+          },
+          "layoutAnimatingTransitions": [
+            {
+              "selector": "html",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "body",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "div",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "div.MuiBox-root",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "div.MuiBox-root",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "div.MuiAvatar-root",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "path",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "h6.MuiTypography-root",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "form.MuiBox-root",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "div.MuiFormControl-root",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "label.MuiFormLabel-root",
+              "property": "color, transform, max-width",
+              "duration": "0.2s, 0.2s, 0.2s"
+            },
+            {
+              "selector": "input.MuiInputBase-input",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "fieldset.MuiOutlinedInput-notchedOutline",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "div.MuiFormControl-root",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "label.MuiFormLabel-root",
+              "property": "color, transform, max-width",
+              "duration": "0.2s, 0.2s, 0.2s"
+            },
+            {
+              "selector": "input.MuiInputBase-input",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "fieldset.MuiOutlinedInput-notchedOutline",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "p.MuiTypography-root",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "a.MuiTypography-root",
+              "property": "all",
+              "duration": "0s"
+            }
+          ],
+          "nonTabularNumerals": [],
+          "horizontalOverflow": null,
+          "imageIssues": []
+        },
+        "1280": {
+          "loadMs": 594,
+          "cls": {
+            "cls": 0,
+            "shifts": []
+          },
+          "screenshot": "shots\\csr-login@1280.png",
+          "axe": [],
+          "consoleErrors": [],
+          "counts": {
+            "elements": 24
+          },
+          "contrastFailures": [],
+          "smallTargets": [
+            {
+              "tag": "input",
+              "label": "",
+              "w": 336,
+              "h": 42,
+              "failsWCAG22": false,
+              "failsApple": true,
+              "failsMD3": true
+            },
+            {
+              "tag": "input",
+              "label": "",
+              "w": 336,
+              "h": 42,
+              "failsWCAG22": false,
+              "failsApple": true,
+              "failsMD3": true
+            },
+            {
+              "tag": "a",
+              "label": "Sign in here",
+              "w": 73,
+              "h": 19,
+              "failsWCAG22": true,
+              "failsApple": true,
+              "failsMD3": true
+            }
+          ],
+          "tokens": {
+            "radii": [
+              [
+                "7px",
+                5
+              ],
+              [
+                "10px",
+                1
+              ],
+              [
+                "50%",
+                1
+              ]
+            ],
+            "shadows": [
+              [
+                "rgba(20, 28, 24, 0.08) 0px 4px 12px 0px",
+                1
+              ]
+            ],
+            "fontSizes": [
+              [
+                "14px",
+                4
+              ],
+              [
+                "15px",
+                2
+              ]
+            ],
+            "fontWeights": [
+              [
+                "400",
+                2
+              ],
+              [
+                "500",
+                2
+              ],
+              [
+                "600",
+                2
+              ]
+            ],
+            "textColors": [
+              [
+                "rgb(78, 90, 84)",
+                3
+              ],
+              [
+                "rgb(26, 38, 32)",
+                1
+              ],
+              [
+                "rgb(243, 248, 245)",
+                1
+              ],
+              [
+                "rgb(44, 106, 79)",
+                1
+              ]
+            ],
+            "backgrounds": [
+              [
+                "rgb(250, 251, 248)",
+                3
+              ],
+              [
+                "rgb(249, 250, 251)",
+                1
+              ],
+              [
+                "rgb(239, 241, 236)",
+                1
+              ],
+              [
+                "rgb(225, 235, 228)",
+                1
+              ],
+              [
+                "rgb(44, 106, 79)",
+                1
+              ]
+            ],
+            "borderColors": [
+              [
+                "rgb(219, 222, 214)",
+                2
+              ]
+            ]
+          },
+          "layoutAnimatingTransitions": [
+            {
+              "selector": "html",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "body",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "div",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "div.MuiBox-root",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "div.MuiBox-root",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "div.MuiAvatar-root",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "path",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "h6.MuiTypography-root",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "form.MuiBox-root",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "div.MuiFormControl-root",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "label.MuiFormLabel-root",
+              "property": "color, transform, max-width",
+              "duration": "0.2s, 0.2s, 0.2s"
+            },
+            {
+              "selector": "input.MuiInputBase-input",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "fieldset.MuiOutlinedInput-notchedOutline",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "div.MuiFormControl-root",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "label.MuiFormLabel-root",
+              "property": "color, transform, max-width",
+              "duration": "0.2s, 0.2s, 0.2s"
+            },
+            {
+              "selector": "input.MuiInputBase-input",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "fieldset.MuiOutlinedInput-notchedOutline",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "p.MuiTypography-root",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "a.MuiTypography-root",
+              "property": "all",
+              "duration": "0s"
+            }
+          ],
+          "nonTabularNumerals": [],
+          "horizontalOverflow": null,
+          "imageIssues": []
+        },
+        "1920": {
+          "loadMs": 611,
+          "cls": {
+            "cls": 0,
+            "shifts": []
+          },
+          "screenshot": "shots\\csr-login@1920.png",
+          "axe": null,
+          "consoleErrors": [],
+          "counts": {
+            "elements": 24
+          },
+          "contrastFailures": [],
+          "smallTargets": [
+            {
+              "tag": "input",
+              "label": "",
+              "w": 336,
+              "h": 42,
+              "failsWCAG22": false,
+              "failsApple": true,
+              "failsMD3": true
+            },
+            {
+              "tag": "input",
+              "label": "",
+              "w": 336,
+              "h": 42,
+              "failsWCAG22": false,
+              "failsApple": true,
+              "failsMD3": true
+            },
+            {
+              "tag": "a",
+              "label": "Sign in here",
+              "w": 73,
+              "h": 19,
+              "failsWCAG22": true,
+              "failsApple": true,
+              "failsMD3": true
+            }
+          ],
+          "tokens": {
+            "radii": [
+              [
+                "7px",
+                5
+              ],
+              [
+                "10px",
+                1
+              ],
+              [
+                "50%",
+                1
+              ]
+            ],
+            "shadows": [
+              [
+                "rgba(20, 28, 24, 0.08) 0px 4px 12px 0px",
+                1
+              ]
+            ],
+            "fontSizes": [
+              [
+                "14px",
+                4
+              ],
+              [
+                "15px",
+                2
+              ]
+            ],
+            "fontWeights": [
+              [
+                "400",
+                2
+              ],
+              [
+                "500",
+                2
+              ],
+              [
+                "600",
+                2
+              ]
+            ],
+            "textColors": [
+              [
+                "rgb(78, 90, 84)",
+                3
+              ],
+              [
+                "rgb(26, 38, 32)",
+                1
+              ],
+              [
+                "rgb(243, 248, 245)",
+                1
+              ],
+              [
+                "rgb(44, 106, 79)",
+                1
+              ]
+            ],
+            "backgrounds": [
+              [
+                "rgb(250, 251, 248)",
+                3
+              ],
+              [
+                "rgb(249, 250, 251)",
+                1
+              ],
+              [
+                "rgb(239, 241, 236)",
+                1
+              ],
+              [
+                "rgb(225, 235, 228)",
+                1
+              ],
+              [
+                "rgb(44, 106, 79)",
+                1
+              ]
+            ],
+            "borderColors": [
+              [
+                "rgb(219, 222, 214)",
+                2
+              ]
+            ]
+          },
+          "layoutAnimatingTransitions": [
+            {
+              "selector": "html",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "body",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "div",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "div.MuiBox-root",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "div.MuiBox-root",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "div.MuiAvatar-root",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "path",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "h6.MuiTypography-root",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "form.MuiBox-root",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "div.MuiFormControl-root",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "label.MuiFormLabel-root",
+              "property": "color, transform, max-width",
+              "duration": "0.2s, 0.2s, 0.2s"
+            },
+            {
+              "selector": "input.MuiInputBase-input",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "fieldset.MuiOutlinedInput-notchedOutline",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "div.MuiFormControl-root",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "label.MuiFormLabel-root",
+              "property": "color, transform, max-width",
+              "duration": "0.2s, 0.2s, 0.2s"
+            },
+            {
+              "selector": "input.MuiInputBase-input",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "fieldset.MuiOutlinedInput-notchedOutline",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "p.MuiTypography-root",
+              "property": "all",
+              "duration": "0s"
+            },
+            {
+              "selector": "a.MuiTypography-root",
+              "property": "all",
+              "duration": "0s"
+            }
+          ],
+          "nonTabularNumerals": [],
+          "horizontalOverflow": null,
+          "imageIssues": []
+        }
+      }
+    }
+  }
+}

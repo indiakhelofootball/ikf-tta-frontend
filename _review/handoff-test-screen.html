@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fleet Console — Test Screen</title>
+<style>
+  /* PLANTED: two greys 1.2% apart — surface drift, invisible separation */
+  :root{
+    --canvas:#FAFAFA;
+    --surface:#FFFFFF;
+    --ink:#1A1A1A;
+    --muted:#8A8A8A;
+    --line:#E8E8E8;
+    --brand:#D4A017;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--canvas);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    color:var(--ink);
+  }
+
+  /* PLANTED: transition:all */
+  a,button,.row{ transition: all .3s ease; }
+
+  .shell{display:flex;min-height:100vh;}
+
+  .nav{
+    width:220px;
+    background:var(--surface);
+    border-right:1px solid var(--line);
+    padding:20px 12px;
+  }
+  .brand{font-size:15px;font-weight:700;color:var(--brand);margin-bottom:24px;padding-left:10px;}
+  .navlink{
+    display:block;
+    padding:9px 10px;
+    border-radius:6px;
+    color:var(--muted);
+    text-decoration:none;
+    font-size:13.5px;
+    font-weight:500;
+  }
+  /* PLANTED: font-weight changes on hover — text reflows */
+  .navlink:hover{ font-weight:700; color:var(--ink); background:#F5F5F5; }
+  .navlink.active{ background:var(--brand); color:#fff; font-weight:600; }
+
+  .main{flex:1;padding:28px 32px;}
+
+  /* PLANTED: header margin smaller than internal card gaps — frame escaping */
+  h1{font-size:22px;margin:0 0 6px;font-weight:600;}
+  .sub{color:var(--muted);font-size:13px;margin:0 0 26px;}
+
+  .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:30px;}
+  /* PLANTED: card radius 8, inner radius also 8 with 16px padding — concentric violation */
+  .tile{
+    background:var(--surface);
+    border:1px solid var(--line);
+    box-shadow:0 1px 3px rgba(0,0,0,.08);   /* PLANTED: border AND shadow together */
+    border-radius:8px;
+    padding:16px;
+  }
+  .tile .chip{
+    border-radius:8px;
+    background:#F5F5F5;
+    display:inline-block;
+    padding:3px 8px;
+    font-size:11px;
+    color:var(--muted);
+    margin-bottom:10px;
+  }
+  /* PLANTED: value at 20px — smaller than the 26px avatar. Not dominant. */
+  .tile .val{font-size:20px;font-weight:600;}
+  .tile .cap{font-size:11.5px;color:var(--muted);margin-top:3px;}
+
+  .panel{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:8px;
+    overflow:hidden;
+  }
+  .phead{
+    padding:13px 16px;
+    border-bottom:1px solid var(--line);
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  .phead h2{font-size:14px;margin:0;font-weight:600;}
+
+  /* PLANTED: 20px target — under the 24px accessibility floor */
+  .iconbtn{
+    width:20px;height:20px;
+    border:1px solid var(--line);
+    border-radius:4px;
+    background:var(--surface);
+    color:var(--muted);
+    font-size:11px;
+    line-height:1;
+    cursor:pointer;
+    padding:0;
+  }
+
+  table{width:100%;border-collapse:collapse;}
+  th{
+    text-align:left;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+    color:var(--muted);
+    font-weight:600;
+    padding:9px 16px;
+    background:#FAFAFA;   /* PLANTED: same as canvas — header does not separate */
+    border-bottom:1px solid var(--line);
+  }
+  td{padding:11px 16px;font-size:13px;border-bottom:1px solid var(--line);}
+  /* PLANTED: numeric column right-aligned but NOT tabular — jitters on update */
+  td.num{text-align:right;}
+
+  /* PLANTED: status by colour alone — no icon, no shape, no text differentiator */
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;vertical-align:middle;}
+  .ok{background:#2E9E4F;}
+  .bad{background:#D33A3A;}
+
+  .avatar{
+    width:26px;height:26px;border-radius:50%;
+    background:var(--brand);color:#fff;
+    display:inline-flex;align-items:center;justify-content:center;
+    font-size:12px;font-weight:600;
+  }
+  .topline{display:flex;justify-content:space-between;align-items:flex-start;}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <nav class="nav">
+    <div class="brand">FLEETLINE</div>
+    <a class="navlink active" href="#">Overview</a>
+    <a class="navlink" href="#">Vehicles</a>
+    <a class="navlink" href="#">Routes</a>
+    <a class="navlink" href="#">Drivers</a>
+    <a class="navlink" href="#">Maintenance</a>
+    <a class="navlink" href="#">Reports</a>
+  </nav>
+
+  <main class="main">
+    <div class="topline">
+      <div>
+        <h1>Overview</h1>
+        <p class="sub">Fleet status across all depots</p>
+      </div>
+      <div class="avatar">RK</div>
+    </div>
+
+    <div class="tiles">
+      <div class="tile">
+        <span class="chip">Active</span>
+        <div class="val">142</div>
+        <div class="cap">vehicles on road</div>
+      </div>
+      <div class="tile">
+        <span class="chip">Idle</span>
+        <div class="val">28</div>
+        <div class="cap">parked over 24h</div>
+      </div>
+      <div class="tile">
+        <span class="chip">Distance</span>
+        <div class="val">18,402</div>
+        <div class="cap">km this week</div>
+      </div>
+      <div class="tile">
+        <span class="chip">Fuel</span>
+        <div class="val">₹4,18,220</div>
+        <div class="cap">spend this month</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="phead">
+        <h2>Vehicles needing attention</h2>
+        <button class="iconbtn">⋯</button>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Vehicle</th>
+            <th>Depot</th>
+            <th>Driver</th>
+            <th>Status</th>
+            <th style="text-align:right">Odometer</th>
+            <th style="text-align:right">Due in</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="row">
+            <td>MH-12-AB-4417</td><td>Pune North</td><td>S. Kulkarni</td>
+            <td><span class="dot bad"></span></td>
+            <td class="num">184,209</td><td class="num">-3 days</td>
+          </tr>
+          <tr class="row">
+            <td>MH-14-CD-9902</td><td>Pimpri</td><td>A. Deshmukh</td>
+            <td><span class="dot bad"></span></td>
+            <td class="num">97,644</td><td class="num">-1 day</td>
+          </tr>
+          <tr class="row">
+            <td>MH-12-EF-1180</td><td>Pune North</td><td>R. Jadhav</td>
+            <td><span class="dot ok"></span></td>
+            <td class="num">61,003</td><td class="num">12 days</td>
+          </tr>
+          <tr class="row">
+            <td>MH-31-GH-7745</td><td>Nagpur</td><td>V. Ingle</td>
+            <td><span class="dot ok"></span></td>
+            <td class="num">210,887</td><td class="num">21 days</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+</body>
+</html>
