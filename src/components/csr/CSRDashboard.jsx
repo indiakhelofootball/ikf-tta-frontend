@@ -14,6 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Box, Grid, Paper, Typography, Stack, Chip, LinearProgress, Alert, Skeleton,
 } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import {
   FolderSpecial as ProjectsIcon,
   AccountBalanceWallet as SpendIcon,
@@ -27,30 +28,39 @@ const fmtINR = (n) =>
     .format(Number(n) || 0);
 
 const cardSx = {
-  p: 2.5, borderRadius: 2, border: '1px solid #e2e8f0', height: '100%',
+  // Cards are the `lg` role in the radius scale: 12px. shape.borderRadius is
+  // 8, so 1.5 lands on 12 rather than the 16 that `2` was giving.
+  p: 2.5, borderRadius: 1.5, border: 1, borderColor: 'divider', height: '100%',
 };
 
-function StatCard({ icon, label, value, sub, tone = '#5B63D3' }) {
+// `tone` is a palette path ('primary.main'), which sx resolves for `color` but
+// not for a tinted fill — so the fill resolves it here and applies the alpha.
+const tonePalette = (theme, tone) =>
+  tone.split('.').reduce((node, key) => node?.[key], theme.palette) || tone;
+
+function StatCard({ icon, label, value, sub, tone = 'primary.main' }) {
   return (
     <Paper elevation={0} sx={cardSx}>
       <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1.5 }}>
         <Box sx={{
-          width: 38, height: 38, borderRadius: 1.5, display: 'grid', placeItems: 'center',
-          bgcolor: `${tone}14`, color: tone,
+          // Small accent inside a card: `md` role, 8px. An inner radius equal
+          // to its container's reads wrong.
+          width: 38, height: 38, borderRadius: 1, display: 'grid', placeItems: 'center',
+          bgcolor: (theme) => alpha(tonePalette(theme, tone), 0.08), color: tone,
         }}>
           {icon}
         </Box>
         <Typography sx={{
-          fontWeight: 700, color: '#5A6B82', fontSize: '0.75rem',
+          fontWeight: 700, color: 'text.secondary', fontSize: '0.75rem',
           letterSpacing: '0.5px', textTransform: 'uppercase',
         }}>
           {label}
         </Typography>
       </Stack>
-      <Typography variant="h4" fontWeight={800} sx={{ color: '#1e293b', lineHeight: 1.1 }}>
+      <Typography variant="h4" fontWeight={800} sx={{ color: 'text.primary', lineHeight: 1.1 }}>
         {value}
       </Typography>
-      {sub && <Typography variant="body2" sx={{ color: '#64748b', mt: 0.5 }}>{sub}</Typography>}
+      {sub && <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>{sub}</Typography>}
     </Paper>
   );
 }
@@ -120,7 +130,7 @@ export default function CSRDashboard() {
       {/* No page title here — the layout header already renders "CSR Dashboard".
           Repeating it produced two identical headings on screen, which the E2E
           suite caught as a strict-mode ambiguity. */}
-      <Typography variant="body2" sx={{ color: '#64748b', mb: 3 }}>
+      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
         Project delivery, reporting, and utilisation.
       </Typography>
 
@@ -142,7 +152,7 @@ export default function CSRDashboard() {
             <StatCard
               icon={<SpendIcon fontSize="small" />}
               label="Sanctioned vs utilised"
-              tone="#16a34a"
+              tone="success.main"
               value={fmtINR(utilised)}
               sub={`of ${fmtINR(sanctioned)} sanctioned`}
             />
@@ -153,7 +163,7 @@ export default function CSRDashboard() {
             <StatCard
               icon={<ReportsIcon fontSize="small" />}
               label="Reports pending release"
-              tone="#d97706"
+              tone="warning.main"
               value={pendingReports == null ? '—' : pendingReports}
               sub={pendingReports === 0 ? 'nothing waiting' : 'not yet visible to funders'}
             />
@@ -165,9 +175,11 @@ export default function CSRDashboard() {
         <Paper elevation={0} sx={{ ...cardSx, mb: 3 }}>
           <Stack direction="row" justifyContent="space-between" sx={{ mb: 1 }}>
             <Typography variant="body2" fontWeight={700}>Utilisation across active projects</Typography>
-            <Typography variant="body2" sx={{ color: '#64748b' }}>{pct}%</Typography>
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>{pct}%</Typography>
           </Stack>
-          <LinearProgress variant="determinate" value={pct} sx={{ height: 8, borderRadius: 4 }} />
+          {/* radius comes from the theme (MuiLinearProgress -> pill); overriding it
+              here produced a 32px radius on an 8px bar. */}
+          <LinearProgress variant="determinate" value={pct} sx={{ height: 8 }} />
         </Paper>
       )}
 
@@ -175,7 +187,7 @@ export default function CSRDashboard() {
         <Typography variant="body2" fontWeight={700} sx={{ mb: 1.5 }}>Projects</Typography>
         {loading && <Skeleton variant="rounded" height={80} />}
         {!loading && projects.length === 0 && (
-          <Typography variant="body2" sx={{ color: '#64748b' }}>
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
             No CSR projects yet.
           </Typography>
         )}
@@ -184,13 +196,13 @@ export default function CSRDashboard() {
             key={p.id} direction="row" justifyContent="space-between" alignItems="center"
             onClick={() => navigate(`/csr/${p.id}`)}
             sx={{
-              py: 1.25, borderBottom: '1px solid #f1f5f9', cursor: 'pointer',
-              '&:hover': { bgcolor: '#f8fafc' },
+              py: 1.25, borderBottom: 1, borderColor: 'divider', cursor: 'pointer',
+              '&:hover': { bgcolor: 'action.hover' },
             }}
           >
             <Box>
               <Typography variant="body2" fontWeight={600}>{p.name}</Typography>
-              <Typography variant="caption" sx={{ color: '#5A6B82' }}>
+              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                 {p.clientName} · {fmtINR(p.sanctionedAmount)}
               </Typography>
             </Box>
