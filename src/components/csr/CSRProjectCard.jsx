@@ -1,73 +1,142 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import {
-  Card, CardContent, Box, Typography, Chip, IconButton, Collapse, Tooltip,
-} from '@mui/material';
-import {
-  ExpandMore as ExpandMoreIcon,
-  ExpandLess as ExpandLessIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  OpenInNew as OpenIcon,
-} from '@mui/icons-material';
+// src/components/csr/CSRProjectCard.jsx
+//
+// One row in the projects list. It is a SELECTOR, not a container: the row's
+// whole job is to say which grant you are looking at and hand selection back to
+// CSRProjectManagementPage, which paints the detail beside it. The card used to
+// carry its own expand/collapse detail, its own edit and delete buttons and its
+// own "open" icon — five controls on a row that is itself a control. In a
+// master-detail layout the detail has a pane of its own and the verbs live in
+// its header, so the row keeps exactly two affordances: click it, and a chevron
+// that says clicking does something.
+//
+// COLOUR. Two axes, and they must not cross (same rule as CSRDashboard):
+//   spine = grant IDENTITY — moss/indigo/teal, hashed by id, stable for life
+//   dot   = STATUS — plum when closed, neutral when active
+// "Active" is not one of the six inks' meanings. Moss means money utilised and
+// nothing else, so an active grant gets the neutral grey rather than borrowing
+// a colour that already has a job.
 
-import CSRProjectDetailView, { ttaProjectIdentity } from './CSRProjectDetailView';
+import React from 'react';
+import { Box, ButtonBase, Typography } from '@mui/material';
+import { ChevronRight as ChevronIcon } from '@mui/icons-material';
 
-export default function CSRProjectCard({ project, canEdit, onEdit, onDelete }) {
-  const [expanded, setExpanded] = useState(false);
-  const navigate = useNavigate();
-  const amount =
-    project.sanctionedAmount != null
-      ? `₹${Number(project.sanctionedAmount).toLocaleString('en-IN')}`
-      : '—';
-  // The card already carries funder, amount and status on one line, so the
-  // identity gets no row of its own — it joins the existing subtitle, and only
-  // when it exists. An unlinked grant's card is byte-for-byte what it was.
+import { ttaProjectIdentity } from './CSRProjectDetailView';
+import { surfaces, inks, figure, motion } from '../../styles/ttaTheme';
+
+// Identity inks, in the dashboard's order. The hash below is character-for-
+// character the one in CSRDashboard.jsx: a grant that is teal on the dashboard
+// and indigo here would be worse than no colour at all, so if either copy
+// changes the other has to change with it.
+const GRANT_INKS = [inks.moss, inks.indigo, inks.teal];
+
+export const grantInk = (id) => {
+  const key = String(id ?? '');
+  let h = 0;
+  for (let i = 0; i < key.length; i += 1) h = (h * 31 + key.charCodeAt(i)) % 100003;
+  return GRANT_INKS[h % GRANT_INKS.length];
+};
+
+// Status carries a word as well as a colour, always — see the MuiChip note in
+// ttaTheme.js. The dot is redundancy, not the message.
+const NEUTRAL_DOT = '#98A199';
+const NEUTRAL_TEXT = '#4E5A54';
+
+export const statusInk = (status) =>
+  (status === 'Closed'
+    ? { dot: inks.plum.fill, text: inks.plum.text }
+    : { dot: NEUTRAL_DOT, text: NEUTRAL_TEXT });
+
+export const formatMoney = (value) =>
+  (value == null || value === ''
+    ? '—'
+    : `₹${Number(value).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`);
+
+export default function CSRProjectCard({ project, selected = false, onSelect }) {
+  const ink = grantInk(project.id);
+  const status = statusInk(project.status);
   const identity = ttaProjectIdentity(project);
-  const subtitle = [project.clientName, amount, identity].filter(Boolean).join(' · ');
 
   return (
-    <Card variant="outlined" sx={{ mb: 1.5 }}>
-      <CardContent sx={{ pb: 1, '&:last-child': { pb: 1 } }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-            <Typography variant="subtitle1" noWrap>{project.name}</Typography>
-            <Typography variant="body2" color="text.secondary" noWrap>
-              {subtitle}
+    <Box
+      component="li"
+      sx={{
+        listStyle: 'none',
+        borderBottom: `1px solid ${surfaces.hairlineSoft}`,
+        '&:last-of-type': { borderBottom: 0 },
+      }}
+    >
+      <ButtonBase
+        onClick={() => onSelect?.(project)}
+        aria-current={selected ? 'true' : undefined}
+        sx={{
+          width: '100%',
+          textAlign: 'left',
+          justifyContent: 'stretch',
+          alignItems: 'stretch',
+          px: 0,
+          py: 0,
+          // Named property only — the catch-all keyword would animate the
+          // row's box metrics on every selection change.
+          transition: `background-color ${motion.feedback} ${motion.easeOut}`,
+          bgcolor: selected ? ink.tint : 'transparent',
+          '&:hover': { bgcolor: selected ? ink.tint : surfaces.canvas },
+          '&:focus-visible': { outline: `2px solid ${ink.fill}`, outlineOffset: -2 },
+        }}
+      >
+        {/* The identity spine. Present on every row so the colour reads as a
+            property of the grant rather than of the selection; the selected row
+            simply shows it at full strength on a tinted ground. */}
+        <Box
+          aria-hidden
+          sx={{
+            width: 3,
+            flexShrink: 0,
+            bgcolor: ink.fill,
+            opacity: selected ? 1 : 0.22,
+            transition: `opacity ${motion.feedback} ${motion.easeOut}`,
+          }}
+        />
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexGrow: 1, minWidth: 0, px: 1.75, py: 1.5 }}>
+          <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+            <Typography
+              sx={{
+                fontSize: '0.9375rem',
+                fontWeight: 500,
+                letterSpacing: '-0.01em',
+                lineHeight: 1.35,
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+              }}
+            >
+              {project.name}
             </Typography>
+            <Typography variant="body2" color="text.secondary" noWrap sx={{ fontSize: '0.8125rem' }}>
+              {project.clientName || '—'}
+            </Typography>
+            {/* The TTA identity only when it exists — an unlinked grant's row
+                stays two lines rather than growing a placeholder. */}
+            {identity && (
+              <Typography variant="body2" color="text.secondary" noWrap sx={{ fontSize: '0.75rem' }}>
+                {identity}
+              </Typography>
+            )}
           </Box>
-          <Chip
-            size="small"
-            label={project.status}
-            color={project.status === 'Active' ? 'success' : 'default'}
-          />
-          <Tooltip title="Open project">
-            <IconButton size="small" onClick={() => navigate(`/csr/${project.id}`)}>
-              <OpenIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          {canEdit && (
-            <>
-              <Tooltip title="Edit">
-                <IconButton size="small" onClick={() => onEdit(project)}>
-                  <EditIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="Delete">
-                <IconButton size="small" onClick={() => onDelete(project)}>
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            </>
-          )}
-          <IconButton size="small" onClick={() => setExpanded((v) => !v)} aria-label="Toggle details">
-            {expanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
-          </IconButton>
+          <Box sx={{ textAlign: 'right', flexShrink: 0 }}>
+            <Box sx={{ ...figure.row, fontSize: '0.875rem', whiteSpace: 'nowrap' }}>
+              {formatMoney(project.sanctionedAmount)}
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.75, mt: 0.25 }}>
+              <Box aria-hidden sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: status.dot }} />
+              <Typography variant="body2" sx={{ fontSize: '0.75rem', color: status.text }}>
+                {project.status}
+              </Typography>
+            </Box>
+          </Box>
+          <ChevronIcon fontSize="small" sx={{ color: surfaces.hairline, flexShrink: 0 }} />
         </Box>
-      </CardContent>
-      <Collapse in={expanded} unmountOnExit>
-        <CSRProjectDetailView project={project} />
-      </Collapse>
-    </Card>
+      </ButtonBase>
+    </Box>
   );
 }
