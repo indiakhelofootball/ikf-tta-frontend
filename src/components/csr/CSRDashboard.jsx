@@ -54,11 +54,17 @@ const inkFor = (id) => {
   return GRANT_INKS[h % GRANT_INKS.length];
 };
 
+// NO ARTWORK ON ANY TILE. Six illustrations were built and fitted, then pulled
+// -- the owner's call, and right. On the four stat tiles a mark behind a single
+// figure competes with the only thing the tile exists to say; on the two wide
+// tiles the drawings cut through the progress bars and the activity rows they
+// were meant to sit behind. The glass and the ink already carry the character.
+// The drawings survive in dashboardArt.jsx for a surface with room for them.
+//
 // ---------------------------------------------------------------------------
 // Tile. One question each, and small — a dashboard tile is a glance, not a
 // screen. The references average about 150px tall; the version this replaces
 // was 190px per grant and said the same thing three times.
-// ---------------------------------------------------------------------------
 function Tile({ icon, label, children, span = 1, rowSpan = 1, onClick, ink = inks.moss }) {
   return (
     <Box
@@ -66,44 +72,62 @@ function Tile({ icon, label, children, span = 1, rowSpan = 1, onClick, ink = ink
       sx={{
         gridColumn: { xs: 'span 2', md: `span ${span}` },
         gridRow: { xs: 'auto', md: `span ${rowSpan}` },
-        bgcolor: surfaces.surface,
-        // A hairline, not a shadow. This comment used to argue the opposite --
-        // that an outlined tile on a tinted ground reads as a table cell -- on
-        // the strength of reference decks that separate cards with a soft
-        // shadow. The owner ruled against it, and ttaTheme's own header had
-        // said the same thing all along: depth comes from tone, not shadow.
-        // This tile was the single place in the module that had drifted.
+        position: 'relative',
+        overflow: 'hidden',
         borderRadius: 2,
+
+        // ---- glass ---------------------------------------------------------
+        // Real glass, not a grey box called glass. Three things have to be true
+        // at once or the effect collapses: the surface must be translucent, it
+        // must blur what is behind it, and there must BE something behind it.
+        // The page ground below supplies the third -- on a flat bone field a
+        // backdrop-filter has nothing to work on and the tile just looks dull.
+        //
+        // The gradient runs from the tile's own ink at 10% to near-white, so
+        // each tile is tinted by the thing it means rather than all six being
+        // the same pane. Ink is semantic here; the glass inherits that.
+        background: `linear-gradient(150deg, ${ink.fill}1A 0%, ${ink.fill}0A 38%, rgba(255,255,255,0.72) 100%)`,
+        backdropFilter: 'blur(18px) saturate(1.35)',
+        WebkitBackdropFilter: 'blur(18px) saturate(1.35)',
+
+        // A hairline, per the owner's ruling -- no drop shadow anywhere. The
+        // top edge is lighter than the rest, which is how a pane of glass
+        // actually catches light and is what sells it without elevation.
         border: '1px solid',
-        borderColor: 'divider',
-        boxShadow: 'none',
+        borderColor: `${ink.fill}26`,
+        boxShadow: `inset 0 1px 0 rgba(255,255,255,0.65)`,
+
         p: 2.75,
         display: 'flex',
         flexDirection: 'column',
         cursor: onClick ? 'pointer' : 'default',
         transition: 'border-color 160ms cubic-bezier(0, 0, 0.2, 1)',
-        // The hover moves the line instead of lifting the tile. It also works
-        // for keyboard and touch, which a shadow-on-hover never did.
-        ...(onClick && {
-          '&:hover': { borderColor: (ink || inks.moss).fill },
-        }),
+        ...(onClick && { '&:hover': { borderColor: `${ink.fill}59` } }),
       }}
     >
-      {/* Badge and label on one line. Every reference leads its card this way,
-          and it is why theirs read as objects rather than as fields: the badge
-          gives the tile a fixed anchor and carries the tile's ink. */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, mb: 2 }}>
+      {/* The gloss: a single soft highlight raking across the top-left, which
+          is the one cue that reads as a curved surface rather than a flat
+          translucent rectangle. Pointer-events off -- it sits over the content
+          and must never eat a click. */}
+      <Box aria-hidden sx={{
+        position: 'absolute', inset: 0, pointerEvents: 'none',
+        background: 'linear-gradient(118deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.14) 26%, rgba(255,255,255,0) 52%)',
+      }} />
+
+      <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 1.25, mb: 2 }}>
         <Box sx={{
           width: 34, height: 34, borderRadius: 1.5, flex: 'none',
           display: 'grid', placeItems: 'center',
-          bgcolor: ink.tint, color: ink.text,
+          // The badge is a denser piece of the same glass, so it reads as part
+          // of the pane rather than a sticker on it.
+          bgcolor: `${ink.fill}1F`,
+          border: '1px solid',
+          borderColor: `${ink.fill}2E`,
+          color: ink.text,
           '& svg': { fontSize: 18 },
         }}>
           {icon}
         </Box>
-        {/* Sentence case at 13px, not 11px uppercase with wide tracking. The
-            tracked-out micro-label is a bureaucratic tic and none of the
-            references use one. */}
         <Box sx={{
           fontFamily: fonts.sans, fontSize: '0.8125rem', fontWeight: 600,
           color: 'text.secondary', letterSpacing: 0,
@@ -111,7 +135,10 @@ function Tile({ icon, label, children, span = 1, rowSpan = 1, onClick, ink = ink
           {label}
         </Box>
       </Box>
-      {children}
+
+      <Box sx={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column' }}>
+        {children}
+      </Box>
     </Box>
   );
 }
@@ -245,10 +272,26 @@ export default function CSRDashboard() {
   }
 
   return (
-    <Box>
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+    <Box sx={{ position: 'relative' }}>
+      {error && <Alert severity="error" sx={{ mb: 2, position: 'relative', zIndex: 1 }}>{error}</Alert>}
+
+      {/* The ground the glass needs. Three very soft ink-tinted pools, fixed
+          behind the grid -- without them backdrop-filter has nothing to blur
+          and every tile renders as a flat pale rectangle that merely costs a
+          compositing layer. Low enough alpha that the page still reads as
+          bone, and inert to the pointer. */}
+      <Box aria-hidden sx={{
+        position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none',
+        background: `
+          radial-gradient(680px 420px at 12% 8%, ${inks.moss.fill}1C 0%, transparent 68%),
+          radial-gradient(620px 460px at 88% 22%, ${inks.indigo.fill}16 0%, transparent 66%),
+          radial-gradient(720px 520px at 62% 96%, ${inks.teal.fill}14 0%, transparent 70%)
+        `,
+      }} />
 
       <Box sx={{
+        position: 'relative',
+        zIndex: 1,
         display: 'grid',
         gap: 1.5,
         gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
@@ -355,6 +398,11 @@ export default function CSRDashboard() {
           span={2}
           ink={NEUTRAL}
           label={`Recent activity · ${activities.length} logged`}
+          // The tile takes the neutral -- a log of things that happened owns no
+          // meaning in the ink system -- but the ART takes teal. At the neutral
+          // grey the columns' backing swell renders as nothing, which the
+          // drawing was not built for. Teal is the quietest of the six and this
+          // is decoration behind a list, not a semantic claim.
         >
           {recent.length === 0 ? (
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>
