@@ -34,6 +34,7 @@ import {
 
 import { csrAPI } from '../../services/api';
 import useGrants from '../../auth/useGrants';
+import { ttaProjectIdentity } from './CSRProjectDetailView';
 import useRefetchOnFocus from '../../hooks/useRefetchOnFocus';
 import { certificateFreezeState } from './csrContractRules';
 import { surfaces, inks, figure, fonts, tabular } from '../../styles/ttaTheme';
@@ -91,7 +92,7 @@ export default function CSRUtilisationPage() {
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return rows;
-    return rows.filter(({ project }) => [project.name, project.clientName]
+    return rows.filter(({ project }) => [project.name, project.clientName, ttaProjectIdentity(project)]
       .filter(Boolean)
       .some((v) => String(v).toLowerCase().includes(q)));
   }, [rows, search]);
@@ -231,6 +232,13 @@ export default function CSRUtilisationPage() {
                     <Box sx={{ ...figure.unit, color: inks.teal.text }}>
                       {project.clientName || 'Funder not recorded'}
                     </Box>
+                    {/* Which TTA project this grant funds. Neutral, not inked:
+                        an identity is not money, a promise or a decision. Set
+                        only — an unlinked grant reads exactly as before, and
+                        the one place that says so is the Overview panel. */}
+                    {ttaProjectIdentity(project) && (
+                      <Box sx={figure.unit}>{ttaProjectIdentity(project)}</Box>
+                    )}
                   </Box>
                   <Box
                     component="span"
