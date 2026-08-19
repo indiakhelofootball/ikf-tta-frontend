@@ -37,6 +37,9 @@ const pageTitles = {
   // distinct — TTA's convention (header "Vendors" / page "Vendor Management").
   "/csr": "CSR Dashboard",
   "/csr/projects": "Projects",
+  "/csr/activities": "Activities",
+  "/csr/reports": "Reports",
+  "/csr/utilisation": "Utilisation",
   "/csr/clients": "Funders",
   "/csr/activity-types": "Activity Types",
   "/csr/branding": "Branding",
