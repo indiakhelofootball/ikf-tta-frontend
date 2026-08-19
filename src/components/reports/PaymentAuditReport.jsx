@@ -22,6 +22,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import ExcelJS from 'exceljs';
 import { reportsAPI } from '../../services/api';
+import { csvBlob } from '../../utils/csv';
 import {
   computePaymentFlags, topSeverity,
   FLAG_COLORS, FLAG_LABELS,
@@ -304,13 +305,7 @@ function PaymentAuditReport() {
       r.gross || 0, r.tds || 0, r.net || 0,
       r.status, r.batch, r.issue,
     ]);
-    const csv = [header, ...rows].map((r) => r.map((cell) => {
-      const s = String(cell ?? '');
-      return s.includes(',') || s.includes('"') || s.includes('\n')
-        ? `"${s.replace(/"/g, '""')}"`
-        : s;
-    }).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const blob = csvBlob([header, ...rows]);
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;

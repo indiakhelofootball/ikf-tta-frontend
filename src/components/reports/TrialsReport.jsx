@@ -23,6 +23,8 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { reportsAPI } from '../../services/api';
+import { csvBlob } from '../../utils/csv';
+import { exportReportExcel, datedFileName } from '../../utils/reportExcel';
 import { MONTHS } from '../trials/trialConstants';
 
 const UNSCHEDULED = 'Unscheduled';
@@ -285,15 +287,46 @@ function TrialsReport() {
     unassigned: rows.filter((r) => !r.assigned).length,
   }), [rows]);
 
+  // Typed twin of the CSV. Note the date is passed RAW, not through fmtDate:
+  // the column is a real date cell, so Excel sorts and filters it properly,
+  // and pre-formatting it would hand back a string that only sorts by accident.
+  //
+  // The Address column carries whatever the REP city assignment holds, and now
+  // that addressOf no longer invents `city, state` for a blank one, an empty
+  // cell here means exactly what it says: nobody has entered an address on
+  // that assignment. Those blanks are the worklist.
+  const exportExcel = () => exportReportExcel({
+    sheetName: 'Trials',
+    fileName: datedFileName('trials_report'),
+    summary: `Trials — ${filteredRows.length} trial-cities`,
+    columns: [
+      { header: 'Project', width: 26 },
+      'Season',
+      'State',
+      'City',
+      { header: 'Venue', width: 24 },
+      { header: 'Address', width: 44 },
+      { header: 'Date', type: 'date' },
+      { header: 'Map', width: 30 },
+      'Confirmed',
+      { header: 'REP(s)', width: 24 },
+      'Assignment',
+    ],
+    rows: filteredRows.map((r) => [
+      r.projectName, r.season, r.state, r.city, r.location, r.address,
+      r.date || '', r.mapHref, r.confirmed ? 'Yes' : 'No',
+      r.reps.join('; '), r.assigned ? 'Assigned' : 'Unassigned',
+    ]),
+  });
+
   const exportCSV = () => {
     const header = ['Project', 'Season', 'State', 'City', 'Venue', 'Address', 'Date', 'Map', 'Confirmed', 'REP(s)', 'Assignment'];
     const lines = filteredRows.map((r) => [
       r.projectName, r.season, r.state, r.city, r.location, r.address,
       r.date ? fmtDate(r.date) : '', r.mapHref, r.confirmed ? 'Yes' : 'No',
       r.reps.join('; '), r.assigned ? 'Assigned' : 'Unassigned',
-    ].map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','));
-    const csv = [header.join(','), ...lines].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    ]);
+    const blob = csvBlob([header, ...lines]);
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `trials_report_${new Date().toISOString().slice(0, 10)}.csv`;
@@ -333,6 +366,11 @@ function TrialsReport() {
               disabled={filteredRows.length === 0}
               sx={{ textTransform: 'none', borderRadius: 1.5, borderColor: '#0d9488', color: '#0d9488' }}>
               Export CSV
+            </Button>
+            <Button size="small" variant="outlined" startIcon={<DownloadIcon />} onClick={exportExcel}
+              disabled={filteredRows.length === 0}
+              sx={{ textTransform: 'none', borderRadius: 1.5, borderColor: '#0d9488', color: '#0d9488' }}>
+              Export Excel
             </Button>
           </Stack>
         </Stack>
