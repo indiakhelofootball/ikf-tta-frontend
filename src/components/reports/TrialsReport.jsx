@@ -76,6 +76,23 @@ const addressOf = (r) => {
     .replace(/^,|,$/g, '')
     .trim();
 
+  // NO ADDRESS MEANS NO ADDRESS. This used to fall through to `city + state`
+  // when the assignment carried nothing, which produced "Bikaner, Rajasthan" --
+  // a string assembled from two columns already sitting two cells to the left,
+  // presented as if someone had entered it.
+  //
+  // That fallback is why this report has been fixed repeatedly and kept looking
+  // broken. It rendered three completely different states identically: a row
+  // with a real address, a row whose assignment was never filled in, and a row
+  // with no REP at all. And it matched the OLD broken code byte for byte, since
+  // that also ended at city + state -- so the one commit that genuinely fixed
+  // the source changed nothing visible on any row lacking data, and read as
+  // another failed attempt.
+  //
+  // Empty now renders empty, and the cell says which of the two reasons applies.
+  // Rows needing attention become countable instead of invisible.
+  if (!base) return '';
+
   const seen = norm(base);
   const missing = [r.city, r.state].filter((v) => v && !seen.includes(norm(v)));
   let out = [base, ...missing].filter(Boolean).join(', ');
@@ -451,7 +468,15 @@ function TrialsReport() {
                             the whole thing — truncating it here is what made the
                             report look like it was still missing the address. */}
                         <TableCell sx={{ ...cellSx, minWidth: 260 }}>
-                          {r.address || <span style={{ color: '#cbd5e1' }}>—</span>}
+                          {r.address || (
+                            r.assigned
+                              // Assigned but blank is an INSTRUCTION, not a gap:
+                              // the address is entered on the REP city
+                              // assignment and nowhere else, so this names the
+                              // one place a person can go and fix it.
+                              ? <span style={{ color: '#A35905' }}>No address on the assignment</span>
+                              : <span style={{ color: '#cbd5e1' }}>—</span>
+                          )}
                         </TableCell>
                         <TableCell sx={{ ...cellSx, whiteSpace: 'nowrap' }}>{fmtDate(r.date)}</TableCell>
                         <TableCell sx={cellSx}>
