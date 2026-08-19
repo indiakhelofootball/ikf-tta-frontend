@@ -971,4 +971,9 @@ export const clientAPI = {
   // branding post-auth (skins the portal without a slug in the URL).
   brandingBySlug: async (slug) => apiService.request(`/client/branding/${slug}/`),
   myBranding: async () => apiService.request('/client/my-branding/'),
+  // The funder's own Utilisation Certificate — the document they file as
+  // statutory evidence. Takes no project id: the server reads the grant off the
+  // login. Returns { available: false, reason } until the grant closes and the
+  // figures are frozen, so the portal can say why rather than show a blank.
+  certificate: async () => apiService.request('/client/certificate/'),
 };

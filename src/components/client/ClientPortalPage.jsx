@@ -5,7 +5,9 @@ import {
   CircularProgress, AppBar, Toolbar, Button, Link, Stack, Alert, Divider, Tooltip,
   LinearProgress,
 } from '@mui/material';
-import { OpenInNew as OpenIcon } from '@mui/icons-material';
+import { OpenInNew as OpenIcon, Download as DownloadIcon } from '@mui/icons-material';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 import { clientAPI } from '../../services/api';
 import { useAuth } from '../../auth/AuthContext';
@@ -26,6 +28,43 @@ const deliverablePercent = (d) => {
   return Math.min(100, Math.round(((Number(d.completedCount) || 0) / target) * 100));
 };
 
+const rupees = (v) => `₹${Number(v || 0).toLocaleString('en-IN')}`;
+
+// The funder's copy of the Utilisation Certificate. Everything printed here
+// comes from the server's frozen snapshot — nothing is summed in the browser,
+// because this is the document that gets filed and a second implementation of
+// the total would eventually disagree with the one on record.
+const downloadCertificate = (cert) => {
+  const doc = new jsPDF();
+  doc.setFontSize(16);
+  doc.text('Utilisation Certificate', 14, 18);
+  doc.setFontSize(10);
+  doc.text(`Project: ${cert.projectName || ''}`, 14, 28);
+  doc.text(`Funder: ${cert.clientName || ''}`, 14, 34);
+  doc.text(`Contribution: INR ${Number(cert.sanctionedAmount || 0).toLocaleString('en-IN')}`, 14, 40);
+  doc.text(`Total Utilised: INR ${Number(cert.totalUtilised || 0).toLocaleString('en-IN')}`, 14, 46);
+  const period = cert.periodStart || cert.periodEnd
+    ? `Period: ${cert.periodStart || 'project inception'} to ${cert.periodEnd || 'date'}`
+    : 'Period: not stated on the project';
+  doc.text(period, 14, 52);
+  // The version and the freeze date are what make two copies of this document
+  // comparable. A funder who filed v1 must be able to see that what they hold
+  // is v1, not merely "the certificate".
+  doc.text(
+    `Frozen v${cert.certificateVersion} — figures as at ${cert.frozenAt ? new Date(cert.frozenAt).toLocaleString('en-IN') : 'project close'}`,
+    14, 58,
+  );
+  autoTable(doc, {
+    startY: 66,
+    head: [['Expense', 'Amount (INR)']],
+    body: (cert.lineItems || []).map((x) => [
+      x.note || '',
+      Number(x.amount || 0).toLocaleString('en-IN'),
+    ]),
+  });
+  doc.save(`utilisation_certificate_${cert.projectName || 'grant'}.pdf`);
+};
+
 function Field({ label, value }) {
   return (
     <Box sx={{ minWidth: 140 }}>
@@ -42,6 +81,7 @@ export default function ClientPortalPage() {
   const [reports, setReports] = useState([]);
   const [deliverables, setDeliverables] = useState([]);
   const [brand, setBrand] = useState(null);
+  const [cert, setCert] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [tab, setTab] = useState(0);
@@ -62,6 +102,13 @@ export default function ClientPortalPage() {
         clientAPI.myBranding()
           .then((b) => { if (active) setBrand(b && b.slug ? b : null); })
           .catch(() => { /* unbranded is a valid state; the default theme holds */ });
+
+        // The certificate is fetched on its own for the same reason branding
+        // is: it is behind a tab, nothing above the fold waits on it, and a
+        // failure here must not blank the whole portal.
+        clientAPI.certificate()
+          .then((c) => { if (active) setCert(c); })
+          .catch(() => { if (active) setCert({ available: false, reason: 'error' }); });
 
         const [p, acts, reps, dels] = await Promise.all([
           clientAPI.project(), clientAPI.activities(), clientAPI.reports(),
@@ -126,6 +173,7 @@ export default function ClientPortalPage() {
               <Tab label={`Activities (${activities.length})`} />
               <Tab label={`Reports (${reports.length})`} />
               <Tab label={`Deliverables (${deliverables.length})`} />
+              <Tab label="Certificate" />
             </Tabs>
 
             {tab === 0 && (
@@ -240,6 +288,83 @@ export default function ClientPortalPage() {
                     );
                   })}
                 </List>
+              )
+            )}
+
+            {/* The Utilisation Certificate. It is issued only when the grant
+                closes and its figures are frozen — until then expenses are
+                still being allocated by hand, and a figure that moves after a
+                funder has filed it is worse than no figure. So the waiting
+                state is written out in full rather than left as an empty tab. */}
+            {tab === 4 && (
+              !cert ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                  <CircularProgress size={24} />
+                </Box>
+              ) : !cert.available ? (
+                <Typography color="text.secondary" sx={{ py: 2, maxWidth: '52ch' }}>
+                  {cert.reason === 'error'
+                    ? 'The certificate could not be loaded just now. Please try again shortly.'
+                    : (
+                      <>
+                        Your utilisation certificate is issued when this grant closes
+                        {cert.endDate ? `, on ${cert.endDate}` : ''}. Until then expenses
+                        are still being allocated against your contribution, so the
+                        figures would keep changing after you filed them. The grant is
+                        currently {cert.projectStatus || project.status}.
+                      </>
+                    )}
+                </Typography>
+              ) : (
+                <Box>
+                  <Stack
+                    direction="row"
+                    spacing={2}
+                    sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 2 }}
+                    flexWrap="wrap"
+                    useFlexGap
+                  >
+                    <Box>
+                      <Typography variant="h6">Utilisation Certificate</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Version {cert.certificateVersion} · figures fixed
+                        {cert.frozenAt ? ` on ${new Date(cert.frozenAt).toLocaleDateString('en-IN')}` : ' at project close'}
+                      </Typography>
+                    </Box>
+                    <Button
+                      variant="contained"
+                      startIcon={<DownloadIcon />}
+                      onClick={() => downloadCertificate(cert)}
+                    >
+                      Download PDF
+                    </Button>
+                  </Stack>
+
+                  <Stack direction="row" spacing={4} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
+                    <Field label="Contribution" value={rupees(cert.sanctionedAmount)} />
+                    <Field label="Total utilised" value={rupees(cert.totalUtilised)} />
+                    <Field
+                      label="Period"
+                      value={`${cert.periodStart || 'inception'} → ${cert.periodEnd || 'date'}`}
+                    />
+                  </Stack>
+
+                  <Divider sx={{ mb: 1 }} />
+                  {(cert.lineItems || []).length === 0 ? (
+                    <Typography color="text.secondary" sx={{ py: 2 }}>
+                      No expenses are recorded against this grant.
+                    </Typography>
+                  ) : (
+                    <List dense>
+                      {cert.lineItems.map((x, i) => (
+                        <ListItem key={i} sx={{ justifyContent: 'space-between' }}>
+                          <ListItemText primary={x.note || 'Expense'} />
+                          <Typography variant="body2">{rupees(x.amount)}</Typography>
+                        </ListItem>
+                      ))}
+                    </List>
+                  )}
+                </Box>
               )
             )}
           </>
