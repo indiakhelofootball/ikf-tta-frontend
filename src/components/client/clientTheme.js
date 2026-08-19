@@ -153,6 +153,15 @@ const AMBER_RAMP = {
   '#f59e0b': (c) => c,                        // Alert icon/border
   '#d97706': (c) => legibleOnLight(c),        // accent TEXT
   '#b45309': (c) => shade(legibleOnLight(c), 0.25), // dark accent TEXT
+  // #a35905 is AMBER_TEXT — #d97706 darkened along its own hue so it clears AA
+  // as text on every ground TTA paints. It arrived in muiTheme.js AFTER this
+  // ramp was written and is now used at 27 sites, including the Tabs indicator,
+  // so its absence here left TTA's amber painting the selected tab on a
+  // funder's own branded page: a blue TATA logo above an amber underline.
+  //
+  // It reads as TEXT wherever it is used, so it takes the same treatment as the
+  // dark accent rather than the raw brand.
+  '#a35905': (c) => shade(legibleOnLight(c), 0.25),
 };
 
 function rebrand(node, primary) {

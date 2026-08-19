@@ -127,6 +127,37 @@ describe('funder portal theming', () => {
     }
   });
 
+  it('leaves NO amber behind, including hexes added to muiTheme later', () => {
+    // The test above lists four hexes by hand, and that list went stale: #A35905
+    // (AMBER_TEXT) was added to muiTheme afterwards, reached 27 sites including
+    // the Tabs indicator, and was never added to the rebrand ramp. A funder's
+    // page rendered a blue logo above an amber selected-tab underline, and this
+    // suite stayed green because it was only checking the four it knew about.
+    //
+    // So this one derives the list instead of restating it: every hex the base
+    // theme's component overrides actually contain, filtered to the amber hue.
+    // A new brand colour in muiTheme now fails here on the day it lands.
+    // eslint-disable-next-line global-require
+    const base = require('../../styles/muiTheme').default;
+    const hexes = new Set(
+      (JSON.stringify(base.components).match(/#[0-9a-fA-F]{6}/g) || [])
+        .map((h) => h.toUpperCase()),
+    );
+    // Amber/orange by hue: red channel highest, blue channel lowest, and a
+    // meaningful spread between them. Greys and near-blacks fail that.
+    const isAmber = (h) => {
+      const [r, g, b] = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+      return r > g && g > b && r - b > 60;
+    };
+    const ambers = [...hexes].filter(isAmber);
+    expect(ambers.length).toBeGreaterThan(0); // guard: the probe still finds them
+
+    const theme = clientThemeFrom({ primaryColor: '#0B5FFF' });
+    const branded = JSON.stringify(theme.components).toUpperCase();
+    const survivors = ambers.filter((h) => branded.includes(h));
+    expect(survivors).toEqual([]);
+  });
+
   it('leaves semantic colours alone', () => {
     // Success/error/info must not become the funder's brand colour.
     const theme = clientThemeFrom({ primaryColor: '#0B5FFF' });
