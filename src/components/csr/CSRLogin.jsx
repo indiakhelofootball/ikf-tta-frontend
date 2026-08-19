@@ -224,7 +224,7 @@ export default function CSRLogin() {
   const fieldSx = {
     '& .MuiOutlinedInput-root': {
       bgcolor: '#FFFFFF',
-      borderRadius: '10px',
+      borderRadius: '4px',
       '& fieldset': { borderColor: LINE },
       '&:hover fieldset': { borderColor: '#C3CFDA' },
       '&.Mui-focused fieldset': { borderColor: PITCH, borderWidth: '1px' },
@@ -240,7 +240,7 @@ export default function CSRLogin() {
   };
 
   const primaryBtnSx = {
-    mt: 2.5, py: 1.6, borderRadius: '10px',
+    mt: 2.5, py: 1.6, borderRadius: '4px',
     bgcolor: PITCH, color: '#FFFFFF',
     fontSize: '0.9375rem', fontWeight: 600, textTransform: 'none', boxShadow: 'none',
     transition: 'background-color 140ms cubic-bezier(0, 0, 0.2, 1)',
@@ -249,7 +249,7 @@ export default function CSRLogin() {
   };
 
   const secondaryBtnSx = {
-    py: 1.5, borderRadius: '10px',
+    py: 1.5, borderRadius: '4px',
     border: '1px solid ' + LINE, bgcolor: '#FFFFFF', color: INK,
     fontSize: '0.9375rem', fontWeight: 600, textTransform: 'none',
     transition: 'background-color 140ms cubic-bezier(0, 0, 0.2, 1), border-color 140ms cubic-bezier(0, 0, 0.2, 1)',
@@ -257,7 +257,7 @@ export default function CSRLogin() {
   };
 
   const backBtnSx = {
-    mt: 1.5, py: 1.25, borderRadius: '10px',
+    mt: 1.5, py: 1.25, borderRadius: '4px',
     color: MUTED, fontSize: '0.875rem', fontWeight: 600, textTransform: 'none',
     transition: 'color 140ms cubic-bezier(0, 0, 0.2, 1)',
     '&:hover': { color: INK, bgcolor: 'transparent' },
@@ -283,13 +283,18 @@ export default function CSRLogin() {
     // aligned and are not meant to be: the rounded edge and the shadow declare
     // the card a separate plane, which is exactly how the reference behaves.
     <Box sx={{
-      minHeight: '100vh',
+      // 100dvh, not 100vh: on mobile 100vh counts the collapsing browser
+      // chrome and leaves the page taller than the screen.
+      minHeight: '100dvh',
       display: 'flex',
-      alignItems: 'center',
+      alignItems: 'stretch',
       justifyContent: 'center',
-      p: { xs: 0, md: 4, lg: 5 },
       bgcolor: CREAM,
+      // The backdrop below is deliberately sized past this box, so the clip
+      // has to happen here. Without it the page scrolled in BOTH axes at every
+      // width -- 1544px of scroll width on a 1440px viewport.
       overflow: 'hidden',
+      position: 'relative',
     }}>
       {/* The backdrop is the same artwork, blurred and scaled past the frame.
           Sharp, it read as a misaligned duplicate of the card -- two copies of
@@ -303,7 +308,11 @@ export default function CSRLogin() {
           viewport. */}
       <Box aria-hidden sx={{
         position: 'absolute',
-        inset: '-4%',
+        // Inset to zero and scaled from the centre. The blur still needs to
+        // sample past the edges or it leaves a pale halo, but the scale alone
+        // does that now -- the negative inset was doubling the overshoot and
+        // was what pushed the document wider than the window.
+        inset: 0,
         display: { xs: 'none', md: 'block' },
         backgroundImage: `url(${loginArt})`,
         backgroundSize: 'cover',
@@ -314,11 +323,14 @@ export default function CSRLogin() {
       <Box sx={{
         position: 'relative',
         width: '100%',
-        maxWidth: 1320,
-        minHeight: { xs: '100vh', md: 'min(84vh, 760px)' },
+        // No maxWidth and no inset. The card was capped at 1320 and floated in
+        // the middle of a blurred copy of its own artwork, which wasted the
+        // screen on every monitor wider than that and made the backdrop the
+        // largest thing on the page. The artwork is the subject; it should
+        // have the room.
         display: 'flex',
         alignItems: 'center',
-        borderRadius: { xs: 0, md: '20px' },
+        borderRadius: 0,
         overflow: 'hidden',
         bgcolor: CREAM,
         // Anchored right so the player and the goal hold their place as the
@@ -361,7 +373,7 @@ export default function CSRLogin() {
               word -- it is 1.75:1 on this ground and could never carry text.
               Angled to echo the band of sky it was sampled from. */}
           <Box sx={{
-            width: 52, height: 4, bgcolor: SUN, borderRadius: 2,
+            width: 52, height: 4, bgcolor: SUN, borderRadius: '2px',
             transform: 'skewX(-24deg)', mb: 2.5,
           }} />
 
