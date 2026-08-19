@@ -61,6 +61,16 @@ TRIAL_MANAGEMENT_BACKEND.md
 /*.jpg
 /*.jpeg
 
+# Screenshot directories. These were previously caught by the unanchored
+# `*.png` above; anchoring it to the root released them, so they are named
+# here instead. They are captured evidence -- audit runs, review shots -- and
+# are regenerated on demand, unlike src/assets/ which the app imports at build
+# time. That is the whole distinction the old rule could not express.
+_docs/screenshots/
+_review_shots/
+_review/**/shots/
+__MACOSX/
+
 
 # Dependency directories
 node_modules/
