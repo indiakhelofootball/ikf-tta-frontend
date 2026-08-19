@@ -10,6 +10,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import ClientApp from './ClientApp';
 import { AuthProvider } from './auth/AuthContext';
 import muiTheme from './styles/muiTheme';
+import './styles/fonts.css';
 import './styles/globals.css';
 
 window.addEventListener('error', (e) => {

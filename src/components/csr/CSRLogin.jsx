@@ -71,6 +71,23 @@ const PITCH = '#1F3F3E';
 const PITCH_DEEP = '#132A29';
 const SUN = '#FAA844';
 const SUN_TEXT = '#946328';
+// The two faces, self-hosted in src/styles/fonts.css.
+//
+// DISPLAY is Source Serif 4, which ttaTheme has named as the CSR display face
+// since it was written and which had never actually been shipped -- the stack
+// fell through to Constantia every time. A serif on the door and a serif on the
+// ledger behind it means the product speaks in one voice rather than two.
+//
+// UI is Manrope. Deliberately not Inter: Inter is the reflexive choice and
+// reads as neutral because it is everywhere. Manrope is geometric with a
+// slightly narrow, open lowercase, which sits under a serif without competing
+// and keeps form labels quiet.
+//
+// Fallbacks are metrically close so the swap is a change of face, not a change
+// of layout.
+const DISPLAY = "'Source Serif 4', Constantia, Georgia, 'Times New Roman', serif";
+const UI = "'Manrope', 'Segoe UI', system-ui, -apple-system, sans-serif";
+
 const INK = '#1C2B25';
 const MUTED = '#66756D';
 const LINE = '#DFDCD2';
@@ -235,11 +252,14 @@ export default function CSRLogin() {
       WebkitTextFillColor: INK,
       transition: 'background-color 9999s ease-out',
     },
-    '& .MuiInputBase-input': { color: INK, fontSize: '0.9375rem', py: 1.75 },
+    '& .MuiInputBase-input': {
+      fontFamily: UI, color: INK, fontSize: '0.9375rem', py: 1.75, letterSpacing: '-0.005em',
+    },
     '& .MuiInputBase-input::placeholder': { color: MUTED, opacity: 1 },
   };
 
   const primaryBtnSx = {
+    fontFamily: UI,
     mt: 2.5, py: 1.6, borderRadius: '4px',
     bgcolor: PITCH, color: '#FFFFFF',
     fontSize: '0.9375rem', fontWeight: 600, textTransform: 'none', boxShadow: 'none',
@@ -249,6 +269,7 @@ export default function CSRLogin() {
   };
 
   const secondaryBtnSx = {
+    fontFamily: UI,
     py: 1.5, borderRadius: '4px',
     border: '1px solid ' + LINE, bgcolor: '#FFFFFF', color: INK,
     fontSize: '0.9375rem', fontWeight: 600, textTransform: 'none',
@@ -257,6 +278,7 @@ export default function CSRLogin() {
   };
 
   const backBtnSx = {
+    fontFamily: UI,
     mt: 1.5, py: 1.25, borderRadius: '4px',
     color: MUTED, fontSize: '0.875rem', fontWeight: 600, textTransform: 'none',
     transition: 'color 140ms cubic-bezier(0, 0, 0.2, 1)',
@@ -264,6 +286,7 @@ export default function CSRLogin() {
   };
 
   const dividerSx = {
+    fontFamily: UI,
     my: 2.5, display: 'flex', alignItems: 'center', gap: 2,
     color: MUTED, fontSize: '0.8125rem',
     '&::before, &::after': { content: '""', flex: 1, height: '1px', bgcolor: LINE },
@@ -378,18 +401,25 @@ export default function CSRLogin() {
           }} />
 
           <Typography component="h1" sx={{
-            fontFamily: '"Segoe UI", system-ui, -apple-system, sans-serif',
-            fontSize: { xs: '2.125rem', md: '2.75rem' },
-            fontWeight: 700,
-            letterSpacing: '-0.025em',
-            lineHeight: 1.05,
+            fontFamily: DISPLAY,
+            // Larger and LIGHTER. A serif at 400 and 52px carries more
+            // authority than a sans at 700 and 44px -- weight was doing the
+            // work the typeface should have been doing, which is the same
+            // mistake ttaTheme's own header records about an earlier pass.
+            fontSize: { xs: '2.5rem', md: '3.25rem' },
+            fontWeight: 400,
+            letterSpacing: '-0.02em',
+            lineHeight: 1.02,
             color: INK,
-            mb: 1.5,
+            mb: 2,
           }}>
             Welcome back
           </Typography>
 
-          <Typography sx={{ color: MUTED, fontSize: '0.9375rem', lineHeight: 1.6, maxWidth: '32ch', mb: 4 }}>
+          <Typography sx={{
+            fontFamily: UI, color: MUTED, fontSize: '1rem',
+            lineHeight: 1.65, maxWidth: '34ch', mb: 4.5,
+          }}>
             Together, we create opportunities that change lives through football.
           </Typography>
 
@@ -463,7 +493,7 @@ export default function CSRLogin() {
               {/* There is no self-serve reset route -- ClientChangePasswordDialog
                   covers a signed-IN user only -- so this says who to ask rather
                   than linking to a page that does not exist. */}
-              <Box sx={{ mt: 1.25, textAlign: 'right', fontSize: '0.8125rem', color: MUTED }}>
+              <Box sx={{ mt: 1.25, textAlign: 'right', fontFamily: UI, fontSize: '0.8125rem', color: MUTED }}>
                 Forgotten your password? Ask your administrator to reset it.
               </Box>
 
@@ -520,7 +550,7 @@ export default function CSRLogin() {
 
           {mode === 'otp-verify' && (
             <Box component="form" onSubmit={verifyOtp} noValidate>
-              <Typography sx={{ color: MUTED, fontSize: '0.875rem', mb: 2 }}>
+              <Typography sx={{ fontFamily: UI, color: MUTED, fontSize: '0.875rem', mb: 2 }}>
                 We sent a 6-digit code to{' '}
                 <Box component="span" sx={{ color: INK, fontWeight: 600 }}>{phone}</Box>.
               </Typography>
@@ -536,9 +566,13 @@ export default function CSRLogin() {
                 helperText={otpError}
                 sx={{
                   ...fieldSx,
+                  // The one-time code is a FIGURE, and figures are set in the
+                  // serif throughout this product. Tabular so the six digits
+                  // hold their columns as they are typed.
                   '& .MuiInputBase-input': {
-                    color: INK, fontSize: '1.5rem', fontWeight: 600,
-                    letterSpacing: '0.4em', textAlign: 'center', py: 1.75,
+                    fontFamily: DISPLAY, color: INK, fontSize: '1.75rem', fontWeight: 400,
+                    fontVariantNumeric: 'tabular-nums',
+                    letterSpacing: '0.34em', textAlign: 'center', py: 1.6,
                   },
                 }}
                 onChange={(e) => {
@@ -591,7 +625,7 @@ export default function CSRLogin() {
               they cannot have on this screen. */}
           <Box sx={{
             mt: 4, pt: 3, borderTop: `1px solid ${LINE}`,
-            fontSize: '0.875rem', color: MUTED,
+            fontFamily: UI, fontSize: '0.875rem', color: MUTED,
           }}>
             <Link component={RouterLink} to="/login" underline="hover" sx={{ color: PITCH, fontWeight: 600 }}>
               TTA operations

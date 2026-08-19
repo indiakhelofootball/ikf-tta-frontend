@@ -1,0 +1,40 @@
+/* ============================================================
+   TYPEFACES — self-hosted, latin subset, variable
+   ============================================================
+   ttaTheme.js has specified Source Serif 4 as the CSR display face since it was
+   written, with a note that it "is NOT yet in the repo" and falls through to
+   Constantia and Georgia until someone self-hosts it. This is that.
+
+   Both files are VARIABLE fonts, so one file per family covers every weight in
+   its range. Google serves them as four separate URLs per family that turn out
+   to be byte-identical; shipping all four would have quadrupled the payload for
+   nothing.
+
+   Latin subset only. The cyrillic, greek and vietnamese cuts are roughly three
+   times the size and this product renders none of them.
+
+   Self-hosted rather than linked from fonts.googleapis.com: a login screen that
+   cannot paint its own headline until a third-party CDN answers is a login
+   screen with an availability dependency it does not need, and this one is
+   served to India from a single box.
+
+   `font-display: swap` on purpose. The fallback stacks below are metrically
+   close enough that the reflow is small, and a headline that is invisible for
+   400ms is worse than one that changes face.
+   ============================================================ */
+
+@font-face {
+  font-family: 'Source Serif 4';
+  src: url('../assets/fonts/SourceSerif4-var.woff2') format('woff2-variations');
+  font-weight: 200 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Manrope';
+  src: url('../assets/fonts/Manrope-var.woff2') format('woff2-variations');
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
