@@ -1,7 +1,37 @@
 // src/auth/Login.jsx
+// The TTA operations front door. Three login SCREENS, one auth engine:
+// /login (this), /csr/login (CSR office), /client/:slug/login (external funder).
+// The plan-of-record constraint — "one login page, one endpoint, one JWT, one
+// AuthContext" — is about the AUTH MECHANISM, not the UI. Nothing below changes
+// what login()/otpLogin() do, what they validate, or where they land; only the
+// surface around them.
+//
+// ---------------------------------------------------------------------------
+// WHY THIS SCREEN IS AMBER
+// ---------------------------------------------------------------------------
+// A login is the one screen whose job is to say WHOSE product this is. TTA's
+// identity is amber, so this door is amber — the CSR door is navy and orange
+// because it carries IKF's own identity, and the funder door is whatever the
+// funder's is. Three doors, three brands, one shape. Siblings, not clones: the
+// illustrated panel sits LEFT here and RIGHT on the CSR door, which is the
+// arrangement each screen already had.
+//
+// AMBER_TEXT (#A35905) is the only amber allowed to carry words. Raw #FBBF24
+// measures 1.60:1 on a light ground and #D97706 measures 3.05:1 — both below
+// AA — which is exactly why muiTheme.js defines AMBER_TEXT at all. The light
+// ramp (#FEF3C7 / #FDE68A / #FBBF24) appears here only as FILL, never as text.
+// The values are restated locally rather than imported because a login has no
+// data in it: the theme's tokens carry app meanings with no referent here.
+//
+// The illustration is drawn, not photographed. There is no image asset in the
+// repo and a stock photo would say less than nothing. Inline SVG costs no
+// request, scales to any width, and can be swapped for a real illustration
+// later without touching the layout. Deliberately no human figures — hand-drawn
+// anatomy at this size reads as a mistake rather than a style.
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { validateLoginForm } from '../utils/validation';
 import api from '../services/api';
 
@@ -12,11 +42,125 @@ import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Alert from '@mui/material/Alert';
+import Link from '@mui/material/Link';
 import CircularProgress from '@mui/material/CircularProgress';
 import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+import MailIcon from '@mui/icons-material/MailOutline';
+import LockIcon from '@mui/icons-material/LockOutlined';
+import PhoneIcon from '@mui/icons-material/PhoneIphone';
+import KeyIcon from '@mui/icons-material/PasswordOutlined';
+import VisibilityIcon from '@mui/icons-material/VisibilityOutlined';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOffOutlined';
+
+// TTA's amber, split by role. Text roles take AMBER_TEXT; fills take the ramp.
+const AMBER_TEXT = '#A35905';
+const AMBER_DEEP = '#7E3A06';
+const AMBER_FILL = '#FBBF24';
+const AMBER_LIGHT = '#FDE68A';
+const AMBER_PALE = '#FEF3C7';
+const ON_AMBER = '#5C2C06';
+const INK = '#111827';
+const MUTED = '#5F6672';
+const LINE = '#E5E7EB';
+const BONE = '#FDFBF6';
+
+// The IKF mark. Drawn rather than imported: there is no logo asset in the repo,
+// and a wordmark set in type is honest where a fake image would not be. Painted
+// in the on-amber brown because it sits on the amber panel, not on paper.
+function IkfMark() {
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.75 }}>
+      <Box component="svg" viewBox="0 0 132 64" sx={{ width: 104, height: 50, flex: 'none' }} aria-hidden>
+        <rect x="2" y="4" width="9" height="56" fill={ON_AMBER} />
+        <path d="M26 4h9v22l18-22h11L44 30l20 30H52L35 34v26h-9z" fill={ON_AMBER} />
+        <circle cx="35" cy="46" r="9" fill="#FFFDF7" stroke={ON_AMBER} strokeWidth="2.5" />
+        <path d="M35 40.5l4 2.9-1.5 4.7h-5L31 43.4z" fill={ON_AMBER} />
+        <path d="M78 4h30v9H87v14h19v9H87v24h-9z" fill="#FFFDF7" />
+      </Box>
+      <Box sx={{ width: '1px', alignSelf: 'stretch', bgcolor: 'rgba(92,44,6,0.28)', my: 0.5 }} />
+      <Box sx={{
+        fontSize: 11, fontWeight: 700, letterSpacing: '0.11em',
+        lineHeight: 1.55, color: ON_AMBER, textTransform: 'uppercase',
+      }}>
+        India<br />Khelo<br />Football
+      </Box>
+    </Box>
+  );
+}
+
+// The pitch, seen from the touchline. Flat shapes only, drawn wide because it
+// is the panel's ground rather than a spot illustration.
+function PitchScene() {
+  return (
+    <Box
+      component="svg"
+      viewBox="0 0 640 420"
+      sx={{ width: '100%', height: 'auto', display: 'block' }}
+      aria-hidden
+    >
+      <defs>
+        <linearGradient id="tta-turf" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#FFF3D0" stopOpacity="0.30" />
+          <stop offset="100%" stopColor="#FFFDF7" stopOpacity="0.62" />
+        </linearGradient>
+        <radialGradient id="tta-ball" cx="0.34" cy="0.28" r="0.85">
+          <stop offset="0%" stopColor="#FFFFFF" />
+          <stop offset="70%" stopColor="#FFF8EA" />
+          <stop offset="100%" stopColor="#E7D3AC" />
+        </radialGradient>
+      </defs>
+
+      {/* the pitch itself */}
+      <path d="M92 108h456l72 268H20z" fill="url(#tta-turf)" />
+      <g stroke="#FFFDF7" strokeWidth="3" fill="none" opacity="0.85">
+        <path d="M92 108h456l72 268H20z" />
+        <path d="M56 242h528" />
+        <ellipse cx="320" cy="242" rx="74" ry="34" />
+        <path d="M196 108h248l14 52H182z" />
+        <path d="M150 376h340l-18-62H168z" />
+      </g>
+      <circle cx="320" cy="242" r="5" fill="#FFFDF7" opacity="0.85" />
+
+      {/* the goal at the far end */}
+      <g stroke="#FFFDF7" strokeWidth="4" fill="none" opacity="0.9">
+        <path d="M258 108V72h124v36" />
+        <path d="M258 72h124" />
+      </g>
+      <path d="M258 72h124v36H258z" fill="#FFFDF7" opacity="0.14" />
+      <g stroke="#FFFDF7" strokeWidth="1" opacity="0.35">
+        {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+          <line key={`n-${i}`} x1={258 + i * 17.7} y1="72" x2={258 + i * 17.7} y2="108" />
+        ))}
+        {[0, 1, 2].map((i) => (
+          <line key={`m-${i}`} x1="258" y1={82 + i * 12} x2="382" y2={82 + i * 12} />
+        ))}
+      </g>
+
+      {/* The ball on the spot. A football is panelled with a pentagon nearest
+          the viewer and hexagons around it; getting that wrong is what makes a
+          drawn ball read as a placeholder. */}
+      <g transform="translate(392 296)">
+        <ellipse cx="30" cy="58" rx="28" ry="7" fill={ON_AMBER} opacity="0.18" />
+        <circle cx="30" cy="30" r="29" fill="url(#tta-ball)" stroke="#E7D3AC" strokeWidth="1" />
+        <path d="M30 12l12.3 9-4.7 14.5H22.4L17.7 21z" fill="#3B2408" />
+        <g stroke="#3B2408" strokeWidth="2" fill="none" strokeLinecap="round">
+          <path d="M30 12V1.5" />
+          <path d="M42.3 21l10-3.2" />
+          <path d="M37.6 35.5l6.2 8.5" />
+          <path d="M22.4 35.5l-6.2 8.5" />
+          <path d="M17.7 21L7.7 17.8" />
+        </g>
+        <path d="M30 1.5l8.8 2.8-1.3 4-7.5 1.8-7.5-1.8L21.2 4.3z" fill="#3B2408" opacity="0.9" />
+        <path d="M52.3 17.8l3.5 8.4-3.3 2.8-7-3.1-2-4.9z" fill="#3B2408" opacity="0.9" />
+        <path d="M43.8 44l-2.3 8.7-4.4-1-3.2-7 2.3-4z" fill="#3B2408" opacity="0.9" />
+        <path d="M16.2 44l2.3 8.7 4.4-1 3.2-7-2.3-4z" fill="#3B2408" opacity="0.9" />
+        <path d="M7.7 17.8l-3.5 8.4 3.3 2.8 7-3.1 2-4.9z" fill="#3B2408" opacity="0.9" />
+        <ellipse cx="19" cy="16" rx="10" ry="7" fill="#FFFFFF" opacity="0.5" transform="rotate(-28 19 16)" />
+      </g>
+    </Box>
+  );
+}
 
 export default function Login() {
   // Password login state
@@ -167,20 +311,103 @@ export default function Login() {
     'Payment & Invoice Tracking',
   ];
 
-  return (
-    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+  // Chrome's autofill paints its own blue over any theme, which on a branded
+  // page is the loudest colour on screen and belongs to no brand. The inset
+  // shadow repaints the field; the long transition delay outlasts the browser's
+  // own repaint.
+  const fieldSx = {
+    '& .MuiOutlinedInput-root': {
+      bgcolor: '#FFFFFF',
+      borderRadius: '10px',
+      '& fieldset': { borderColor: LINE },
+      '&:hover fieldset': { borderColor: '#D8C6A8' },
+      '&.Mui-focused fieldset': { borderColor: AMBER_TEXT, borderWidth: '1px' },
+      '&.Mui-focused': { boxShadow: `0 0 0 3px ${AMBER_TEXT}1F` },
+    },
+    '& input:-webkit-autofill': {
+      WebkitBoxShadow: '0 0 0 1000px #FFFFFF inset',
+      WebkitTextFillColor: INK,
+      transition: 'background-color 9999s ease-out',
+    },
+    '& .MuiInputBase-input': { color: INK, fontSize: '0.9375rem', py: 1.75 },
+    '& .MuiInputBase-input::placeholder': { color: MUTED, opacity: 1 },
+  };
 
-      {/* ── LEFT PANEL ───────────────────────────────────────── */}
+  // Solid and brand-coloured, not the app's light-amber chip button. AMBER_TEXT
+  // under white ink measures 5.27:1; the light ramp under white would not.
+  const ctaSx = {
+    py: 1.6,
+    borderRadius: '10px',
+    bgcolor: AMBER_TEXT,
+    color: '#FFFFFF',
+    fontSize: '0.9375rem',
+    fontWeight: 600,
+    textTransform: 'none',
+    boxShadow: 'none',
+    transition: 'background-color 140ms cubic-bezier(0, 0, 0.2, 1)',
+    '&:hover': { bgcolor: AMBER_DEEP, boxShadow: 'none' },
+    '&.Mui-disabled': { bgcolor: '#C0A177', color: '#FFFFFF' },
+  };
+
+  const quietLinkSx = {
+    background: 'none',
+    border: 'none',
+    color: MUTED,
+    fontSize: '0.8125rem',
+    cursor: 'pointer',
+    textDecoration: 'underline',
+    p: 0,
+    '&:hover': { color: INK },
+  };
+
+  const accentLinkSx = {
+    background: 'none',
+    border: 'none',
+    color: AMBER_TEXT,
+    fontWeight: 600,
+    fontSize: '0.8125rem',
+    cursor: 'pointer',
+    textDecoration: 'underline',
+    p: 0,
+    '&:hover': { color: AMBER_DEEP },
+    '&:disabled': { color: MUTED, cursor: 'default' },
+  };
+
+  const heading = (text, sub) => (
+    <>
+      <Typography
+        component="h1"
+        sx={{
+          fontSize: { xs: '2.125rem', md: '2.75rem' },
+          fontWeight: 700,
+          letterSpacing: '-0.025em',
+          lineHeight: 1.05,
+          color: INK,
+          mb: 1.5,
+        }}
+      >
+        {text}
+      </Typography>
+      <Typography sx={{ color: MUTED, fontSize: '0.9375rem', lineHeight: 1.6, maxWidth: '36ch', mb: 4 }}>
+        {sub}
+      </Typography>
+    </>
+  );
+
+  return (
+    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: BONE }}>
+
+      {/* ── LEFT PANEL — the brand moment ─────────────────────── */}
       <Box
         sx={{
           display: { xs: 'none', lg: 'flex' },
-          width: '50%',
+          width: '48%',
           flexDirection: 'column',
           justifyContent: 'center',
           position: 'relative',
           overflow: 'hidden',
-          background: 'linear-gradient(135deg, #FBBF24 0%, #D97706 100%)',
-          px: 10,
+          background: `linear-gradient(158deg, ${AMBER_LIGHT} 0%, ${AMBER_FILL} 52%, #E9962B 100%)`,
+          px: 8,
           py: 8,
         }}
       >
@@ -189,160 +416,77 @@ export default function Login() {
           sx={{
             position: 'absolute',
             inset: 0,
-            opacity: 0.08,
-            backgroundImage: 'radial-gradient(circle at 20px 20px, #ffffff 2px, transparent 0)',
+            opacity: 0.10,
+            backgroundImage: 'radial-gradient(circle at 20px 20px, #FFFDF7 2px, transparent 0)',
             backgroundSize: '40px 40px',
           }}
         />
 
-        {/* Floating circles */}
-        <Box sx={{ position: 'absolute', top: 80, right: 80, width: 64, height: 64, bgcolor: '#FDE68A', borderRadius: '50%', opacity: 0.45, animation: 'float 6s ease-in-out infinite' }} />
-        <Box sx={{ position: 'absolute', bottom: 160, left: 40, width: 96, height: 96, bgcolor: '#F59E0B', borderRadius: '50%', opacity: 0.3, animation: 'floatDelayed 7s ease-in-out infinite' }} />
-        <Box sx={{ position: 'absolute', top: '33%', left: '25%', width: 48, height: 48, bgcolor: '#FEF3C7', borderRadius: '50%', opacity: 0.4, animation: 'floatSlow 8s ease-in-out infinite' }} />
+        <Box sx={{ position: 'relative', zIndex: 1, maxWidth: 560 }}>
+          <IkfMark />
 
-        {/* Content */}
-        <Box sx={{ position: 'relative', zIndex: 1 }}>
           <Typography
-            variant="h1"
-            sx={{ fontSize: '3.25rem', fontWeight: 900, color: '#78350F', lineHeight: 1.1, mb: 1 }}
+            component="p"
+            sx={{
+              mt: 5,
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: '0.18em',
+              textTransform: 'uppercase',
+              color: ON_AMBER,
+              opacity: 0.8,
+            }}
           >
-            India Khelo Football
-          </Typography>
-
-          <Typography variant="h5" sx={{ color: '#92400E', fontWeight: 600, mb: 4 }}>
             Trial Tracking Application
           </Typography>
 
-          {features.map((feat) => (
-            <Box key={feat} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
-              <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#78350F', flexShrink: 0 }} />
-              <Typography sx={{ color: '#78350F', fontWeight: 600, fontSize: '1.05rem' }}>
+          <Typography
+            component="p"
+            sx={{
+              mt: 1,
+              fontSize: '1.75rem',
+              fontWeight: 700,
+              lineHeight: 1.22,
+              letterSpacing: '-0.02em',
+              color: ON_AMBER,
+              maxWidth: '20ch',
+            }}
+          >
+            Every trial, vendor and rupee in one place.
+          </Typography>
+
+          <Box sx={{ mt: 3.5, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+            {features.map((feat) => (
+              <Box
+                key={feat}
+                sx={{
+                  px: 1.5,
+                  py: 0.65,
+                  borderRadius: '999px',
+                  bgcolor: 'rgba(255,253,247,0.55)',
+                  color: ON_AMBER,
+                  fontSize: '0.8125rem',
+                  fontWeight: 600,
+                }}
+              >
                 {feat}
-              </Typography>
-            </Box>
-          ))}
+              </Box>
+            ))}
+          </Box>
 
-          {/* SVG Illustration */}
-          <Box sx={{ mt: 4, maxWidth: 480 }}>
-            <svg viewBox="0 0 600 400" style={{ width: '100%', height: 'auto' }}>
-              <defs>
-                <linearGradient id="grassGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" style={{ stopColor: '#86efac', stopOpacity: 0.8 }} />
-                  <stop offset="100%" style={{ stopColor: '#22c55e', stopOpacity: 0.9 }} />
-                </linearGradient>
-                <filter id="shadow">
-                  <feDropShadow dx="0" dy="4" stdDeviation="4" floodOpacity="0.3" />
-                </filter>
-              </defs>
-
-              <ellipse cx="300" cy="370" rx="280" ry="30" fill="url(#grassGradient)" opacity="0.6" />
-
-              {/* Sun */}
-              <circle cx="520" cy="60" r="40" fill="#fbbf24" opacity="0.9">
-                <animate attributeName="r" values="40;45;40" dur="3s" repeatCount="indefinite" />
-              </circle>
-              {[0, 45, 90, 135, 180, 225, 270, 315].map((angle, i) => {
-                const rad = (angle * Math.PI) / 180;
-                return (
-                  <line
-                    key={i}
-                    x1={520 + Math.cos(rad) * 50} y1={60 + Math.sin(rad) * 50}
-                    x2={520 + Math.cos(rad) * 65} y2={60 + Math.sin(rad) * 65}
-                    stroke="#fbbf24" strokeWidth="3" strokeLinecap="round" opacity="0.8"
-                  >
-                    <animate attributeName="opacity" values="0.4;0.9;0.4" dur="2s" begin={`${i * 0.2}s`} repeatCount="indefinite" />
-                  </line>
-                );
-              })}
-
-              {/* Kid 1 */}
-              <g filter="url(#shadow)">
-                <ellipse cx="120" cy="365" rx="25" ry="6" fill="#000" opacity="0.2" />
-                <ellipse cx="120" cy="260" rx="25" ry="35" fill="#fbbf24" />
-                <circle cx="120" cy="220" r="24" fill="#fef3c7" />
-                <path d="M 105 217 Q 100 205 110 200 Q 120 197 130 200 Q 138 205 133 217" fill="#422006" />
-                <circle cx="114" cy="220" r="2.5" fill="#000" />
-                <circle cx="126" cy="220" r="2.5" fill="#000" />
-                <path d="M 114 228 Q 120 231 126 228" stroke="#000" strokeWidth="1.5" fill="none" strokeLinecap="round" />
-                <line x1="100" y1="250" x2="80" y2="240" stroke="#fef3c7" strokeWidth="10" strokeLinecap="round">
-                  <animateTransform attributeName="transform" type="rotate" values="0 100 250; -25 100 250; 0 100 250" dur="0.8s" repeatCount="indefinite" />
-                </line>
-                <line x1="140" y1="250" x2="160" y2="265" stroke="#fef3c7" strokeWidth="10" strokeLinecap="round">
-                  <animateTransform attributeName="transform" type="rotate" values="0 140 250; 25 140 250; 0 140 250" dur="0.8s" repeatCount="indefinite" />
-                </line>
-                <line x1="112" y1="295" x2="105" y2="340" stroke="#1e40af" strokeWidth="12" strokeLinecap="round" />
-                <line x1="128" y1="295" x2="135" y2="340" stroke="#1e40af" strokeWidth="12" strokeLinecap="round">
-                  <animateTransform attributeName="transform" type="rotate" values="0 128 295; 35 128 295; 0 128 295" dur="0.8s" repeatCount="indefinite" />
-                </line>
-              </g>
-
-              {/* Kid 2 */}
-              <g filter="url(#shadow)">
-                <ellipse cx="300" cy="365" rx="25" ry="6" fill="#000" opacity="0.2">
-                  <animate attributeName="opacity" values="0.2;0.05;0.2" dur="1.2s" repeatCount="indefinite" />
-                </ellipse>
-                <ellipse cx="300" cy="250" rx="27" ry="38" fill="#f97316" />
-                <circle cx="300" cy="205" r="26" fill="#fef3c7" />
-                <ellipse cx="300" cy="192" rx="28" ry="18" fill="#1c1917" />
-                <circle cx="293" cy="205" r="2.5" fill="#000" />
-                <circle cx="307" cy="205" r="2.5" fill="#000" />
-                <path d="M 293 213 Q 300 217 307 213" stroke="#000" strokeWidth="1.5" fill="none" strokeLinecap="round" />
-                <line x1="275" y1="240" x2="250" y2="220" stroke="#fef3c7" strokeWidth="10" strokeLinecap="round">
-                  <animateTransform attributeName="transform" type="rotate" values="0 275 240; -12 275 240; 0 275 240" dur="1.2s" repeatCount="indefinite" />
-                </line>
-                <line x1="325" y1="240" x2="350" y2="220" stroke="#fef3c7" strokeWidth="10" strokeLinecap="round">
-                  <animateTransform attributeName="transform" type="rotate" values="0 325 240; 12 325 240; 0 325 240" dur="1.2s" repeatCount="indefinite" />
-                </line>
-                <line x1="290" y1="288" x2="282" y2="340" stroke="#1e40af" strokeWidth="12" strokeLinecap="round" />
-                <line x1="310" y1="288" x2="318" y2="340" stroke="#1e40af" strokeWidth="12" strokeLinecap="round" />
-                <animateTransform attributeName="transform" type="translate" values="0,0; 0,-35; 0,0" dur="1.2s" repeatCount="indefinite" />
-              </g>
-
-              {/* Kid 3 */}
-              <g filter="url(#shadow)">
-                <ellipse cx="480" cy="365" rx="25" ry="6" fill="#000" opacity="0.2" />
-                <ellipse cx="480" cy="260" rx="25" ry="35" fill="#fbbf24" />
-                <circle cx="480" cy="220" r="24" fill="#fef3c7" />
-                <path d="M 465 217 Q 460 205 470 200 Q 480 197 490 200 Q 498 205 493 217" fill="#7c2d12" />
-                <circle cx="474" cy="220" r="2.5" fill="#000" />
-                <circle cx="486" cy="220" r="2.5" fill="#000" />
-                <path d="M 473 228 Q 480 231 487 228" stroke="#000" strokeWidth="1.5" fill="none" strokeLinecap="round" />
-                <line x1="460" y1="250" x2="445" y2="245" stroke="#fef3c7" strokeWidth="10" strokeLinecap="round" />
-                <line x1="500" y1="250" x2="520" y2="210" stroke="#fef3c7" strokeWidth="10" strokeLinecap="round">
-                  <animateTransform attributeName="transform" type="rotate" values="0 500 250; 8 500 250; -8 500 250; 0 500 250" dur="0.6s" repeatCount="indefinite" />
-                </line>
-                <line x1="472" y1="295" x2="468" y2="340" stroke="#1e40af" strokeWidth="12" strokeLinecap="round" />
-                <line x1="488" y1="295" x2="492" y2="340" stroke="#1e40af" strokeWidth="12" strokeLinecap="round" />
-              </g>
-
-              {/* Football */}
-              <g filter="url(#shadow)">
-                <circle cx="200" cy="300" r="22" fill="#ffffff" stroke="#000" strokeWidth="2.5" />
-                <path d="M 200 282 L 193 292 L 207 292 Z" fill="#000" />
-                <path d="M 186 300 L 200 307 L 200 292 Z" fill="#000" />
-                <path d="M 214 300 L 200 307 L 200 292 Z" fill="#000" />
-                <path d="M 193 313 L 200 322 L 207 313 Z" fill="#000" />
-                <animateTransform attributeName="transform" type="translate" values="0,0; 80,-20; 180,0; 280,-20; 0,0" dur="6s" repeatCount="indefinite" />
-              </g>
-
-              {/* Grass */}
-              {[...Array(18)].map((_, i) => (
-                <line key={`g-${i}`} x1={60 + i * 30} y1="378" x2={60 + i * 30} y2="390"
-                  stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" opacity="0.5" />
-              ))}
-            </svg>
+          <Box sx={{ mt: 5, maxWidth: 520 }}>
+            <PitchScene />
           </Box>
         </Box>
       </Box>
 
-      {/* ── RIGHT PANEL ──────────────────────────────────────── */}
+      {/* ── RIGHT PANEL — the form ────────────────────────────── */}
       <Box
         sx={{
           flex: 1,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          bgcolor: 'var(--yellow-50)',
           py: 6,
           px: { xs: 3, sm: 6 },
         }}
@@ -352,27 +496,23 @@ export default function Login() {
           {/* ── PASSWORD MODE ─────────────────────────────────── */}
           {loginMode === 'password' && (
             <>
-              <Typography variant="h3" sx={{ fontWeight: 800, color: '#111827', mb: 0.5 }}>
-                Welcome Back
-              </Typography>
-              <Typography variant="body1" sx={{ color: '#6B7280', mb: 4 }}>
-                Sign in to continue
-              </Typography>
+              {heading('Welcome back', 'Sign in to run trials, work orders and payments for India Khelo Football.')}
 
               <Box
                 component="form"
                 onSubmit={handleSubmit}
-                sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}
+                noValidate
+                sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}
               >
                 {errors.general && (
-                  <Alert severity="error" sx={{ animation: 'shake 0.5s ease-in-out' }}>
+                  <Alert severity="error" sx={{ borderRadius: '10px' }}>
                     {errors.general}
                   </Alert>
                 )}
 
                 <TextField
                   type="email"
-                  label="Email Address"
+                  placeholder="Email address"
                   value={email}
                   onChange={handleEmailChange}
                   error={!!errors.email}
@@ -380,11 +520,22 @@ export default function Login() {
                   disabled={isLoading}
                   autoComplete="email"
                   fullWidth
+                  sx={fieldSx}
+                  slotProps={{
+                    htmlInput: { 'aria-label': 'Email address' },
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <MailIcon sx={{ fontSize: 20, color: MUTED }} />
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
                 />
 
                 <TextField
                   type={showPassword ? 'text' : 'password'}
-                  label="Password"
+                  placeholder="Password"
                   value={password}
                   onChange={handlePasswordChange}
                   error={!!errors.password}
@@ -392,32 +543,48 @@ export default function Login() {
                   disabled={isLoading}
                   autoComplete="current-password"
                   fullWidth
-                  InputProps={{
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <IconButton
-                          onClick={() => setShowPassword(!showPassword)}
-                          disabled={isLoading}
-                          edge="end"
-                          aria-label={showPassword ? 'Hide password' : 'Show password'}
-                        >
-                          {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                        </IconButton>
-                      </InputAdornment>
-                    ),
+                  sx={fieldSx}
+                  slotProps={{
+                    htmlInput: { 'aria-label': 'Password' },
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <LockIcon sx={{ fontSize: 20, color: MUTED }} />
+                        </InputAdornment>
+                      ),
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            onClick={() => setShowPassword(!showPassword)}
+                            disabled={isLoading}
+                            edge="end"
+                            size="small"
+                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                            sx={{ color: MUTED }}
+                          >
+                            {showPassword
+                              ? <VisibilityOffIcon sx={{ fontSize: 20 }} />
+                              : <VisibilityIcon sx={{ fontSize: 20 }} />}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    },
                   }}
                 />
 
                 <FormControlLabel
+                  sx={{ ml: -0.75, mt: -0.5 }}
                   control={
                     <Checkbox
                       checked={rememberMe}
                       onChange={(e) => setRememberMe(e.target.checked)}
                       disabled={isLoading}
+                      size="small"
+                      sx={{ color: '#B9B3A6', '&.Mui-checked': { color: AMBER_TEXT } }}
                     />
                   }
                   label={
-                    <Typography variant="body2" sx={{ fontWeight: 500, color: '#374151' }}>
+                    <Typography variant="body2" sx={{ fontWeight: 500, color: MUTED }}>
                       Remember me for 7 days
                     </Typography>
                   }
@@ -425,41 +592,24 @@ export default function Login() {
 
                 <Button
                   type="submit"
-                  variant="contained"
-                  color="primary"
                   size="large"
                   fullWidth
                   disabled={isLoading}
-                  sx={{ py: 1.75, mt: 0.5 }}
+                  sx={ctaSx}
                 >
                   {isLoading ? (
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                      <CircularProgress size={20} sx={{ color: '#111827' }} />
-                      <span>Signing in...</span>
+                      <CircularProgress size={18} sx={{ color: '#FFFFFF' }} />
+                      <span>Signing in…</span>
                     </Box>
                   ) : (
-                    'Sign In'
+                    'Sign in'
                   )}
                 </Button>
 
-                <Box sx={{ textAlign: 'center', mt: 0.5 }}>
-                  <Typography
-                    component="button"
-                    type="button"
-                    onClick={switchToOTP}
-                    sx={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#D97706',
-                      fontWeight: 600,
-                      fontSize: '0.875rem',
-                      cursor: 'pointer',
-                      textDecoration: 'underline',
-                      p: 0,
-                      '&:hover': { color: '#92400E' },
-                    }}
-                  >
-                    Login with OTP instead
+                <Box sx={{ textAlign: 'center' }}>
+                  <Typography component="button" type="button" onClick={switchToOTP} sx={accentLinkSx}>
+                    Sign in with an OTP instead
                   </Typography>
                 </Box>
               </Box>
@@ -469,49 +619,44 @@ export default function Login() {
           {/* ── OTP MODE: PHONE INPUT ─────────────────────────── */}
           {loginMode === 'otp-phone' && (
             <>
-              <Typography variant="h3" sx={{ fontWeight: 800, color: '#111827', mb: 0.5 }}>
-                Login with OTP
-              </Typography>
-              <Typography variant="body1" sx={{ color: '#6B7280', mb: 4 }}>
-                Enter your registered mobile number
-              </Typography>
+              {heading('Sign in with OTP', 'We will text a six-digit code to your registered mobile number.')}
 
               <Box
                 component="form"
                 onSubmit={handleSendOTP}
-                sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}
+                noValidate
+                sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}
               >
-                {otpError && (
-                  <Alert severity="error">{otpError}</Alert>
-                )}
+                {otpError && <Alert severity="error" sx={{ borderRadius: '10px' }}>{otpError}</Alert>}
 
                 <TextField
-                  label="Mobile Number"
                   value={phone}
                   onChange={(e) => {
                     setOtpError('');
                     setPhone(e.target.value.replace(/\D/g, '').slice(0, 10));
                   }}
                   disabled={otpLoading}
-                  inputMode="numeric"
                   autoComplete="tel"
                   fullWidth
                   placeholder="10-digit mobile number"
+                  sx={fieldSx}
+                  slotProps={{
+                    htmlInput: { 'aria-label': 'Mobile number', inputMode: 'numeric' },
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <PhoneIcon sx={{ fontSize: 20, color: MUTED }} />
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
                 />
 
-                <Button
-                  type="submit"
-                  variant="contained"
-                  color="primary"
-                  size="large"
-                  fullWidth
-                  disabled={otpLoading}
-                  sx={{ py: 1.75 }}
-                >
+                <Button type="submit" size="large" fullWidth disabled={otpLoading} sx={ctaSx}>
                   {otpLoading ? (
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                      <CircularProgress size={20} sx={{ color: '#111827' }} />
-                      <span>Sending OTP...</span>
+                      <CircularProgress size={18} sx={{ color: '#FFFFFF' }} />
+                      <span>Sending OTP…</span>
                     </Box>
                   ) : (
                     'Send OTP'
@@ -519,21 +664,7 @@ export default function Login() {
                 </Button>
 
                 <Box sx={{ textAlign: 'center' }}>
-                  <Typography
-                    component="button"
-                    type="button"
-                    onClick={switchToPassword}
-                    sx={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#6B7280',
-                      fontSize: '0.875rem',
-                      cursor: 'pointer',
-                      textDecoration: 'underline',
-                      p: 0,
-                      '&:hover': { color: '#374151' },
-                    }}
-                  >
+                  <Typography component="button" type="button" onClick={switchToPassword} sx={quietLinkSx}>
                     Back to email login
                   </Typography>
                 </Box>
@@ -544,49 +675,44 @@ export default function Login() {
           {/* ── OTP MODE: VERIFY ──────────────────────────────── */}
           {loginMode === 'otp-verify' && (
             <>
-              <Typography variant="h3" sx={{ fontWeight: 800, color: '#111827', mb: 0.5 }}>
-                Enter OTP
-              </Typography>
-              <Typography variant="body1" sx={{ color: '#6B7280', mb: 4 }}>
-                OTP sent to {maskedPhone}
-              </Typography>
+              {heading('Enter your code', `We sent a six-digit code to ${maskedPhone}.`)}
 
               <Box
                 component="form"
                 onSubmit={handleVerifyOTP}
-                sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}
+                noValidate
+                sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}
               >
-                {otpError && (
-                  <Alert severity="error">{otpError}</Alert>
-                )}
+                {otpError && <Alert severity="error" sx={{ borderRadius: '10px' }}>{otpError}</Alert>}
 
                 <TextField
-                  label="6-digit OTP"
                   value={otpCode}
                   onChange={(e) => {
                     setOtpError('');
                     setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6));
                   }}
                   disabled={otpLoading}
-                  inputMode="numeric"
                   autoComplete="one-time-code"
                   fullWidth
-                  placeholder="Enter OTP"
+                  placeholder="6-digit OTP"
+                  sx={fieldSx}
+                  slotProps={{
+                    htmlInput: { 'aria-label': '6-digit OTP', inputMode: 'numeric' },
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <KeyIcon sx={{ fontSize: 20, color: MUTED }} />
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
                 />
 
-                <Button
-                  type="submit"
-                  variant="contained"
-                  color="primary"
-                  size="large"
-                  fullWidth
-                  disabled={otpLoading}
-                  sx={{ py: 1.75 }}
-                >
+                <Button type="submit" size="large" fullWidth disabled={otpLoading} sx={ctaSx}>
                   {otpLoading ? (
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                      <CircularProgress size={20} sx={{ color: '#111827' }} />
-                      <span>Verifying...</span>
+                      <CircularProgress size={18} sx={{ color: '#FFFFFF' }} />
+                      <span>Verifying…</span>
                     </Box>
                   ) : (
                     'Verify OTP'
@@ -598,22 +724,13 @@ export default function Login() {
                     component="button"
                     type="button"
                     onClick={() => setLoginMode('otp-phone')}
-                    sx={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#6B7280',
-                      fontSize: '0.875rem',
-                      cursor: 'pointer',
-                      textDecoration: 'underline',
-                      p: 0,
-                      '&:hover': { color: '#374151' },
-                    }}
+                    sx={quietLinkSx}
                   >
                     Change number
                   </Typography>
 
                   {countdown > 0 ? (
-                    <Typography variant="body2" sx={{ color: '#6B7280' }}>
+                    <Typography variant="body2" sx={{ color: MUTED, fontSize: '0.8125rem' }}>
                       Resend in {countdown}s
                     </Typography>
                   ) : (
@@ -622,18 +739,7 @@ export default function Login() {
                       type="button"
                       onClick={handleResendOTP}
                       disabled={otpLoading}
-                      sx={{
-                        background: 'none',
-                        border: 'none',
-                        color: '#D97706',
-                        fontWeight: 600,
-                        fontSize: '0.875rem',
-                        cursor: 'pointer',
-                        textDecoration: 'underline',
-                        p: 0,
-                        '&:hover': { color: '#92400E' },
-                        '&:disabled': { color: '#9CA3AF', cursor: 'default' },
-                      }}
+                      sx={accentLinkSx}
                     >
                       Resend OTP
                     </Typography>
@@ -643,6 +749,42 @@ export default function Login() {
             </>
           )}
 
+          {/* The other doors. There is no self-serve reset route in this app —
+              ClientChangePasswordDialog covers a signed-IN user only — so this
+              says who to ask rather than linking to a page that does not exist.
+              The funder door is slug-addressed and per-funder, so it cannot be
+              linked generically; the invitation email is the real route. */}
+          <Box
+            sx={{
+              mt: 5, pt: 3, borderTop: `1px solid ${LINE}`,
+              display: 'flex', gap: 3, flexWrap: 'wrap', rowGap: 1,
+              fontSize: '0.8125rem', color: MUTED,
+            }}
+          >
+            <Link component={RouterLink} to="/csr/login" underline="hover" sx={{ color: AMBER_TEXT, fontWeight: 600 }}>
+              CSR office
+            </Link>
+            <Box component="span">Forgotten your password? Ask your administrator to reset it.</Box>
+          </Box>
+
+          {/* Only where the amber panel is not: below lg the brand has to live
+              somewhere, and a bare form on bone says nothing. */}
+          <Box
+            sx={{
+              display: { xs: 'block', lg: 'none' },
+              mt: 3, px: 2, py: 1.5,
+              borderRadius: '10px',
+              bgcolor: AMBER_PALE,
+              color: ON_AMBER,
+              fontSize: '0.75rem',
+              fontWeight: 700,
+              letterSpacing: '0.14em',
+              textTransform: 'uppercase',
+              textAlign: 'center',
+            }}
+          >
+            India Khelo Football · Trial Tracking
+          </Box>
         </Box>
       </Box>
     </Box>
