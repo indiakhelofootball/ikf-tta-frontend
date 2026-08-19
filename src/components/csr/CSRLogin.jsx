@@ -256,254 +256,302 @@ export default function CSRLogin() {
   };
 
   return (
+    // Two layers, as the reference has it: the artwork bleeds to the viewport
+    // edges, and a rounded card floats on it holding everything.
+    //
+    // The form used to sit directly on the page with nothing containing it, so
+    // the fields and the button read as loose objects on a photograph rather
+    // than as one panel. The card is what ties them together -- and the shadow
+    // and the inset are what make the bleed read as a layer behind rather than
+    // as a mistake in the crop.
+    //
+    // Both layers draw the SAME image at different scales. They are not
+    // aligned and are not meant to be: the rounded edge and the shadow declare
+    // the card a separate plane, which is exactly how the reference behaves.
     <Box sx={{
       minHeight: '100vh',
       display: 'flex',
       alignItems: 'center',
+      justifyContent: 'center',
+      p: { xs: 0, md: 4, lg: 5 },
       bgcolor: CREAM,
-      // Anchored right so the player and the goal stay put as the viewport
-      // widens; the extra width is absorbed by cream that matches the image's
-      // own. Dropped below md, where `cover` would crop the cream horizontally.
-      backgroundImage: { xs: 'none', md: `url(${loginArt})` },
-      backgroundSize: 'cover',
-      backgroundPosition: 'center right',
-      backgroundRepeat: 'no-repeat',
+      overflow: 'hidden',
     }}>
+      {/* The backdrop is the same artwork, blurred and scaled past the frame.
+          Sharp, it read as a misaligned duplicate of the card -- two copies of
+          one photograph a few pixels out of register, which the eye reads as a
+          rendering fault rather than as depth. Out of focus it becomes what it
+          is meant to be: colour and light behind the card, taking its palette
+          from the same source so nothing clashes.
+
+          The scale is what keeps the blur honest -- blurring in place samples
+          past the element's own edges and leaves a pale halo around the
+          viewport. */}
+      <Box aria-hidden sx={{
+        position: 'absolute',
+        inset: '-4%',
+        display: { xs: 'none', md: 'block' },
+        backgroundImage: `url(${loginArt})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        filter: 'blur(26px) saturate(0.9) brightness(1.04)',
+        transform: 'scale(1.06)',
+      }} />
       <Box sx={{
+        position: 'relative',
         width: '100%',
-        maxWidth: { xs: '100%', md: 560 },
-        px: { xs: 3, sm: 6, md: 8 },
-        py: { xs: 6, md: 0 },
+        maxWidth: 1320,
+        minHeight: { xs: '100vh', md: 'min(84vh, 760px)' },
+        display: 'flex',
+        alignItems: 'center',
+        borderRadius: { xs: 0, md: '20px' },
+        overflow: 'hidden',
+        bgcolor: CREAM,
+        // Anchored right so the player and the goal hold their place as the
+        // card widens; the growth is absorbed by the image's own cream, which
+        // is also the card's ground, so the two meet without a seam.
+        backgroundImage: { xs: 'none', md: `url(${loginArt})` },
+        backgroundSize: 'cover',
+        backgroundPosition: 'center right',
+        backgroundRepeat: 'no-repeat',
+        boxShadow: { xs: 'none', md: '0 24px 70px rgba(20,43,34,0.28)' },
       }}>
-        <Box
-          component="img"
-          src={ikfLogo}
-          alt="India Khelega Foundation"
-          // The asset is RGB with no alpha, so it carries a white rectangle that
-          // reads as a sticker on the cream ground. `multiply` maps white to the
-          // ground beneath it and leaves the mark's own colours essentially
-          // unchanged against a near-white -- cheaper and more honest than
-          // shipping a second, keyed copy of a logo we did not author.
-          sx={{
-            height: 64, width: 'auto', display: 'block',
-            mixBlendMode: 'multiply', mb: { xs: 4, md: 6 },
-          }}
-        />
-
-        <Typography component="h1" sx={{
-          fontFamily: '"Segoe UI", system-ui, -apple-system, sans-serif',
-          fontSize: { xs: '2.125rem', md: '2.75rem' },
-          fontWeight: 700,
-          letterSpacing: '-0.025em',
-          lineHeight: 1.05,
-          color: INK,
-          mb: 1.5,
-        }}>
-          Welcome back
-        </Typography>
-
-        <Typography sx={{ color: MUTED, fontSize: '0.9375rem', lineHeight: 1.6, maxWidth: '32ch', mb: 4 }}>
-          Together, we create opportunities that change lives through football.
-        </Typography>
-
-        {errors.general && (
-          <Alert severity="error" sx={{ mb: 2.5, borderRadius: '10px' }}>{errors.general}</Alert>
-        )}
-
-        {mode === 'password' && (
-          <Box component="form" onSubmit={handleSubmit} noValidate>
-            <TextField
-              type="email"
-              value={email}
-              fullWidth
-              placeholder="Email address"
-              autoComplete="username"
-              error={Boolean(errors.email)}
-              helperText={errors.email}
-              sx={{ ...fieldSx, mb: 2 }}
-              slotProps={{ input: {
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <MailIcon sx={{ fontSize: 20, color: MUTED }} />
-                  </InputAdornment>
-                ),
-              } }}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                if (errors.email || errors.general) {
-                  setErrors((prev) => ({ ...prev, email: '', general: '' }));
-                }
-              }}
-            />
-
-            <TextField
-              type={showPassword ? 'text' : 'password'}
-              value={password}
-              fullWidth
-              placeholder="Password"
-              autoComplete="current-password"
-              error={Boolean(errors.password)}
-              helperText={errors.password}
-              sx={fieldSx}
-              slotProps={{ input: {
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <LockIcon sx={{ fontSize: 20, color: MUTED }} />
-                  </InputAdornment>
-                ),
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton
-                      onClick={() => setShowPassword((v) => !v)}
-                      edge="end"
-                      size="small"
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
-                      sx={{ color: MUTED }}
-                    >
-                      {showPassword ? <HideIcon sx={{ fontSize: 20 }} /> : <ShowIcon sx={{ fontSize: 20 }} />}
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              } }}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                if (errors.password || errors.general) {
-                  setErrors((prev) => ({ ...prev, password: '', general: '' }));
-                }
-              }}
-            />
-
-            {/* There is no self-serve reset route -- ClientChangePasswordDialog
-                covers a signed-IN user only -- so this says who to ask rather
-                than linking to a page that does not exist. */}
-            <Box sx={{ mt: 1.25, textAlign: 'right', fontSize: '0.8125rem', color: MUTED }}>
-              Forgotten your password? Ask your administrator to reset it.
-            </Box>
-
-            <Button type="submit" fullWidth disabled={submitting} sx={primaryBtnSx}>
-              {submitting ? 'Signing in...' : 'Log in'}
-            </Button>
-
-            <Box sx={dividerSx}><span>or</span></Box>
-
-            <Button
-              fullWidth
-              onClick={() => { setOtpError(''); setOtpCode(''); setCountdown(0); setMode('otp-phone'); }}
-              startIcon={<PhoneIcon sx={{ fontSize: 19 }} />}
-              sx={secondaryBtnSx}
-            >
-              Use a one-time code
-            </Button>
-          </Box>
-        )}
-
-        {mode === 'otp-phone' && (
-          <Box component="form" onSubmit={sendOtp} noValidate>
-            <TextField
-              value={phone}
-              fullWidth
-              placeholder="10-digit mobile number"
-              autoComplete="tel"
-              inputMode="numeric"
-              error={Boolean(otpError)}
-              helperText={otpError}
-              sx={fieldSx}
-              slotProps={{ input: {
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <PhoneIcon sx={{ fontSize: 20, color: MUTED }} />
-                  </InputAdornment>
-                ),
-              } }}
-              onChange={(e) => {
-                setPhone(e.target.value.replace(/\D/g, '').slice(0, 10));
-                if (otpError) setOtpError('');
-              }}
-            />
-
-            <Button type="submit" fullWidth disabled={otpLoading} sx={primaryBtnSx}>
-              {otpLoading ? 'Sending...' : 'Send code'}
-            </Button>
-
-            <Button fullWidth onClick={() => { setOtpError(''); setMode('password'); }} sx={backBtnSx}>
-              Back to password
-            </Button>
-          </Box>
-        )}
-
-        {mode === 'otp-verify' && (
-          <Box component="form" onSubmit={verifyOtp} noValidate>
-            <Typography sx={{ color: MUTED, fontSize: '0.875rem', mb: 2 }}>
-              We sent a 6-digit code to{' '}
-              <Box component="span" sx={{ color: INK, fontWeight: 600 }}>{phone}</Box>.
-            </Typography>
-
-            <TextField
-              value={otpCode}
-              fullWidth
-              placeholder="000000"
-              autoComplete="one-time-code"
-              inputMode="numeric"
-              autoFocus
-              error={Boolean(otpError)}
-              helperText={otpError}
-              sx={{
-                ...fieldSx,
-                '& .MuiInputBase-input': {
-                  color: INK, fontSize: '1.5rem', fontWeight: 600,
-                  letterSpacing: '0.4em', textAlign: 'center', py: 1.75,
-                },
-              }}
-              onChange={(e) => {
-                setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6));
-                if (otpError) setOtpError('');
-              }}
-            />
-
-            <Button type="submit" fullWidth disabled={otpLoading} sx={primaryBtnSx}>
-              {otpLoading ? 'Verifying...' : 'Verify and sign in'}
-            </Button>
-
-            {/* The countdown is stated rather than hidden behind a disabled
-                button: someone waiting on a code needs to know how long. */}
-            <Box sx={{ mt: 2, textAlign: 'center', fontSize: '0.875rem', color: MUTED }}>
-              {countdown > 0 ? (
-                'Resend available in ' + countdown + 's'
-              ) : (
-                <Link
-                  component="button"
-                  type="button"
-                  onClick={resendOtp}
-                  underline="hover"
-                  sx={{ color: NAVY, fontWeight: 600 }}
-                >
-                  Resend code
-                </Link>
-              )}
-            </Box>
-
-            <Button
-              fullWidth
-              onClick={() => { setOtpError(''); setOtpCode(''); setMode('otp-phone'); }}
-              sx={backBtnSx}
-            >
-              Use a different number
-            </Button>
-          </Box>
-        )}
-
-        {/* The other two doors. A funder who lands here needs a way across,
-            and so does an operations user -- this is the only screen where
-            naming the other surfaces helps rather than leaks. */}
         <Box sx={{
-          mt: 5, pt: 3, borderTop: `1px solid ${LINE}`,
-          display: 'flex', gap: 3, flexWrap: 'wrap',
-          fontSize: '0.875rem', color: MUTED,
+          width: '100%',
+          maxWidth: { xs: '100%', md: 520 },
+          px: { xs: 3, sm: 6, md: 7 },
+          py: { xs: 6, md: 6 },
         }}>
-          <Link component={RouterLink} to="/login" underline="hover" sx={{ color: NAVY, fontWeight: 600 }}>
-            TTA operations
-          </Link>
-          <Box component="span">Funders: use the link in your invitation email.</Box>
+          <Box
+            component="img"
+            src={ikfLogo}
+            alt="India Khelega Foundation"
+            // The asset is RGB with no alpha, so it carries a white rectangle that
+            // reads as a sticker on the cream ground. `multiply` maps white to the
+            // ground beneath it and leaves the mark's own colours essentially
+            // unchanged against a near-white -- cheaper and more honest than
+            // shipping a second, keyed copy of a logo we did not author.
+            sx={{
+              height: 64, width: 'auto', display: 'block',
+              mixBlendMode: 'multiply', mb: { xs: 4, md: 6 },
+            }}
+          />
+
+          <Typography component="h1" sx={{
+            fontFamily: '"Segoe UI", system-ui, -apple-system, sans-serif',
+            fontSize: { xs: '2.125rem', md: '2.75rem' },
+            fontWeight: 700,
+            letterSpacing: '-0.025em',
+            lineHeight: 1.05,
+            color: INK,
+            mb: 1.5,
+          }}>
+            Welcome back
+          </Typography>
+
+          <Typography sx={{ color: MUTED, fontSize: '0.9375rem', lineHeight: 1.6, maxWidth: '32ch', mb: 4 }}>
+            Together, we create opportunities that change lives through football.
+          </Typography>
+
+          {errors.general && (
+            <Alert severity="error" sx={{ mb: 2.5, borderRadius: '10px' }}>{errors.general}</Alert>
+          )}
+
+          {mode === 'password' && (
+            <Box component="form" onSubmit={handleSubmit} noValidate>
+              <TextField
+                type="email"
+                value={email}
+                fullWidth
+                placeholder="Email address"
+                autoComplete="username"
+                error={Boolean(errors.email)}
+                helperText={errors.email}
+                sx={{ ...fieldSx, mb: 2 }}
+                slotProps={{ input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <MailIcon sx={{ fontSize: 20, color: MUTED }} />
+                    </InputAdornment>
+                  ),
+                } }}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (errors.email || errors.general) {
+                    setErrors((prev) => ({ ...prev, email: '', general: '' }));
+                  }
+                }}
+              />
+
+              <TextField
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                fullWidth
+                placeholder="Password"
+                autoComplete="current-password"
+                error={Boolean(errors.password)}
+                helperText={errors.password}
+                sx={fieldSx}
+                slotProps={{ input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <LockIcon sx={{ fontSize: 20, color: MUTED }} />
+                    </InputAdornment>
+                  ),
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={() => setShowPassword((v) => !v)}
+                        edge="end"
+                        size="small"
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        sx={{ color: MUTED }}
+                      >
+                        {showPassword ? <HideIcon sx={{ fontSize: 20 }} /> : <ShowIcon sx={{ fontSize: 20 }} />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                } }}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (errors.password || errors.general) {
+                    setErrors((prev) => ({ ...prev, password: '', general: '' }));
+                  }
+                }}
+              />
+
+              {/* There is no self-serve reset route -- ClientChangePasswordDialog
+                  covers a signed-IN user only -- so this says who to ask rather
+                  than linking to a page that does not exist. */}
+              <Box sx={{ mt: 1.25, textAlign: 'right', fontSize: '0.8125rem', color: MUTED }}>
+                Forgotten your password? Ask your administrator to reset it.
+              </Box>
+
+              <Button type="submit" fullWidth disabled={submitting} sx={primaryBtnSx}>
+                {submitting ? 'Signing in...' : 'Log in'}
+              </Button>
+
+              <Box sx={dividerSx}><span>or</span></Box>
+
+              <Button
+                fullWidth
+                onClick={() => { setOtpError(''); setOtpCode(''); setCountdown(0); setMode('otp-phone'); }}
+                startIcon={<PhoneIcon sx={{ fontSize: 19 }} />}
+                sx={secondaryBtnSx}
+              >
+                Use a one-time code
+              </Button>
+            </Box>
+          )}
+
+          {mode === 'otp-phone' && (
+            <Box component="form" onSubmit={sendOtp} noValidate>
+              <TextField
+                value={phone}
+                fullWidth
+                placeholder="10-digit mobile number"
+                autoComplete="tel"
+                inputMode="numeric"
+                error={Boolean(otpError)}
+                helperText={otpError}
+                sx={fieldSx}
+                slotProps={{ input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <PhoneIcon sx={{ fontSize: 20, color: MUTED }} />
+                    </InputAdornment>
+                  ),
+                } }}
+                onChange={(e) => {
+                  setPhone(e.target.value.replace(/\D/g, '').slice(0, 10));
+                  if (otpError) setOtpError('');
+                }}
+              />
+
+              <Button type="submit" fullWidth disabled={otpLoading} sx={primaryBtnSx}>
+                {otpLoading ? 'Sending...' : 'Send code'}
+              </Button>
+
+              <Button fullWidth onClick={() => { setOtpError(''); setMode('password'); }} sx={backBtnSx}>
+                Back to password
+              </Button>
+            </Box>
+          )}
+
+          {mode === 'otp-verify' && (
+            <Box component="form" onSubmit={verifyOtp} noValidate>
+              <Typography sx={{ color: MUTED, fontSize: '0.875rem', mb: 2 }}>
+                We sent a 6-digit code to{' '}
+                <Box component="span" sx={{ color: INK, fontWeight: 600 }}>{phone}</Box>.
+              </Typography>
+
+              <TextField
+                value={otpCode}
+                fullWidth
+                placeholder="000000"
+                autoComplete="one-time-code"
+                inputMode="numeric"
+                autoFocus
+                error={Boolean(otpError)}
+                helperText={otpError}
+                sx={{
+                  ...fieldSx,
+                  '& .MuiInputBase-input': {
+                    color: INK, fontSize: '1.5rem', fontWeight: 600,
+                    letterSpacing: '0.4em', textAlign: 'center', py: 1.75,
+                  },
+                }}
+                onChange={(e) => {
+                  setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6));
+                  if (otpError) setOtpError('');
+                }}
+              />
+
+              <Button type="submit" fullWidth disabled={otpLoading} sx={primaryBtnSx}>
+                {otpLoading ? 'Verifying...' : 'Verify and sign in'}
+              </Button>
+
+              {/* The countdown is stated rather than hidden behind a disabled
+                  button: someone waiting on a code needs to know how long. */}
+              <Box sx={{ mt: 2, textAlign: 'center', fontSize: '0.875rem', color: MUTED }}>
+                {countdown > 0 ? (
+                  'Resend available in ' + countdown + 's'
+                ) : (
+                  <Link
+                    component="button"
+                    type="button"
+                    onClick={resendOtp}
+                    underline="hover"
+                    sx={{ color: NAVY, fontWeight: 600 }}
+                  >
+                    Resend code
+                  </Link>
+                )}
+              </Box>
+
+              <Button
+                fullWidth
+                onClick={() => { setOtpError(''); setOtpCode(''); setMode('otp-phone'); }}
+                sx={backBtnSx}
+              >
+                Use a different number
+              </Button>
+            </Box>
+          )}
+
+          {/* The other door. A CSR operator who took a wrong turn needs a way
+              across; a funder does not belong here at all and is served by
+              RequireClient redirecting them to their own branded door, so
+              telling them to check their email would be advice for a problem
+              they cannot have on this screen. */}
+          <Box sx={{
+            mt: 4, pt: 3, borderTop: `1px solid ${LINE}`,
+            fontSize: '0.875rem', color: MUTED,
+          }}>
+            <Link component={RouterLink} to="/login" underline="hover" sx={{ color: NAVY, fontWeight: 600 }}>
+              TTA operations
+            </Link>
+          </Box>
         </Box>
       </Box>
     </Box>
