@@ -20,6 +20,7 @@ import {
 } from '@mui/icons-material';
 import { PR_STATUS_COLORS } from '../payments/paymentData';
 import { paymentRequestsAPI, tdsAPI, vendorsAPI } from '../../services/api';
+import { csvBlob } from '../../utils/csv';
 import useGrants from '../../auth/useGrants';
 import useRefetchOnFocus from '../../hooks/useRefetchOnFocus';
 import { tdsDueDate, daysUntilTDSDue, fmtDueDate, buildTDSDueInfo } from './tdsDueDate';
@@ -137,8 +138,7 @@ function downloadTDSExcel(records) {
       r.woNumber, r.month, r.grossAmount, r.tdsAmount, r.status, r.depositedDate || '',
     ]),
   ];
-  const csv = rows.map((r) => r.join(',')).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv' });
+  const blob = csvBlob(rows);
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
