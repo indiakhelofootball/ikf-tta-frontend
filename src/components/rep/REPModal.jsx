@@ -344,10 +344,13 @@ function REPModal({ open, onClose, onSave, editingREP }) {
         tentativeDate: addCityDate || null,
         code: `IKF-${lookupStateObj.isoCode}-${lookupCityObj.name.substring(0,3).toUpperCase()}-${String((project.assignedCities||[]).length+1).padStart(3,'0')}`,
       };
-      await trialsAPI.update(project.id, {
-        ...project,
-        assignedCities: [...(project.assignedCities || []), newCity],
-      });
+      // Add the one city through its own endpoint. Sending the whole trial
+      // back with an appended list meant PUTting a copy loaded when the modal
+      // opened: any city added to that project since — by anyone — was absent
+      // from the payload, and the server deletes what the payload omits. The
+      // REP assignments for those cities survived, stranded, with their ground
+      // addresses no longer reachable from the trial.
+      await trialsAPI.addCity(project.id, newCity);
       const res = await trialsAPI.getAll({ limit: 200 });
       setAllTrials(res.trials || []);
       setCityInProject(true);
@@ -356,8 +359,8 @@ function REPModal({ open, onClose, onSave, editingREP }) {
         state: lookupStateObj.name,
         city: lookupCityObj.name,
       }));
-    } catch {
-      setFileError('Failed to add city to project');
+    } catch (err) {
+      setFileError(err.message || 'Failed to add city to project');
     } finally {
       setAddCitySaving(false);
     }
