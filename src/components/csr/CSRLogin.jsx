@@ -54,9 +54,23 @@ import { validateLoginForm } from '../../utils/validation';
 import ikfLogo from '../../assets/ikf-logo.png';
 import loginArt from '../../assets/csr-login.png';
 
-// IKF's identity, read off the artwork itself.
-const NAVY = '#14463A';
-const NAVY_DEEP = '#0E3329';
+// Sampled from the artwork rather than chosen beside it, so the form and the
+// image cannot drift apart. Every value below is a pixel from csr-login.png.
+//
+// PITCH is the kit green off the player's shorts: 10.22:1 on the cream ground
+// and it carries white at 11.42, so it can be both the primary text tone and
+// the button fill without a second variant.
+//
+// SUN is the artwork's one saturated colour, the band across the sky. It
+// measures 1.75:1 as text on cream -- unusable, and precisely the trap amber
+// sprang on this project once already. It is therefore a MARK ONLY: a rule, a
+// fill, never a word. SUN_TEXT is that same hue darkened along itself until it
+// clears AA on cream (4.61) and on white (5.15), for the rare case a word
+// needs it.
+const PITCH = '#1F3F3E';
+const PITCH_DEEP = '#132A29';
+const SUN = '#FAA844';
+const SUN_TEXT = '#946328';
 const INK = '#1C2B25';
 const MUTED = '#66756D';
 const LINE = '#DFDCD2';
@@ -213,8 +227,8 @@ export default function CSRLogin() {
       borderRadius: '10px',
       '& fieldset': { borderColor: LINE },
       '&:hover fieldset': { borderColor: '#C3CFDA' },
-      '&.Mui-focused fieldset': { borderColor: NAVY, borderWidth: '1px' },
-      '&.Mui-focused': { boxShadow: `0 0 0 3px ${NAVY}1A` },
+      '&.Mui-focused fieldset': { borderColor: PITCH, borderWidth: '1px' },
+      '&.Mui-focused': { boxShadow: `0 0 0 3px ${PITCH}1A` },
     },
     '& input:-webkit-autofill': {
       WebkitBoxShadow: '0 0 0 1000px #FFFFFF inset',
@@ -227,10 +241,10 @@ export default function CSRLogin() {
 
   const primaryBtnSx = {
     mt: 2.5, py: 1.6, borderRadius: '10px',
-    bgcolor: NAVY, color: '#FFFFFF',
+    bgcolor: PITCH, color: '#FFFFFF',
     fontSize: '0.9375rem', fontWeight: 600, textTransform: 'none', boxShadow: 'none',
     transition: 'background-color 140ms cubic-bezier(0, 0, 0.2, 1)',
-    '&:hover': { bgcolor: NAVY_DEEP, boxShadow: 'none' },
+    '&:hover': { bgcolor: PITCH_DEEP, boxShadow: 'none' },
     '&.Mui-disabled': { bgcolor: '#93A8BC', color: '#FFFFFF' },
   };
 
@@ -342,6 +356,14 @@ export default function CSRLogin() {
               mixBlendMode: 'multiply', mb: { xs: 4, md: 6 },
             }}
           />
+
+            {/* The artwork's one saturated colour, used as a mark rather than a
+              word -- it is 1.75:1 on this ground and could never carry text.
+              Angled to echo the band of sky it was sampled from. */}
+          <Box sx={{
+            width: 52, height: 4, bgcolor: SUN, borderRadius: 2,
+            transform: 'skewX(-24deg)', mb: 2.5,
+          }} />
 
           <Typography component="h1" sx={{
             fontFamily: '"Segoe UI", system-ui, -apple-system, sans-serif',
@@ -519,7 +541,12 @@ export default function CSRLogin() {
 
               {/* The countdown is stated rather than hidden behind a disabled
                   button: someone waiting on a code needs to know how long. */}
-              <Box sx={{ mt: 2, textAlign: 'center', fontSize: '0.875rem', color: MUTED }}>
+              <Box sx={{
+                mt: 2, textAlign: 'center', fontSize: '0.875rem',
+                // The accent's legible variant, on the one line that is about
+                // waiting. Everywhere else the accent stays a mark.
+                color: countdown > 0 ? SUN_TEXT : MUTED,
+              }}>
                 {countdown > 0 ? (
                   'Resend available in ' + countdown + 's'
                 ) : (
@@ -528,7 +555,7 @@ export default function CSRLogin() {
                     type="button"
                     onClick={resendOtp}
                     underline="hover"
-                    sx={{ color: NAVY, fontWeight: 600 }}
+                    sx={{ color: PITCH, fontWeight: 600 }}
                   >
                     Resend code
                   </Link>
@@ -554,7 +581,7 @@ export default function CSRLogin() {
             mt: 4, pt: 3, borderTop: `1px solid ${LINE}`,
             fontSize: '0.875rem', color: MUTED,
           }}>
-            <Link component={RouterLink} to="/login" underline="hover" sx={{ color: NAVY, fontWeight: 600 }}>
+            <Link component={RouterLink} to="/login" underline="hover" sx={{ color: PITCH, fontWeight: 600 }}>
               TTA operations
             </Link>
           </Box>
