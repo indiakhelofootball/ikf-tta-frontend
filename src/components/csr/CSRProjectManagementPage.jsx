@@ -95,9 +95,13 @@ export default function CSRProjectManagementPage() {
   const filtered = projects.filter((p) => {
     if (!search.trim()) return true;
     const q = search.toLowerCase();
+    // The identity is on the card, so it has to be searchable too — an
+    // operator looking for "Season 6" expects the grants under it.
     return (
       p.name?.toLowerCase().includes(q) ||
-      p.clientName?.toLowerCase().includes(q)
+      p.clientName?.toLowerCase().includes(q) ||
+      p.ttaProjectName?.toLowerCase().includes(q) ||
+      p.season?.toLowerCase().includes(q)
     );
   });
 
