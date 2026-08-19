@@ -67,18 +67,25 @@ function Tile({ icon, label, children, span = 1, rowSpan = 1, onClick, ink = ink
         gridColumn: { xs: 'span 2', md: `span ${span}` },
         gridRow: { xs: 'auto', md: `span ${rowSpan}` },
         bgcolor: surfaces.surface,
-        // No border. The references separate a card from its ground with tone
-        // and a soft shadow, never a hairline outline — an outlined tile on a
-        // tinted ground reads as a table cell.
+        // A hairline, not a shadow. This comment used to argue the opposite --
+        // that an outlined tile on a tinted ground reads as a table cell -- on
+        // the strength of reference decks that separate cards with a soft
+        // shadow. The owner ruled against it, and ttaTheme's own header had
+        // said the same thing all along: depth comes from tone, not shadow.
+        // This tile was the single place in the module that had drifted.
         borderRadius: 2,
-        boxShadow: '0 1px 2px rgba(20,28,24,0.04), 0 6px 16px rgba(20,28,24,0.05)',
+        border: '1px solid',
+        borderColor: 'divider',
+        boxShadow: 'none',
         p: 2.75,
         display: 'flex',
         flexDirection: 'column',
         cursor: onClick ? 'pointer' : 'default',
-        transition: 'box-shadow 160ms cubic-bezier(0, 0, 0.2, 1)',
+        transition: 'border-color 160ms cubic-bezier(0, 0, 0.2, 1)',
+        // The hover moves the line instead of lifting the tile. It also works
+        // for keyboard and touch, which a shadow-on-hover never did.
         ...(onClick && {
-          '&:hover': { boxShadow: '0 2px 4px rgba(20,28,24,0.06), 0 10px 24px rgba(20,28,24,0.09)' },
+          '&:hover': { borderColor: (ink || inks.moss).fill },
         }),
       }}
     >

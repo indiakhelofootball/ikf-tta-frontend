@@ -219,7 +219,7 @@ export default function CSRUtilisationPage() {
                   borderRadius: 2,
                   p: 2.5,
                   transition: 'box-shadow 160ms cubic-bezier(0, 0, 0.2, 1), border-color 160ms cubic-bezier(0, 0, 0.2, 1)',
-                  '&:hover': { borderColor: surfaces.hairline, boxShadow: '0 2px 4px rgba(20,28,24,0.06)' },
+                  '&:hover': { borderColor: surfaces.hairline },
                 }}
               >
                 <Stack

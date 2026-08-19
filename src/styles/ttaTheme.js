@@ -296,8 +296,13 @@ const ttaTheme = createTheme({
           backgroundColor: CARD,
           border: '1px solid ' + HAIRLINE,
           boxShadow: 'none',
-          transition: t(['box-shadow', 'border-color'], motion.enter),
-          '&:hover': { boxShadow: SHADOW_SOFT, borderColor: '#C7CCC3' },
+          transition: t(['border-color'], motion.enter),
+          // The line darkens; nothing lifts. The shadow that used to accompany
+          // this was the last of the "depth from elevation" habit this file's
+          // own header argues against, and it was redundant -- the border move
+          // already reads, and unlike a shadow it reads on keyboard focus and
+          // on touch too.
+          '&:hover': { borderColor: '#C7CCC3' },
         },
       },
     },
