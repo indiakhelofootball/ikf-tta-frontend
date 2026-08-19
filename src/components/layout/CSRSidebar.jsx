@@ -16,6 +16,9 @@ import { matchRoutes, useLocation } from 'react-router-dom';
 import {
   VolunteerActivism as CSRIcon,
   FolderSpecial as ProjectsIcon,
+  EventNote as ActivitiesIcon,
+  Description as ReportsIcon,
+  ReceiptLong as UtilisationIcon,
   GroupAdd as FundersIcon,
   Category as CatalogIcon,
   Palette as BrandingIcon,
@@ -61,6 +64,9 @@ export default function CSRSidebar({ collapsed, onToggle }) {
     >
       {item({ to: '/csr', icon: <CSRIcon fontSize="small" />, label: 'Dashboard', end: true })}
       {canView('csr') && item({ to: '/csr/projects', icon: <ProjectsIcon fontSize="small" />, label: 'Projects', forceActive: onProjectDetail })}
+      {canView('csr') && item({ to: '/csr/activities', icon: <ActivitiesIcon fontSize="small" />, label: 'Activities' })}
+      {canView('csr') && item({ to: '/csr/reports', icon: <ReportsIcon fontSize="small" />, label: 'Reports' })}
+      {(canView('csr_certificate') || canView('csr')) && item({ to: '/csr/utilisation', icon: <UtilisationIcon fontSize="small" />, label: 'Utilisation' })}
       {isAdminOrSuper && item({ to: '/csr/clients', icon: <FundersIcon fontSize="small" />, label: 'Funders' })}
       {isAdminOrSuper && item({ to: '/csr/activity-types', icon: <CatalogIcon fontSize="small" />, label: 'Activity Types' })}
       {isAdminOrSuper && item({ to: '/csr/branding', icon: <BrandingIcon fontSize="small" />, label: 'Branding' })}
