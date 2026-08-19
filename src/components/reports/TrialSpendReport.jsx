@@ -22,6 +22,8 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { reportsAPI } from '../../services/api';
+import { csvBlob } from '../../utils/csv';
+import { exportReportExcel, datedFileName } from '../../utils/reportExcel';
 
 const fmtINR = (n) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })
@@ -193,6 +195,36 @@ function TrialSpendReport() {
     return sortBy.endsWith('-asc') ? '↑' : '↓';
   };
 
+  // Typed twin of the CSV above. Trial code is `code` rather than text: a code
+  // that happens to be all digits would otherwise arrive as a number and lose
+  // any leading zero.
+  const exportExcel = () => exportReportExcel({
+    sheetName: 'Trial Spend',
+    fileName: datedFileName('trial_spend'),
+    summary: `Trial Spend — ${filteredSorted.length} trials`,
+    columns: [
+      { header: 'Trial Code', type: 'code' },
+      { header: 'Trial Name', width: 30 },
+      'Season',
+      'Type',
+      'Status',
+      { header: 'Cities', type: 'integer' },
+      { header: 'WOs', type: 'integer' },
+      { header: 'PRs', type: 'integer' },
+      { header: 'Committed', type: 'money' },
+      { header: 'Paid (Gross)', type: 'money' },
+      { header: 'Pending', type: 'money' },
+      { header: 'TDS', type: 'money' },
+      { header: 'Bounces', type: 'integer' },
+    ],
+    rows: filteredSorted.map((r) => [
+      r.trial.trialCode, r.trial.trialName, r.trial.season,
+      r.trial.trialType, r.trial.status, r.cityCount,
+      r.woCount, r.prCount,
+      r.committed, r.paidGross, r.pending, r.tdsTotal, r.bounces,
+    ]),
+  });
+
   const exportCSV = () => {
     const header = ['Trial Code', 'Trial Name', 'Season', 'Type', 'Status', 'Cities', 'WOs', 'PRs', 'Committed', 'Paid (Gross)', 'Pending', 'TDS', 'Bounces'];
     const rows = filteredSorted.map(r => [
@@ -201,11 +233,7 @@ function TrialSpendReport() {
       r.woCount, r.prCount,
       r.committed, r.paidGross, r.pending, r.tdsTotal, r.bounces,
     ]);
-    const csv = [header, ...rows].map(r => r.map(c => {
-      const s = String(c ?? '');
-      return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
-    }).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const blob = csvBlob([header, ...rows]);
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -241,6 +269,11 @@ function TrialSpendReport() {
               disabled={filteredSorted.length === 0}
               sx={{ textTransform: 'none', borderRadius: 1.5, borderColor: '#5B63D3', color: '#5B63D3' }}>
               Export CSV
+            </Button>
+            <Button size="small" variant="outlined" startIcon={<DownloadIcon />} onClick={exportExcel}
+              disabled={filteredSorted.length === 0}
+              sx={{ textTransform: 'none', borderRadius: 1.5, borderColor: '#5B63D3', color: '#5B63D3' }}>
+              Export Excel
             </Button>
           </Stack>
         </Stack>

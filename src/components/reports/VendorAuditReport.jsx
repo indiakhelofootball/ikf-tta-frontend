@@ -21,6 +21,8 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { reportsAPI } from '../../services/api';
+import { csvBlob } from '../../utils/csv';
+import { exportReportExcel, datedFileName } from '../../utils/reportExcel';
 import {
   computeVendorFlags, topSeverity, FLAG_COLORS, FLAG_LABELS,
 } from './flagEngine';
@@ -240,6 +242,43 @@ function VendorAuditReport() {
     return sortBy.endsWith('-asc') ? '↑' : '↓';
   };
 
+  // The same columns as the CSV, TYPED. That is the whole difference: a CSV
+  // hands Excel a wall of text and lets it guess, so money sorts lexically
+  // (9,999 above 1,25,000) and cannot be summed. Here money is a real number
+  // carrying a rupee format, the date is a real date so Excel's date filters
+  // work, and the PAN is pinned to text so Excel cannot reinterpret it.
+  const exportExcel = () => exportReportExcel({
+    sheetName: 'Vendor Audit',
+    fileName: datedFileName('vendor_audit'),
+    summary: `Vendor Audit — ${filteredSorted.length} vendors`,
+    columns: [
+      { header: 'Vendor', width: 28 },
+      'Type',
+      'City',
+      { header: 'PAN', type: 'code' },
+      { header: 'WOs', type: 'integer' },
+      { header: 'PRs', type: 'integer' },
+      { header: 'Committed', type: 'money' },
+      { header: 'Paid (Gross)', type: 'money' },
+      { header: 'Pending', type: 'money' },
+      { header: 'TDS', type: 'money' },
+      { header: 'Bounces', type: 'integer' },
+      { header: 'Last Payment', type: 'date' },
+      { header: 'Issues', width: 40 },
+    ],
+    rows: filteredSorted.map((r) => [
+      r.vendor.vendorName || '',
+      r.vendor.vendorType || '',
+      r.vendor.city || '',
+      r.vendor.panNumber || '',
+      r.woCount, r.prCount,
+      r.committed, r.paidGross, r.pending, r.tdsTotal,
+      r.bounces,
+      r.lastPaymentDate || '',
+      (r.issues || []).join('; '),
+    ]),
+  });
+
   const exportCSV = () => {
     const header = ['Vendor', 'Type', 'City', 'PAN', 'WOs', 'PRs', 'Committed', 'Paid (Gross)', 'Pending', 'TDS', 'Bounces', 'Last Payment', 'Issues'];
     const rowsCsv = filteredSorted.map(r => [
@@ -257,11 +296,7 @@ function VendorAuditReport() {
       r.lastPaymentDate || '',
       r.flags.map(f => VENDOR_ISSUE_TITLES[f.code] || f.label).join(' | '),
     ]);
-    const csv = [header, ...rowsCsv].map(r => r.map(c => {
-      const s = String(c ?? '');
-      return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
-    }).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const blob = csvBlob([header, ...rowsCsv]);
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -321,6 +356,11 @@ function VendorAuditReport() {
               disabled={filteredSorted.length === 0}
               sx={{ textTransform: 'none', borderRadius: 1.5, borderColor: '#5B63D3', color: '#5B63D3' }}>
               Export CSV
+            </Button>
+            <Button size="small" variant="outlined" startIcon={<DownloadIcon />} onClick={exportExcel}
+              disabled={filteredSorted.length === 0}
+              sx={{ textTransform: 'none', borderRadius: 1.5, borderColor: '#5B63D3', color: '#5B63D3' }}>
+              Export Excel
             </Button>
           </Stack>
         </Stack>
