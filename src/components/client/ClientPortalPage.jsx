@@ -46,6 +46,7 @@ export default function ClientPortalPage() {
   const [error, setError] = useState('');
   const [tab, setTab] = useState(0);
   const [pwOpen, setPwOpen] = useState(false);
+  const [logoBroken, setLogoBroken] = useState(false);
 
   const asList = (d) => (Array.isArray(d) ? d : d?.results || []);
 
@@ -53,16 +54,24 @@ export default function ClientPortalPage() {
     let active = true;
     (async () => {
       try {
-        const [p, acts, reps, dels, b] = await Promise.all([
+        // Branding is fetched FIRST and on its own, not inside the Promise.all
+        // below. It decides the funder's colours and logo -- the one thing on
+        // this page whose job is to look like it was made for them -- and
+        // bundling it with four data calls meant the brand could not paint
+        // until the slowest query returned.
+        clientAPI.myBranding()
+          .then((b) => { if (active) setBrand(b && b.slug ? b : null); })
+          .catch(() => { /* unbranded is a valid state; the default theme holds */ });
+
+        const [p, acts, reps, dels] = await Promise.all([
           clientAPI.project(), clientAPI.activities(), clientAPI.reports(),
-          clientAPI.deliverables(), clientAPI.myBranding().catch(() => null),
+          clientAPI.deliverables(),
         ]);
         if (!active) return;
         setProject(asList(p)[0] || null);
         setActivities(asList(acts));
         setReports(asList(reps));
         setDeliverables(asList(dels));
-        setBrand(b && b.slug ? b : null);
       } catch (e) {
         if (active) setError(e.message || 'Failed to load your project.');
       } finally {
@@ -79,8 +88,19 @@ export default function ClientPortalPage() {
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       <AppBar position="static" color="default" elevation={1}>
         <Toolbar sx={{ gap: 1 }}>
-          {brand?.logoUrl && (
-            <Box component="img" src={brand.logoUrl} alt={title} sx={{ height: 36, mr: 1 }} />
+          {/* A funder's logo is hosted wherever they gave us a URL, so it can
+              rot without warning. Without onError, one dead link makes a broken
+              image glyph the first thing they see on their own branded portal.
+              Failing back to the wordmark alone is invisible; a broken icon is
+              not. */}
+          {brand?.logoUrl && !logoBroken && (
+            <Box
+              component="img"
+              src={brand.logoUrl}
+              alt={title}
+              onError={() => setLogoBroken(true)}
+              sx={{ height: 36, mr: 1 }}
+            />
           )}
           <Typography variant="h6" sx={{ flexGrow: 1 }}>
             {title}
@@ -128,7 +148,11 @@ export default function ClientPortalPage() {
 
             {tab === 1 && (
               activities.length === 0 ? (
-                <Typography color="text.secondary" sx={{ py: 2 }}>No activities published yet.</Typography>
+                <Typography color="text.secondary" sx={{ py: 2, maxWidth: '52ch' }}>
+                  Nothing published yet. Trials, workshops and training sessions run under
+                  this grant appear here as they happen &mdash; they are recorded after the
+                  event, not scheduled in advance.
+                </Typography>
               ) : (
                 <List dense>
                   {activities.map((a) => (
@@ -149,7 +173,11 @@ export default function ClientPortalPage() {
 
             {tab === 2 && (
               reports.length === 0 ? (
-                <Typography color="text.secondary" sx={{ py: 2 }}>No reports published yet.</Typography>
+                <Typography color="text.secondary" sx={{ py: 2, maxWidth: '52ch' }}>
+                  No reports released yet. The India Khelo Football team publishes a report
+                  for an activity once it is written; you will see it here as soon as it is
+                  released.
+                </Typography>
               ) : (
                 <List dense>
                   {reports.map((r) => (
@@ -170,7 +198,10 @@ export default function ClientPortalPage() {
 
             {tab === 3 && (
               deliverables.length === 0 ? (
-                <Typography color="text.secondary" sx={{ py: 2 }}>No deliverables recorded yet.</Typography>
+                <Typography color="text.secondary" sx={{ py: 2, maxWidth: '52ch' }}>
+                  No deliverables recorded yet. Once the grant agreement is loaded, what was
+                  promised &mdash; and how much of it has been delivered &mdash; is tracked here.
+                </Typography>
               ) : (
                 <List>
                   {deliverables.map((d) => {
