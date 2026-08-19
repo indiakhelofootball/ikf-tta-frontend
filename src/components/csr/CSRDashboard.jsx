@@ -1,67 +1,139 @@
 // src/components/csr/CSRDashboard.jsx
 // The CSR app's landing page.
 //
-// Specified in three documents and never built, which is why a csr-grant user
-// landed on TTA's /dashboard — a page whose stat cards filter over
-// trials/reps/vendors/workorders/payments and therefore rendered a welcome
-// banner and nothing else, at every login.
+// WHAT THIS PAGE IS: a small number of tiles, each answering a DIFFERENT
+// question. It is not a list of grants — every grant repeating the same six
+// fields is a table wearing cards, and it was what this page used to be.
+// Per-grant spend against its window belongs in the grants module, not here.
 //
-// Metrics are exactly the three CSR_PRODUCT_DESIGN.md §4 named:
-//   "counts: active projects, sanctioned vs tagged spend, pending reports".
+// Delivery leads (owner decision, 19 Aug): what was achieved, in the funder's
+// own units, before any rupee figure. That is the number a grant is renewed on.
+//
+// NEVER SUM ACROSS UNITS. 318 players + 120 coaches is 438 people. Trials, kits
+// and camps are events and objects — adding all five into one "people reached"
+// figure is the same category error as pooling rupees across funders. Each
+// deliverable therefore keeps its own line and its own unit.
+//
+// Colour has two axes and they must not cross:
+//   Spine = grant IDENTITY (moss/indigo/teal, hashed by id, stable for life)
+//   Text  = STATUS (ochre waiting, clay attention, plum closed)
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Box, Typography, Alert, Skeleton } from '@mui/material';
 import {
-  Box, Grid, Paper, Typography, Stack, Chip, LinearProgress, Alert, Skeleton,
-} from '@mui/material';
-import { alpha } from '@mui/material/styles';
-import {
-  FolderSpecial as ProjectsIcon,
-  AccountBalanceWallet as SpendIcon,
-  Description as ReportsIcon,
+  TaskAltOutlined as DeliveryIcon,
+  PaymentsOutlined as MoneyIcon,
+  FolderSpecialOutlined as GrantsIcon,
+  DescriptionOutlined as ReportsIcon,
+  HandshakeOutlined as FundersIcon,
+  HistoryOutlined as RecentIcon,
 } from '@mui/icons-material';
 import { csrAPI } from '../../services/api';
 import useGrants from '../../auth/useGrants';
+import { surfaces, inks, figure, fonts, tabular } from '../../styles/ttaTheme';
 
-const fmtINR = (n) =>
-  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })
-    .format(Number(n) || 0);
-
-const cardSx = {
-  // Cards are the `lg` role in the radius scale: 12px. shape.borderRadius is
-  // 8, so 1.5 lands on 12 rather than the 16 that `2` was giving.
-  p: 2.5, borderRadius: 1.5, border: 1, borderColor: 'divider', height: '100%',
+const fmtINR = (n) => {
+  const v = Number(n) || 0;
+  if (v >= 10000000) return `₹${(v / 10000000).toFixed(2)} Cr`;
+  if (v >= 100000) return `₹${(v / 100000).toFixed(2)} L`;
+  return new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(v);
 };
 
-// `tone` is a palette path ('primary.main'), which sx resolves for `color` but
-// not for a tinted fill — so the fill resolves it here and applies the alpha.
-const tonePalette = (theme, tone) =>
-  tone.split('.').reduce((node, key) => node?.[key], theme.palette) || tone;
+const GRANT_INKS = [inks.moss, inks.indigo, inks.teal];
 
-function StatCard({ icon, label, value, sub, tone = 'primary.main' }) {
+// Not every tile earns an ink. Activity and history carry no fixed meaning in
+// this system, so they take the neutral rather than borrowing a colour that
+// means something else — which is exactly how teal ended up on Activities.
+const NEUTRAL = { tint: surfaces.sunken, text: '#4E5A54', fill: '#98A199' };
+const inkFor = (id) => {
+  const key = String(id ?? '');
+  let h = 0;
+  for (let i = 0; i < key.length; i += 1) h = (h * 31 + key.charCodeAt(i)) % 100003;
+  return GRANT_INKS[h % GRANT_INKS.length];
+};
+
+// ---------------------------------------------------------------------------
+// Tile. One question each, and small — a dashboard tile is a glance, not a
+// screen. The references average about 150px tall; the version this replaces
+// was 190px per grant and said the same thing three times.
+// ---------------------------------------------------------------------------
+function Tile({ icon, label, children, span = 1, rowSpan = 1, onClick, ink = inks.moss }) {
   return (
-    <Paper elevation={0} sx={cardSx}>
-      <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1.5 }}>
+    <Box
+      onClick={onClick}
+      sx={{
+        gridColumn: { xs: 'span 2', md: `span ${span}` },
+        gridRow: { xs: 'auto', md: `span ${rowSpan}` },
+        bgcolor: surfaces.surface,
+        // No border. The references separate a card from its ground with tone
+        // and a soft shadow, never a hairline outline — an outlined tile on a
+        // tinted ground reads as a table cell.
+        borderRadius: 2,
+        boxShadow: '0 1px 2px rgba(20,28,24,0.04), 0 6px 16px rgba(20,28,24,0.05)',
+        p: 2.75,
+        display: 'flex',
+        flexDirection: 'column',
+        cursor: onClick ? 'pointer' : 'default',
+        transition: 'box-shadow 160ms cubic-bezier(0, 0, 0.2, 1)',
+        ...(onClick && {
+          '&:hover': { boxShadow: '0 2px 4px rgba(20,28,24,0.06), 0 10px 24px rgba(20,28,24,0.09)' },
+        }),
+      }}
+    >
+      {/* Badge and label on one line. Every reference leads its card this way,
+          and it is why theirs read as objects rather than as fields: the badge
+          gives the tile a fixed anchor and carries the tile's ink. */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, mb: 2 }}>
         <Box sx={{
-          // Small accent inside a card: `md` role, 8px. An inner radius equal
-          // to its container's reads wrong.
-          width: 38, height: 38, borderRadius: 1, display: 'grid', placeItems: 'center',
-          bgcolor: (theme) => alpha(tonePalette(theme, tone), 0.08), color: tone,
+          width: 34, height: 34, borderRadius: 1.5, flex: 'none',
+          display: 'grid', placeItems: 'center',
+          bgcolor: ink.tint, color: ink.text,
+          '& svg': { fontSize: 18 },
         }}>
           {icon}
         </Box>
-        <Typography sx={{
-          fontWeight: 700, color: 'text.secondary', fontSize: '0.75rem',
-          letterSpacing: '0.5px', textTransform: 'uppercase',
+        {/* Sentence case at 13px, not 11px uppercase with wide tracking. The
+            tracked-out micro-label is a bureaucratic tic and none of the
+            references use one. */}
+        <Box sx={{
+          fontFamily: fonts.sans, fontSize: '0.8125rem', fontWeight: 600,
+          color: 'text.secondary', letterSpacing: 0,
         }}>
           {label}
-        </Typography>
-      </Stack>
-      <Typography variant="h4" fontWeight={800} sx={{ color: 'text.primary', lineHeight: 1.1 }}>
-        {value}
-      </Typography>
-      {sub && <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>{sub}</Typography>}
-    </Paper>
+        </Box>
+      </Box>
+      {children}
+    </Box>
+  );
+}
+
+// A promised output against what has actually been delivered. The bar is the
+// point — a count alone does not say whether it is nearly done.
+function Promised({ title, done, target, ink }) {
+  const met = target != null && done != null && done >= target;
+  const pctRaw = target ? (done / target) * 100 : 0;
+  return (
+    <Box sx={{ mb: 1.5, '&:last-child': { mb: 0 } }}>
+      <Box sx={{
+        display: 'flex', justifyContent: 'space-between', gap: 1.5,
+        alignItems: 'baseline', mb: 0.5,
+      }}>
+        <Box sx={{ fontFamily: fonts.sans, fontSize: '0.8125rem', minWidth: 0 }}>{title}</Box>
+        <Box sx={{
+          ...tabular, fontFamily: fonts.serif, fontSize: '0.9375rem',
+          color: met ? inks.moss.text : 'text.primary', whiteSpace: 'nowrap',
+        }}>
+          {done == null ? '—' : done}<span style={{ color: '#5C6A63' }}> / {target ?? '—'}</span>
+        </Box>
+      </Box>
+      <Box sx={{ height: 4, borderRadius: 2, bgcolor: surfaces.sunken, overflow: 'hidden' }}>
+        <Box sx={{
+          height: '100%', width: `${Math.min(100, pctRaw)}%`,
+          bgcolor: met ? inks.moss.fill : ink,
+        }} />
+      </Box>
+    </Box>
   );
 }
 
@@ -69,147 +141,244 @@ export default function CSRDashboard() {
   const navigate = useNavigate();
   const { canView } = useGrants();
   const [projects, setProjects] = useState([]);
+  const [deliverables, setDeliverables] = useState([]);
+  const [activities, setActivities] = useState([]);
   const [utilised, setUtilised] = useState(null);
+  // Tagged money that does NOT count yet. certificate.py only sums tags whose
+  // payment reached 'Payment Done'; Draft, Sent to Accounts and Bounced go to
+  // excludedItems instead. Showing the counted figure alone reports a total
+  // that is correct and a shortfall that is invisible — a bounced payment is
+  // someone's job to fix before the certificate is right.
+  const [excluded, setExcluded] = useState({ amount: 0, count: 0 });
   const [pendingReports, setPendingReports] = useState(null);
+  const [reportedCount, setReportedCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     let active = true;
-    setLoading(true);
+    const rows = (r) => r?.results || r || [];
 
-    csrAPI.projects.getAll()
-      .then((res) => {
-        if (!active) return;
-        const rows = res?.results || res || [];
-        setProjects(rows);
+    Promise.all([
+      csrAPI.projects.getAll().then(rows).catch(() => []),
+      csrAPI.deliverables.getAll().then(rows).catch(() => []),
+      csrAPI.activities.getAll().then(rows).catch(() => []),
+      csrAPI.reports.getAll().then(rows).catch(() => []),
+    ])
+      .then(([ps, ds, as, rs]) => {
+        if (!active) return undefined;
+        setProjects(ps);
+        setDeliverables(ds);
+        setActivities(as);
+        setPendingReports(rs.filter((r) => !r.visibleToClient).length);
+        // Distinct activities that have at least one report attached — the
+        // middle step of the pipeline.
+        setReportedCount(new Set(rs.map((r) => r.activityId).filter(Boolean)).size);
 
-        // Sanctioned vs tagged: the certificate endpoint is the only
-        // server-authoritative source of "utilised", and it already applies the
-        // Payment Done rule. Summing tags client-side would drift from the PDF.
-        const active_ = rows.filter((p) => p.status !== 'Closed');
+        // The certificate endpoint is the only server-authoritative source of
+        // "utilised" — it already applies the Payment Done rule. Summing tags
+        // client-side would drift from the PDF a funder is handed.
         return Promise.all(
-          active_.map((p) =>
+          ps.filter((p) => p.status !== 'Closed').map((p) =>
             csrAPI.utilisationCertificate(p.id)
-              .then((c) => Number(c.totalUtilised) || 0)
-              .catch(() => 0)
-          )
-        ).then((totals) => {
-          if (active) setUtilised(totals.reduce((a, b) => a + b, 0));
+              .then((c) => c)
+              .catch(() => null))
+        ).then((certs) => {
+          if (!active) return;
+          const ok = certs.filter(Boolean);
+          setUtilised(ok.reduce((a, c) => a + (Number(c.totalUtilised) || 0), 0));
+          const ex = ok.flatMap((c) => c.excludedItems || []);
+          setExcluded({
+            amount: ex.reduce((a, i) => a + (Number(i.amount) || 0), 0),
+            count: ex.length,
+          });
         });
       })
-      .catch(() => {
-        if (active) setError('Could not load CSR projects.');
-      })
+      .catch(() => { if (active) setError('Could not load the CSR dashboard.'); })
       .finally(() => { if (active) setLoading(false); });
-
-    // A report that exists but is not yet published is the CSR team's queue.
-    csrAPI.reports.getAll()
-      .then((res) => {
-        if (!active) return;
-        const rows = res?.results || res || [];
-        setPendingReports(rows.filter((r) => !r.visibleToClient).length);
-      })
-      .catch(() => { if (active) setPendingReports(null); });
 
     return () => { active = false; };
   }, []);
 
-  const activeProjects = projects.filter((p) => p.status !== 'Closed');
-  const sanctioned = activeProjects.reduce((sum, p) => sum + (Number(p.sanctionedAmount) || 0), 0);
-  const pct = sanctioned > 0 && utilised != null
-    ? Math.min(100, Math.round((utilised / sanctioned) * 100))
-    : 0;
+  const open = projects.filter((p) => p.status !== 'Closed');
+  const sanctioned = open.reduce((s, p) => s + (Number(p.sanctionedAmount) || 0), 0);
+
+  // People, and only people. Trials, kits and camps are counted separately
+  // because they are not people — see the header note.
+  const peopleWords = /player|coach|child|children|girl|boy|student|participant|athlete|volunteer/i;
+  const people = deliverables
+    .filter((d) => peopleWords.test(d.title || ''))
+    .reduce((s, d) => s + (Number(d.completedCount) || 0), 0);
+
+  // Distinct funding organisations. Derived from the projects already loaded
+  // rather than a fifth request — the name is on every project row.
+  const funders = useMemo(
+    () => [...new Set(projects.map((p) => p.clientName).filter(Boolean))],
+    [projects],
+  );
+
+  const recent = useMemo(() => [...activities]
+    .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
+    .slice(0, 6), [activities]);
 
   if (!canView('csr')) {
     return <Alert severity="warning">You do not have access to CSR.</Alert>;
   }
 
-  return (
-    <Box sx={{ maxWidth: 1100, mx: 'auto' }}>
-      {/* No page title here — the layout header already renders "CSR Dashboard".
-          Repeating it produced two identical headings on screen, which the E2E
-          suite caught as a strict-mode ambiguity. */}
-      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
-        Project delivery, reporting, and utilisation.
-      </Typography>
+  if (loading) {
+    return (
+      <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: 'repeat(4, 1fr)' }}>
+        {[0, 1, 2, 3, 4, 5].map((i) => (
+          <Skeleton key={i} variant="rounded" height={i === 0 ? 300 : 140}
+            sx={{ gridColumn: i === 0 ? 'span 2' : 'span 1' }} />
+        ))}
+      </Box>
+    );
+  }
 
+  return (
+    <Box>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-      <Grid container spacing={2.5} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={4}>
-          {loading ? <Skeleton variant="rounded" height={140} /> : (
-            <StatCard
-              icon={<ProjectsIcon fontSize="small" />}
-              label="Active projects"
-              value={activeProjects.length}
-              sub={`${projects.length} total`}
-            />
-          )}
-        </Grid>
-        <Grid item xs={12} sm={4}>
-          {loading ? <Skeleton variant="rounded" height={140} /> : (
-            <StatCard
-              icon={<SpendIcon fontSize="small" />}
-              label="Sanctioned vs utilised"
-              tone="success.main"
-              value={fmtINR(utilised)}
-              sub={`of ${fmtINR(sanctioned)} sanctioned`}
-            />
-          )}
-        </Grid>
-        <Grid item xs={12} sm={4}>
-          {loading ? <Skeleton variant="rounded" height={140} /> : (
-            <StatCard
-              icon={<ReportsIcon fontSize="small" />}
-              label="Reports pending release"
-              tone="warning.main"
-              value={pendingReports == null ? '—' : pendingReports}
-              sub={pendingReports === 0 ? 'nothing waiting' : 'not yet visible to funders'}
-            />
-          )}
-        </Grid>
-      </Grid>
+      <Box sx={{
+        display: 'grid',
+        gap: 1.5,
+        gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
+        // No alignItems override: the default `stretch` makes tiles in a row
+        // share a bottom edge. `start` left every row ragged. Rows stay
+        // content-sized — forcing them equal made the short tiles half empty.
+      }}>
 
-      {!loading && sanctioned > 0 && (
-        <Paper elevation={0} sx={{ ...cardSx, mb: 3 }}>
-          <Stack direction="row" justifyContent="space-between" sx={{ mb: 1 }}>
-            <Typography variant="body2" fontWeight={700}>Utilisation across active projects</Typography>
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>{pct}%</Typography>
-          </Stack>
-          {/* radius comes from the theme (MuiLinearProgress -> pill); overriding it
-              here produced a 32px radius on an 8px bar. */}
-          <LinearProgress variant="determinate" value={pct} sx={{ height: 8 }} />
-        </Paper>
-      )}
-
-      <Paper elevation={0} sx={cardSx}>
-        <Typography variant="body2" fontWeight={700} sx={{ mb: 1.5 }}>Projects</Typography>
-        {loading && <Skeleton variant="rounded" height={80} />}
-        {!loading && projects.length === 0 && (
-          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            No CSR projects yet.
-          </Typography>
-        )}
-        {!loading && projects.slice(0, 6).map((p) => (
-          <Stack
-            key={p.id} direction="row" justifyContent="space-between" alignItems="center"
-            onClick={() => navigate(`/csr/${p.id}`)}
-            sx={{
-              py: 1.25, borderBottom: 1, borderColor: 'divider', cursor: 'pointer',
-              '&:hover': { bgcolor: 'action.hover' },
-            }}
-          >
-            <Box>
-              <Typography variant="body2" fontWeight={600}>{p.name}</Typography>
-              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                {p.clientName} · {fmtINR(p.sanctionedAmount)}
-              </Typography>
+        {/* ---- Row 1: four short stat tiles, one number each ---- */}
+        {/* ---- Utilisation: one number, no per-grant breakdown ---- */}
+        <Tile icon={<MoneyIcon />} label="Utilised" ink={inks.moss} onClick={() => navigate('/csr/projects')}>
+          <Box sx={{ ...figure.large, color: inks.moss.text }}>{fmtINR(utilised)}</Box>
+          <Box sx={figure.unit}>counted, of {fmtINR(sanctioned)} sanctioned</Box>
+          {excluded.count > 0 && (
+            <Box sx={{ ...figure.unit, color: inks.clay.text, mt: 0.75, fontWeight: 600 }}>
+              {fmtINR(excluded.amount)} tagged, not yet counted
             </Box>
-            <Chip size="small" label={p.status} />
-          </Stack>
-        ))}
-      </Paper>
+          )}
+        </Tile>
+        {/* ---- Grants ---- */}
+        <Tile icon={<GrantsIcon />} label="Grants" ink={inks.indigo} onClick={() => navigate('/csr/projects')}>
+          <Box sx={figure.large}>{open.length}</Box>
+          <Box sx={figure.unit}>
+            active{projects.length > open.length && ` · ${projects.length - open.length} closed`}
+          </Box>
+          <Box sx={{ display: 'flex', gap: 0.5, mt: 1.5 }}>
+            {open.map((p) => (
+              <Box key={p.id} title={p.name} sx={{
+                height: 3, flex: 1, borderRadius: 1, bgcolor: inkFor(p.id).fill,
+              }} />
+            ))}
+          </Box>
+        </Tile>
+        {/* ---- Funders. Teal is the system's outward-facing ink and this is
+             the only outward-facing thing on the page. ---- */}
+        <Tile icon={<FundersIcon />} label="Funders" ink={inks.teal}
+              onClick={() => navigate('/csr/clients')}>
+          <Box sx={{ ...figure.large, color: inks.teal.text }}>{funders.length}</Box>
+          <Box sx={figure.unit}>
+            {funders.length === 1 ? 'organisation' : 'organisations'} funding this work
+          </Box>
+        </Tile>
+        {/* ---- Reports queue. Ochre means one thing: waiting on you. ---- */}
+        {/* The flowchart names Chain B as a pipeline: activity happens (logged
+            after the fact) -> report added -> visible_to_client, "the editorial
+            gate" -> funder sees it. That gate is the CSR team's actual job.
+            Rendering only the tail as a scalar could not say whether work was
+            stuck at "no report yet" or at "written, not released" -- different
+            problems, different people. */}
+        <Tile icon={<ReportsIcon />} label="Delivery pipeline" ink={inks.ochre}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+            {[
+              { n: activities.length, label: 'activities logged', ink: NEUTRAL },
+              { n: reportedCount, label: 'have a report', ink: NEUTRAL },
+              { n: pendingReports ?? 0, label: 'not yet released', ink: inks.ochre },
+            ].map((step) => (
+              <Box key={step.label} sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
+                <Box sx={{
+                  ...figure.row, fontSize: '1.125rem', width: 26, flex: 'none',
+                  color: step.ink === inks.ochre && step.n > 0 ? inks.ochre.text : 'text.primary',
+                }}>
+                  {step.n}
+                </Box>
+                <Box sx={figure.unit}>{step.label}</Box>
+              </Box>
+            ))}
+          </Box>
+        </Tile>
+
+        {/* ---- Row 2: the two tiles with real content in them ---- */}
+        {/* ---- FEATURE: what was actually delivered ---- */}
+        <Tile icon={<DeliveryIcon />} label="Delivery against promises" span={2} ink={inks.indigo}>
+          {people > 0 && (
+            <Box sx={{ mb: 2 }}>
+              <Box sx={figure.hero}>{people.toLocaleString('en-IN')}</Box>
+              <Box sx={figure.unit}>people reached, across every grant</Box>
+              <Box sx={{ height: '1px', bgcolor: 'divider', mt: 2 }} />
+            </Box>
+          )}
+          {deliverables.filter((d) => d.targetCount != null).length === 0 ? (
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+              No deliverables recorded yet.
+            </Typography>
+          ) : deliverables.filter((d) => d.targetCount != null).slice(0, 5).map((d) => (
+            <Promised
+              key={d.id}
+              title={d.title}
+              done={d.completedCount}
+              target={d.targetCount}
+              ink={inks.indigo.fill}
+            />
+          ))}
+        </Tile>
+
+        {/* ---- Recent, wide. The activity count rides in the label: a bare
+             tally of things that happened is not a peer of the money or the
+             funder count, and giving it a tile of its own forced a fifth
+             object into a four-column row. ---- */}
+        <Tile
+          icon={<RecentIcon />}
+          span={2}
+          ink={NEUTRAL}
+          label={`Recent activity · ${activities.length} logged`}
+        >
+          {recent.length === 0 ? (
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+              Nothing logged yet.
+            </Typography>
+          ) : recent.map((a) => (
+            <Box
+              key={a.id}
+              sx={{
+                display: 'flex', gap: 2, alignItems: 'baseline', py: 1,
+                borderBottom: '1px solid', borderColor: 'divider',
+                '&:last-child': { borderBottom: 0 },
+              }}
+            >
+              <Box sx={{ ...figure.unit, ...tabular, width: 66, flex: 'none' }}>
+                {a.date
+                  ? new Date(a.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
+                  : '—'}
+              </Box>
+              <Box sx={{ fontFamily: fonts.sans, fontSize: '0.8125rem', flex: 1, minWidth: 0 }}>
+                {a.title}
+              </Box>
+              <Box sx={{
+                ...figure.unit,
+                // Deliberately NOT moss: moss means money utilised, and an
+                // activity completing is not a money event. Only 'Planned'
+                // takes an ink, because only it is waiting on someone.
+                color: a.status === 'Planned' ? inks.ochre.text : undefined,
+              }}>
+                {a.status}
+              </Box>
+            </Box>
+          ))}
+        </Tile>
+      </Box>
     </Box>
   );
 }
