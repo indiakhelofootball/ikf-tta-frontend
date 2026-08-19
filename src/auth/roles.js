@@ -4,6 +4,7 @@ export const ROLES = {
   SUPER_ADMIN: "SUPER_ADMIN",
   ADMIN: "ADMIN",
   REP: "REP",
+  CSR_OPS: "CSR_OPS",
   CSR_CLIENT: "CSR_CLIENT",
 };
 
@@ -165,6 +166,23 @@ export const ROLE_PERMISSIONS = {
       PERMISSIONS.VIEW_VENDOR_DOCS,
       PERMISSIONS.VIEW_TRIAL_CITIES,
     ],
+  },
+  // Internal CSR staff. The agreed spec names this role for the CSR team
+  // ("CSR Team: SUPER_ADMIN, ADMIN, CSR_OPS"); the backend added it in
+  // accounts/models.py with no accompanying code, because internal RBAC there
+  // is deliberately role-blind — permissions/enforcement.py gates on grant
+  // rows, not role names. So a CSR_OPS user's module access arrives entirely
+  // through the csr / csr_certificate grants, and this entry carries no TTA
+  // view permissions on purpose.
+  //
+  // It must exist all the same. AuthContext falls back to ROLE_PERMISSIONS.REP
+  // for any role it does not recognise, so without this a CSR operator would
+  // silently log in with a REP's permissions and nothing would report it.
+  CSR_OPS: {
+    canEdit: true,
+    canCreateAdmin: false,
+    canCreateREP: false,
+    permissions: [],
   },
   // External CSR funder — no TTA permissions; scoped to the /client portal by
   // role. Explicit empty entry so it never falls back to REP permissions.
