@@ -33,7 +33,7 @@ import VendorAuditReport from "./components/reports/VendorAuditReport";
 import TrialSpendReport from "./components/reports/TrialSpendReport";
 import TrialsReport from "./components/reports/TrialsReport";
 import CourierManagementPage from "./components/courier/CourierManagementPage";
-import { CSRLogin, CSRDashboard, CSRProjectManagementPage, CSRProjectDetailPage, CSRActivityTypesPage, CSRClientsPage, CSRBrandingPage } from "./components/csr";
+import { CSRLogin, CSRDashboard, CSRProjectManagementPage, CSRProjectDetailPage, CSRActivitiesPage, CSRReportsPage, CSRUtilisationPage, CSRActivityTypesPage, CSRClientsPage, CSRBrandingPage } from "./components/csr";
 import ClientPortalPage from "./components/client/ClientPortalPage";
 import ClientLogin from "./components/client/ClientLogin";
 import PermissionsManagementPage from "./components/permissions/PermissionsManagementPage";
@@ -215,6 +215,34 @@ function App() {
           <Route path="/csr/projects" element={
             <GrantedRoute module="csr">
               <CSRProjectManagementPage />
+            </GrantedRoute>
+          } />
+          {/* Activities and Reports are cross-project destinations, not just
+              tabs inside one project. Both agreed documents name them as
+              sidebar items: "CSR APP — Dashboard, Projects, Activities,
+              Reports, Util. Cert". They were built only as project tabs, so a
+              CSR operator could not answer "what is waiting on me" without
+              opening every project in turn.
+
+              Static /csr/... routes MUST stay above /csr/:id or the dynamic
+              route swallows them. */}
+          <Route path="/csr/activities" element={
+            <GrantedRoute module="csr">
+              <CSRActivitiesPage />
+            </GrantedRoute>
+          } />
+          <Route path="/csr/reports" element={
+            <GrantedRoute module="csr">
+              <CSRReportsPage />
+            </GrantedRoute>
+          } />
+          {/* Read access follows the same rule as the project tab: the csr
+              grant unlocks READING the utilisation total, while tagging and
+              issuing still demand csr_certificate. MODULE_DEPENDENCIES mirrors
+              this server-side, so the route does not widen anything. */}
+          <Route path="/csr/utilisation" element={
+            <GrantedRoute module="csr">
+              <CSRUtilisationPage />
             </GrantedRoute>
           } />
           {/* D1: the activity-type catalog is admin-managed (TTA Admin), not a
