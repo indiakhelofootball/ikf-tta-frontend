@@ -16,7 +16,7 @@ import {
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-import CSRProjectDetailView from './CSRProjectDetailView';
+import CSRProjectDetailView, { ttaProjectIdentity } from './CSRProjectDetailView';
 import CSRActivityModal from './CSRActivityModal';
 import CSRReportModal from './CSRReportModal';
 import CSRContactModal from './CSRContactModal';
@@ -326,6 +326,20 @@ export default function CSRProjectDetailPage() {
       <Button startIcon={<BackIcon />} onClick={() => navigate('/csr')} sx={{ mb: 2 }}>
         All Projects
       </Button>
+      {/* Which TTA project this grant belongs to, above the grant's own name:
+          structural information, not money and not a promise, so it carries no
+          ink. Rendered only when the link exists — an unlinked grant shows the
+          same header it always did, and the Overview panel below is where the
+          missing link is stated. */}
+      {ttaProjectIdentity(project) && (
+        <Typography
+          variant="overline"
+          color="text.secondary"
+          sx={{ display: 'block', letterSpacing: '0.08em', lineHeight: 1.6 }}
+        >
+          {ttaProjectIdentity(project)}
+        </Typography>
+      )}
       <Typography variant="h5" sx={{ mb: 0.5 }}>{project.name}</Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         {project.clientName}

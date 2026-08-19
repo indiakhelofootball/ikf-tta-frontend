@@ -11,7 +11,7 @@ import {
   OpenInNew as OpenIcon,
 } from '@mui/icons-material';
 
-import CSRProjectDetailView from './CSRProjectDetailView';
+import CSRProjectDetailView, { ttaProjectIdentity } from './CSRProjectDetailView';
 
 export default function CSRProjectCard({ project, canEdit, onEdit, onDelete }) {
   const [expanded, setExpanded] = useState(false);
@@ -20,6 +20,11 @@ export default function CSRProjectCard({ project, canEdit, onEdit, onDelete }) {
     project.sanctionedAmount != null
       ? `₹${Number(project.sanctionedAmount).toLocaleString('en-IN')}`
       : '—';
+  // The card already carries funder, amount and status on one line, so the
+  // identity gets no row of its own — it joins the existing subtitle, and only
+  // when it exists. An unlinked grant's card is byte-for-byte what it was.
+  const identity = ttaProjectIdentity(project);
+  const subtitle = [project.clientName, amount, identity].filter(Boolean).join(' · ');
 
   return (
     <Card variant="outlined" sx={{ mb: 1.5 }}>
@@ -28,7 +33,7 @@ export default function CSRProjectCard({ project, canEdit, onEdit, onDelete }) {
           <Box sx={{ flexGrow: 1, minWidth: 0 }}>
             <Typography variant="subtitle1" noWrap>{project.name}</Typography>
             <Typography variant="body2" color="text.secondary" noWrap>
-              {project.clientName} · {amount}
+              {subtitle}
             </Typography>
           </Box>
           <Chip
