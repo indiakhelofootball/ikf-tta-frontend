@@ -31,6 +31,7 @@ import {
 } from '@mui/icons-material';
 import { csrAPI } from '../../services/api';
 import useGrants from '../../auth/useGrants';
+import { ttaProjectIdentity } from './CSRProjectDetailView';
 import { surfaces, inks, figure, fonts, tabular } from '../../styles/ttaTheme';
 
 const fmtINR = (n) => {
@@ -268,7 +269,10 @@ export default function CSRDashboard() {
           </Box>
           <Box sx={{ display: 'flex', gap: 0.5, mt: 1.5 }}>
             {open.map((p) => (
-              <Box key={p.id} title={p.name} sx={{
+              // The tile shows a count and one bar per grant; the name lives
+              // only in the tooltip, so that is the single honest place for the
+              // identity here. Appended, never replacing the name.
+              <Box key={p.id} title={[p.name, ttaProjectIdentity(p)].filter(Boolean).join(' · ')} sx={{
                 height: 3, flex: 1, borderRadius: 1, bgcolor: inkFor(p.id).fill,
               }} />
             ))}
