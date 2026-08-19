@@ -180,6 +180,34 @@ function TrialsReport() {
     return m;
   }, [reps]);
 
+  // Assignments whose (trial, city) pair the trial no longer lists. The join
+  // above cannot see them, so an address recorded against one appears nowhere
+  // on the table below — it is not missing data, it is unreachable data.
+  // Listed rather than dropped, because the address is real work and the
+  // pairing is repairable.
+  const orphanAssignments = useMemo(() => {
+    const known = new Set();
+    trials.forEach((t) => (t.assignedCities || []).forEach((c) => {
+      known.add(`${t.id}||${norm(c.cityName)}`);
+    }));
+
+    const out = [];
+    reps.forEach((r) => {
+      (r.cityAssignments || []).forEach((a) => {
+        if (known.has(`${a.trialId}||${norm(a.city)}`)) return;
+        const t = trials.find((x) => x.id === a.trialId);
+        out.push({
+          key: `${r.repName}||${a.trialId}||${a.city}`,
+          rep: r.repName,
+          city: a.city || '(no city)',
+          project: (t && (t.trialName || t.trialCode)) || `Project ${a.trialId}`,
+          hasAddress: Boolean(a.physicalAddress || a.courierAddress),
+        });
+      });
+    });
+    return out;
+  }, [trials, reps]);
+
   // One row per (trial, city).
   const rows = useMemo(() => {
     const out = [];
@@ -448,6 +476,22 @@ function TrialsReport() {
                 )}
               </Table>
             </Paper>
+
+            {orphanAssignments.length > 0 && (
+              <Alert severity="warning" sx={{ mb: 2, borderRadius: 2 }}>
+                <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.5 }}>
+                  {orphanAssignments.length} REP assignment{orphanAssignments.length === 1 ? '' : 's'} point at a city their project no longer lists
+                </Typography>
+                <Typography variant="caption" sx={{ display: 'block', mb: 1 }}>
+                  These have no row in the table below, so any address recorded against them cannot be shown. Move the assignment to the project that lists the city, or add the city back to this one.
+                </Typography>
+                {orphanAssignments.map((o) => (
+                  <Typography key={o.key} variant="caption" sx={{ display: 'block' }}>
+                    {o.rep} — {o.city} on {o.project}{o.hasAddress ? ' (has an address on file)' : ''}
+                  </Typography>
+                ))}
+              </Alert>
+            )}
 
             {/* Filters */}
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mb: 2 }} alignItems="center">
