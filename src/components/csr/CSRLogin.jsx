@@ -314,7 +314,13 @@ export default function CSRLogin() {
         backgroundSize: 'cover',
         backgroundPosition: 'center right',
         backgroundRepeat: 'no-repeat',
-        boxShadow: { xs: 'none', md: '0 24px 70px rgba(20,43,34,0.28)' },
+        // A hairline, not a shadow. The reference outlines its card with a
+        // fine light stroke and casts nothing -- which is what lets it read as
+        // a pane laid ON the artwork rather than an object hovering above it.
+        // A drop shadow here also fought the blurred backdrop: two soft dark
+        // gradients meeting at the card's edge muddied both.
+        border: { xs: 'none', md: '1px solid rgba(255,255,255,0.55)' },
+        boxShadow: 'none',
       }}>
         <Box sx={{
           width: '100%',
