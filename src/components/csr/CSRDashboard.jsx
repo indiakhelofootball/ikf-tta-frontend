@@ -47,6 +47,12 @@ const GRANT_INKS = [inks.moss, inks.indigo, inks.teal];
 // this system, so they take the neutral rather than borrowing a colour that
 // means something else — which is exactly how teal ended up on Activities.
 const NEUTRAL = { tint: surfaces.sunken, text: '#4E5A54', fill: '#98A199' };
+// A solid badge with a white glyph needs the fill to clear 4.5:1 against white.
+// Moss 5.9, indigo 6.8, teal 5.5, plum 6.5 and clay 4.8 all clear it. Ochre is
+// 3.87 (and the system forbids ochre as a solid fill besides) and the neutral
+// #98A199 is ~2.0 -- both fail, so those two keep the tinted badge with their
+// own ink-strength glyph, which already passes on the tint.
+const badgeCarriesWhite = (ink) => ink !== inks.ochre && ink !== NEUTRAL;
 const inkFor = (id) => {
   const key = String(id ?? '');
   let h = 0;
@@ -83,10 +89,12 @@ function Tile({ icon, label, children, span = 1, rowSpan = 1, onClick, ink = ink
         // The page ground below supplies the third -- on a flat bone field a
         // backdrop-filter has nothing to work on and the tile just looks dull.
         //
-        // The gradient runs from the tile's own ink at 10% to near-white, so
-        // each tile is tinted by the thing it means rather than all six being
-        // the same pane. Ink is semantic here; the glass inherits that.
-        background: `linear-gradient(150deg, ${ink.fill}1A 0%, ${ink.fill}0A 38%, rgba(255,255,255,0.72) 100%)`,
+        // The glass is CLEAN -- white, no ink. An ink at 10% alpha over bone is
+        // a 4% grey, and six of them made the whole page measure 2.8% mean
+        // saturation. Colour is not atmosphere here; it is an OBJECT -- the
+        // solid badge below and the ink-strength figures carry identity, and
+        // the glass stays out of their way.
+        background: `linear-gradient(150deg, rgba(255,255,255,0.82) 0%, rgba(255,255,255,0.58) 100%)`,
         backdropFilter: 'blur(18px) saturate(1.35)',
         WebkitBackdropFilter: 'blur(18px) saturate(1.35)',
 
@@ -118,12 +126,14 @@ function Tile({ icon, label, children, span = 1, rowSpan = 1, onClick, ink = ink
         <Box sx={{
           width: 34, height: 34, borderRadius: 1.5, flex: 'none',
           display: 'grid', placeItems: 'center',
-          // The badge is a denser piece of the same glass, so it reads as part
-          // of the pane rather than a sticker on it.
-          bgcolor: `${ink.fill}1F`,
-          border: '1px solid',
-          borderColor: `${ink.fill}2E`,
-          color: ink.text,
+          // The badge is SOLID ink with a white glyph -- the one place on the
+          // tile that carries the grant's colour at full strength. A 12% tint
+          // read as another grey; a solid chip reads as the thing it means.
+          // Ochre and the neutral cannot carry white (see badgeCarriesWhite),
+          // so they stay a tinted chip with their own legible glyph.
+          ...(badgeCarriesWhite(ink)
+            ? { bgcolor: ink.fill, color: '#fff' }
+            : { bgcolor: ink.tint, color: ink.text }),
           '& svg': { fontSize: 18 },
         }}>
           {icon}
