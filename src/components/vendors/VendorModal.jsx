@@ -207,7 +207,10 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
       vendorType: isEdit ? formData.vendorType : searchServiceType,
       companyType,
       entityName: showEntityName ? formData.entityName.trim() : '',
-      status: 'Verified',
+      // Creating through this form means verified. Editing does not: this modal
+      // has no status control, so stamping 'Verified' on every save silently
+      // re-verified any vendor whose phone or bank details were corrected.
+      status: isEdit ? (vendor?.status || 'Verified') : 'Verified',
     };
     if (panCardImage) {
       data.panCardImageName = panCardImage.name;

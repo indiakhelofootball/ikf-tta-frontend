@@ -3,6 +3,7 @@
 // grant-aware visibility. Backend ModulePermission remains the security
 // boundary; this only decides whether to render the page.
 import { Navigate } from "react-router-dom";
+import { Box, CircularProgress, Typography } from "@mui/material";
 import { useAuth } from "./AuthContext";
 import { ROLES } from "./roles";
 import { expiredSessionLoginPath } from "./loginDoor";
@@ -21,9 +22,22 @@ const GrantedRoute = ({ children, module, anyOf, edit = false, fallbackRoles = [
     return children;
   }
 
-  // Grants still loading — render nothing rather than flash /unauthorized.
+  // Grants still loading. Rendering null here still avoids the /unauthorized
+  // flash, but an empty return is indistinguishable from a crashed page — it is
+  // how "courier went completely blank" presented. Show that we are waiting.
   if (permsLoading) {
-    return null;
+    return (
+      <Box
+        role="status"
+        aria-live="polite"
+        sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, minHeight: '60vh' }}
+      >
+        <CircularProgress size={32} />
+        <Typography sx={{ fontSize: '0.85rem', color: 'text.secondary' }}>
+          Checking your access…
+        </Typography>
+      </Box>
+    );
   }
 
   if (perms) {
