@@ -28,6 +28,7 @@ import {
 } from '@mui/icons-material';
 import { State, City } from 'country-state-city';
 import { trialsAPI, repAPI } from '../../services/api';
+import { buildAddModePayload } from './repMergePayload';
 import { getStateFromPinCode } from '../../utils/pinCodeToState';
 
 // Set of "state|city" keys for cities already assigned to a REP
@@ -516,16 +517,23 @@ function REPModal({ open, onClose, onSave, editingREP }) {
         await onSave(repData);
       } else {
         // Add mode: org + assignment.
-        // Send only the org fields that actually carry a value. A blank here is
-        // never a request to clear anything — nothing exists yet to clear — but
-        // when the name matches an existing org the backend merges onto that row,
-        // and a blank on the wire is indistinguishable from a deliberate clear.
         // `orgData` seeds every untouched field to '' (repLogoLink is never
-        // prefilled by the name search at all), so shipping the whole object
-        // wiped the stored logo link and MOU status each time a city was added.
-        const repData = Object.fromEntries(
-          Object.entries(orgData).filter(([, value]) => value !== '')
-        );
+        // prefilled by the name search at all), and when the name matches an
+        // existing org the backend merges onto that row — so shipping the whole
+        // object wiped the stored logo link and MOU status each time a city was
+        // added. Blanks therefore cannot be sent wholesale.
+        //
+        // But they cannot be dropped wholesale either. Once the name search has
+        // prefilled a field from the matched org, emptying that box IS a
+        // deliberate clear, and the backend honours a blank the caller actually
+        // sent. Dropping every blank would silently discard that edit — trading
+        // one bug for another.
+        //
+        // So: keep a blank only where the matched org holds a value for that
+        // field, which is exactly when clearing it means something. With no
+        // match, nothing exists to clear and every blank is dropped.
+        // Rule and reasoning live in ./repMergePayload so they can be tested.
+        const repData = buildAddModePayload(orgData, existingRep);
         if (mouDocument) { repData.mouDocumentName = mouDocument.name; repData.mouDocumentUrl = mouDocumentPreview; }
         if (repLogo) { repData.repLogoName = repLogo.name; repData.repLogoUrl = repLogoPreview; }
 
