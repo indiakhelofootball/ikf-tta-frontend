@@ -1,7 +1,7 @@
 # Current — what is in flight
 
-**Last verified: 2026-08-21.** If that date is more than a few days old, treat
-every line below as a claim to re-check, not as fact.
+**Last verified: 2026-08-21 (end of a long session).** If that date is more than
+a few days old, treat every line below as a claim to re-check, not as fact.
 
 **This file deliberately holds no git state.** Branch, HEAD, dirty files and
 memory-index staleness are computed live at session start by
@@ -11,97 +11,136 @@ and blockers.**
 
 ---
 
-## In the working tree, unfinished
+## START HERE
 
-**Last touched 2026-08-21.**
+Everything below came out of one session: a 74-case test campaign run against a
+live app, then fixing what it found, then three adversarial reviews of those
+fixes, then fixing what *those* found.
 
-### The Venue column — CLOSED, and the removal plan is dead
+Full detail is in `_docs/testing/` (committed). The single most useful file is
+`LIVE_RUN_2026-08-21.md`. The issue tracker with live results per row is
+`TTA_Issues_live_tested_2026-08-21.xlsx` in the repo root — **untracked on
+purpose**, matching the precedent that root trackers are not committed.
 
-The plan recorded here previously was to **delete the Venue column** from the
-Excel column list and the CSV header, on the reasoning that nothing could ever
-fill it. **That plan is withdrawn. Do not act on it.**
+**Nothing is pushed. Nothing is deployed.**
 
-The diagnosis behind it was wrong. `REPModal.renderGroundSection` collected the
-ground *address* (`physicalAddress`, 55 records) but never the ground *name*,
-which is what the Venue column prints. The record was always the right one —
-`REPCityAssignment` is keyed `(rep, trial, city)`, so it is already per-city.
-There was simply no input.
+| repo | branch | commits |
+|---|---|---|
+| frontend | `fix/tracker-issues-2026-08-21` | 6 |
+| backend | `fix/tracker-issues-2026-08-21` | 6 |
 
-Fixed 2026-08-21, uncommitted:
-
-- **A Ground Name box** added beside Ground Address on both forms —
-  `renderGroundSection` and the add-REP inline block. 17 insertions, 0 deletions.
-- **`openEditAssignment` now hydrates `groundLocation`** — without it the edit
-  form opened blank and saved the blank back over a stored value.
-- **`trials/views.py` stops hardcoding `ground_location=''`** on add-city.
-  Backend change: separate commit, separate repo.
-
-The column stays. Rows already saved stay blank until someone fills them in.
-Detail and the corrected reasoning: memory `venue-ownership-decision-2026-08-21`.
-
-### Still wrong in the tree — revert before committing
-
-The uncommitted hunk in `TrialsReport.jsx` that drops the `|| a.pinCode`
-fallback. Its comment calls `pinCode` "the REP's personal PIN". There is no such
-field. `REPModal.jsx:1486` renders it under the heading **"Trial Ground
-Location"**, and the 2026-08-21 field inventory confirms `groundPinCode` has no
-input anywhere. `pinCode` is filled on 51 assignments, `groundPinCode` on 0.
-Shipping this blanks the PIN on every row that has one.
-
-### Also uncommitted and complete
-
-Shape guards in `csv.js` and `reportExcel.js` (row width must match the header,
-or throw). All six call sites verified.
-
-`TrialManagementPage.jsx` — the projects list now pages to the end instead of
-silently showing the 20 newest. Closes the repeated "Season 6 not visible"
-report. 165 FE tests green.
-
-`TrialsReport.jsx` also carries one comment edited by a parallel review session.
+Suites at close: **577 backend · 284 frontend, all green.**
 
 ---
 
-## Blocked on someone else
+## The first thing to do in the morning
 
-**Four orphaned REP assignments — #21 Kota, #22 Bikaner, #23 Chittaurgarh,
-#75 Thiruvananthapuram.** The mechanism that creates them is fixed and
-deployed; these four pre-date the fix.
+**Decide whether to push.** Both branches are off `main` and complete. Before
+that, three things are worth knowing:
 
-Two dispatch-ready courier drafts hang off them — `CR-2026-0040` and
-`CR-2026-0044` — and in-flight shipments re-read the address **live**, so
-dispatching sends kit for a trial city the trial does not have.
-
-**Standing owner decision: do not dispatch, do not delete.** One question
-settles all four: *should those trials be running in those cities?* Yes → re-add
-the cities. No → cancel the two drafts first, then retire the assignments.
-`--repoint` handles three of the four; #22 is genuinely ambiguous and the
-command refuses to guess, by design.
+1. **#17, #10 and #7 have never been seen working in a browser.** They have
+   tests, but the Chrome extension went down with an account rate limit and
+   never came back. `npm run build` at minimum, ideally a click-through.
+2. **The dev servers are stopped.** Backend:
+   `cd tta_backend/backend && python manage.py runserver 8000 --settings=backend.dev_local_settings`
+3. **One commit is mixed.** Backend `6a94e94` carries the trials fixes AND the
+   vendor PAN guard, because `git add -A backend/` ran while an agent was still
+   writing. The message covers both; the split is just untidy.
 
 ---
 
-## Decided, not built
+## What was fixed
 
-| Item | State |
-|---|---|
-| CSR colour saturation (2.8% measured) | fix agreed, not written |
-| CSR **D1** — project identity = project_name + season, not free text | needs a data migration; cost grows per funder onboarded |
-| Funder landing tab — shows no output, then ~600px of white | this is the surface renewal decisions happen on |
-| FK from `REPCityAssignment` → `TrialCity` | the real fix under the orphan guards — full census and sequencing now in `.ai/schema-integrity.md` |
+From the tracker: **#1** cities appearing twice (both halves — could not be
+created, and existing ones could not be deleted) · **#2** logo/MoU blanked on
+merge · **#5** courier quantity stuck at 0 · **#6** concurrent edits deleting
+another user's items · **#7** super admin could not delete a dispatched
+shipment · **#8** "address edits not getting saved" (they saved; the *response*
+was stale) · **#9** courier blank page · **#10** report cards ignoring filters ·
+**#17** TDS counted twice on bounced payments.
 
-## Open questions for you
+Verified already fixed, no work needed: Season 6 visibility, the Mayur/sauksha
+module count, the REP Report label, courier dates.
 
-Beyond `.ai/pending.md`:
+Not reproducible: **#9 vendors not visible** — real bug, but in a component
+nothing imports.
 
-- **Q2** — should "visible to client" require a report to exist? No gate today.
-- **Q3** — the training report model. One-report-per-activity is unchanged.
-- **Funder utilisation** — currently invisible to funders by isolation policy.
-  Changing it is a policy decision with a UI attached, not a UI change.
-- **`csr_certificate` gating** — the owner asked for the itemised view to be
-  gated; that half was deliberately not built, because a test asserts the
-  opposite with reasoning written in. Still open.
-- **Security R1** — the live DB password has not been rotated. It sits in
-  plaintext in the 23 Jul transcript and in `.claude/settings.local.json`
-  permission strings. `.claude/` is gitignored, so nothing reached the repo.
+Found by testing, not on the tracker: silent discard of every payment status
+change · a cancelled TDS being reportable as remitted to the tax authority · a
+bounced payment losing its TDS permanently via Draft · vendor status
+force-stamped Verified on every edit · three UI messages stating something
+untrue about TDS · city rename accepted and ignored · config renames orphaning
+copies · a 500 on reading any resolved payment request whose resolver had no
+name.
+
+---
+
+## Open — needs an owner decision
+
+- **N4 duplicate PAN.** The API now refuses duplicates. The **database has no
+  unique constraint**, and the duplicates already on production are untouched —
+  including two created during measurement. Adding it needs a production
+  duplicate census first. `.ai/schema-integrity.md` §6 step 5.
+- **N10 — a dispatched parcel's address keeps changing until *delivery*.**
+  Deliberate in code (`courier/serializers.py:69-75`); the test plan assumed it
+  froze at dispatch. Product call.
+- **The four orphaned assignments** (#21 Kota, #22 Bikaner, #23 Chittaurgarh,
+  #75 Thiruvananthapuram). Still one question: *should those trials be running
+  in those cities?* Standing instruction unchanged: do not dispatch, do not
+  delete.
+- **CSRProject.season does not follow a season rename.** `project_name` is an FK
+  and follows for free; season is a copied CharField and does not. Cannot be
+  fixed from config — INV-DEP (`csr/tests.py:230`) forbids a core app importing
+  csr. Belongs to CSR's side.
+
+**Closed by decision, do not re-raise:** N9, the TDS deadline. It stays computed
+at display time in `src/components/bank/tdsDueDate.js` and is deliberately not
+persisted.
+
+---
+
+## Open — known gaps, recorded not hidden
+
+- **A stale bulk PUT can still drop a trial city** that no REP is assigned to.
+  There is no version check on that endpoint. Cities a REP *does* hold are
+  protected by the stranding guard. Closing it needs an optimistic lock on the
+  trial, the same shape as the courier one — that changes the contract of an
+  endpoint the project screen depends on, so it was recorded rather than
+  quietly done. See `test_a_stale_put_DOES_wipe_an_unassigned_city_added_since`.
+- **T6 from the trials review:** identity is (name, state) but survival is
+  name-only, so deleting Aurangabad/Maharashtra can rebind a REP's ground
+  address to the Bihar row. ~20 tests lean on `find_orphans()`, which is
+  state-blind and structurally cannot see this. Not fixed.
+- **T7–T11** in `_docs/testing/FIX_REVIEW_TRIALS.md`: padding-only renames vs
+  the courier `city_name__iexact` join, TOCTOU races on add/delete with no
+  locking, an unordered `.first()` in the courier snapshot, `groundLocation`
+  still discarded by the city PATCH.
+- **G8, G14, G22** in `FIX_REVIEW_2.md` — low severity, untouched.
+
+---
+
+## The lesson worth carrying forward
+
+**Five verdicts written from code review alone turned out to be wrong**, and
+every one was caught only by running the thing or by an adversarial pass:
+
+- Trial Cities was recorded as five separate defects. The screen had been
+  deliberately deleted months earlier, with a one-line comment saying so
+  (`App.js:22`).
+- A vendor picker bug was real but sat in dead code nothing imports.
+- A fix reported as verified — including by me — reopened the hole it closed
+  through a route the verification never tried.
+
+**And four tests were found asserting the bug they were named for.** One
+required the concurrent-edit data loss under the heading "backwards
+compatibility". Another asserted `assertNotIn('Bikaner')` in a test called
+`test_a_stale_put_cannot_wipe_cities_added_since`. Both sat in suites that read
+as reassurance, and two adversarial reviews passed over them.
+
+So: **a green suite is evidence about the paths someone thought to write down,
+and nothing more.** Reverse-check every new test — back the fix out, confirm it
+fails, restore. Several tests written this session passed either way, and saying
+so was more useful than the tests were.
 
 ---
 
@@ -113,4 +152,5 @@ part instead of maintaining it.
 
 ## Related
 
-`.ai/pending.md` · `.ai/vision.md` · `.ai/design.md` · `.ai/design-system.md`
+`.ai/pending.md` · `.ai/vision.md` · `.ai/design.md` · `.ai/design-system.md` ·
+`.ai/schema-integrity.md` · `_docs/testing/` (this session's full record)
