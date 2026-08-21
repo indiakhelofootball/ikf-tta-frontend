@@ -546,7 +546,14 @@ function TrialsReport() {
               <Table size="small">
                 <TableHead>
                   <TableRow sx={{ bgcolor: '#f8fafc' }}>
-                    {['Project', 'Season', 'State', 'City', 'Address', 'Date', 'Map', 'REP', 'Status'].map((h) => (
+                    {/* Venue sits between City and Address, exactly where both
+                        exports put it. It reads `r.location` — the same single
+                        field the Excel and CSV builders print under their own
+                        'Venue' header — so the screen and the export cannot
+                        drift apart. Until this row existed, a user who typed a
+                        Ground Name saw it in the export and nowhere on the
+                        screen they typed it into. */}
+                    {['Project', 'Season', 'State', 'City', 'Venue', 'Address', 'Date', 'Map', 'REP', 'Status'].map((h) => (
                       <TableCell key={h} sx={headSx}>{h}</TableCell>
                     ))}
                   </TableRow>
@@ -554,7 +561,7 @@ function TrialsReport() {
                 <TableBody>
                   {filteredRows.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} align="center" sx={{ py: 5, color: '#5A6B82' }}>
+                      <TableCell colSpan={10} align="center" sx={{ py: 5, color: '#5A6B82' }}>
                         No trial cities match the current filters.
                       </TableCell>
                     </TableRow>
@@ -568,6 +575,15 @@ function TrialsReport() {
                             went short of width. */}
                         <TableCell sx={{ ...cellSx, whiteSpace: 'nowrap' }}>{r.state || '—'}</TableCell>
                         <TableCell sx={{ ...cellSx, minWidth: 120 }}>{r.city || '—'}</TableCell>
+                        {/* Venue = the ground NAME only, never the address —
+                            same `r.location` the exports use. Most rows are
+                            blank today because the Ground Name input is new,
+                            which is expected, not a bug to paper over. The dash
+                            is the same grey placeholder the Map column uses for
+                            an absent value. */}
+                        <TableCell sx={{ ...cellSx, minWidth: 140 }}>
+                          {r.location || <span style={{ color: '#cbd5e1' }}>—</span>}
+                        </TableCell>
                         {/* The full address, PIN included. There is no separate
                             Address column on screen, so this cell has to carry
                             the whole thing — truncating it here is what made the
