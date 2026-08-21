@@ -1,0 +1,239 @@
+
+<section class="sheet">
+  <p class="eyebrow">Module 1 of 11</p>
+  <h2>Getting in</h2>
+  <hr class="rule">
+  <div class="statline">
+    <span><strong>5</strong> cases</span>
+    
+    <span class="tag t-good">3 should pass</span>
+    <span class="tag t-gap">0 known defect</span>
+    <span class="tag t-silent">0 not built</span>
+    <span class="tag t-dupe">2 needs live data</span>
+  </div>
+  <table>
+    <tr><th style="width:9%">ID</th><th style="width:18%">Use case</th><th style="width:26%">Steps</th>
+        <th style="width:22%">Expected result</th><th style="width:25%">Status</th></tr>
+    <tr><td class="mono">TC-LOG-01</td><td><strong>Sign in as SUPER_ADMIN</strong></td><td>Open /login. Enter email and password. Submit.</td><td>Lands on /dashboard. Sidebar shows every module.</td><td><span class="tag t-good">should pass</span></td></tr><tr><td class="mono">TC-LOG-02</td><td><strong>Sign in as an ADMIN with two module grants</strong></td><td>Sign in as a user granted only Reports and Courier.</td><td>Sidebar shows exactly two modules. Any other URL typed by hand lands on /unauthorized.</td><td><span class="tag t-good">should pass</span></td></tr><tr><td class="mono">TC-LOG-03</td><td><strong>Dashboard module count matches the grants</strong></td><td>As the TC-LOG-02 user, read the dashboard count.</td><td>Count reads 2, matching the sidebar.</td><td><span class="tag t-dupe">needs live data</span><br><span class='sub'>Legacy aggregate grant keys survive in the database. Code now excludes them, but a user granted before that fix can still read high. Settle by querying the permission rows.</span></td></tr><tr><td class="mono">TC-LOG-04</td><td><strong>Sign in by OTP</strong></td><td>Request an OTP on a registered phone. Enter it.</td><td>Signed in.</td><td><span class="tag t-dupe">needs live data</span><br><span class='sub'>Reported not working 11 Aug. Depends on the SMS provider, not on app logic.</span></td></tr><tr><td class="mono">TC-LOG-05</td><td><strong>Session expires mid-task</strong></td><td>Leave a screen open until the token expires, then act.</td><td>Token refreshes silently. If refresh fails, redirect to the login you came in through.</td><td><span class="tag t-good">should pass</span></td></tr>
+  </table>
+</section>
+<section class="sheet">
+  <p class="eyebrow">Module 2 of 11</p>
+  <h2>Admin dropdowns</h2>
+  <hr class="rule">
+  <div class="statline">
+    <span><strong>5</strong> cases</span>
+    <span class="tag t-flow">8 input controls on screen</span>
+    <span class="tag t-good">3 should pass</span>
+    <span class="tag t-gap">1 known defect</span>
+    <span class="tag t-silent">1 not built</span>
+    <span class="tag t-dupe">0 needs live data</span>
+  </div>
+  <table>
+    <tr><th style="width:9%">ID</th><th style="width:18%">Use case</th><th style="width:26%">Steps</th>
+        <th style="width:22%">Expected result</th><th style="width:25%">Status</th></tr>
+    <tr><td class="mono">TC-CFG-01</td><td><strong>Add a project name</strong></td><td>Admin, add a value under project_name.</td><td>Appears in every project picker without a reload.</td><td><span class="tag t-good">should pass</span></td></tr><tr><td class="mono">TC-CFG-02</td><td><strong>Rename a project name</strong></td><td>Rename an existing project_name value used by trials and work orders.</td><td>Trials, the town master list and work orders all follow the rename.</td><td><span class="tag t-good">should pass</span><br><span class='sub'>Only through this screen. A rename by any other route leaves the copies behind.</span></td></tr><tr><td class="mono">TC-CFG-03</td><td><strong>Rename a vendor service type</strong></td><td>Rename e.g. Volunteer to Scout while vendors carry the old value.</td><td>Every vendor shows the new label.</td><td><span class="tag t-good">should pass</span><br><span class='sub'>This is the fix for the 29 Jun report.</span></td></tr><tr><td class="mono">TC-CFG-04</td><td><strong>Rename a city</strong></td><td>Rename a town that REP assignments already reference.</td><td>Assignments follow the rename.</td><td><span class="tag t-gap">known defect</span><br><span class='sub'>Nothing cascades to city names. The assignments are stranded silently. This is how four orphans were created. Treat a city rename as a migration, not an edit.</span></td></tr><tr><td class="mono">TC-CFG-05</td><td><strong>Correct a mis-tagged vendor name</strong></td><td>A vendor name row was saved with the wrong service type. Change it.</td><td>The tag updates.</td><td><span class="tag t-silent">not built</span><br><span class='sub'>Tags are set when a vendor is created and are never editable afterwards.</span></td></tr>
+  </table>
+</section>
+<section class="sheet">
+  <p class="eyebrow">Module 3 of 11</p>
+  <h2>Projects</h2>
+  <hr class="rule">
+  <div class="statline">
+    <span><strong>7</strong> cases</span>
+    <span class="tag t-flow">29 input controls on screen</span>
+    <span class="tag t-good">6 should pass</span>
+    <span class="tag t-gap">1 known defect</span>
+    <span class="tag t-silent">0 not built</span>
+    <span class="tag t-dupe">0 needs live data</span>
+  </div>
+  <table>
+    <tr><th style="width:9%">ID</th><th style="width:18%">Use case</th><th style="width:26%">Steps</th>
+        <th style="width:22%">Expected result</th><th style="width:25%">Status</th></tr>
+    <tr><td class="mono">TC-PRJ-01</td><td><strong>Create a project</strong></td><td>Projects, Create. Fill name and season. Save.</td><td>Project appears at the top of the list.</td><td><span class="tag t-good">should pass</span></td></tr><tr><td class="mono">TC-PRJ-02</td><td><strong>Find a project older than the 20 newest</strong></td><td>With more than 20 projects, look for an early one.</td><td>It is listed, and the Total Projects card counts every project.</td><td><span class="tag t-good">should pass</span><br><span class='sub'>Fixed 21 Aug. Before that the screen loaded only the 20 newest with no pagination — the Season 6 complaint, raised 7 Jul and 16 Jul.</span></td></tr><tr><td class="mono">TC-PRJ-03</td><td><strong>Add a town to a project</strong></td><td>Open a project, add a town, set month and date.</td><td>Town is listed against the project.</td><td><span class="tag t-good">should pass</span></td></tr><tr><td class="mono">TC-PRJ-04</td><td><strong>Add a town already present under a different spelling</strong></td><td>Add a town stored as 'Town, Sub-area' by picking the bare town name.</td><td>System recognises it and refuses a duplicate.</td><td><span class="tag t-gap">known defect</span><br><span class='sub'>The check is an exact name match, so the bare name reads as absent and a second row is inserted with a new code. Deleting one does not stop it recurring. Whether the comma form exists in production is unverified.</span></td></tr><tr><td class="mono">TC-PRJ-05</td><td><strong>Remove a town that a REP still covers</strong></td><td>Remove it.</td><td>Blocked, naming the REP.</td><td><span class="tag t-good">should pass</span><br><span class='sub'>Guard added after this went wrong once.</span></td></tr><tr><td class="mono">TC-PRJ-06</td><td><strong>Bulk import towns</strong></td><td>Use the bulk form for several towns at once.</td><td>All are added, duplicates skipped and counted.</td><td><span class="tag t-good">should pass</span></td></tr><tr><td class="mono">TC-PRJ-07</td><td><strong>Record a venue when adding a town</strong></td><td>Supply a ground location as the town is added.</td><td>It is stored against the town.</td><td><span class="tag t-good">should pass</span><br><span class='sub'>Fixed 21 Aug. The endpoint previously overwrote it with blank.</span></td></tr>
+  </table>
+</section>
+<section class="sheet">
+  <p class="eyebrow">Module 4 of 11</p>
+  <h2>Trial Cities (town master list)</h2>
+  <hr class="rule">
+  <div class="statline">
+    <span><strong>5</strong> cases</span>
+    <span class="tag t-flow">13 input controls on screen</span>
+    <span class="tag t-good">2 should pass</span>
+    <span class="tag t-gap">3 known defect</span>
+    <span class="tag t-silent">0 not built</span>
+    <span class="tag t-dupe">0 needs live data</span>
+  </div>
+  <table>
+    <tr><th style="width:9%">ID</th><th style="width:18%">Use case</th><th style="width:26%">Steps</th>
+        <th style="width:22%">Expected result</th><th style="width:25%">Status</th></tr>
+    <tr><td class="mono">TC-TWN-01</td><td><strong>Add a town with every box filled</strong></td><td>Fill all fields. Save.</td><td>Saved, appears in the list.</td><td><span class="tag t-good">should pass</span></td></tr><tr><td class="mono">TC-TWN-02</td><td><strong>Add a town leaving Ground Location blank</strong></td><td>Fill only the required boxes. Save.</td><td>Saved.</td><td><span class="tag t-gap">known defect</span><br><span class='sub'>The form sends an empty marker the server rejects for five fields — assigned REP, ground location, trial type, month, comment. The save fails with 'Failed to save city. Please try again.' and never names the field.</span></td></tr><tr><td class="mono">TC-TWN-03</td><td><strong>Read the reason a save failed</strong></td><td>Trigger any validation failure.</td><td>The message names the field and the reason.</td><td><span class="tag t-gap">known defect</span><br><span class='sub'>Every failure renders the same sentence. The server's explanation is discarded before it reaches the screen. This affects the whole app, not only this form.</span></td></tr><tr><td class="mono">TC-TWN-04</td><td><strong>Enter a Ground Location and see it on the Trials Report</strong></td><td>Fill Ground Location here. Open the Trials Report.</td><td>The venue appears.</td><td><span class="tag t-gap">known defect</span><br><span class='sub'>This box writes the town master list; the report reads the REP's record for that town. Enter the venue on the REP screen instead.</span></td></tr><tr><td class="mono">TC-TWN-05</td><td><strong>Bulk import towns from a sheet</strong></td><td>Import a CSV with the template columns.</td><td>Rows are created, bad rows reported.</td><td><span class="tag t-good">should pass</span></td></tr>
+  </table>
+</section>
+<section class="sheet">
+  <p class="eyebrow">Module 5 of 11</p>
+  <h2>Local partners (REPs)</h2>
+  <hr class="rule">
+  <div class="statline">
+    <span><strong>8</strong> cases</span>
+    <span class="tag t-flow">57 input controls on screen</span>
+    <span class="tag t-good">5 should pass</span>
+    <span class="tag t-gap">2 known defect</span>
+    <span class="tag t-silent">1 not built</span>
+    <span class="tag t-dupe">0 needs live data</span>
+  </div>
+  <table>
+    <tr><th style="width:9%">ID</th><th style="width:18%">Use case</th><th style="width:26%">Steps</th>
+        <th style="width:22%">Expected result</th><th style="width:25%">Status</th></tr>
+    <tr><td class="mono">TC-REP-01</td><td><strong>Create a REP with one town</strong></td><td>REP Management, Add. Pick project and town, fill org details, courier block and ground block. Save.</td><td>REP created with one town record.</td><td><span class="tag t-good">should pass</span><br><span class='sub'>24 boxes across the whole form.</span></td></tr><tr><td class="mono">TC-REP-02</td><td><strong>Add a second town to the same REP in the same project</strong></td><td>Edit the REP, Add assignment, pick another town in the same project.</td><td>Both towns listed, each with its own courier and ground details.</td><td><span class="tag t-good">should pass</span><br><span class='sub'>This is the REP-scarcity case. Reported broken on 29 Mar, works now.</span></td></tr><tr><td class="mono">TC-REP-03</td><td><strong>Give two towns different venues under one REP</strong></td><td>Fill a different Ground Name for each town.</td><td>Each town keeps its own venue.</td><td><span class="tag t-good">should pass</span><br><span class='sub'>The record is keyed by REP, project and town, so this holds.</span></td></tr><tr><td class="mono">TC-REP-04</td><td><strong>Edit a REP that already has a logo, changing only a phone number</strong></td><td>Open, change the phone, save. Reopen.</td><td>Logo, MOU and logo link are all still there.</td><td><span class="tag t-gap">known defect</span><br><span class='sub'>The logo link is blanked. It is not pre-filled when an existing REP is matched by name, and the merge writes the blank over the stored value. Reported six times as 'logo disappeared again'.</span></td></tr><tr><td class="mono">TC-REP-05</td><td><strong>Record a venue name</strong></td><td>Edit a town record. Fill Ground Name. Save. Reopen.</td><td>The name is stored and shown.</td><td><span class="tag t-good">should pass</span><br><span class='sub'>Fixed 21 Aug. Previously the ground address had a box and the ground name did not.</span></td></tr><tr><td class="mono">TC-REP-06</td><td><strong>Record the ground PIN that the report prints</strong></td><td>Fill the PIN under Trial Ground Location. Check the report.</td><td>The PIN appears on the report row.</td><td><span class="tag t-gap">known defect</span><br><span class='sub'>Two PIN fields exist. The form writes one, the report reads the other, and the second has no input anywhere. 51 records hold the first, none the second.</span></td></tr><tr><td class="mono">TC-REP-07</td><td><strong>Set a reporting time when editing an existing REP</strong></td><td>Open an existing town record and look for Reporting Time.</td><td>The box is there.</td><td><span class="tag t-silent">not built</span><br><span class='sub'>The box exists only when adding a REP, never when editing. Time was part of the 29 Jun request.</span></td></tr><tr><td class="mono">TC-REP-08</td><td><strong>Remove a town record from a REP</strong></td><td>Delete one assignment.</td><td>Removed, the REP and its other towns survive.</td><td><span class="tag t-good">should pass</span></td></tr>
+  </table>
+</section>
+<section class="sheet">
+  <p class="eyebrow">Module 6 of 11</p>
+  <h2>Courier</h2>
+  <hr class="rule">
+  <div class="statline">
+    <span><strong>8</strong> cases</span>
+    <span class="tag t-flow">19 input controls on screen</span>
+    <span class="tag t-good">4 should pass</span>
+    <span class="tag t-gap">3 known defect</span>
+    <span class="tag t-silent">1 not built</span>
+    <span class="tag t-dupe">0 needs live data</span>
+  </div>
+  <table>
+    <tr><th style="width:9%">ID</th><th style="width:18%">Use case</th><th style="width:26%">Steps</th>
+        <th style="width:22%">Expected result</th><th style="width:25%">Status</th></tr>
+    <tr><td class="mono">TC-CUR-01</td><td><strong>Raise a shipment for a town</strong></td><td>Courier, new. Pick the REP and the town. The courier address fills from that record.</td><td>Draft created with the right address.</td><td><span class="tag t-good">should pass</span></td></tr><tr><td class="mono">TC-CUR-02</td><td><strong>Add items and quantities</strong></td><td>Add items, set quantities.</td><td>Saved against the shipment.</td><td><span class="tag t-good">should pass</span></td></tr><tr><td class="mono">TC-CUR-03</td><td><strong>Clear a quantity back to empty</strong></td><td>Backspace a quantity to nothing.</td><td>The box is empty.</td><td><span class="tag t-gap">known defect</span><br><span class='sub'>It snaps back to 0 and cannot be cleared.</span></td></tr><tr><td class="mono">TC-CUR-04</td><td><strong>Two people edit one shipment's items</strong></td><td>A adds an item. B, whose screen loaded earlier, saves.</td><td>Both items survive.</td><td><span class="tag t-gap">known defect</span><br><span class='sub'>Saving deletes every item and re-adds only what that screen held. B silently erases A's item. This is the missing-item report.</span></td></tr><tr><td class="mono">TC-CUR-05</td><td><strong>Dispatch, then change the REP's address</strong></td><td>Dispatch, then edit the courier address on the REP record.</td><td>The dispatched shipment keeps the address it was sent to.</td><td><span class="tag t-good">should pass</span><br><span class='sub'>Snapshots are frozen at dispatch. Correct by design.</span></td></tr><tr><td class="mono">TC-CUR-06</td><td><strong>Delete a dispatched shipment as SUPER_ADMIN</strong></td><td>Open a dispatched shipment as super admin. Find delete.</td><td>Delete is offered and works.</td><td><span class="tag t-gap">known defect</span><br><span class='sub'>The backend is complete — soft delete, a super-admin view and a restore endpoint. The button renders only inside the Draft block and is gated on edit rights, not on super admin. Dispatched, In Transit and Delivered rows offer no delete to anyone.</span></td></tr><tr><td class="mono">TC-CUR-07</td><td><strong>One parcel covering three towns under one REP</strong></td><td>One REP covers three towns from one office. Record the single dispatch.</td><td>All three towns show the dispatch.</td><td><span class="tag t-silent">not built</span><br><span class='sub'>A shipment ties to one town record. Only one town gets a courier history; the other two show none.</span></td></tr><tr><td class="mono">TC-CUR-08</td><td><strong>Print the packing slip</strong></td><td>Generate the slip for a shipment with several items.</td><td>Every item appears.</td><td><span class="tag t-good">should pass</span><br><span class='sub'>Slip composition is clean; the risk is TC-CUR-04 upstream.</span></td></tr>
+  </table>
+</section>
+<section class="sheet">
+  <p class="eyebrow">Module 7 of 11</p>
+  <h2>Vendors</h2>
+  <hr class="rule">
+  <div class="statline">
+    <span><strong>4</strong> cases</span>
+    <span class="tag t-flow">36 input controls on screen</span>
+    <span class="tag t-good">1 should pass</span>
+    <span class="tag t-gap">3 known defect</span>
+    <span class="tag t-silent">0 not built</span>
+    <span class="tag t-dupe">0 needs live data</span>
+  </div>
+  <table>
+    <tr><th style="width:9%">ID</th><th style="width:18%">Use case</th><th style="width:26%">Steps</th>
+        <th style="width:22%">Expected result</th><th style="width:25%">Status</th></tr>
+    <tr><td class="mono">TC-VEN-01</td><td><strong>Create a vendor</strong></td><td>Search, confirm the name, fill details and bank block. Save.</td><td>Vendor created and selectable in work orders.</td><td><span class="tag t-good">should pass</span><br><span class='sub'>22 boxes.</span></td></tr><tr><td class="mono">TC-VEN-02</td><td><strong>Find a vendor added long ago</strong></td><td>Search an older vendor in the vendor picker dialog.</td><td>It is offered.</td><td><span class="tag t-gap">known defect</span><br><span class='sub'>That dialog caps at the first 15 matches of a newest-first list, so older vendors are unreachable there. The main vendor list is unaffected.</span></td></tr><tr><td class="mono">TC-VEN-03</td><td><strong>Edit a vendor's phone only</strong></td><td>Change the phone. Save. Reopen.</td><td>Only the phone changed.</td><td><span class="tag t-gap">known defect</span><br><span class='sub'>Status is forced to Verified on every save, whatever it was before.</span></td></tr><tr><td class="mono">TC-VEN-04</td><td><strong>Create two vendors with the same PAN</strong></td><td>Save a second vendor with an existing PAN.</td><td>Refused, or at least flagged.</td><td><span class="tag t-gap">known defect</span><br><span class='sub'>No uniqueness rule exists on the vendor name or on PAN. Both save. PAN is the identity used for TDS filing.</span></td></tr>
+  </table>
+</section>
+<section class="sheet">
+  <p class="eyebrow">Module 8 of 11</p>
+  <h2>Work Orders</h2>
+  <hr class="rule">
+  <div class="statline">
+    <span><strong>5</strong> cases</span>
+    <span class="tag t-flow">25 input controls on screen</span>
+    <span class="tag t-good">3 should pass</span>
+    <span class="tag t-gap">1 known defect</span>
+    <span class="tag t-silent">1 not built</span>
+    <span class="tag t-dupe">0 needs live data</span>
+  </div>
+  <table>
+    <tr><th style="width:9%">ID</th><th style="width:18%">Use case</th><th style="width:26%">Steps</th>
+        <th style="width:22%">Expected result</th><th style="width:25%">Status</th></tr>
+    <tr><td class="mono">TC-WO-01</td><td><strong>Raise a work order against a vendor</strong></td><td>Pick the vendor, amount, type, and tag the project and city. Save.</td><td>Created and listed.</td><td><span class="tag t-good">should pass</span><br><span class='sub'>20 boxes.</span></td></tr><tr><td class="mono">TC-WO-02</td><td><strong>Tag a work order to a project that does not exist</strong></td><td>Type a project name with a typo.</td><td>Refused or flagged.</td><td><span class="tag t-gap">known defect</span><br><span class='sub'>The project is free text with no link, so the typo saves. Two parts of the system also disagree on whether this holds a project name or a project code.</span></td></tr><tr><td class="mono">TC-WO-03</td><td><strong>Set the tax section on the work order itself</strong></td><td>Open a work order and look for its own TDS section.</td><td>The box is there.</td><td><span class="tag t-silent">not built</span><br><span class='sub'>The field exists and the server serves it; no screen offers it. Classification always falls back to the vendor's.</span></td></tr><tr><td class="mono">TC-WO-04</td><td><strong>Delete a work order that has payments</strong></td><td>Try it.</td><td>Refused.</td><td><span class="tag t-good">should pass</span><br><span class='sub'>Correctly protected.</span></td></tr><tr><td class="mono">TC-WO-05</td><td><strong>Edit project and city on a work order that has sent payments</strong></td><td>Change the tags after payments exist.</td><td>Allowed.</td><td><span class="tag t-good">should pass</span></td></tr>
+  </table>
+</section>
+<section class="sheet">
+  <p class="eyebrow">Module 9 of 11</p>
+  <h2>Payments and TDS</h2>
+  <hr class="rule">
+  <div class="statline">
+    <span><strong>8</strong> cases</span>
+    <span class="tag t-flow">13 input controls on screen</span>
+    <span class="tag t-good">6 should pass</span>
+    <span class="tag t-gap">2 known defect</span>
+    <span class="tag t-silent">0 not built</span>
+    <span class="tag t-dupe">0 needs live data</span>
+  </div>
+  <table>
+    <tr><th style="width:9%">ID</th><th style="width:18%">Use case</th><th style="width:26%">Steps</th>
+        <th style="width:22%">Expected result</th><th style="width:25%">Status</th></tr>
+    <tr><td class="mono">TC-PAY-01</td><td><strong>Raise a payment request against a work order</strong></td><td>Pick the work order, amount and period. Save.</td><td>Created; the work order's remaining amount drops.</td><td><span class="tag t-good">should pass</span></td></tr><tr><td class="mono">TC-PAY-02</td><td><strong>Batch payments and download the bank file</strong></td><td>Select payments, create a batch, download.</td><td>File matches the bank's format exactly, debit account pre-filled.</td><td><span class="tag t-good">should pass</span></td></tr><tr><td class="mono">TC-PAY-03</td><td><strong>Mark a payment bounced</strong></td><td>Set status to Payment Bounced.</td><td>Amount comes back off the work order, the period un-marks, status recalculates, the TDS is cancelled.</td><td><span class="tag t-good">should pass</span></td></tr><tr><td class="mono">TC-PAY-04</td><td><strong>Retry a bounced payment</strong></td><td>Raise a new request for the same slot.</td><td>The form warns that TDS was already deducted and books no second deduction.</td><td><span class="tag t-good">should pass</span></td></tr><tr><td class="mono">TC-PAY-05</td><td><strong>Reverse a bounce that was marked in error</strong></td><td>Set it back to Payment Done after a retry already exists.</td><td>Refused, with a reason.</td><td><span class="tag t-good">should pass</span><br><span class='sub'>Correctly guarded against double counting.</span></td></tr><tr><td class="mono">TC-PAY-06</td><td><strong>Resolve a bounce that was settled outside the system</strong></td><td>Use Resolve and record that it was paid externally.</td><td>Recorded as external, and the money is restored to the work order.</td><td><span class="tag t-gap">known defect</span><br><span class='sub'>The screen sends no reason, so every resolve is stored as 'settled by a retry'. The external path was designed to restore the amount and was never built, so the work order still shows it unpaid.</span></td></tr><tr><td class="mono">TC-PAY-07</td><td><strong>Read the TDS total after a bounce</strong></td><td>Bounce a payment, then open the Payment Audit report.</td><td>The bounced deduction is excluded from the total.</td><td><span class="tag t-gap">known defect</span><br><span class='sub'>The backend excludes it correctly; the report screen does not use that flag and sums every row. This is the double-TDS complaint, raised four times.</span></td></tr><tr><td class="mono">TC-PAY-08</td><td><strong>Mark TDS deposited</strong></td><td>Mark a month's TDS as deposited.</td><td>Recorded with the correct deadline for that month.</td><td><span class="tag t-good">should pass</span></td></tr>
+  </table>
+</section>
+<section class="sheet">
+  <p class="eyebrow">Module 10 of 11</p>
+  <h2>Reports</h2>
+  <hr class="rule">
+  <div class="statline">
+    <span><strong>7</strong> cases</span>
+    <span class="tag t-flow">22 input controls on screen</span>
+    <span class="tag t-good">4 should pass</span>
+    <span class="tag t-gap">2 known defect</span>
+    <span class="tag t-silent">1 not built</span>
+    <span class="tag t-dupe">0 needs live data</span>
+  </div>
+  <table>
+    <tr><th style="width:9%">ID</th><th style="width:18%">Use case</th><th style="width:26%">Steps</th>
+        <th style="width:22%">Expected result</th><th style="width:25%">Status</th></tr>
+    <tr><td class="mono">TC-RPT-01</td><td><strong>Trials Report shows project, address and map</strong></td><td>Open the Trials Report.</td><td>Project, address and map link populate.</td><td><span class="tag t-good">should pass</span><br><span class='sub'>Address fills on 55 records.</span></td></tr><tr><td class="mono">TC-RPT-02</td><td><strong>Trials Report shows the venue</strong></td><td>Fill a Ground Name on a REP town record, then open the report.</td><td>The Venue column shows it.</td><td><span class="tag t-good">should pass</span><br><span class='sub'>Fixed 21 Aug. Rows saved before then stay blank until filled.</span></td></tr><tr><td class="mono">TC-RPT-03</td><td><strong>Trials Report shows the reporting time</strong></td><td>Look for a time column.</td><td>Time is shown.</td><td><span class="tag t-silent">not built</span><br><span class='sub'>There is no time column. Time was part of the 29 Jun request and is the one element still undelivered.</span></td></tr><tr><td class="mono">TC-RPT-04</td><td><strong>Filter the report and read the summary cards</strong></td><td>Apply any filter.</td><td>The cards move with the table.</td><td><span class="tag t-gap">known defect</span><br><span class='sub'>The cards are computed from the unfiltered rows. The table moves and the cards do not.</span></td></tr><tr><td class="mono">TC-RPT-05</td><td><strong>A town appears once per project</strong></td><td>Check a project whose town was added twice.</td><td>One row.</td><td><span class="tag t-gap">known defect</span><br><span class='sub'>See TC-PRJ-04. Duplicate town rows both render.</span></td></tr><tr><td class="mono">TC-RPT-06</td><td><strong>Export to Excel and to CSV</strong></td><td>Export both. Open in Excel.</td><td>Columns line up with the headers; no shifted cells.</td><td><span class="tag t-good">should pass</span><br><span class='sub'>Shape guards throw if a row does not match its header. Uncommitted.</span></td></tr><tr><td class="mono">TC-RPT-07</td><td><strong>Venue and Address differ on the export</strong></td><td>Compare the two columns.</td><td>They hold different values.</td><td><span class="tag t-good">should pass</span><br><span class='sub'>The fallback that made them identical was removed. Uncommitted.</span></td></tr>
+  </table>
+</section>
+<section class="sheet">
+  <p class="eyebrow">Module 11 of 11</p>
+  <h2>User Management</h2>
+  <hr class="rule">
+  <div class="statline">
+    <span><strong>4</strong> cases</span>
+    <span class="tag t-flow">13 input controls on screen</span>
+    <span class="tag t-good">3 should pass</span>
+    <span class="tag t-gap">0 known defect</span>
+    <span class="tag t-silent">1 not built</span>
+    <span class="tag t-dupe">0 needs live data</span>
+  </div>
+  <table>
+    <tr><th style="width:9%">ID</th><th style="width:18%">Use case</th><th style="width:26%">Steps</th>
+        <th style="width:22%">Expected result</th><th style="width:25%">Status</th></tr>
+    <tr><td class="mono">TC-USR-01</td><td><strong>Create a user and grant one module</strong></td><td>Create the user, grant a single module.</td><td>They see exactly that module.</td><td><span class="tag t-good">should pass</span></td></tr><tr><td class="mono">TC-USR-02</td><td><strong>Grant a module that needs another to work</strong></td><td>Grant Payments only.</td><td>Read access to its dependencies comes with it.</td><td><span class="tag t-good">should pass</span></td></tr><tr><td class="mono">TC-USR-03</td><td><strong>Review who changed whose access</strong></td><td>Open the audit log.</td><td>Actor, target and the before/after are listed.</td><td><span class="tag t-good">should pass</span><br><span class='sub'>The only part of the system with a real change history.</span></td></tr><tr><td class="mono">TC-USR-04</td><td><strong>Find out who cleared a REP's address</strong></td><td>Ask the same question of a REP, town, vendor or project.</td><td>A history is available.</td><td><span class="tag t-silent">not built</span><br><span class='sub'>No change log exists on any of those tables, and no field records who last edited. The question cannot be answered.</span></td></tr>
+  </table>
+</section>
+<section class="sheet">
+  <p class="eyebrow">Cross-cutting</p>
+  <h2>The address cases, examined on their own</h2>
+  <hr class="rule">
+  <p class="lede">Addresses caused more reports than anything else, so they are worth testing as a set
+  rather than module by module. Four real addresses exist, plus one frozen copy.</p>
+  <table>
+    <tr><th style="width:9%">ID</th><th style="width:26%">Case</th><th style="width:30%">Expected</th><th style="width:35%">Notes</th></tr>
+    <tr><td class="mono">TC-ADR-01</td><td>The courier address and the ground address hold different text</td>
+        <td>They are independent. Neither ever fills from the other.</td>
+        <td><span class="tag t-good">should pass</span> The fallback that made them identical was removed.</td></tr>
+    <tr><td class="mono">TC-ADR-02</td><td>One REP, three towns, one office</td>
+        <td>The same courier address is recorded on all three town records.</td>
+        <td><span class="tag t-good">should pass</span> It is entered three times. There is no single organisation address anywhere on a REP.</td></tr>
+    <tr><td class="mono">TC-ADR-03</td><td>One REP, three towns, three stadiums</td>
+        <td>Each town record keeps its own ground name and address.</td>
+        <td><span class="tag t-good">should pass</span> The record is keyed by REP, project and town.</td></tr>
+    <tr><td class="mono">TC-ADR-04</td><td>Change a REP's courier address after dispatch</td>
+        <td>Dispatched shipments keep the old address; drafts read the new one.</td>
+        <td><span class="tag t-good">should pass</span> Frozen snapshots, correct by design.</td></tr>
+    <tr><td class="mono">TC-ADR-05</td><td>A town in a project with no REP assigned yet</td>
+        <td>A known venue can still be recorded.</td>
+        <td><span class="tag t-silent">not built</span> Every address lives on the REP's town record, so there is nowhere to put it until someone is assigned.</td></tr>
+    <tr><td class="mono">TC-ADR-06</td><td>Enter a venue in the town master list and expect it on the report</td>
+        <td>It appears.</td>
+        <td><span class="tag t-gap">known defect</span> Three tables hold a field called ground location. The town master list has an input nothing reads; the report reads the other two.</td></tr>
+    <tr><td class="mono">TC-ADR-07</td><td>An address exists but the row shows blank on the report</td>
+        <td>Blank means nobody entered one.</td>
+        <td><span class="tag t-dupe">needs live data</span> 45 of 100 town records have no ground address. A blank is a worklist item, not a bug.</td></tr>
+    <tr><td class="mono">TC-ADR-08</td><td>Rename a town that REP records reference</td>
+        <td>The records follow.</td>
+        <td><span class="tag t-gap">known defect</span> Nothing cascades. Four assignments are stranded this way today, with two dispatch-ready courier drafts hanging off them.</td></tr>
+  </table>
+  <div class="callout c-gap">
+    <p><strong>TC-ADR-08 is the one to run before anything else.</strong> Two courier drafts point at
+    towns their projects no longer contain, and in-flight shipments re-read the address live. Standing
+    instruction: do not dispatch, do not delete, until it is settled whether those trials should be
+    running in those towns.</p>
+  </div>
+</section>
