@@ -1,6 +1,19 @@
 ---
 version: v1-draft
 name: IKF-TTA-design-system
+
+# SCOPE — added 2026-08-20. This file's opening premise ("two surfaces sharing one
+# token layer") is no longer true of the whole product. There are now THREE theme
+# scopes on distinct routes:
+#   src/styles/muiTheme.js            TTA internal  <- THIS FILE GOVERNS
+#   src/styles/ttaTheme.js            CSR only      <- governed by the Ledger system
+#   src/components/client/clientTheme.js  funder     <- brand-injected white-label
+# Amber is RETIRED from CSR (design/decisions.md D-005) and survives here for TTA.
+# For CSR colour and type, design/decisions.md wins over this file.
+# Enumerated tokens for all three: .ai/design-system.md
+governs: [tta-internal]
+superseded_for: [csr]
+
 description: >
   Operations and grant-accountability platform for India Khelo Football. Two surfaces
   sharing one token layer — a dense internal workspace used daily by staff, and a
