@@ -515,8 +515,17 @@ function REPModal({ open, onClose, onSave, editingREP }) {
         if (repLogo)     { repData.repLogoName = repLogo.name; repData.repLogoUrl = repLogoPreview; }
         await onSave(repData);
       } else {
-        // Add mode: org + assignment
-        const repData = { ...orgData };
+        // Add mode: org + assignment.
+        // Send only the org fields that actually carry a value. A blank here is
+        // never a request to clear anything — nothing exists yet to clear — but
+        // when the name matches an existing org the backend merges onto that row,
+        // and a blank on the wire is indistinguishable from a deliberate clear.
+        // `orgData` seeds every untouched field to '' (repLogoLink is never
+        // prefilled by the name search at all), so shipping the whole object
+        // wiped the stored logo link and MOU status each time a city was added.
+        const repData = Object.fromEntries(
+          Object.entries(orgData).filter(([, value]) => value !== '')
+        );
         if (mouDocument) { repData.mouDocumentName = mouDocument.name; repData.mouDocumentUrl = mouDocumentPreview; }
         if (repLogo) { repData.repLogoName = repLogo.name; repData.repLogoUrl = repLogoPreview; }
 
@@ -609,6 +618,9 @@ function REPModal({ open, onClose, onSave, editingREP }) {
       physicalAddress: a.physicalAddress || '',
       googleMapLink: a.googleMapLink || '',
       pinCode: a.pinCode || '',
+      // Without this the edit form opens with a blank Ground Name and saves the
+      // blank back over a stored one. Same trap the logo fields fell into.
+      groundLocation: a.groundLocation || '',
       groundContactName: a.groundContactName || '',
       groundContactPhone: a.groundContactPhone || '',
     });
@@ -1228,6 +1240,14 @@ function REPModal({ open, onClose, onSave, editingREP }) {
                     disabled={saving || !canFillForm} />
                 </Box>
                 <Box sx={{ gridColumn: '1 / -1' }}>
+                  <Typography sx={labelSx}>Ground Name</Typography>
+                  <TextField fullWidth placeholder="e.g., Nehru Stadium"
+                    value={assignmentData.groundLocation}
+                    onChange={handleAssignmentChange('groundLocation')}
+                    helperText="What the venue is called. This is the Venue column on the Trials Report"
+                    disabled={saving || !canFillForm} />
+                </Box>
+                <Box sx={{ gridColumn: '1 / -1' }}>
                   <Typography sx={labelSx}>Ground Address</Typography>
                   <TextField fullWidth multiline minRows={2}
                     placeholder="Complete ground / stadium address"
@@ -1500,6 +1520,12 @@ function renderGroundSection(data, onChange, saving, labelSx, secHeaderSx, error
             onChange={(e) => onChange('groundContactPhone')({ target: { value: e.target.value.replace(/\D/g, '').slice(0,10) } })}
             disabled={saving} error={!!errors?.groundContactPhone}
             helperText={errors?.groundContactPhone || '10-digit mobile (starts with 6-9)'} />
+        </Box>
+        <Box sx={{ gridColumn: '1 / -1' }}>
+          <Typography sx={labelSx}>Ground Name</Typography>
+          <TextField fullWidth size="small" value={data.groundLocation}
+            onChange={onChange('groundLocation')} disabled={saving}
+            helperText="What the venue is called, e.g. Nehru Stadium. This is the Venue column on the Trials Report" />
         </Box>
         <Box sx={{ gridColumn: '1 / -1' }}>
           <Typography sx={labelSx}>Ground Address</Typography>

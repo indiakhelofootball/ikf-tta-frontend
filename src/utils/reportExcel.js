@@ -185,6 +185,22 @@ export function buildReportWorkbook({
   const cols = columns.map(normaliseColumn);
   const dataRows = Array.isArray(rows) ? rows : [];
 
+  // Shape guard. writeCell below walks the COLUMNS, so a row carrying more
+  // values than there are columns loses its tail and a row carrying fewer is
+  // padded with blanks -- either way Excel opens without complaint and every
+  // field after the mismatch reads under the wrong heading. A 10-column header
+  // over 11-column rows was one edit away from shipping exactly that. Four
+  // report screens share this writer, so the check belongs here, once, rather
+  // than as a habit repeated in each of them. Loud failure beats quiet
+  // corruption: a broken export is noticed, a shifted one is believed.
+  const badRow = dataRows.findIndex((r) => !Array.isArray(r) || r.length !== cols.length);
+  if (badRow !== -1) {
+    const got = Array.isArray(dataRows[badRow]) ? dataRows[badRow].length : 'a non-array';
+    throw new Error(
+      `buildReportWorkbook: row ${badRow} has ${got} values but ${cols.length} columns are declared`
+    );
+  }
+
   const wb = new ExcelJS.Workbook();
   wb.created = new Date();
   const ws = wb.addWorksheet(String(sheetName || 'Report').slice(0, 31));

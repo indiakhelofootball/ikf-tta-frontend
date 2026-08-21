@@ -48,8 +48,25 @@ function TrialManagementPage() {
   const loadTrials = async ({ silent = false } = {}) => {
     try {
       if (!silent) setLoading(true);
-      const response = await trialsAPI.getAll();
-      setTrials(response.trials || []);
+      // Page to the end. Called with no arguments this asked for the backend's
+      // default page -- 20 rows, newest first -- and nothing here ever read the
+      // `total` it came back with, so every project outside the 20 newest was
+      // simply unreachable from this screen. Season 6 was reported invisible
+      // three times for exactly that reason. The stat cards, the project-type
+      // list and the client-side filters all derive from `trials`, so they were
+      // all reporting on the truncated array too.
+      const PAGE = 100; // trials/views.py clamps `limit` to 100; asking for more is silently capped
+      const first = await trialsAPI.getAll({ limit: PAGE, page: 1 });
+      let all = first.trials || [];
+      const total = typeof first.total === 'number' ? first.total : all.length;
+      for (let page = 2; all.length < total; page += 1) {
+        // eslint-disable-next-line no-await-in-loop
+        const next = await trialsAPI.getAll({ limit: PAGE, page });
+        const batch = next.trials || [];
+        if (batch.length === 0) break; // never spin if `total` disagrees with the rows
+        all = all.concat(batch);
+      }
+      setTrials(all);
     } catch (error) {
       if (!silent) showToast('Failed to load projects', 'error');
     } finally {
