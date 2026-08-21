@@ -561,6 +561,10 @@ export default function CourierManagementPage() {
 
   function openNew() {
     setEditingId(null); setFRepId(''); setFAsgId(''); setFItems([]); setFNotes(''); setError('');
+    // Clear the lock token too. A new shipment has no version to check against,
+    // and leaving the previous edit's token here means any future code path
+    // that reads it while creating would be checking against a different row.
+    setLoadedUpdatedAt('');
     setModalOpen(true);
   }
 
@@ -633,7 +637,35 @@ export default function CourierManagementPage() {
       }
       setModalOpen(false);
     } catch (e) {
-      setError(e.message || 'Save failed.');
+      // A stale-write refusal has to leave the user somewhere they can act.
+      // Without this the form keeps the token it loaded with, so every retry
+      // hits the same 409 and the only way out is closing the dialog — the
+      // save is refused correctly and the user is stranded, which is its own
+      // defect. The server returns currentUpdatedAt precisely so the client
+      // can recover; the API layer already carries it on err.response.data.
+      const code = e?.response?.data?.code;
+      if (code === 'stale_write' || code === 'missing_version_token') {
+        try {
+          const fresh = await courierAPI.getById(editingId);
+          setShipments(prev => prev.map(s => s.id === editingId ? fresh : s));
+          setFItems((fresh.items || []).map(i => ({ ...i })));
+          setFNotes(fresh.notes || '');
+          setLoadedUpdatedAt(fresh.updatedAt || '');
+          setError(
+            'Someone else changed this shipment while you had it open. Their '
+            + 'version is now loaded above — your unsaved changes were not '
+            + 'applied. Redo them and save again.'
+          );
+        } catch {
+          // Even the reload failed; say what is known rather than nothing.
+          setError(
+            (e.message || 'Save failed.')
+            + ' Reloading the shipment also failed — close and reopen it.'
+          );
+        }
+      } else {
+        setError(e.message || 'Save failed.');
+      }
     } finally {
       setSaving(false);
     }
