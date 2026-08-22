@@ -27,7 +27,7 @@ This directory contains **two independent repos** that share a local folder:
 
 ```bash
 npm start           # dev server (http://localhost:3000)
-npm run build       # production build → deploy via deploy.bat
+npm run build       # local production build only — NOT the deploy artefact
 npm test            # run all tests (Jest / React Testing Library)
 npm test -- --testPathPattern=blkpayExcel   # run a single test file
 npm run lint        # eslint src/
@@ -35,7 +35,9 @@ npm run lint:fix    # eslint --fix
 npm run format      # prettier --write src/
 ```
 
-Deploy: run `npm run build` then double-click `deploy.bat` — it uploads the build via scp to the server. Nginx serves immediately.
+Deploy: **`deploy.bat` is retired** (2026-08-15) and there is no `scp` step. The frontend is built **inside the Docker image on the server**; your local `build/` is never uploaded. Read `_docs/deployment/DEPLOYMENT.md` before quoting any step.
+
+**Unresolved contradiction — check before deploying, do not assume either side.** `DEPLOYMENT.md` begins with `git pull` in both repos on the server. A measurement on the box (2026-08-17, hash-comparing the live containers against `origin/main`) found `/root/tta` is **not a git repo** — `git log` fails there and the files carry the Windows UID, i.e. it arrived as a tarball. If that still holds, step 1 of `DEPLOYMENT.md` cannot run and the image must be rebuilt from the source already on the box. Neither claim has been re-checked since; verify on the server first.
 
 ## Environment
 
@@ -92,4 +94,4 @@ Schema, every relationship and every unenforced reference: `.ai/schema-integrity
 
 Apps: `accounts`, `trials`, `reps`, `trialcities`, `vendors`, `workorders`, `payments`, `config`, `courier`, `otp`.
 
-Backend deploy: push to GitHub, pull on server, run migrations, `sudo systemctl restart tta`.
+Backend deploy: same image-rebuild path as the frontend, not `systemctl`. `sudo systemctl restart tta` is an old-box fact — the same one this file already retires four paragraphs above. `_docs/deployment/DEPLOYMENT.md` is the source of truth.
