@@ -629,6 +629,9 @@ function REPModal({ open, onClose, onSave, editingREP }) {
       // Without this the edit form opens with a blank Ground Name and saves the
       // blank back over a stored one. Same trap the logo fields fell into.
       groundLocation: a.groundLocation || '',
+      // The update is partial=True, so an absent reportingTime is not wiped --
+      // but a controlled TextField needs a seeded value or it opens uncontrolled.
+      reportingTime: a.reportingTime || '',
       groundContactName: a.groundContactName || '',
       groundContactPhone: a.groundContactPhone || '',
     });
@@ -1515,6 +1518,13 @@ function renderGroundSection(data, onChange, saving, labelSx, secHeaderSx, error
             inputProps={{ maxLength: 6 }}
             onChange={(e) => onChange('pinCode')({ target: { value: e.target.value.replace(/\D/g, '') } })}
             disabled={saving} error={!!errors?.pinCode} helperText={errors?.pinCode || '6-digit PIN (e.g. 400001)'} />
+        </Box>
+        <Box>
+          <Typography sx={labelSx}>Reporting Time</Typography>
+          <TextField fullWidth size="small" type="time" value={data.reportingTime}
+            onChange={onChange('reportingTime')} disabled={saving}
+            InputLabelProps={{ shrink: true }}
+            helperText="When players report at the ground" />
         </Box>
         <Box>
           <Typography sx={labelSx}>Ground Contact</Typography>
