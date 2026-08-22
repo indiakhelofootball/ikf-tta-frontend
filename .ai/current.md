@@ -117,6 +117,71 @@ persisted.
 
 ---
 
+## Handed to this window from the CSR worktree — 2026-08-23
+
+**Who is asking and why.** The CSR worktree (`D:\tta-csr`, branch `csr/work`)
+diffed what CSR was built to against the three files the client actually agreed:
+`D:\CSR\CSR_Module_Design_Review.docx`, `CSR_VISUAL_FLOW.pdf` (6pp, the earlier
+walkthrough) and `CSR_VISUAL_FLOW (1).pdf` (7pp, "CSR Module — Functional Flow";
+`(1) (1).pdf` is byte-identical to it). Three requirements were stated in all of
+them and never built. Two are now closed. **The rest is TTA's, not CSR's, and
+that is the point** — the spec puts this catalog on TTA's side deliberately:
+
+> "Workshops are catalog entries, not CSR-owned records. They are created and
+> maintained under TTA Admin → Setup, alongside the existing admin-managed
+> dropdowns… Catalog maintenance is an admin responsibility, not a CSR-operator
+> responsibility. **The CSR app reads this catalog at runtime; it does not edit
+> it.**" — `CSR_VISUAL_FLOW (1).pdf` §2a
+
+That is why these three items cannot be finished in the CSR worktree. CSR is
+the consumer. TTA owns the catalog.
+
+### Already done, so you are not starting cold
+
+- **Backend** — `tta_backend` `d40634e` on branch **`csr/catalog`** (cut from
+  `e196a6d`, not merged, not pushed). Adds `ConfigOption` categories
+  `workshop_name` and `training_programme`, and `CSRActivity.linked_vendor` /
+  `.workshop` / `.training_programme`. Migrations `config/0004`, `csr/0008`.
+  614 backend tests pass.
+- **CSR frontend** — `csr/work` `02b5fcd`. The activity dialog now has all three
+  pickers, reading the catalogs through `adminStorage` as **read-only getters**
+  (`getWorkshopNames`, `getTrainingProgrammes` — deliberately no `save*` pair).
+
+### What is left, and it is all in this tree
+
+1. **Admin UI for the two new catalogs.** `AdminPage.jsx` + `adminStorage.js`.
+   The read path and the cache keys already exist; what is missing is the
+   editor and the `saveWorkshopNames` / `saveTrainingProgrammes` writers. Follow
+   the `courier_item` pattern — same shape, same `configAPI.bulk` call.
+
+2. **`partner_category` has no frontend at all.** Backend `915c6b2` shipped
+   `Vendor.partner_category` and the config category on 2026-08-19 and **nothing
+   in `src/` ever consumed either** — grep returns zero hits. So today there is
+   no way to create a partner category and no way to flag a vendor with one.
+   Needs the catalog editor plus an input on the vendor form
+   (`src/components/vendors/`). Until it exists, the CSR workshop-partner picker
+   is correct and permanently empty.
+
+3. **A CSR operator cannot read `/api/vendors/`** — internal RBAC is grant-based
+   and a CSR_OPS user holds no `vendors` grant (measured 2026-08-19; the picker
+   degrades to empty and says so rather than breaking). Granting them the vendor
+   module would be wrong: **"Vendor management tab" is listed out of scope for
+   CSR in all three agreed documents.** The right shape is a narrow read-only
+   endpoint — partner-category vendors only, id and name and category — not
+   access to the vendor module. That is a backend decision, flagged not taken.
+
+**Sequence that works:** 2 before 1 before 3. Item 2 unblocks the picker that
+already ships; item 3 only matters once real partner vendors exist.
+
+### Also worth knowing
+
+`Q3` in the design review is still open and is now reachable: *"Trainings run
+for months. The one-upload model does not fit."* Naming a training programme
+makes the multi-month case concrete, so the report-cadence question lands the
+moment item 1 ships.
+
+---
+
 ## Closed 2026-08-22 — the gaps this file used to list as open
 
 All of it is on the branches, none of it is pushed. Backend 608 tests, frontend
