@@ -1,6 +1,6 @@
 # Current — what is in flight
 
-**Last verified: 2026-08-21 (end of a long session).** If that date is more than
+**Last verified: 2026-08-22.** If that date is more than
 a few days old, treat every line below as a claim to re-check, not as fact.
 
 **This file deliberately holds no git state.** Branch, HEAD, dirty files and
@@ -26,26 +26,35 @@ purpose**, matching the precedent that root trackers are not committed.
 
 | repo | branch | commits |
 |---|---|---|
-| frontend | `fix/tracker-issues-2026-08-21` | 6 |
-| backend | `fix/tracker-issues-2026-08-21` | 6 |
+| frontend | `fix/tracker-issues-2026-08-21` | 9 |
+| backend | `fix/tracker-issues-2026-08-21` | 9 |
 
-Suites at close: **577 backend · 284 frontend, all green.**
+Suites at close: **608 backend · 288 frontend, all green.**
 
 ---
 
-## The first thing to do in the morning
+## The first thing to do
 
-**Decide whether to push.** Both branches are off `main` and complete. Before
-that, three things are worth knowing:
+**Decide whether to push.** Both branches are off `main` and complete, and the
+evidence under that decision is current as of 2026-08-22:
 
-1. **#17, #10 and #7 have never been seen working in a browser.** They have
-   tests, but the Chrome extension went down with an account rate limit and
-   never came back. `npm run build` at minimum, ideally a click-through.
-2. **The dev servers are stopped.** Backend:
-   `cd tta_backend/backend && python manage.py runserver 8000 --settings=backend.dev_local_settings`
-3. **One commit is mixed.** Backend `6a94e94` carries the trials fixes AND the
+1. **#17, #10 and #7 were verified in a browser** on 22 Aug, against the
+   database, not just the screen. The Chrome extension still refuses to
+   connect; Playwright drove it instead (system python 3.13 — see the
+   `local-demo-setup` memory).
+2. **`npm run build` passes**, and the suites are 608 backend · 288 frontend.
+3. **Two dev-server facts.** They are stopped. And the command this file used
+   to give was wrong: bare `python` is 3.13 + Django 6.0 on this machine, which
+   **cannot import the project** (`csr/models.py:238` uses
+   `CheckConstraint(check=...)`, removed in Django 6). Use the repo venv:
+   `cd tta_backend/backend && ./venv/Scripts/python.exe manage.py runserver 8000 --settings=backend.dev_local_settings --noreload`
+4. **One commit is mixed.** Backend `6a94e94` carries the trials fixes AND the
    vendor PAN guard, because `git add -A backend/` ran while an agent was still
    writing. The message covers both; the split is just untidy.
+5. **Deploy: `CLAUDE.md` was lying** and now names an unresolved contradiction
+   instead. `DEPLOYMENT.md` opens with `git pull` on the server; a 2026-08-17
+   measurement found `/root/tta` is not a git repo. Settle it with one ssh
+   before deploying anything: `cd /root/tta && git log -1`.
 
 ---
 
@@ -88,6 +97,15 @@ name.
   #75 Thiruvananthapuram). Still one question: *should those trials be running
   in those cities?* Standing instruction unchanged: do not dispatch, do not
   delete.
+- **The deploy contradiction.** `_docs/deployment/DEPLOYMENT.md` opens with
+  `git pull` in both repos on the server; a 2026-08-17 measurement on the box
+  found `/root/tta` is not a git repo (`git log` fails, files carry the Windows
+  UID). Both cannot be true, and if the second still holds, step 1 of the
+  documented procedure cannot run. `CLAUDE.md` now names the contradiction
+  rather than picking a side. One ssh settles it: `cd /root/tta && git log -1`.
+- **`.ai/pending.md` item 1**, open since 2026-05-02 — WO-PR-NE-001 and
+  WO-RE-FA-001 stuck on the active list. Case A (retry the payment, no code
+  change) or Case B (a Super-Admin "Mark as Paid (manual)" action).
 - **CSRProject.season does not follow a season rename.** `project_name` is an FK
   and follows for free; season is a copied CharField and does not. Cannot be
   fixed from config — INV-DEP (`csr/tests.py:230`) forbids a core app importing
@@ -99,23 +117,39 @@ persisted.
 
 ---
 
-## Open — known gaps, recorded not hidden
+## Closed 2026-08-22 — the gaps this file used to list as open
 
-- **A stale bulk PUT can still drop a trial city** that no REP is assigned to.
-  There is no version check on that endpoint. Cities a REP *does* hold are
-  protected by the stranding guard. Closing it needs an optimistic lock on the
-  trial, the same shape as the courier one — that changes the contract of an
-  endpoint the project screen depends on, so it was recorded rather than
-  quietly done. See `test_a_stale_put_DOES_wipe_an_unassigned_city_added_since`.
-- **T6 from the trials review:** identity is (name, state) but survival is
-  name-only, so deleting Aurangabad/Maharashtra can rebind a REP's ground
-  address to the Bihar row. ~20 tests lean on `find_orphans()`, which is
-  state-blind and structurally cannot see this. Not fixed.
-- **T7–T11** in `_docs/testing/FIX_REVIEW_TRIALS.md`: padding-only renames vs
-  the courier `city_name__iexact` join, TOCTOU races on add/delete with no
-  locking, an unordered `.first()` in the courier snapshot, `groundLocation`
-  still discarded by the city PATCH.
-- **G8, G14, G22** in `FIX_REVIEW_2.md` — low severity, untouched.
+All of it is on the branches, none of it is pushed. Backend 608 tests, frontend
+288, both green.
+
+- **The stale bulk PUT** now carries an optimistic lock, same shape as the
+  courier one: `expectedUpdatedAt` is required whenever `assignedCities` is
+  present, and a stale or missing token is a 409. The reason this was deferred
+  was **wrong** — the note said it changes the contract of an endpoint the
+  project screen depends on, and `trialsAPI.update` has no caller anywhere in
+  the frontend. Nothing broke and no screen changed.
+- **T6.** A same-named row in another state is no longer treated as an answer
+  for an assignment. The review declined to fix it because "the name is all a
+  `REPCityAssignment` carries" — untrue, `REPCityAssignment.state` exists
+  (`reps/models.py:74`) and is not nullable, so no migration was needed. State
+  is compared only when **both** sides carry one; blank falls back to name-only,
+  because the production population of that column is unmeasured and a stricter
+  rule would orphan assignments that resolve today.
+- **T7–T11.** Padding-only renames now carry (in the helper *and* both callers —
+  fixing the helper alone changes nothing). `add_city` and `city_detail` run in
+  one transaction with the trial locked. The courier snapshot is ordered and
+  state-aware. The city PATCH stores `groundLocation` instead of discarding it.
+- **G14** was real but comment-only. **G8 and G22 were never defects** —
+  `FIX_REVIEW_2` says so itself; they were carried here on the strength of a
+  summary line.
+
+Two tests were found asserting the defect they guarded, both using
+`find_orphans() == []` as the safety assertion on a state-blind audit that
+could not see the thing being tested. Every replacement names the row.
+
+**Not covered by any test, deliberately:** the T8/T9 locking. SQLite makes
+`select_for_update` a no-op, so this suite cannot demonstrate a race either
+way. The guarantee is a MySQL one and is unverified here.
 
 ---
 
