@@ -4,19 +4,32 @@ import {
   TextField, MenuItem, Button, Stack, Autocomplete,
 } from '@mui/material';
 
-import { trialsAPI } from '../../services/api';
+import { trialsAPI, vendorsAPI } from '../../services/api';
+import { getWorkshopNames, getTrainingProgrammes } from '../../utils/adminStorage';
+import useConfigVersion from '../../hooks/useConfigVersion';
 
 const STATUS_OPTIONS = ['Planned', 'Completed'];
 
 const EMPTY = {
   title: '', activityTypeId: '', date: '', startDate: '', endDate: '',
   location: '', status: 'Planned', linkedTrialId: '',
+  workshopId: '', trainingProgrammeId: '', linkedVendorId: '',
 };
 
 export default function CSRActivityModal({ open, activity, activityTypes, onClose, onSave, saving }) {
   const [form, setForm] = useState(EMPTY);
   const [errors, setErrors] = useState({});
   const [trials, setTrials] = useState([]);
+  // Partner vendors for a workshop. The spec says a workshop links to a vendor
+  // "in the 'partner' category", so an ordinary supplier must not be offered --
+  // the API has no partner filter, so the narrowing happens here and is
+  // re-checked server-side on save.
+  const [partners, setPartners] = useState([]);
+  // Re-read the catalogs when refreshAllFromAPI lands, instead of freezing
+  // whatever was cached at mount.
+  useConfigVersion();
+  const workshops = getWorkshopNames();
+  const programmes = getTrainingProgrammes();
 
   useEffect(() => {
     if (!open) return;
@@ -24,6 +37,22 @@ export default function CSRActivityModal({ open, activity, activityTypes, onClos
     trialsAPI.getAll()
       .then((data) => { if (active) setTrials(Array.isArray(data) ? data : data?.results || []); })
       .catch(() => { if (active) setTrials([]); });
+    return () => { active = false; };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    let active = true;
+    vendorsAPI.getAll()
+      .then((data) => {
+        if (!active) return;
+        const rows = Array.isArray(data) ? data : data?.results || [];
+        setPartners(rows.filter((v) => (v.partnerCategory || '').trim()));
+      })
+      // A CSR operator's vendor access comes from a grant they may not hold, so
+      // this can legitimately 403. An empty picker with its own helper text is
+      // the honest outcome; it must not take the dialog down.
+      .catch(() => { if (active) setPartners([]); });
     return () => { active = false; };
   }, [open]);
 
@@ -38,6 +67,9 @@ export default function CSRActivityModal({ open, activity, activityTypes, onClos
         location: activity.location || '',
         status: activity.status || 'Planned',
         linkedTrialId: activity.linkedTrialId ?? '',
+        workshopId: activity.workshopId ?? '',
+        trainingProgrammeId: activity.trainingProgrammeId ?? '',
+        linkedVendorId: activity.linkedVendorId ?? '',
       });
     } else {
       setForm(EMPTY);
@@ -66,6 +98,10 @@ export default function CSRActivityModal({ open, activity, activityTypes, onClos
       location: form.location.trim(),
       status: form.status,
       linkedTrialId: form.linkedTrialId === '' ? null : Number(form.linkedTrialId),
+      workshopId: form.workshopId === '' ? null : Number(form.workshopId),
+      trainingProgrammeId:
+        form.trainingProgrammeId === '' ? null : Number(form.trainingProgrammeId),
+      linkedVendorId: form.linkedVendorId === '' ? null : Number(form.linkedVendorId),
     });
   };
 
@@ -113,6 +149,50 @@ export default function CSRActivityModal({ open, activity, activityTypes, onClos
           <TextField label="Status" value={form.status} onChange={setField('status')} select fullWidth>
             {STATUS_OPTIONS.map((s) => (
               <MenuItem key={s} value={s}>{s}</MenuItem>
+            ))}
+          </TextField>
+          {/* What this activity actually was. The agreed spec gives each of the
+              three activity types something to point at: a trial, a workshop
+              plus the partner who ran it, or a training programme. All optional
+              -- the type is chosen above, and only its own fields apply. */}
+          <TextField
+            label="Workshop" value={form.workshopId} onChange={setField('workshopId')}
+            select fullWidth disabled={workshops.length === 0}
+            helperText={workshops.length === 0
+              ? 'No workshops in the catalog yet — an admin adds them in TTA Admin → Setup.'
+              : 'For a workshop activity. Leave blank otherwise.'}
+          >
+            <MenuItem value="">— none —</MenuItem>
+            {workshops.map((w) => (
+              <MenuItem key={w.id} value={w.id}>{w.name}</MenuItem>
+            ))}
+          </TextField>
+          <Autocomplete
+            options={partners}
+            value={partners.find((v) => v.id === Number(form.linkedVendorId)) || null}
+            getOptionLabel={(v) => `${v.vendorName || `#${v.id}`}${v.partnerCategory ? ` · ${v.partnerCategory}` : ''}`}
+            isOptionEqualToValue={(o, v) => o.id === v.id}
+            onChange={(e, opt) => setForm((f) => ({ ...f, linkedVendorId: opt ? opt.id : '' }))}
+            renderInput={(params) => (
+              <TextField
+                {...params} label="Workshop Partner (optional)"
+                helperText={partners.length === 0
+                  ? 'No vendors carry a partner category yet, or this login cannot read vendors.'
+                  : 'The partner who ran the workshop. Only vendors flagged with a partner category appear.'}
+              />
+            )}
+          />
+          <TextField
+            label="Training Programme" value={form.trainingProgrammeId}
+            onChange={setField('trainingProgrammeId')}
+            select fullWidth disabled={programmes.length === 0}
+            helperText={programmes.length === 0
+              ? 'No training programmes in the catalog yet — an admin adds them in TTA Admin → Setup.'
+              : 'For a multi-month training. Pair it with the start and end dates above.'}
+          >
+            <MenuItem value="">— none —</MenuItem>
+            {programmes.map((t) => (
+              <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>
             ))}
           </TextField>
           <Autocomplete

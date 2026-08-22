@@ -14,6 +14,10 @@ const CATEGORY_MAP = {
   bankNames: 'bank_name',
   accountTypes: 'account_type',
   courierItems: 'courier_item',
+  // CSR activity catalogs. Read-only here: the agreed spec puts their
+  // maintenance in TTA Admin -> Setup, and CSR only picks from them.
+  workshopNames: 'workshop_name',
+  trainingProgrammes: 'training_programme',
 };
 
 // ── In-memory cache ─────────────────────────────────────────────────
@@ -27,6 +31,8 @@ const _cache = {
   bankNames: null,
   accountTypes: null,
   courierItems: null,
+  workshopNames: null,
+  trainingProgrammes: null,
 };
 
 // Per-key load status. 'loaded' is the ONLY state in which _cache is
@@ -43,6 +49,8 @@ const _status = {
   bankNames: 'idle',
   accountTypes: 'idle',
   courierItems: 'idle',
+  workshopNames: 'idle',
+  trainingProgrammes: 'idle',
 };
 
 const DEFAULTS = {
@@ -54,6 +62,10 @@ const DEFAULTS = {
   bankNames: ['IDFC First Bank'],
   accountTypes: ['Savings', 'Current'],
   courierItems: [],
+  // No seeds. A workshop name is a real catalog entry an admin created; a
+  // made-up default would be offered to an operator as if it existed.
+  workshopNames: [],
+  trainingProgrammes: [],
 };
 
 // ── Change notification ─────────────────────────────────────────────
@@ -288,6 +300,19 @@ export function saveCourierItems(list) {
 
 export function getCourierItemNames() {
   return getCourierItems().map(item => item.name);
+}
+
+// CSR reads these two; it never writes them. There is deliberately no
+// saveWorkshopNames/saveTrainingProgrammes here -- the catalog is maintained in
+// TTA Admin -> Setup, per CSR_VISUAL_FLOW (1).pdf s2a: "The CSR app reads this
+// catalog at runtime; it does not edit it."
+
+export function getWorkshopNames() {
+  return getFromCache('workshopNames');
+}
+
+export function getTrainingProgrammes() {
+  return getFromCache('trainingProgrammes');
 }
 
 // ── Helper: return just name strings ─────────────────────────────────
