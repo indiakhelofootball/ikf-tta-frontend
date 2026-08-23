@@ -4,7 +4,7 @@ import {
   TextField, MenuItem, Button, Stack, Autocomplete,
 } from '@mui/material';
 
-import { trialsAPI, vendorsAPI } from '../../services/api';
+import { trialsAPI, csrAPI } from '../../services/api';
 import { getWorkshopNames, getTrainingProgrammes } from '../../utils/adminStorage';
 import useConfigVersion from '../../hooks/useConfigVersion';
 
@@ -21,9 +21,10 @@ export default function CSRActivityModal({ open, activity, activityTypes, onClos
   const [errors, setErrors] = useState({});
   const [trials, setTrials] = useState([]);
   // Partner vendors for a workshop. The spec says a workshop links to a vendor
-  // "in the 'partner' category", so an ordinary supplier must not be offered --
-  // the API has no partner filter, so the narrowing happens here and is
-  // re-checked server-side on save.
+  // "in the 'partner' category", so an ordinary supplier must not be offered.
+  // The narrowing is the endpoint's, not this component's: /csr/partner-vendors/
+  // returns partner-flagged vendors only, through the csr grant this operator
+  // already holds, so nobody needs the vendors module to fill this picker.
   const [partners, setPartners] = useState([]);
   // Re-read the catalogs when refreshAllFromAPI lands, instead of freezing
   // whatever was cached at mount.
@@ -43,15 +44,14 @@ export default function CSRActivityModal({ open, activity, activityTypes, onClos
   useEffect(() => {
     if (!open) return;
     let active = true;
-    vendorsAPI.getAll()
+    csrAPI.partnerVendors.getAll()
       .then((data) => {
         if (!active) return;
-        const rows = Array.isArray(data) ? data : data?.results || [];
-        setPartners(rows.filter((v) => (v.partnerCategory || '').trim()));
+        setPartners(Array.isArray(data) ? data : data?.results || []);
       })
-      // A CSR operator's vendor access comes from a grant they may not hold, so
-      // this can legitimately 403. An empty picker with its own helper text is
-      // the honest outcome; it must not take the dialog down.
+      // Still caught: the catalog can be empty, the request can fail, and an
+      // empty picker with its own helper text is the honest outcome either way.
+      // It must not take the dialog down.
       .catch(() => { if (active) setPartners([]); });
     return () => { active = false; };
   }, [open]);
@@ -177,7 +177,7 @@ export default function CSRActivityModal({ open, activity, activityTypes, onClos
               <TextField
                 {...params} label="Workshop Partner (optional)"
                 helperText={partners.length === 0
-                  ? 'No vendors carry a partner category yet, or this login cannot read vendors.'
+                  ? 'No vendors carry a partner category yet. An admin flags them in TTA Admin, under Vendors.'
                   : 'The partner who ran the workshop. Only vendors flagged with a partner category appear.'}
               />
             )}
