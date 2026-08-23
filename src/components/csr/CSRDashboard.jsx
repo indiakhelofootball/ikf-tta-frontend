@@ -48,11 +48,10 @@ const GRANT_INKS = [inks.moss, inks.indigo, inks.teal];
 // means something else — which is exactly how teal ended up on Activities.
 const NEUTRAL = { tint: surfaces.sunken, text: '#4E5A54', fill: '#98A199' };
 // A solid badge with a white glyph needs the fill to clear 4.5:1 against white.
-// Moss 5.9, indigo 6.8, teal 5.5, plum 6.5 and clay 4.8 all clear it. Ochre is
-// 3.87 (and the system forbids ochre as a solid fill besides) and the neutral
-// #98A199 is ~2.0 -- both fail, so those two keep the tinted badge with their
-// own ink-strength glyph, which already passes on the tint.
-const badgeCarriesWhite = (ink) => ink !== inks.ochre && ink !== NEUTRAL;
+// After the 21 Aug palette retune all six inks clear it comfortably (≥6.48,
+// ochre now 6.88 as a dark bronze), so only the NEUTRAL #98A199 (~2.0) still
+// fails and keeps the tinted badge with its own glyph.
+const badgeCarriesWhite = (ink) => ink !== NEUTRAL;
 const inkFor = (id) => {
   const key = String(id ?? '');
   let h = 0;
