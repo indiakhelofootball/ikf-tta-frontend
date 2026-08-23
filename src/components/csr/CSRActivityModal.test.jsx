@@ -1,10 +1,11 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import CSRActivityModal from './CSRActivityModal';
 
 jest.mock('../../services/api', () => ({
   trialsAPI: { getAll: jest.fn(() => Promise.resolve([])) },
+  csrAPI: { partnerVendors: { getAll: jest.fn(() => Promise.resolve([])) } },
   vendorsAPI: { getAll: jest.fn(() => Promise.resolve([])) },
 }));
 
@@ -15,7 +16,7 @@ jest.mock('../../utils/adminStorage', () => ({
   getConfigVersion: jest.fn(() => 0),
 }));
 
-const { trialsAPI, vendorsAPI } = require('../../services/api');
+const { trialsAPI, csrAPI, vendorsAPI } = require('../../services/api');
 const adminStorage = require('../../utils/adminStorage');
 
 describe('CSRActivityModal', () => {
@@ -25,6 +26,7 @@ describe('CSRActivityModal', () => {
   // implementation before every test. Defaults belong here, not in the factory.
   beforeEach(() => {
     trialsAPI.getAll.mockResolvedValue([]);
+    csrAPI.partnerVendors.getAll.mockResolvedValue([]);
     vendorsAPI.getAll.mockResolvedValue([]);
     adminStorage.getWorkshopNames.mockReturnValue([]);
     adminStorage.getTrainingProgrammes.mockReturnValue([]);
@@ -66,9 +68,10 @@ describe('CSRActivityModal', () => {
       adminStorage.getTrainingProgrammes.mockReturnValue([
         { id: 22, name: 'Grassroots Coaching L1' },
       ]);
-      vendorsAPI.getAll.mockResolvedValue([
+      // The endpoint returns partner-flagged vendors only; the narrowing is its
+      // job, not this component's.
+      csrAPI.partnerVendors.getAll.mockResolvedValue([
         { id: 31, vendorName: 'Partner Co', partnerCategory: 'Financial' },
-        { id: 32, vendorName: 'Ordinary Supplier', partnerCategory: '' },
       ]);
     });
 
@@ -81,22 +84,31 @@ describe('CSRActivityModal', () => {
       />
     );
 
-    test('offers only vendors that carry a partner category', async () => {
+    test('offers the partner vendors the endpoint returns', async () => {
       renderModal();
       const picker = screen.getByLabelText(/workshop partner/i);
       fireEvent.mouseDown(picker);
       fireEvent.change(picker, { target: { value: '' } });
       expect(await screen.findByText(/Partner Co/)).toBeInTheDocument();
-      expect(screen.queryByText(/Ordinary Supplier/)).not.toBeInTheDocument();
+    });
+
+    test('fills the picker from the narrow endpoint, never the vendors module', async () => {
+      // A CSR operator holds no vendors grant, and the agreed documents put the
+      // vendor module out of scope for CSR. Reaching for /api/vendors/ here
+      // would 403 in production and be wrong even if it did not.
+      renderModal();
+      await waitFor(() => expect(csrAPI.partnerVendors.getAll).toHaveBeenCalled());
+      expect(vendorsAPI.getAll).not.toHaveBeenCalled();
     });
 
     test('an empty catalog says where the entries are maintained', () => {
       adminStorage.getWorkshopNames.mockReturnValue([]);
       renderModal();
+      // Named in full: the partner picker now also points at TTA Admin, so a
+      // bare /TTA Admin/ match would pass on the wrong field's helper text.
       expect(
-        screen.getByText(/No workshops in the catalog yet/i)
+        screen.getByText(/No workshops in the catalog yet — an admin adds them in TTA Admin/i)
       ).toBeInTheDocument();
-      expect(screen.getByText(/TTA Admin/i)).toBeInTheDocument();
     });
 
     test('an existing activity prefills all three links', () => {
