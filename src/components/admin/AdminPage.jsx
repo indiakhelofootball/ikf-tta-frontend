@@ -31,6 +31,9 @@ import {
   getBankNames, saveBankNames,
   getAccountTypes, saveAccountTypes,
   getCourierItems, saveCourierItems,
+  getPartnerCategories, savePartnerCategories,
+  getWorkshopNames, saveWorkshopNames,
+  getTrainingProgrammes, saveTrainingProgrammes,
   refreshAllFromAPI,
 } from '../../utils/adminStorage';
 import { configAPI } from '../../services/api';
@@ -506,6 +509,9 @@ export default function AdminPage() {
   const [bankNames, setBankNames] = useState([]);
   const [accountTypes, setAccountTypes] = useState([]);
   const [courierItems, setCourierItems] = useState([]);
+  const [partnerCategories, setPartnerCategories] = useState([]);
+  const [workshopNames, setWorkshopNames] = useState([]);
+  const [trainingProgrammes, setTrainingProgrammes] = useState([]);
   const [saveError, setSaveError] = useState('');
   const [renameInfo, setRenameInfo] = useState('');
 
@@ -549,8 +555,30 @@ export default function AdminPage() {
     try {
       const res = await configAPI.rename(category, oldName, newName);
       const c = (res && res.cascade) || {};
-      const noun = category === 'service_type' ? 'service type' : 'entity type';
+      const noun = {
+        service_type: 'service type',
+        entity_type: 'entity type',
+        partner_category: 'partner category',
+      }[category] || category;
       setRenameInfo(`Renamed ${noun} "${oldName}" to "${newName}". Updated ${c.vendors || 0} vendor(s).`);
+      await refreshAllFromAPI();
+      setState(getState());
+    } catch (err) {
+      setSaveError(err?.message || `Could not rename "${oldName}". It may already exist.`);
+      setState(getState());   // discard the optimistic edit
+    }
+  };
+
+  // Rename a catalog that CSR references by ForeignKey. Nothing copied the old
+  // string, so there is no cascade to report — but the rename still has to go
+  // through the backend rather than the ordinary save path, which would remove
+  // the old row and add a new one and leave every CSRActivity pointing at the
+  // row it just replaced.
+  const handleCatalogRename = (category, noun, setState, getState) => async (oldName, newName) => {
+    setSaveError(''); setRenameInfo('');
+    try {
+      await configAPI.rename(category, oldName, newName);
+      setRenameInfo(`Renamed ${noun} "${oldName}" to "${newName}". Every CSR activity using it follows automatically.`);
       await refreshAllFromAPI();
       setState(getState());
     } catch (err) {
@@ -569,6 +597,9 @@ export default function AdminPage() {
     setBankNames(getBankNames());
     setAccountTypes(getAccountTypes());
     setCourierItems(getCourierItems());
+    setPartnerCategories(getPartnerCategories());
+    setWorkshopNames(getWorkshopNames());
+    setTrainingProgrammes(getTrainingProgrammes());
 
     // Fetch latest from API and refresh state
     refreshAllFromAPI().then(() => {
@@ -580,6 +611,9 @@ export default function AdminPage() {
       setBankNames(getBankNames());
       setAccountTypes(getAccountTypes());
       setCourierItems(getCourierItems());
+      setPartnerCategories(getPartnerCategories());
+      setWorkshopNames(getWorkshopNames());
+      setTrainingProgrammes(getTrainingProgrammes());
     }).catch(() => {});
   }, []);
 
@@ -653,6 +687,13 @@ export default function AdminPage() {
               onSave={handleSave(setEntityTypes, saveEntityTypes)}
               onRename={handleVendorTagRename('entity_type', setEntityTypes, getEntityTypes)}
             />
+            <OptionPanel
+              title="Partner Categories"
+              subtitle="Classifications for vendors who deliver CSR work (e.g. Workshop Partner, Training Partner). A vendor flagged with one becomes selectable as the partner who ran a CSR workshop. Renaming one updates every vendor already using it."
+              items={partnerCategories}
+              onSave={handleSave(setPartnerCategories, savePartnerCategories)}
+              onRename={handleVendorTagRename('partner_category', setPartnerCategories, getPartnerCategories)}
+            />
             <VendorNamePanel
               items={vendorNames}
               onSave={handleSave(setVendorNames, saveVendorNames)}
@@ -704,6 +745,20 @@ export default function AdminPage() {
             color="#ec4899"
             defaultOpen={false}
           >
+            <OptionPanel
+              title="Workshop Names"
+              subtitle="The workshops CSR staff can pick from when logging a workshop activity. CSR reads this list and cannot edit it, so a workshop only exists once it is added here. Renaming one updates every activity that references it."
+              items={workshopNames}
+              onSave={handleSave(setWorkshopNames, saveWorkshopNames)}
+              onRename={handleCatalogRename('workshop_name', 'workshop', setWorkshopNames, getWorkshopNames)}
+            />
+            <OptionPanel
+              title="Training Programmes"
+              subtitle="The training programmes CSR staff can pick from when logging a training activity. Same rule: CSR reads this list and cannot edit it. Renaming one updates every activity that references it."
+              items={trainingProgrammes}
+              onSave={handleSave(setTrainingProgrammes, saveTrainingProgrammes)}
+              onRename={handleCatalogRename('training_programme', 'training programme', setTrainingProgrammes, getTrainingProgrammes)}
+            />
             <Paper elevation={0} sx={{ border: '1.5px solid #e8e8e8', borderRadius: '20px', overflow: 'hidden' }}>
               <Box sx={{ px: 3.5, py: 2.5, bgcolor: '#fafafa', borderBottom: '1px solid #e8e8e8' }}>
                 <Typography sx={{ fontSize: '1rem', fontWeight: 700, color: '#1d1d1f' }}>Activity Types</Typography>

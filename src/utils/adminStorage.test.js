@@ -170,3 +170,77 @@ describe('warm start across reloads', () => {
     expect(() => loadStore()).not.toThrow();
   });
 });
+
+// Partner categories are the catalog that lets a vendor be named as the partner
+// who ran a CSR workshop. CSR reads the flag off the vendor, so if this category
+// is not fetched or not written the picker there is empty for a reason nobody
+// can see from CSR.
+describe('partner categories', () => {
+  test('the login refresh asks the API for partner_category', async () => {
+    configAPI.getByCategory.mockResolvedValue([]);
+    const store = loadStore();
+
+    await store.refreshAllFromAPI();
+
+    expect(configAPI.getByCategory).toHaveBeenCalledWith('partner_category');
+  });
+
+  test('names come back from the cache, and there is no seed to hide an empty catalog', async () => {
+    configAPI.getByCategory.mockResolvedValue([CONFIG_ROW(7, 'Workshop Partner')]);
+    const store = loadStore();
+    expect(store.getPartnerCategoryNames()).toEqual([]);
+
+    await store.refreshAllFromAPI();
+
+    expect(store.getPartnerCategoryNames()).toEqual(['Workshop Partner']);
+  });
+
+  test('saving writes the rows under the partner_category category', async () => {
+    configAPI.getByCategory.mockResolvedValue([]);
+    const store = loadStore();
+    await store.refreshAllFromAPI();
+
+    await store.savePartnerCategories([{ id: 1, name: 'Training Partner', comment: '' }]);
+
+    expect(configAPI.bulk).toHaveBeenCalledWith([
+      expect.objectContaining({ category: 'partner_category', value: 'Training Partner' }),
+    ]);
+  });
+});
+
+// The two catalogs CSR reads and TTA owns. The save pair lives here and not in
+// the CSR app on purpose; the spec puts catalog maintenance under TTA Admin.
+describe('CSR activity catalogs', () => {
+  test('the login refresh asks the API for both catalogs', async () => {
+    configAPI.getByCategory.mockResolvedValue([]);
+    const store = loadStore();
+
+    await store.refreshAllFromAPI();
+
+    expect(configAPI.getByCategory).toHaveBeenCalledWith('workshop_name');
+    expect(configAPI.getByCategory).toHaveBeenCalledWith('training_programme');
+  });
+
+  test('neither catalog carries a seed, so an empty list reads as empty', async () => {
+    const store = loadStore();
+
+    expect(store.getWorkshopNameList()).toEqual([]);
+    expect(store.getTrainingProgrammeList()).toEqual([]);
+  });
+
+  test('saving writes each catalog under its own category', async () => {
+    configAPI.getByCategory.mockResolvedValue([]);
+    const store = loadStore();
+    await store.refreshAllFromAPI();
+
+    await store.saveWorkshopNames([{ id: 1, name: 'Goalkeeping Clinic', comment: '' }]);
+    await store.saveTrainingProgrammes([{ id: 2, name: 'Coach Level 1', comment: '' }]);
+
+    expect(configAPI.bulk).toHaveBeenCalledWith([
+      expect.objectContaining({ category: 'workshop_name', value: 'Goalkeeping Clinic' }),
+    ]);
+    expect(configAPI.bulk).toHaveBeenCalledWith([
+      expect.objectContaining({ category: 'training_programme', value: 'Coach Level 1' }),
+    ]);
+  });
+});
