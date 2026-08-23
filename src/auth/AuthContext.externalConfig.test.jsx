@@ -1,6 +1,6 @@
 // An external funder (CSR_CLIENT) holds no internal module grants, so every
 // /api/config/ read on their behalf is denied. The portal used to fire the full
-// 8-category config refresh on login anyway — 8 x 403 on every funder session.
+// 11-category config refresh on login anyway — 11 x 403 on every funder session.
 // These tests measure the request count directly rather than asserting on a flag.
 import React from 'react';
 import { render, waitFor, act } from '@testing-library/react';
@@ -72,12 +72,13 @@ test('an external funder session fires zero /api/config/ requests', async () => 
   expect(permissionsAPI.getMine).not.toHaveBeenCalled();
 });
 
-test('an internal session still loads the full config cache (8 categories)', async () => {
+test('an internal session still loads the full config cache (11 categories)', async () => {
   seedSession('ADMIN');
   await renderAuth();
 
   await waitFor(() => expect(adminStorage.refreshAllFromAPI).toHaveBeenCalledTimes(1));
-  expect(configAPI.getByCategory).toHaveBeenCalledTimes(8);
+  // Spelled out on purpose: adding a config category stays a deliberate edit.
+  expect(configAPI.getByCategory).toHaveBeenCalledTimes(11);
   // Decoupled from the grants fetch: a config failure must not blank the app,
   // and a grants failure must not blank the dropdowns.
   expect(permissionsAPI.getMine).toHaveBeenCalledTimes(1);
@@ -88,7 +89,7 @@ test('config still loads for an internal user when the grants fetch fails', asyn
   seedSession('ADMIN');
   await renderAuth();
 
-  await waitFor(() => expect(configAPI.getByCategory).toHaveBeenCalledTimes(8));
+  await waitFor(() => expect(configAPI.getByCategory).toHaveBeenCalledTimes(11));
 });
 
 test("the funder's skipped fetch does not poison the cache for a later internal user", async () => {
