@@ -1,13 +1,15 @@
 import theme, { motion, surfaces, tabular, inks, figure, fonts } from './ttaTheme';
 
 test('theme constructs with the expected contract', () => {
-  // the Ledger system: moss leads, on a bone ground
-  expect(theme.palette.primary.main).toBe('#2C6A4F');
+  // the Ledger system: moss leads, on a bone ground. Moss moved #2C6A4F ->
+  // #006C49 in the 21 Aug retune that put all six inks on one lightness; the
+  // value is hardcoded so a palette change stays a deliberate edit.
+  expect(theme.palette.primary.main).toBe('#006C49');
   expect(theme.palette.background.default).toBe('#EFF1EC');
   expect(theme.shape.borderRadius).toBe(7);
   // the primary action must be the heaviest object in its region -- the moss
   // fill, never the pale tint
-  expect(theme.components.MuiButton.styleOverrides.containedPrimary.backgroundColor).toBe('#2C6A4F');
+  expect(theme.components.MuiButton.styleOverrides.containedPrimary.backgroundColor).toBe('#006C49');
   // shadows must stay restrained -- no 25px monsters
   expect(theme.shadows[5]).toContain('12px 32px');
   // motion: entering longer than exiting, per NN/g
@@ -67,8 +69,14 @@ test('every ink is legible as text on every ground it can land on', () => {
     });
   });
 
-  // and white on the primary button
-  expect(ratio('#2C6A4F', '#F3F8F5')).toBeGreaterThanOrEqual(4.5);
+  // There is deliberately no white-on-fill assertion here, and it is not an
+  // oversight. White is lighter than bone, so ratio(ink, white) is always at
+  // least ratio(ink, bone) -- the loop above already implies it, and a check
+  // that cannot fail independently reads as coverage without being any. The
+  // line this replaced compared moss against '#F3F8F5', a ground this module
+  // does not paint, and could not have failed either. The white-glyph decision
+  // that CAN fail is the NEUTRAL badge (#98A199, ~2.0 on white), and it lives
+  // with the component that makes it: CSRDashboard's badgeCarriesWhite.
 });
 
 test('money is set in the serif, its unit in the sans', () => {

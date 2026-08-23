@@ -25,45 +25,50 @@ import { createTheme } from '@mui/material/styles';
 // ---------------------------------------------------------------------------
 
 // ── The six inks ───────────────────────────────────────────────────────────
-// Roughly matched chroma and lightness, so they sit together without any one
-// shouting. FILL values — spines, chips, progress segments, the primary button.
-const MOSS = '#2C6A4F';    // money utilised · primary action
-const INDIGO = '#33517F';  // contracts & deliverables · anything promised
-const OCHRE = '#A8791F';   // waiting on you · not started
-const TEAL = '#1E6E70';    // funders & partners · everything facing outward
-const PLUM = '#6E3F5C';    // closed · frozen certificate
-const CLAY = '#A6512E';    // overspend · needs a decision
+// Retuned 21 Aug 2026. Every ink now sits at ONE lightness (OKLCH L 0.47) and a
+// near-uniform chroma, hue the only thing that changes between them. That is the
+// single rule behind a categorical set that reads as one considered family
+// rather than a rainbow -- the earlier values ranged L 0.43→0.61 and chroma
+// 0.074→0.122, so ochre and clay shouted while the identity greens sat flat,
+// which is exactly what reads as "cheap." Consequence of the uniform lightness:
+// all six clear AA as text on every ground AND carry a white glyph, so the two
+// darkened text variants below collapse into their fills and ochre is no longer
+// barred from being a fill. FILL values — spines, chips, progress, primary button.
+const MOSS = '#006C49';    // money utilised · primary action
+const INDIGO = '#335A97';  // contracts & deliverables · anything promised
+const OCHRE = '#795300';   // waiting on you · not started  (a bronze, not a gold)
+const TEAL = '#00686A';    // funders & partners · everything facing outward
+const PLUM = '#833F6B';    // closed · frozen certificate
+const CLAY = '#8C4325';    // overspend · needs a decision
 
-// Tints — chip and banner grounds, each ink's own hue at ~92% lightness.
-const MOSS_T = '#E1EBE4';
-const INDIGO_T = '#E3E8F1';
-const OCHRE_T = '#F2EAD6';
-const TEAL_T = '#DEECEB';
-const PLUM_T = '#EEE3EA';
-const CLAY_T = '#F2E3DB';
+// Tints — chip and banner grounds, each ink's own hue at ~93% lightness, uniform
+// chroma to match the fills.
+const MOSS_T = '#DCEDE3';
+const INDIGO_T = '#DFE9F7';
+const OCHRE_T = '#F0E6D8';
+const TEAL_T = '#D8EDED';
+const PLUM_T = '#F3E2EC';
+const CLAY_T = '#F6E3DD';
 
-// TEXT variants. Measured, not chosen. Four of the six inks clear AA as text on
-// every ground this module paints, so they are used directly. Two do not:
-//
-//   OCHRE #A8791F  scores 3.41 on bone, 3.16 on sunk, 3.23 on its own tint
-//   CLAY  #A6512E  scores 4.46 on sunk and 4.37 on its own tint
-//
-// Both are darkened along their own hue until they clear 4.5 on bone, card,
-// sunk, white AND their own tint. This is the same failure amber had, caught
-// the same way. Do not "tidy" these back toward the fill values.
-//                       bone / card / sunk / white / own tint
-const OCHRE_TEXT = '#866119';  // 4.94 / 5.41 / 4.58 / 5.62 / 4.69
-const CLAY_TEXT = '#A34F2D';   // 4.97 / 5.44 / 4.61 / 5.65 / 4.52
+// TEXT variants. Measured, not chosen. After the 21 Aug retune ALL six inks
+// clear AA as text on every ground this module paints — the uniform L 0.47 is
+// what bought that — so every one is used directly and there are no separate
+// darkened variants any more. The two that used to fail (ochre, clay) now pass
+// because the retune darkened them; keeping OCHRE_TEXT/CLAY_TEXT as aliases of
+// the fills preserves every call site without a rename.
+//                    bone / card / sunk / white / own tint
+//   MOSS   5.70 / 6.24 / 5.28 / 6.48 / 5.33
+//   INDIGO 6.05 / 6.63 / 5.61 / 6.89 / 5.62
+//   OCHRE  6.05 / 6.63 / 5.61 / 6.88 / 5.58
+//   TEAL   5.79 / 6.34 / 5.37 / 6.59 / 5.41
+//   PLUM   6.39 / 7.00 / 5.93 / 7.27 / 5.85
+//   CLAY   6.27 / 6.87 / 5.81 / 7.13 / 5.76
+const OCHRE_TEXT = OCHRE;
+const CLAY_TEXT = CLAY;
 
-// The four that pass as text unchanged, for the record:
-//   MOSS   5.63 / 6.16 / 5.22 / 6.40 / 5.24
-//   INDIGO 7.04 / 7.70 / 6.52 / 8.00 / 6.51
-//   TEAL   5.25 / 5.74 / 4.86 / 5.97 / 4.92
-//   PLUM   7.30 / 8.00 / 6.77 / 8.31 / 6.65
-//
-// White on a MOSS fill measures 6.40, so the primary button carries white
-// comfortably. OCHRE is the one ink that must never become a button fill —
-// white on it is 3.87 and dark ink only 4.18. It lives in tints and text.
+// White on any fill now measures ≥6.48, so every ink — ochre included — can be a
+// solid badge or button and carry white comfortably. The old bar on ochre as a
+// fill (white was 3.87 on the pale gold) is void: this ochre is a dark bronze.
 
 // ── Surfaces ───────────────────────────────────────────────────────────────
 // Three tiers, all light. Bone carries a green bias rather than a cream, which
