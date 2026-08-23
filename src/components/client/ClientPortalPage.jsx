@@ -176,8 +176,77 @@ export default function ClientPortalPage() {
               <Tab label="Certificate" />
             </Tabs>
 
+            {/* Delivery leads. This tab used to open with Funder / Sanctioned /
+                Status / Start / End and nothing else -- five facts the funder
+                already knew, on the one screen where they decide whether to
+                renew. What was actually delivered sat two tabs away.
+
+                NEVER SUM ACROSS UNITS. 26 trials and 120 coaches is not 146 of
+                anything; trials are events and coaches are people. Each
+                deliverable keeps its own line and its own unit, the same rule
+                CSRDashboard states for the internal side. There is deliberately
+                no total here, and no percentage across deliverables.
+
+                Everything below comes from data the portal already fetches. No
+                utilisation figure appears: financials are excluded from the
+                funder payload by isolation policy, and adding one is a policy
+                change with an allowlist serializer attached, not a UI edit. */}
             {tab === 0 && (
               <Box>
+                <Typography variant="overline" color="text.secondary">
+                  Delivered so far
+                </Typography>
+                {deliverables.length === 0 ? (
+                  <Typography color="text.secondary" sx={{ py: 1, maxWidth: '52ch' }}>
+                    {activities.length > 0
+                      ? `${activities.length} activit${activities.length === 1 ? 'y has' : 'ies have'} been recorded under this grant. Once the grant agreement is loaded, what was promised is tracked here against what has been delivered.`
+                      : 'Nothing has been recorded against this grant yet. Activities and delivery progress appear here as they happen.'}
+                  </Typography>
+                ) : (
+                  <Stack spacing={2.5} sx={{ mt: 1.5 }}>
+                    {deliverables.map((d) => {
+                      const percent = deliverablePercent(d);
+                      return (
+                        <Box key={d.id}>
+                          <Stack
+                            direction="row" spacing={2}
+                            sx={{ alignItems: 'baseline', justifyContent: 'space-between' }}
+                          >
+                            <Typography variant="body1">{d.title}</Typography>
+                            <Typography variant="h6" component="p" sx={{ whiteSpace: 'nowrap' }}>
+                              {d.completedCount ?? 0}
+                              <Typography component="span" variant="body2" color="text.secondary">
+                                {d.targetCount != null ? ` of ${d.targetCount}` : ''}
+                              </Typography>
+                            </Typography>
+                          </Stack>
+                          {percent != null && (
+                            <LinearProgress
+                              variant="determinate"
+                              value={percent}
+                              aria-label={`Progress for ${d.title}`}
+                              sx={{ mt: 0.75, height: 6, borderRadius: 3 }}
+                            />
+                          )}
+                        </Box>
+                      );
+                    })}
+                  </Stack>
+                )}
+
+                <Stack direction="row" spacing={4} flexWrap="wrap" useFlexGap sx={{ mt: 3 }}>
+                  <Field
+                    label="Activities recorded"
+                    value={activities.length ? String(activities.length) : '—'}
+                  />
+                  <Field
+                    label="Reports available"
+                    value={reports.length ? String(reports.length) : '—'}
+                  />
+                </Stack>
+
+                <Divider sx={{ my: 2.5 }} />
+
                 <Stack direction="row" spacing={4} flexWrap="wrap" useFlexGap>
                   <Field label="Funder" value={project.clientName} />
                   <Field label="Sanctioned" value={`₹${Number(project.sanctionedAmount || 0).toLocaleString('en-IN')}`} />
