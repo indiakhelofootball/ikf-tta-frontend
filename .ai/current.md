@@ -1,6 +1,6 @@
 # Current — what is in flight
 
-**Last verified: 2026-08-22.** If that date is more than
+**Last verified: 2026-08-23.** If that date is more than
 a few days old, treat every line below as a claim to re-check, not as fact.
 
 **This file deliberately holds no git state.** Branch, HEAD, dirty files and
@@ -27,7 +27,14 @@ purpose**, matching the precedent that root trackers are not committed.
 | repo | branch | commits |
 |---|---|---|
 | frontend | `fix/tracker-issues-2026-08-21` | 9 |
-| backend | `fix/tracker-issues-2026-08-21` | 9 |
+| backend | `csr/catalog` | 9 tracker + 1 catalog |
+
+**The backend branch names no longer match the frontend's, and that is fine.**
+`tta_backend/` in this folder is checked out on `csr/catalog`, not on
+`fix/tracker-issues-2026-08-21`. Measured 2026-08-23:
+`git merge-base --is-ancestor e196a6d csr/catalog` passes, so `csr/catalog` is a
+**superset** — all 9 tracker commits plus `d40634e`. Nothing is stranded. If you
+want the tracker work alone, that branch still sits at `e196a6d`.
 
 Suites at close: **608 backend · 288 frontend, all green.**
 
@@ -147,38 +154,65 @@ the consumer. TTA owns the catalog.
   pickers, reading the catalogs through `adminStorage` as **read-only getters**
   (`getWorkshopNames`, `getTrainingProgrammes` — deliberately no `save*` pair).
 
-### What is left, and it is all in this tree
+### All three items are BUILT — 2026-08-24, on branches, nothing pushed
 
-1. **Admin UI for the two new catalogs.** `AdminPage.jsx` + `adminStorage.js`.
-   The read path and the cache keys already exist; what is missing is the
-   editor and the `saveWorkshopNames` / `saveTrainingProgrammes` writers. Follow
-   the `courier_item` pattern — same shape, same `configAPI.bulk` call.
+1. **Admin UI for the two catalogs.** Done, this tree. `adminStorage.js` gains
+   `workshop_name` / `training_programme` with getters, savers and name helpers;
+   `AdminPage.jsx` gains two `OptionPanel`s in the CSR section.
 
-2. **`partner_category` has no frontend at all.** Backend `915c6b2` shipped
-   `Vendor.partner_category` and the config category on 2026-08-19 and **nothing
-   in `src/` ever consumed either** — grep returns zero hits. So today there is
-   no way to create a partner category and no way to flag a vendor with one.
-   Needs the catalog editor plus an input on the vendor form
-   (`src/components/vendors/`). Until it exists, the CSR workshop-partner picker
-   is correct and permanently empty.
+   **Both panels are wired to `configAPI.rename`, and that is load-bearing.**
+   `CSRActivity.workshop` and `.training_programme` are ForeignKeys to the
+   `ConfigOption` row (`csr/models.py:178-193`). The ordinary save path does not
+   rename anything — `saveCategory` drops the old id and re-adds the new name,
+   `configAPI.bulk` is a `get_or_create` on `(category, value)`
+   (`config/views.py:334`), and the config delete is a SOFT delete
+   (`views.py:252`). So an edit through the plain path would have produced no
+   error, no PROTECT failure, and an activity still pointing at a now-inactive
+   row carrying the old name. `AdminPage.csrCatalogs.test.jsx` pins this: a
+   rename calls the endpoint and never calls delete.
 
-3. **A CSR operator cannot read `/api/vendors/`** — internal RBAC is grant-based
-   and a CSR_OPS user holds no `vendors` grant (measured 2026-08-19; the picker
-   degrades to empty and says so rather than breaking). Granting them the vendor
-   module would be wrong: **"Vendor management tab" is listed out of scope for
-   CSR in all three agreed documents.** The right shape is a narrow read-only
-   endpoint — partner-category vendors only, id and name and category — not
-   access to the vendor module. That is a backend decision, flagged not taken.
+2. **`partner_category` frontend.** Done, this tree. A "Partner Categories"
+   panel in the Vendors section (renaming cascades to vendors, which already
+   existed backend-side at `config/views.py:111`), and a "CSR PARTNER" select on
+   `VendorModal`. `handleSubmit` spreads `formData`, so no payload change was
+   needed, and `VendorSerializer` is the only vendor serializer — list and
+   detail both carry `partnerCategory`.
 
-**Sequence that works:** 2 before 1 before 3. Item 2 unblocks the picker that
-already ships; item 3 only matters once real partner vendors exist.
+3. **The narrow partner-vendor endpoint.** Done, backend + CSR frontend.
+   `GET /api/csr/partner-vendors/` — `CSRPartnerVendorViewSet`, read-only,
+   gated by `ReadCatalogPermission` (the same permission the activity-type
+   catalog already uses), returning `id`, `vendorName`, `partnerCategory` and
+   nothing else. The vendors module was NOT granted to CSR; "vendor management
+   tab" stays out of scope, as all three agreed documents require.
+
+   Its queryset excludes `partner_category__regex=r'^\s*$'`, not just `''`,
+   because the write path tests `.strip()` — excluding only the empty string
+   would have offered a whitespace-only vendor in the picker and had the save
+   refuse it. A test pins that, and fails if the queryset is loosened.
+
+   `CSRActivityModal` now reads `csrAPI.partnerVendors.getAll()`; the
+   client-side partner filter is gone, and a test asserts `vendorsAPI.getAll` is
+   never called.
+
+**Suites after all three:** 297 frontend (this tree) · 621 backend · 170 CSR
+worktree. All green, all reverse-checked by backing each change out.
 
 ### Also worth knowing
 
 `Q3` in the design review is still open and is now reachable: *"Trainings run
 for months. The one-upload model does not fit."* Naming a training programme
-makes the multi-month case concrete, so the report-cadence question lands the
-moment item 1 ships.
+makes the multi-month case concrete, so the report-cadence question is now live
+rather than hypothetical. It is an owner decision, not a code gap.
+
+**The CSR worktree's palette retune is committed, and its numbers were checked
+independently rather than taken from the diff.** All six inks sit at one
+lightness; measured against bone / card / sunk / white / own tint the worst
+pairing in the whole set is 5.28, and every value in the source comments
+reproduced exactly. The smoke test moved to the new moss. One assertion was
+DELETED rather than updated: `ratio(moss, '#F3F8F5') >= 4.5` compared against a
+ground this module does not paint, and white is lighter than bone, so a
+white-on-fill check can never fail where the text-on-bone check passes. It read
+as coverage without being any.
 
 ---
 
