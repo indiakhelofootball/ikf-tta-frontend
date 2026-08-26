@@ -85,6 +85,34 @@
   overflow-x: hidden;
 }
 
+/* Section labels and their collapsed stand-in — see NavSection in
+   SidebarFrame.jsx. #6B7280 measures 4.83 on the white rail; the CSR rail is a
+   tinted gradient and overrides this to its own measured #4E5A54. */
+.sidebar-section {
+  padding: 1.125rem 1.25rem 0.375rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: #6B7280;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.sidebar-nav > .sidebar-section:first-child {
+  padding-top: 0.25rem;
+}
+
+.sidebar-section-rule {
+  height: 1px;
+  margin: 0.625rem 0.875rem;
+  background: #E5E7EB;
+}
+
+.sidebar-nav > .sidebar-section-rule:first-child {
+  display: none;
+}
+
 /* Build stamp */
 .sidebar-build {
   flex-shrink: 0;

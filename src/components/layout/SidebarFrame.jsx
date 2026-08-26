@@ -60,6 +60,20 @@ export function NavItem({ to, icon, label, end, collapsed, forceActive }) {
   );
 }
 
+// A nav rail of flat peers has no shape. CSR's eight items put the five
+// screens an operator lives in on the same footing as the three catalogs an
+// admin edits once a quarter, so the rail reads as a bag of links rather than
+// as a place with rooms. A section says which is which.
+//
+// It has to survive collapse, where there is no room for a word: at 64px the
+// label is replaced by the rule alone, so the grouping is still drawn even when
+// it cannot be named. Rendering nothing there would make the collapsed rail a
+// flat list again — the state a user spends most of their day in.
+export function NavSection({ label, collapsed }) {
+  if (collapsed) return <div className="sidebar-section-rule" role="presentation" />;
+  return <div className="sidebar-section">{label}</div>;
+}
+
 export default function SidebarFrame({ collapsed, onToggle, title, subtitle, mark, children }) {
   return (
     <aside className={`sidebar ${collapsed ? 'sidebar-collapsed' : ''}`}>

@@ -125,6 +125,13 @@ const csrDocumentStyles = (
       '.sidebar-brand span': { color: '#4E5A54', letterSpacing: '0.14em' },
       '.sidebar-brand-icon': { color: inks.moss.text },
 
+      // Section labels. #6B7280 is the shared default and measures 4.44 at the
+      // rail's foot — the same near-miss the design system calls out on tinted
+      // grounds. #4E5A54 is the rail's documented resting-label colour and
+      // holds 4.84 / 5.52 across the whole sweep.
+      '.sidebar-section': { color: '#4E5A54' },
+      '.sidebar-section-rule': { backgroundColor: RAIL_EDGE },
+
       '.sidebar-toggle': {
         backgroundColor: 'transparent',
         borderBottom: `1px solid ${RAIL_EDGE}`,
