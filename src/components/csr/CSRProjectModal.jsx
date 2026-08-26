@@ -4,7 +4,6 @@ import {
   TextField, MenuItem, Button, Stack, Autocomplete,
 } from '@mui/material';
 
-import { workOrdersAPI } from '../../services/api';
 import { getProjectNames } from '../../utils/adminStorage';
 import useConfigVersion from '../../hooks/useConfigVersion';
 import { SEASONS } from '../trials/trialConstants';
@@ -13,14 +12,13 @@ const STATUS_OPTIONS = ['Active', 'Closed'];
 
 const EMPTY = {
   name: '', clientName: '', sanctionedAmount: '',
-  startDate: '', endDate: '', status: 'Active', description: '', workOrderId: '',
+  startDate: '', endDate: '', status: 'Active', description: '',
   projectRefId: '', season: '',
 };
 
 export default function CSRProjectModal({ open, project, onClose, onSave, saving }) {
   const [form, setForm] = useState(EMPTY);
   const [errors, setErrors] = useState({});
-  const [workOrders, setWorkOrders] = useState([]);
 
   useEffect(() => {
     if (project) {
@@ -32,7 +30,6 @@ export default function CSRProjectModal({ open, project, onClose, onSave, saving
         endDate: project.endDate || '',
         status: project.status || 'Active',
         description: project.description || '',
-        workOrderId: project.workOrderId ?? '',
         projectRefId: project.projectRefId ?? '',
         season: project.season || '',
       });
@@ -41,15 +38,6 @@ export default function CSRProjectModal({ open, project, onClose, onSave, saving
     }
     setErrors({});
   }, [project, open]);
-
-  useEffect(() => {
-    if (!open) return;
-    let active = true;
-    workOrdersAPI.getAll()
-      .then((data) => { if (active) setWorkOrders(Array.isArray(data) ? data : data?.results || []); })
-      .catch(() => { if (active) setWorkOrders([]); });
-    return () => { active = false; };
-  }, [open]);
 
   // Sync getter + version subscription, the documented way admin-managed
   // dropdowns are consumed. Seeded rows carry synthetic string ids that are not
@@ -84,14 +72,10 @@ export default function CSRProjectModal({ open, project, onClose, onSave, saving
       description: form.description.trim(),
       startDate: form.startDate || null,
       endDate: form.endDate || null,
-      workOrderId: form.workOrderId === '' ? null : Number(form.workOrderId),
       projectRefId: form.projectRefId === '' ? null : Number(form.projectRefId),
       season: form.season,
     });
   };
-
-  const woLabel = (wo) => `${wo.workOrderNumber || `#${wo.id}`}${wo.vendorName ? ` — ${wo.vendorName}` : ''}`;
-  const selectedWO = workOrders.find((w) => w.id === Number(form.workOrderId)) || null;
 
   // A saved reference whose catalog row has not arrived yet (or is no longer
   // offered) still has to render as itself. Falling back to the server's
@@ -165,16 +149,6 @@ export default function CSRProjectModal({ open, project, onClose, onSave, saving
               ))}
             </TextField>
           </Stack>
-          <Autocomplete
-            options={workOrders}
-            value={selectedWO}
-            getOptionLabel={woLabel}
-            isOptionEqualToValue={(o, v) => o.id === v.id}
-            onChange={(e, opt) => setForm((f) => ({ ...f, workOrderId: opt ? opt.id : '' }))}
-            renderInput={(params) => (
-              <TextField {...params} label="Work Order (optional)" helperText="Link the contract work order." />
-            )}
-          />
         </Stack>
       </DialogContent>
       <DialogActions>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Typography, Divider, Stack, Link, Chip, Tooltip } from '@mui/material';
+import { Box, Typography, Divider, Stack, Chip, Tooltip } from '@mui/material';
 import { Lock as LockIcon } from '@mui/icons-material';
 
 import { certificateFreezeState } from './csrContractRules';
@@ -28,10 +28,6 @@ export default function CSRProjectDetailView({ project }) {
     project.sanctionedAmount != null
       ? `₹${Number(project.sanctionedAmount).toLocaleString('en-IN')}`
       : '—';
-  const woLabel = [
-    project.workOrderNumber || `#${project.workOrderId}`,
-    project.workOrderVendorName,
-  ].filter(Boolean).join(' — ');
   const freeze = certificateFreezeState(project);
   const identity = ttaProjectIdentity(project);
 
@@ -56,22 +52,6 @@ export default function CSRProjectDetailView({ project }) {
         <Field label="Status" value={project.status} />
         <Field label="Start" value={project.startDate} />
         <Field label="End" value={project.endDate} />
-        <Field label="Work Order" value={project.workOrderId ? woLabel : ''} />
-        <Field label="Contract">
-          {project.workOrderContractLink ? (
-            <Link
-              variant="body2"
-              underline="hover"
-              href={project.workOrderContractLink}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Open contract ↗
-            </Link>
-          ) : (
-            <Typography variant="body2">—</Typography>
-          )}
-        </Field>
         <Field label="Certificate">
           <Tooltip title={freeze.description}>
             <Chip
