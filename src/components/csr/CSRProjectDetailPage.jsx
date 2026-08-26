@@ -375,12 +375,16 @@ export default function CSRProjectDetailPage() {
                   key={c.id}
                   secondaryAction={editable && (
                     <>
-                      <IconButton size="small" onClick={() => setContactModal({ open: true, editing: c })}>
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton size="small" onClick={() => deleteContact(c)}>
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
+                      <Tooltip title="Edit">
+                        <IconButton size="small" onClick={() => setContactModal({ open: true, editing: c })} aria-label={`Edit contact ${c.name}`}>
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Delete">
+                        <IconButton size="small" onClick={() => deleteContact(c)} aria-label={`Delete contact ${c.name}`}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
                     </>
                   )}
                 >
@@ -414,12 +418,16 @@ export default function CSRProjectDetailPage() {
                   key={a.id}
                   secondaryAction={editable && (
                     <>
-                      <IconButton size="small" onClick={() => setActivityModal({ open: true, editing: a })}>
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton size="small" onClick={() => deleteActivity(a)}>
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
+                      <Tooltip title="Edit">
+                        <IconButton size="small" onClick={() => setActivityModal({ open: true, editing: a })} aria-label={`Edit activity ${a.title}`}>
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Delete">
+                        <IconButton size="small" onClick={() => deleteActivity(a)} aria-label={`Delete activity ${a.title}`}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
                     </>
                   )}
                 >
@@ -457,12 +465,16 @@ export default function CSRProjectDetailPage() {
                   key={r.id}
                   secondaryAction={editable && (
                     <>
-                      <IconButton size="small" onClick={() => setReportModal({ open: true, editing: r })}>
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton size="small" onClick={() => deleteReport(r)}>
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
+                      <Tooltip title="Edit">
+                        <IconButton size="small" onClick={() => setReportModal({ open: true, editing: r })} aria-label={`Edit report ${r.fileName}`}>
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Delete">
+                        <IconButton size="small" onClick={() => deleteReport(r)} aria-label={`Delete report ${r.fileName}`}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
                     </>
                   )}
                 >
@@ -583,13 +595,15 @@ export default function CSRProjectDetailPage() {
                   // owner tests as super-admin. The server rule is the correct
                   // one; the button was the bug.
                   secondaryAction={isSuper && (
-                    <IconButton
-                      size="small"
-                      onClick={() => deleteExpense(x)}
-                      title="Remove tag (super-admin only — tags are audit-bound)"
-                    >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
+                    <Tooltip title="Remove tag (super-admin only — tags are audit-bound)">
+                      <IconButton
+                        size="small"
+                        onClick={() => deleteExpense(x)}
+                        aria-label={`Remove tag ${x.paymentLabel || 'Manual'}`}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
                   )}
                 >
                   <ListItemText primary={x.paymentLabel || 'Manual'} secondary={x.note || null} />

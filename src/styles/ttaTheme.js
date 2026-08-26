@@ -134,6 +134,10 @@ const TEXT_SECONDARY = '#4E5A54';  // darkened from the mockup's #5C6A63, which
                                    // scored 4.63 on sunk — inside the margin.
 const TEXT_MUTED = '#5C6A63';      // 4.99 / 5.47 — captions on bone and card
                                    // only, never on sunk.
+const NEUTRAL_GREY = '#98A199';    // 2.66 on white — fails AA as text, so it is
+                                   // never a badge glyph; a status with no fixed
+                                   // ink (activities, "active") gets a tinted
+                                   // chip carrying its OWN dark text instead.
 
 // ── Type ───────────────────────────────────────────────────────────────────
 // The single biggest lever, and the reason the previous pass read like an OS
@@ -143,10 +147,10 @@ const TEXT_MUTED = '#5C6A63';      // 4.99 / 5.47 — captions on bone and card
 // is what a utilisation ledger is. UI stays sans, because form labels, buttons
 // and table headers are controls rather than prose.
 //
-// Source Serif 4 is the production face and is NOT yet in the repo. Until it is
-// self-hosted the stack falls through to Constantia (Windows) and Georgia, both
-// of which have true tabular figures — so the layout is correct today and gets
-// sharper when the font lands, rather than breaking.
+// Source Serif 4 is the production face and is self-hosted from
+// src/assets/fonts/ (see fonts.css). Constantia and Georgia stay in the stack
+// as the fallback for the instant before the variable font loads — both have
+// true tabular figures, so the layout doesn't shift when it swaps in.
 const SERIF = "'Source Serif 4', Constantia, Georgia, 'Times New Roman', serif";
 const SANS = "'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif";
 
@@ -206,11 +210,11 @@ const ttaTheme = createTheme({
     error: { main: CLAY_TEXT, light: CLAY_T, dark: '#7E3D22', contrastText: '#FFFFFF' },
     success: { main: MOSS, light: MOSS_T, dark: '#1F5039', contrastText: '#F3F8F5' },
     grey: {
-      50: BONE, 100: HAIRLINE_SOFT, 200: HAIRLINE, 300: '#C7CCC3', 400: '#98A199',
+      50: BONE, 100: HAIRLINE_SOFT, 200: HAIRLINE, 300: '#C7CCC3', 400: NEUTRAL_GREY,
       500: TEXT_MUTED, 600: TEXT_SECONDARY, 700: '#3D4842', 800: '#2B342E', 900: TEXT_PRIMARY,
     },
     background: { default: BONE, paper: CARD },
-    text: { primary: TEXT_PRIMARY, secondary: TEXT_SECONDARY, disabled: '#98A199' },
+    text: { primary: TEXT_PRIMARY, secondary: TEXT_SECONDARY, disabled: NEUTRAL_GREY },
     divider: HAIRLINE,
   },
 
@@ -278,7 +282,7 @@ const ttaTheme = createTheme({
           transition: t(['background-color', 'border-color', 'color', 'box-shadow']),
           '&:hover': { boxShadow: 'none' },
           '&:active': { transform: 'translateY(1px)' },
-          '&.Mui-disabled': { backgroundColor: SUNK, color: '#98A199' },
+          '&.Mui-disabled': { backgroundColor: SUNK, color: NEUTRAL_GREY },
         },
         sizeSmall: { padding: '6px 14px', minHeight: 32, fontSize: '0.8125rem' },
         sizeLarge: { padding: '12px 24px', minHeight: 48, fontSize: '0.9375rem' },
@@ -479,6 +483,14 @@ export const surfaces = {
   hairline: HAIRLINE, hairlineSoft: HAIRLINE_SOFT,
 };
 
+// Text colours MUI's palette can't carry a third tier for, plus the neutral
+// grey used where a status has no fixed ink (see NEUTRAL_GREY above). Mirrors
+// `surfaces`' shape so both read the same way at a call site.
+export const text = {
+  primary: TEXT_PRIMARY, secondary: TEXT_SECONDARY, muted: TEXT_MUTED,
+  neutral: NEUTRAL_GREY,
+};
+
 // The six inks, for spines, split bars and anything MUI has no slot for.
 // `fill` is the solid ground white sits on, `accent` is the chroma-carrying
 // shape colour that must never go under white, `text` is legible on every
@@ -568,10 +580,7 @@ export const NEVER_ANIMATE = ['font-weight', 'letter-spacing', 'width', 'margin'
 // ---------------------------------------------------------------------------
 // STILL TO DO
 // ---------------------------------------------------------------------------
-// 1. Self-host Source Serif 4 (woff2, weights 400/600) and drop it in public/.
-//    Until then the serif stack falls through to Constantia/Georgia, which is
-//    correct but not the specified face.
-// 2. The CSR screens still lay out to the old rhythm. This file changes colour,
+// 1. The CSR screens still lay out to the old rhythm. This file changes colour,
 //    type and radius everywhere at once; the figure/unit hierarchy and the
 //    per-grant spines need applying per screen, starting with CSRDashboard.
 // ---------------------------------------------------------------------------

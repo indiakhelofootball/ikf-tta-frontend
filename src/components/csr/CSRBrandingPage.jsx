@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box, Container, Typography, Button, Stack, Snackbar, Alert, CircularProgress,
-  List, ListItem, ListItemText, IconButton, Chip,
+  List, ListItem, ListItemText, IconButton, Chip, Tooltip,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem,
 } from '@mui/material';
 import {
@@ -128,8 +128,16 @@ export default function CSRBrandingPage() {
               divider
               secondaryAction={(
                 <>
-                  <IconButton size="small" onClick={() => openEdit(r)}><EditIcon fontSize="small" /></IconButton>
-                  <IconButton size="small" onClick={() => remove(r)}><DeleteIcon fontSize="small" /></IconButton>
+                  <Tooltip title="Edit">
+                    <IconButton size="small" onClick={() => openEdit(r)} aria-label={`Edit branding ${r.displayName}`}>
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Delete">
+                    <IconButton size="small" onClick={() => remove(r)} aria-label={`Delete branding ${r.displayName}`}>
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
                 </>
               )}
             >

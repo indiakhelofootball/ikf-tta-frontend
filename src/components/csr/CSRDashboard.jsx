@@ -32,7 +32,7 @@ import {
 import { csrAPI } from '../../services/api';
 import useGrants from '../../auth/useGrants';
 import { ttaProjectIdentity } from './CSRProjectDetailView';
-import { surfaces, inks, figure, fonts, tabular, motion, reveal } from '../../styles/ttaTheme';
+import { surfaces, inks, text, figure, fonts, tabular, motion, reveal } from '../../styles/ttaTheme';
 
 const fmtINR = (n) => {
   const v = Number(n) || 0;
@@ -46,10 +46,10 @@ const GRANT_INKS = [inks.moss, inks.indigo, inks.teal];
 // Not every tile earns an ink. Activity and history carry no fixed meaning in
 // this system, so they take the neutral rather than borrowing a colour that
 // means something else — which is exactly how teal ended up on Activities.
-const NEUTRAL = { tint: surfaces.sunken, text: '#4E5A54', fill: '#98A199' };
+const NEUTRAL = { tint: surfaces.sunken, text: text.secondary, fill: text.neutral };
 // A solid badge with a white glyph needs the fill to clear 4.5:1 against white.
 // After the 21 Aug palette retune all six inks clear it comfortably (≥6.48,
-// ochre now 6.88 as a dark bronze), so only the NEUTRAL #98A199 (~2.0) still
+// ochre now 6.88 as a dark bronze), so only the NEUTRAL grey (2.66) still
 // fails and keeps the tinted badge with its own glyph.
 const badgeCarriesWhite = (ink) => ink !== NEUTRAL;
 const inkFor = (id) => {
@@ -189,7 +189,7 @@ function Promised({ title, done, target, ink }) {
           ...tabular, fontFamily: fonts.serif, fontSize: '0.9375rem',
           color: met ? inks.moss.text : 'text.primary', whiteSpace: 'nowrap',
         }}>
-          {done == null ? '—' : done}<span style={{ color: '#5C6A63' }}> / {target ?? '—'}</span>
+          {done == null ? '—' : done}<Box component="span" sx={{ color: text.muted }}> / {target ?? '—'}</Box>
         </Box>
       </Box>
       <Box sx={{ height: 4, borderRadius: 2, bgcolor: surfaces.sunken, overflow: 'hidden' }}>
