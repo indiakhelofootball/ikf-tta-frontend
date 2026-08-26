@@ -16,12 +16,13 @@ import {
   FilterList as FilterIcon,
 } from '@mui/icons-material';
 import { vendorsAPI } from '../../services/api';
-import { getVendorTypeNames, getEntityTypeNames, getFilteredVendorNames, getBankNamesList, getAccountTypesList } from '../../utils/adminStorage';
+import { getVendorTypeNames, getEntityTypeNames, getFilteredVendorNames, getBankNamesList, getAccountTypesList, getPartnerCategoryNames } from '../../utils/adminStorage';
 import useConfigVersion from '../../hooks/useConfigVersion';
 import { getStateFromPinCode, getCitiesForState, INDIAN_STATES } from '../../utils/pinCodeToState';
 
 const initialFormData = {
   vendorName: '', vendorType: '', companyType: '', entityName: '',
+  partnerCategory: '',
   gstNumber: '', panNumber: '',
   gstVerified: false, panVerified: false,
   contactPerson: '', phone: '', email: '', address: '', contactPinCode: '',
@@ -88,6 +89,7 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
     setFormData({
       vendorName: v.vendorName || '', vendorType: v.vendorType || '',
       companyType: v.companyType || '', entityName: v.entityName || '',
+      partnerCategory: v.partnerCategory || '',
       gstNumber: v.gstNumber || '', panNumber: v.panNumber || '',
       tdsType: v.tdsType || 'None',  gstVerified: v.gstVerified || false,
       panVerified: v.panVerified || false, contactPerson: v.contactPerson || '',
@@ -115,6 +117,7 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
   }, [searchServiceType, searchEntityType, cfgVersion]);
   const serviceTypeOptions = useMemo(() => getVendorTypeNames(), [cfgVersion]);
   const entityTypeOptions = useMemo(() => getEntityTypeNames(), [cfgVersion]);
+  const partnerCategoryOptions = useMemo(() => getPartnerCategoryNames(), [cfgVersion]);
 
   const filteredVendors = useMemo(() => {
     let pool = [...vendors];
@@ -207,7 +210,10 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
       vendorType: isEdit ? formData.vendorType : searchServiceType,
       companyType,
       entityName: showEntityName ? formData.entityName.trim() : '',
-      status: 'Verified',
+      // Creating through this form means verified. Editing does not: this modal
+      // has no status control, so stamping 'Verified' on every save silently
+      // re-verified any vendor whose phone or bank details were corrected.
+      status: isEdit ? (vendor?.status || 'Verified') : 'Verified',
     };
     if (panCardImage) {
       data.panCardImageName = panCardImage.name;
@@ -415,6 +421,25 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
               </Box>
             </>
           )}
+
+          {/* ── CSR PARTNER ── */}
+          <Typography variant="subtitle2" sx={sectionSx}>CSR PARTNER</Typography>
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="caption" sx={lSx}>Partner Category</Typography>
+            <FormControl fullWidth size="small" disabled={!formActive || partnerCategoryOptions.length === 0}>
+              <Select value={formData.partnerCategory} onChange={handleChange('partnerCategory')}
+                displayEmpty renderValue={(v) => v || <em style={{ color: '#5A6B82' }}>Not a CSR partner</em>}
+                sx={selectSx} MenuProps={menuMaxH}>
+                <MenuItem value=""><em>Not a CSR partner</em></MenuItem>
+                {partnerCategoryOptions.map(t => <MenuItem key={t} value={t} sx={{ fontSize: '0.85rem' }}>{t}</MenuItem>)}
+              </Select>
+            </FormControl>
+            <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: '#64748b' }}>
+              {partnerCategoryOptions.length === 0
+                ? 'No partner categories exist yet. An admin adds them under Admin Settings, Vendors.'
+                : 'Only vendors carrying a category can be named as the partner who ran a CSR workshop.'}
+            </Typography>
+          </Box>
 
           {/* ── DOCUMENTS ── */}
           <Typography variant="subtitle2" sx={sectionSx}>DOCUMENTS</Typography>

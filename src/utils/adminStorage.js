@@ -14,8 +14,7 @@ const CATEGORY_MAP = {
   bankNames: 'bank_name',
   accountTypes: 'account_type',
   courierItems: 'courier_item',
-  // CSR activity catalogs. Read-only here: the agreed spec puts their
-  // maintenance in TTA Admin -> Setup, and CSR only picks from them.
+  partnerCategories: 'partner_category',
   workshopNames: 'workshop_name',
   trainingProgrammes: 'training_programme',
 };
@@ -31,6 +30,7 @@ const _cache = {
   bankNames: null,
   accountTypes: null,
   courierItems: null,
+  partnerCategories: null,
   workshopNames: null,
   trainingProgrammes: null,
 };
@@ -49,6 +49,7 @@ const _status = {
   bankNames: 'idle',
   accountTypes: 'idle',
   courierItems: 'idle',
+  partnerCategories: 'idle',
   workshopNames: 'idle',
   trainingProgrammes: 'idle',
 };
@@ -62,8 +63,11 @@ const DEFAULTS = {
   bankNames: ['IDFC First Bank'],
   accountTypes: ['Savings', 'Current'],
   courierItems: [],
-  // No seeds. A workshop name is a real catalog entry an admin created; a
-  // made-up default would be offered to an operator as if it existed.
+  // No seed. A partner category is a real classification an admin defined; a
+  // made-up default would flag vendors into a category nobody agreed to.
+  partnerCategories: [],
+  // No seeds, for the same reason. A workshop name is a real entry an admin
+  // created; a default would offer CSR something that never happened.
   workshopNames: [],
   trainingProgrammes: [],
 };
@@ -302,17 +306,50 @@ export function getCourierItemNames() {
   return getCourierItems().map(item => item.name);
 }
 
-// CSR reads these two; it never writes them. There is deliberately no
-// saveWorkshopNames/saveTrainingProgrammes here -- the catalog is maintained in
-// TTA Admin -> Setup, per CSR_VISUAL_FLOW (1).pdf s2a: "The CSR app reads this
-// catalog at runtime; it does not edit it."
+// Partner categories classify a vendor as a CSR delivery partner. CSR reads the
+// flag off the vendor; only this catalog and the vendor form write it.
+export function getPartnerCategories() {
+  return getFromCache('partnerCategories');
+}
 
+export function savePartnerCategories(list) {
+  return saveCategory('partnerCategories', CATEGORY_MAP.partnerCategories, list);
+}
+
+export function getPartnerCategoryNames() {
+  return getPartnerCategories().map(item => item.name);
+}
+
+// The two CSR activity catalogs. TTA owns them; CSR only reads them, so the
+// save pair below exists here and deliberately does not exist in the CSR app.
+//
+// A rename of either MUST go through configAPI.rename, not through this save
+// path. CSRActivity.workshop and .training_programme are ForeignKeys to the
+// ConfigOption row, and saveCategory renames by removing the old id and
+// re-adding the new name, which would leave the activity pointing at the old
+// row. AdminPage wires onRename for exactly this reason.
 export function getWorkshopNames() {
   return getFromCache('workshopNames');
 }
 
+export function saveWorkshopNames(list) {
+  return saveCategory('workshopNames', CATEGORY_MAP.workshopNames, list);
+}
+
+export function getWorkshopNameList() {
+  return getWorkshopNames().map(item => item.name);
+}
+
 export function getTrainingProgrammes() {
   return getFromCache('trainingProgrammes');
+}
+
+export function saveTrainingProgrammes(list) {
+  return saveCategory('trainingProgrammes', CATEGORY_MAP.trainingProgrammes, list);
+}
+
+export function getTrainingProgrammeList() {
+  return getTrainingProgrammes().map(item => item.name);
 }
 
 // ── Helper: return just name strings ─────────────────────────────────

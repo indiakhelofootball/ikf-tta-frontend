@@ -28,6 +28,7 @@ import {
 } from '@mui/icons-material';
 import { State, City } from 'country-state-city';
 import { trialsAPI, repAPI } from '../../services/api';
+import { buildAddModePayload } from './repMergePayload';
 import { getStateFromPinCode } from '../../utils/pinCodeToState';
 
 // Set of "state|city" keys for cities already assigned to a REP
@@ -515,8 +516,24 @@ function REPModal({ open, onClose, onSave, editingREP }) {
         if (repLogo)     { repData.repLogoName = repLogo.name; repData.repLogoUrl = repLogoPreview; }
         await onSave(repData);
       } else {
-        // Add mode: org + assignment
-        const repData = { ...orgData };
+        // Add mode: org + assignment.
+        // `orgData` seeds every untouched field to '' (repLogoLink is never
+        // prefilled by the name search at all), and when the name matches an
+        // existing org the backend merges onto that row — so shipping the whole
+        // object wiped the stored logo link and MOU status each time a city was
+        // added. Blanks therefore cannot be sent wholesale.
+        //
+        // But they cannot be dropped wholesale either. Once the name search has
+        // prefilled a field from the matched org, emptying that box IS a
+        // deliberate clear, and the backend honours a blank the caller actually
+        // sent. Dropping every blank would silently discard that edit — trading
+        // one bug for another.
+        //
+        // So: keep a blank only where the matched org holds a value for that
+        // field, which is exactly when clearing it means something. With no
+        // match, nothing exists to clear and every blank is dropped.
+        // Rule and reasoning live in ./repMergePayload so they can be tested.
+        const repData = buildAddModePayload(orgData, existingRep);
         if (mouDocument) { repData.mouDocumentName = mouDocument.name; repData.mouDocumentUrl = mouDocumentPreview; }
         if (repLogo) { repData.repLogoName = repLogo.name; repData.repLogoUrl = repLogoPreview; }
 
@@ -609,6 +626,12 @@ function REPModal({ open, onClose, onSave, editingREP }) {
       physicalAddress: a.physicalAddress || '',
       googleMapLink: a.googleMapLink || '',
       pinCode: a.pinCode || '',
+      // Without this the edit form opens with a blank Ground Name and saves the
+      // blank back over a stored one. Same trap the logo fields fell into.
+      groundLocation: a.groundLocation || '',
+      // The update is partial=True, so an absent reportingTime is not wiped --
+      // but a controlled TextField needs a seeded value or it opens uncontrolled.
+      reportingTime: a.reportingTime || '',
       groundContactName: a.groundContactName || '',
       groundContactPhone: a.groundContactPhone || '',
     });
@@ -1228,6 +1251,14 @@ function REPModal({ open, onClose, onSave, editingREP }) {
                     disabled={saving || !canFillForm} />
                 </Box>
                 <Box sx={{ gridColumn: '1 / -1' }}>
+                  <Typography sx={labelSx}>Ground Name</Typography>
+                  <TextField fullWidth placeholder="e.g., Nehru Stadium"
+                    value={assignmentData.groundLocation}
+                    onChange={handleAssignmentChange('groundLocation')}
+                    helperText="What the venue is called. This is the Venue column on the Trials Report"
+                    disabled={saving || !canFillForm} />
+                </Box>
+                <Box sx={{ gridColumn: '1 / -1' }}>
                   <Typography sx={labelSx}>Ground Address</Typography>
                   <TextField fullWidth multiline minRows={2}
                     placeholder="Complete ground / stadium address"
@@ -1489,6 +1520,13 @@ function renderGroundSection(data, onChange, saving, labelSx, secHeaderSx, error
             disabled={saving} error={!!errors?.pinCode} helperText={errors?.pinCode || '6-digit PIN (e.g. 400001)'} />
         </Box>
         <Box>
+          <Typography sx={labelSx}>Reporting Time</Typography>
+          <TextField fullWidth size="small" type="time" value={data.reportingTime}
+            onChange={onChange('reportingTime')} disabled={saving}
+            InputLabelProps={{ shrink: true }}
+            helperText="When players report at the ground" />
+        </Box>
+        <Box>
           <Typography sx={labelSx}>Ground Contact</Typography>
           <TextField fullWidth size="small" value={data.groundContactName}
             onChange={onChange('groundContactName')} disabled={saving}
@@ -1500,6 +1538,12 @@ function renderGroundSection(data, onChange, saving, labelSx, secHeaderSx, error
             onChange={(e) => onChange('groundContactPhone')({ target: { value: e.target.value.replace(/\D/g, '').slice(0,10) } })}
             disabled={saving} error={!!errors?.groundContactPhone}
             helperText={errors?.groundContactPhone || '10-digit mobile (starts with 6-9)'} />
+        </Box>
+        <Box sx={{ gridColumn: '1 / -1' }}>
+          <Typography sx={labelSx}>Ground Name</Typography>
+          <TextField fullWidth size="small" value={data.groundLocation}
+            onChange={onChange('groundLocation')} disabled={saving}
+            helperText="What the venue is called, e.g. Nehru Stadium. This is the Venue column on the Trials Report" />
         </Box>
         <Box sx={{ gridColumn: '1 / -1' }}>
           <Typography sx={labelSx}>Ground Address</Typography>

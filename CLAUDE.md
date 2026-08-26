@@ -11,6 +11,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Never combine frontend + backend commits.** Two separate repos sharing one folder; `tta_backend/` is in the frontend's `.gitignore`.
 - **Confirm intent before coding** when the user describes a feature/bug. One-sentence restatement, wait for ack.
 - **Don't propose changes to code you haven't read.** Open the file first.
+- **Read `.ai/` before proposing changes.** `vision.md` (product boundaries that must not break) · `design.md` (why the architecture is what it is, and the deploy traps) · `design-system.md` (the three theme scopes, with measured contrast) · `current.md` (what is in flight) · `pending.md` (questions awaiting the owner). Where `.ai/` and this file disagree, **this file wins**.
+- **Never hand-write current state into a memory index.** It rots and is then read as fact. In-flight work goes in `.ai/current.md`; live git state is computed by `.claude/hooks/session_start.py`.
 
 ## Repository layout
 
@@ -25,7 +27,7 @@ This directory contains **two independent repos** that share a local folder:
 
 ```bash
 npm start           # dev server (http://localhost:3000)
-npm run build       # production build → deploy via deploy.bat
+npm run build       # local production build only — NOT the deploy artefact
 npm test            # run all tests (Jest / React Testing Library)
 npm test -- --testPathPattern=blkpayExcel   # run a single test file
 npm run lint        # eslint src/
@@ -33,7 +35,9 @@ npm run lint:fix    # eslint --fix
 npm run format      # prettier --write src/
 ```
 
-Deploy: run `npm run build` then double-click `deploy.bat` — it uploads the build via scp to the server. Nginx serves immediately.
+Deploy: **`deploy.bat` is retired** (2026-08-15) and there is no `scp` step. The frontend is built **inside the Docker image on the server**; your local `build/` is never uploaded. Read `_docs/deployment/DEPLOYMENT.md` before quoting any step.
+
+**Unresolved contradiction — check before deploying, do not assume either side.** `DEPLOYMENT.md` begins with `git pull` in both repos on the server. A measurement on the box (2026-08-17, hash-comparing the live containers against `origin/main`) found `/root/tta` is **not a git repo** — `git log` fails there and the files carry the Windows UID, i.e. it arrived as a tarball. If that still holds, step 1 of `DEPLOYMENT.md` cannot run and the image must be rebuilt from the source already on the box. Neither claim has been re-checked since; verify on the server first.
 
 ## Environment
 
@@ -82,8 +86,12 @@ Using MUI v7. Use `slotProps.input` instead of deprecated `InputProps`. For Auto
 
 ## Backend (tta_backend/)
 
-Django 3.2, DRF, SimpleJWT, MariaDB 10.1.48 (production). Production DB is `auth_db` — access with `mysql -u root auth_db`. Always use the full venv path: `/root/TTA/backend/venv/bin/python manage.py`.
+Django 3.2, DRF, SimpleJWT. **Production is MySQL 8.4 running natively on the host** `47.237.115.74`, reached from the backend container over `host.docker.internal`. DB name defaults to `auth_db` (`DB_NAME` in settings) — access on the box with `mysql -u root -p auth_db`.
+
+Backend commands run **inside the container**: `docker compose exec backend python manage.py <cmd>`. There is no venv on the server any more. `MariaDB 10.1.48`, `/root/TTA/backend/venv/bin/python` and `systemctl restart tta` are **old-box facts** that stopped being true at the 24 Jul 2026 move — see the "Old-box facts that no longer apply" section of `_docs/deployment/DEPLOYMENT.md`.
+
+Schema, every relationship and every unenforced reference: `.ai/schema-integrity.md`, with the drawn version at `E:\TTA_Study\TTA-Schema-and-Architecture-2026-08-21.pdf`.
 
 Apps: `accounts`, `trials`, `reps`, `trialcities`, `vendors`, `workorders`, `payments`, `config`, `courier`, `otp`.
 
-Backend deploy: push to GitHub, pull on server, run migrations, `sudo systemctl restart tta`.
+Backend deploy: same image-rebuild path as the frontend, not `systemctl`. `sudo systemctl restart tta` is an old-box fact — the same one this file already retires four paragraphs above. `_docs/deployment/DEPLOYMENT.md` is the source of truth.

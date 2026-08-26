@@ -85,25 +85,96 @@ without a CORS or mixed-content problem.
 
 ## Deploying
 
-Both repos are pulled on the server; the images are built there.
+> **`git pull` DOES NOT WORK ON THIS BOX. `/root/tta` is not a git repo.**
+> Confirmed on the server 2026-08-26: `git pull` there returns
+> `fatal: not a git repository`. The files arrived as a tarball on 2026-07-24
+> and carry the Windows UID `197609`. Every successful deploy since — 08-19 and
+> 08-26 — has been a file copy. The instructions that used to sit here told you
+> to pull; they were wrong for over a month. Pushing to GitHub does NOT deploy.
+
+### The method that works
+
+**Bundle ONLY `src/` and `tta_backend/backend/`.** Nothing else. See the warning
+below for why that is not optional.
 
 ```bash
-# on 47.237.115.74, in the directory holding docker-compose.yml
-#   (confirm it with: docker compose ls)
+# --- on your machine, both repos on the commit you are shipping ---
+mkdir -p /tmp/payload/tta_backend
+git archive --format=tar <FE_COMMIT> src | tar -x -C /tmp/payload
+(cd tta_backend && git archive --format=tar <BE_COMMIT> backend) | tar -x -C /tmp/payload/tta_backend
+tar -czf tta-<name>.tar.gz -C /tmp/payload .
 
-# 1. frontend repo
-git pull
+# git archive, NOT a manual copy: it emits exactly the committed tree, so it
+# cannot miss a new file. Copying only CHANGED files broke the 08-19 build --
+# two new imports were absent from the box.
 
-# 2. backend repo (separate repo, checked out at ./tta_backend)
-cd tta_backend && git pull && cd ..
+# verify before sending — any hit here means STOP
+find /tmp/payload -name ".env" -o -name "docker-compose.yml" -o -name "nginx.conf"      -o -name "Dockerfile" -o -name "package.json"
 
-# 3. rebuild + restart
-BUILD_ID=$(git rev-parse --short HEAD) docker compose up -d --build
-
-# 4. watch it come up
-docker compose ps
-docker compose logs -f --tail=100
+scp tta-<name>.tar.gz root@47.237.115.74:/root/     # from PowerShell, not PuTTY
 ```
+
+```bash
+# --- on 47.237.115.74 ---
+cp /root/tta/tta_backend/backend/.env /root/tta-env-backup-$(date +%F)   # FIRST
+cd /root && tar -czf tta-rollback-$(date +%F).tar.gz tta/src tta/tta_backend/backend
+cd /root/tta && tar -xzf /root/tta-<name>.tar.gz
+ls -la /root/tta/tta_backend/backend/.env        # must still be 380 bytes
+
+docker tag tta-frontend:latest tta-frontend:pre-<name>
+docker tag tta-backend:latest  tta-backend:pre-<name>
+
+docker compose up -d --build --no-deps backend frontend
+docker compose ps
+docker compose logs --tail=40 backend            # confirm migrations applied
+curl -s -o /dev/null -w "%{http_code}
+" http://127.0.0.1:8080/     # 200
+curl -s -o /dev/null -w "%{http_code}
+" http://127.0.0.1:8080/api/ # 401 = healthy
+```
+
+`--no-deps` matters: this box also runs `football`, `anant-site` and
+`scout-site`. Without it you risk moving someone else's app.
+
+### THE INFRASTRUCTURE FILES ON THE BOX DIFFER FROM GIT — DO NOT SHIP THEM
+
+The server's `docker-compose.yml` carries fixes that were never committed:
+
+```yaml
+    networks: [default, dbbridge]         # git has NEITHER of these
+networks:
+  dbbridge: {external: true, name: football_default}
+```
+
+That is the July cross-bridge fix. **Without it the backend cannot reach MySQL
+and the site goes down.** The static volume mount also differs
+(`/var/www/static` on the box vs `/staticfiles` in git).
+
+Before every deploy, check whether the release even touches them:
+
+```bash
+git diff --name-only <deployed>..<new> -- docker-compose.yml nginx.conf Dockerfile package.json
+```
+
+Empty output means a code-only bundle is safe. Any output means stop and
+reconcile by hand — the box's version is probably the correct one.
+
+### A failed build is safe
+
+The multi-stage build aborts before replacing the image, so the running
+containers keep serving. That is what happened on 08-19.
+
+### Rollback
+
+```bash
+docker tag tta-frontend:pre-<name> tta-frontend:latest
+docker tag tta-backend:pre-<name>  tta-backend:latest
+cd /root && tar -xzf tta-rollback-<date>.tar.gz
+cd /root/tta && docker compose up -d --no-deps backend frontend
+```
+
+`BUILD_ID` is a no-op here — the server's compose file has no such build arg
+(only the git copy does), so the sidebar hash stays `docker`.
 
 `BUILD_ID` is stamped into the UI so a running bundle can be identified in the field.
 `.git` is not in the frontend build context, so the hash cannot be read inside the

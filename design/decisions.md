@@ -4,14 +4,16 @@ The record of what was chosen, what was rejected, and why. Read this before
 proposing anything. Nothing here is deleted — decisions are superseded and
 kept.
 
-> **Store status — read this first.**
-> `DESIGN.md` at the repo root (17 Aug 2026) describes an **amber-primary**
-> system and is **partially superseded** by the Ledger direction below.
-> Until the entries marked `⚠ REASON MISSING` are filled in, this file is the
-> authority on colour and type; `DESIGN.md` remains the authority on
-> everything it covers that Ledger has not overturned.
-> Two records that disagree is the exact failure this file exists to prevent.
-> Resolving it is the highest-value thing on this page.
+> **Store status — resolved by scoping, 2026-08-20.**
+> `DESIGN.md` now declares its own scope in its frontmatter:
+> `governs: [tta-internal]`, `superseded_for: [csr]`. The two records no longer
+> claim the same territory — `DESIGN.md` governs `muiTheme.js` (TTA internal,
+> where amber survives), this file governs CSR colour and type, and
+> `clientTheme.js` governs the funder white-label.
+> Enumerated tokens for all three: **`.ai/design-system.md`**.
+> Reasons below were filled from `csr-design-direction` memory where one was
+> genuinely recorded. Where none was, the marker now states the exact question
+> instead — **an invented reason would be worse than a missing one.**
 
 ---
 
@@ -20,12 +22,17 @@ kept.
 **Decided** ~18 Aug 2026 · **Status** active
 **Supersedes** `DESIGN.md` "canvas: slate-50 `#F9FAFB`"
 
-**Because** ⚠ REASON MISSING — stated as settled during the Ledger direction,
-but the reasoning was never written down. Someone should add it; a decision
-whose reason is unrecorded gets overturned by the next confident opinion.
+**Because** ⚠ STILL UNRECORDED, and deliberately not invented on 2026-08-20 —
+searched `csr-design-direction` and the 18 Aug session; bone is asserted
+everywhere and argued nowhere.
+**The one question that closes this:** *why bone `#EFF1EC` rather than the
+slate-50 `#F9FAFB` it replaced — warmth, glare, print association, or simply
+that it suited the artwork?* One sentence from the owner is enough.
 
-**We rejected** ⚠ NOT RECORDED — if a dark-ground variant was considered and
-killed, say so here, otherwise it will be proposed again.
+**We rejected** slate-50 `#F9FAFB` (the `DESIGN.md` canvas). ⚠ Whether a
+dark-ground variant was considered is unrecorded — but see **D-004**, which
+kills the dark anchor outright, so a dark ground is already excluded by a
+separate decision.
 
 **Known drift — not yet fixed:**
 `src/index.js:11` imports `globals.css` globally, and it still paints the
@@ -41,24 +48,48 @@ old ground shows through.**
 **Decided** ~18 Aug 2026 · **Status** active
 **Supersedes** `DESIGN.md` §Colour (amber-50 → amber-900 ramp + slate scale)
 
-**Because** ⚠ REASON MISSING.
+**Because** the owner's amendment when choosing Ledger, verbatim: *"green
+colors need to change its shades a little bit and incorporate more color to
+break monotonity of same color."* One ink cannot carry a dashboard that has
+several different kinds of thing on it. The system that came out of it binds
+each ink to exactly one job so colour answers a question instead of decorating:
+**one ink may lead a screen; the rest appear only where their meaning applies.**
+Four accents on a screen means four kinds of thing are genuinely present.
 
-**We rejected** ⚠ NOT RECORDED.
+**We rejected** the `DESIGN.md` amber ramp + slate scale (one brand hue plus
+neutrals — the monotony the owner named), and directions **B Console** and
+**C Dispatch**, the two alternatives shown alongside Ledger on 18 Aug.
+Also rejected: letting identity and status share a hue. Grant identity cycles
+**moss → indigo → teal only**; ochre, clay and plum stay reserved for status,
+so no ink ever means two things on the same axis.
 
-> Six inks are asserted but not enumerated anywhere readable. **List the six
-> hexes and what each one means.** Until then no reviewer and no linter can
-> tell a system colour from drift, which makes this decision unenforceable.
+**Enumerated** — closed 2026-08-20, this was the gap that made the decision
+unenforceable. The six hexes, their text variants, tints and meanings are in
+**`.ai/design-system.md`**, derived from `src/styles/ttaTheme.js`, which wins on
+any conflict.
 
 ---
 
 ## D-003 · The display face is a serif
 
-**Decided** ~18 Aug 2026 · **Status** active — **not implemented**
+**Decided** ~18 Aug 2026 · **Status** active — **now implemented** (was "not
+implemented"; corrected 2026-08-20). `src/assets/fonts/SourceSerif4-var.woff2`
+is self-hosted and declared in `src/styles/fonts.css`. Before that, every serif
+in the product was Constantia wearing the name. **The drift note below predates
+the fix and has not been re-checked** — the font now loads, but whether any
+`h1`–`h4` actually appears on `/csr/login` is unverified.
 
-**Because** ⚠ REASON MISSING. Recorded elsewhere as the choice that
-distinguishes this system from any other green theme.
+**Because** it is the one choice that distinguishes this from any other green
+dashboard theme — recorded as such, though never argued in the owner's own
+words. Supporting fact: `ttaTheme.js` had named Source Serif 4 since it was
+written, so the serif was the intent from the start and only the *shipping* of
+it was outstanding.
+**The one question that closes this:** *is the serif carrying seriousness /
+ledger-book association, or was it chosen on looks?* That determines whether it
+may ever be swapped.
 
-**We rejected** ⚠ NOT RECORDED.
+**We rejected** ⚠ Unrecorded. Note the fallback chain that shipped —
+Constantia/Georgia — was a consequence, not a choice: no woff2 existed.
 
 **Known drift — not yet fixed:**
 The serif has never rendered on `/csr/login`. The heading is an `h6`,
@@ -75,11 +106,15 @@ production.
 **Supersedes** `DESIGN.md` §Depth, which specifies a `surface-inverse`
 (`ink-950`) tier and a dark nav rail.
 
-**Because** ⚠ REASON MISSING.
+**Because** the owner's direct instruction on 2026-08-18. That is the reason of
+record and no further rationale was given — but it was stated as a constraint,
+not a preference, and it is now **enforced by a test**: there is no
+`surfaces.inverse` in `ttaTheme.js` and the test fails if one appears.
 
-**We rejected** ⚠ NOT RECORDED — note that `DESIGN.md` argues *for* a dark
-rail. Since this reverses an earlier written decision, the reason matters more
-than usual.
+**We rejected** the `DESIGN.md` `surface-inverse` (`ink-950`) tier and its dark
+nav rail. ⚠ The *argument* against them was never recorded. Since this reverses
+an earlier written decision, ask the owner for one sentence before anyone
+proposes a dark rail again.
 
 ---
 
@@ -89,16 +124,24 @@ than usual.
 **Supersedes** `DESIGN.md` §Colour, in which amber is the brand and the
 primary action.
 
-**Because** ⚠ PARTIAL — the retirement itself is stated; its reason is not
-recorded. Related measured evidence from `DESIGN.md`'s own notes: the previous
-system had `warning.dark === primary.main`, so brand and warning spoke with
-one voice.
+**Because** amber collapses two meanings into one voice and cannot carry text.
+`DESIGN.md`'s own notes record `warning.dark === primary.main` — brand and
+warning speaking identically. And `muiTheme.js` measures the rest: `#FBBF24` is
+**1.60:1** on the page ground and `#D97706` **3.05:1**, both under the 4.5:1
+minimum; `#FBBF24` is under 3:1 even for tabs. A hue that must be darkened to
+`#A35905` before it can be read is a poor system colour. In Ledger its job —
+*waiting on you* — belongs to ochre, which needed the same treatment
+(`#A8791F` fill, `#866119` text) and is therefore never a button fill.
 
-**We rejected** ⚠ NOT RECORDED.
+**We rejected** keeping amber as CSR's primary action. It survives in
+`muiTheme.js` for TTA, which is why D-005 is a *scoping* decision and not a
+deletion.
 
-**Known drift — live in production, not a design opinion:**
+**Known drift — RE-VERIFIED 2026-08-20, still live in production:**
 `src/styles/globals.css` still carries the amber system, and it is imported
-globally:
+globally. Confirmed today: body is `var(--gray-50)`, `::selection` is
+`var(--yellow-200)`, and the scrollbar thumb is `var(--yellow-300)` /
+`var(--yellow-500)` on hover. Nothing below has been fixed:
 
 | Line | Rule | Value | Effect |
 |---|---|---|---|

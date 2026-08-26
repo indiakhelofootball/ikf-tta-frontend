@@ -24,6 +24,16 @@ const escapeCell = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
  * inside a quoted field unambiguous against the row separator.
  */
 export function buildCSV(rows) {
+  // Same shape guard as the xlsx writer, for the same reason: a row that is one
+  // cell short of the header shifts every later value one column left, and a
+  // CSV gives no hint that it happened. Row 0 is the header, so it sets the
+  // width every later row must match.
+  const width = Array.isArray(rows[0]) ? rows[0].length : 0;
+  const bad = rows.findIndex((r) => !Array.isArray(r) || r.length !== width);
+  if (bad !== -1) {
+    const got = Array.isArray(rows[bad]) ? rows[bad].length : 'a non-array';
+    throw new Error(`buildCSV: row ${bad} has ${got} cells but the header declares ${width}`);
+  }
   return rows.map((row) => row.map(escapeCell).join(',')).join('\r\n');
 }
 

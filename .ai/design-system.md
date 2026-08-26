@@ -38,14 +38,24 @@ break monotonity"* — which moved moss `#1F5F4B` → `#2C6A4F`.
 **Six inks, each with exactly one job.** (`design/decisions.md` D-002 asked for
 this enumeration; this is it.)
 
-| Ink | Fill | Text | Tint | Means |
-|---|---|---|---|---|
-| Moss | `#2C6A4F` | same | `#E1EBE4` | money utilised · primary action |
-| Indigo | `#33517F` | same | `#E3E8F1` | contracts & deliverables |
-| Ochre | `#A8791F` | **`#866119`** | `#F2EAD6` | waiting on you · not started |
-| Teal | `#1E6E70` | same | `#DEECEB` | funders & partners |
-| Plum | `#6E3F5C` | same | `#EEE3EA` | closed · frozen certificate |
-| Clay | `#A6512E` | **`#A34F2D`** | `#F2E3DB` | overspend · needs a decision |
+| Ink | Fill | Text | Accent | Tint | Means |
+|---|---|---|---|---|---|
+| Moss | `#006C49` | same | `#0C9065` | `#DCEDE3` | money utilised · primary action |
+| Indigo | `#335A97` | same | `#477ED4` | `#DFE9F7` | contracts & deliverables |
+| Ochre | `#795300` | same | `#A6760D` | `#F0E6D8` | waiting on you · not started |
+| Teal | `#00686A` | same | `#0C8C8F` | `#D8EDED` | funders & partners |
+| Plum | `#833F6B` | same | `#BF5B9C` | `#F3E2EC` | closed · frozen certificate |
+| Clay | `#8C4325` | same | `#D25928` | `#F6E3DD` | overspend · needs a decision |
+
+**Read the fourth column before touching any of them.** `fill` is a solid ground
+under WHITE — badges, the active nav pill, buttons. `accent` carries no text at
+all — spines, bars, progress, washes, focus rings — and exists because the
+21 Aug retune put every fill on one dark lightness, which bought AA on the
+badges and spent the page's chroma doing it. Accents are measured against
+`sunk`, the darkest ground each can land on, and clear 3:1 there with almost no
+margin (3.28–3.32). They are equal in CONTRAST, not lightness, so their L runs
+30–55% by design. An accent must FAIL white at AA; if one starts passing, the
+fill/accent split has collapsed and the dullness comes back.
 
 Ochre and clay used to need darkened text variants — the fills scored **3.41**
 and **4.37** on their own tints. The 21 Aug retune moved every ink to one
