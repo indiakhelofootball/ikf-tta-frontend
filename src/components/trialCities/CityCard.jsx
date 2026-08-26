@@ -30,9 +30,9 @@ import {
   PersonOutline as BackupIcon,
 } from '@mui/icons-material';
 
-function CityCard({ city, onEdit, onDelete, onReverify }) {
+function CityCard({ city, onEdit, onDelete }) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [reverifyDialogOpen, setReverifyDialogOpen] = useState(false);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [confirmText, setConfirmText] = useState('');
   const [deleteError, setDeleteError] = useState('');
 
@@ -61,15 +61,8 @@ function CityCard({ city, onEdit, onDelete, onReverify }) {
     onDelete(city);
   };
 
-  const handleReverifyClick = () => {
-    setReverifyDialogOpen(true);
-  };
-
-  const handleConfirmReverify = () => {
-    setReverifyDialogOpen(false);
-    if (onReverify) {
-      onReverify(city);
-    }
+  const handleDetailsClick = () => {
+    setDetailsDialogOpen(true);
   };
 
   // Dummy scout data
@@ -253,7 +246,7 @@ function CityCard({ city, onEdit, onDelete, onReverify }) {
               variant="outlined"
               size="medium"
               startIcon={<VerifiedIcon />}
-              onClick={handleReverifyClick}
+              onClick={handleDetailsClick}
               sx={{ 
                 flex: 1,
                 borderColor: '#3B82F6',
@@ -266,7 +259,7 @@ function CityCard({ city, onEdit, onDelete, onReverify }) {
                 }
               }}
             >
-              Reverify
+              Details
             </Button>
 
             <Button
@@ -353,19 +346,20 @@ function CityCard({ city, onEdit, onDelete, onReverify }) {
         </DialogActions>
       </Dialog>
 
-      {/* Reverify Dialog */}
+      {/* Details Dialog — read-only. There is no reverification field on
+          TrialCityLocation, so nothing here can record that a check happened. */}
       <Dialog
-        open={reverifyDialogOpen}
-        onClose={() => setReverifyDialogOpen(false)}
+        open={detailsDialogOpen}
+        onClose={() => setDetailsDialogOpen(false)}
         maxWidth="md"
         fullWidth
       >
         <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#f8fafc' }}>
           <Stack direction="row" spacing={2} alignItems="center">
             <VerifiedIcon color="info" />
-            <Typography variant="h6" fontWeight={600}>Reverify Trial City Details</Typography>
+            <Typography variant="h6" fontWeight={600}>Trial City Details</Typography>
           </Stack>
-          <IconButton onClick={() => setReverifyDialogOpen(false)} size="small" aria-label="Close">
+          <IconButton onClick={() => setDetailsDialogOpen(false)} size="small" aria-label="Close">
             <CloseIcon />
           </IconButton>
         </DialogTitle>
@@ -446,15 +440,7 @@ function CityCard({ city, onEdit, onDelete, onReverify }) {
         </DialogContent>
 
         <DialogActions sx={{ px: 3, pb: 3 }}>
-          <Button onClick={() => setReverifyDialogOpen(false)}>Close</Button>
-          <Button
-            variant="contained"
-            color="success"
-            startIcon={<VerifiedIcon />}
-            onClick={handleConfirmReverify}
-          >
-            Mark as Reverified
-          </Button>
+          <Button onClick={() => setDetailsDialogOpen(false)}>Close</Button>
         </DialogActions>
       </Dialog>
     </>

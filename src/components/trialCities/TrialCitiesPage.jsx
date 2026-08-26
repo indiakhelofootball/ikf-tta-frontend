@@ -172,7 +172,7 @@ function TrialCitiesPage() {
       } else if (error.message === 'Network Error') {
         showToast('No internet connection. Please check your network.', 'error');
       } else {
-        showToast(error.response?.data?.message || 'Failed to save city. Please try again.', 'error');
+        showToast(error.response?.data?.message || error.message || 'Failed to save city. Please try again.', 'error');
       }
       
       // Re-throw so modal stays open
@@ -192,7 +192,7 @@ function TrialCitiesPage() {
       } else if (error.message === 'Network Error') {
         showToast('No internet connection. Please check your network.', 'error');
       } else {
-        showToast(error.response?.data?.message || 'Failed to save city. Please try again.', 'error');
+        showToast(error.response?.data?.message || error.message || 'Failed to save city. Please try again.', 'error');
       }
       throw error;
     }
@@ -226,27 +226,6 @@ function TrialCitiesPage() {
         showToast('No internet connection. Please check your network.', 'error');
       } else {
         showToast(error.response?.data?.message || 'Failed to delete city. Please try again.', 'error');
-      }
-    }
-  };
-
-  // ✅ IMPROVED: Better error handling for reverify
-  const handleReverifyCity = async (city) => {
-    try {
-      await trialCitiesAPI.update(city.code, {
-        ...city,
-        lastReverified: new Date().toISOString(),
-      });
-      showToast('City reverified successfully!', 'success');
-      await loadCities(); // Reload to show updated timestamp
-      
-    } catch (error) {
-      console.error('Failed to reverify city:', error);
-      
-      if (error.message === 'Network Error') {
-        showToast('No internet connection. Please check your network.', 'error');
-      } else {
-        showToast(error.response?.data?.message || 'Failed to reverify city. Please try again.', 'error');
       }
     }
   };
@@ -557,7 +536,6 @@ function TrialCitiesPage() {
                   city={city}
                   onEdit={handleEditCity}
                   onDelete={handleDeleteCity}
-                  onReverify={handleReverifyCity}
                 />
               </Grid>
             ))}
