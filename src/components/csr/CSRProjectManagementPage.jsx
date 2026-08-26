@@ -341,7 +341,7 @@ export default function CSRProjectManagementPage() {
       <Box sx={{ ...panel, flexGrow: 1, minWidth: 0 }}>
         {/* The grant's identity ink, as a rule across the top of its pane —
             the same colour its row carries, so the eye connects the two. */}
-        <Box aria-hidden sx={{ height: 3, bgcolor: ink.fill }} />
+        <Box aria-hidden sx={{ height: 3, bgcolor: ink.accent }} />
         <Box sx={{ p: { xs: 2.5, lg: density.workspace.cardPadding / 8 } }}>
           <Stack direction="row" spacing={2} sx={{ alignItems: 'flex-start', justifyContent: 'space-between' }}>
             <Box sx={{ minWidth: 0 }}>

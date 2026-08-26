@@ -32,7 +32,7 @@ import {
 import { csrAPI } from '../../services/api';
 import useGrants from '../../auth/useGrants';
 import { ttaProjectIdentity } from './CSRProjectDetailView';
-import { surfaces, inks, figure, fonts, tabular } from '../../styles/ttaTheme';
+import { surfaces, inks, figure, fonts, tabular, motion, reveal } from '../../styles/ttaTheme';
 
 const fmtINR = (n) => {
   const v = Number(n) || 0;
@@ -70,7 +70,7 @@ const inkFor = (id) => {
 // Tile. One question each, and small — a dashboard tile is a glance, not a
 // screen. The references average about 150px tall; the version this replaces
 // was 190px per grant and said the same thing three times.
-function Tile({ icon, label, children, span = 1, rowSpan = 1, onClick, ink = inks.moss }) {
+function Tile({ icon, label, children, span = 1, rowSpan = 1, onClick, ink = inks.moss, index = 0 }) {
   return (
     <Box
       onClick={onClick}
@@ -80,6 +80,11 @@ function Tile({ icon, label, children, span = 1, rowSpan = 1, onClick, ink = ink
         position: 'relative',
         overflow: 'hidden',
         borderRadius: 2,
+
+        // The tiles arrive rather than appear, left to right, in the order the
+        // eye reads them. See `reveal` in ttaTheme — capped stagger, no spring,
+        // and nothing at all under prefers-reduced-motion.
+        ...reveal(index),
 
         // ---- glass ---------------------------------------------------------
         // Real glass, not a grey box called glass. Three things have to be true
@@ -101,15 +106,31 @@ function Tile({ icon, label, children, span = 1, rowSpan = 1, onClick, ink = ink
         // top edge is lighter than the rest, which is how a pane of glass
         // actually catches light and is what sells it without elevation.
         border: '1px solid',
-        borderColor: `${ink.fill}26`,
+        borderColor: `${ink.accent}40`,
         boxShadow: `inset 0 1px 0 rgba(255,255,255,0.65)`,
 
         p: 2.75,
         display: 'flex',
         flexDirection: 'column',
         cursor: onClick ? 'pointer' : 'default',
-        transition: 'border-color 160ms cubic-bezier(0, 0, 0.2, 1)',
-        ...(onClick && { '&:hover': { borderColor: `${ink.fill}59` } }),
+        // Named properties, never the catch-all: `all` would animate the
+        // grid metrics too. Transform is on the compositor, so the lift costs
+        // nothing per frame, and it is the whole hover cue — the owner's
+        // no-shadow ruling stands, so the tile rises without casting anything.
+        transition: [
+          `border-color ${motion.exit} ${motion.easeOut}`,
+          `transform ${motion.exit} ${motion.easeOut}`,
+        ].join(', '),
+        ...(onClick && {
+          '&:hover': {
+            borderColor: `${ink.accent}8C`,
+            transform: 'translateY(-2px)',
+          },
+          '@media (prefers-reduced-motion: reduce)': {
+            transition: 'none',
+            '&:hover': { transform: 'none' },
+          },
+        }),
       }}
     >
       {/* The gloss: a single soft highlight raking across the top-left, which
@@ -174,7 +195,7 @@ function Promised({ title, done, target, ink }) {
       <Box sx={{ height: 4, borderRadius: 2, bgcolor: surfaces.sunken, overflow: 'hidden' }}>
         <Box sx={{
           height: '100%', width: `${Math.min(100, pctRaw)}%`,
-          bgcolor: met ? inks.moss.fill : ink,
+          bgcolor: met ? inks.moss.accent : ink,
         }} />
       </Box>
     </Box>
@@ -292,9 +313,9 @@ export default function CSRDashboard() {
       <Box aria-hidden sx={{
         position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none',
         background: `
-          radial-gradient(680px 420px at 12% 8%, ${inks.moss.fill}1C 0%, transparent 68%),
-          radial-gradient(620px 460px at 88% 22%, ${inks.indigo.fill}16 0%, transparent 66%),
-          radial-gradient(720px 520px at 62% 96%, ${inks.teal.fill}14 0%, transparent 70%)
+          radial-gradient(680px 420px at 12% 8%, ${inks.moss.accent}33 0%, transparent 68%),
+          radial-gradient(620px 460px at 88% 22%, ${inks.indigo.accent}2B 0%, transparent 66%),
+          radial-gradient(720px 520px at 62% 96%, ${inks.teal.accent}26 0%, transparent 70%)
         `,
       }} />
 
@@ -311,7 +332,7 @@ export default function CSRDashboard() {
 
         {/* ---- Row 1: four short stat tiles, one number each ---- */}
         {/* ---- Utilisation: one number, no per-grant breakdown ---- */}
-        <Tile icon={<MoneyIcon />} label="Utilised" ink={inks.moss} onClick={() => navigate('/csr/projects')}>
+        <Tile icon={<MoneyIcon />} label="Utilised" ink={inks.moss} index={0} onClick={() => navigate('/csr/projects')}>
           <Box sx={{ ...figure.large, color: inks.moss.text }}>{fmtINR(utilised)}</Box>
           <Box sx={figure.unit}>counted, of {fmtINR(sanctioned)} sanctioned</Box>
           {excluded.count > 0 && (
@@ -321,7 +342,7 @@ export default function CSRDashboard() {
           )}
         </Tile>
         {/* ---- Grants ---- */}
-        <Tile icon={<GrantsIcon />} label="Grants" ink={inks.indigo} onClick={() => navigate('/csr/projects')}>
+        <Tile icon={<GrantsIcon />} label="Grants" ink={inks.indigo} index={1} onClick={() => navigate('/csr/projects')}>
           <Box sx={figure.large}>{open.length}</Box>
           <Box sx={figure.unit}>
             active{projects.length > open.length && ` · ${projects.length - open.length} closed`}
@@ -332,14 +353,14 @@ export default function CSRDashboard() {
               // only in the tooltip, so that is the single honest place for the
               // identity here. Appended, never replacing the name.
               <Box key={p.id} title={[p.name, ttaProjectIdentity(p)].filter(Boolean).join(' · ')} sx={{
-                height: 3, flex: 1, borderRadius: 1, bgcolor: inkFor(p.id).fill,
+                height: 3, flex: 1, borderRadius: 1, bgcolor: inkFor(p.id).accent,
               }} />
             ))}
           </Box>
         </Tile>
         {/* ---- Funders. Teal is the system's outward-facing ink and this is
              the only outward-facing thing on the page. ---- */}
-        <Tile icon={<FundersIcon />} label="Funders" ink={inks.teal}
+        <Tile icon={<FundersIcon />} label="Funders" ink={inks.teal} index={2}
               onClick={() => navigate('/csr/clients')}>
           <Box sx={{ ...figure.large, color: inks.teal.text }}>{funders.length}</Box>
           <Box sx={figure.unit}>
@@ -353,7 +374,7 @@ export default function CSRDashboard() {
             Rendering only the tail as a scalar could not say whether work was
             stuck at "no report yet" or at "written, not released" -- different
             problems, different people. */}
-        <Tile icon={<ReportsIcon />} label="Delivery pipeline" ink={inks.ochre}>
+        <Tile icon={<ReportsIcon />} label="Delivery pipeline" ink={inks.ochre} index={3}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
             {[
               { n: activities.length, label: 'activities logged', ink: NEUTRAL },
@@ -375,7 +396,7 @@ export default function CSRDashboard() {
 
         {/* ---- Row 2: the two tiles with real content in them ---- */}
         {/* ---- FEATURE: what was actually delivered ---- */}
-        <Tile icon={<DeliveryIcon />} label="Delivery against promises" span={2} ink={inks.indigo}>
+        <Tile icon={<DeliveryIcon />} label="Delivery against promises" span={2} ink={inks.indigo} index={4}>
           {people > 0 && (
             <Box sx={{ mb: 2 }}>
               <Box sx={figure.hero}>{people.toLocaleString('en-IN')}</Box>
@@ -393,7 +414,7 @@ export default function CSRDashboard() {
               title={d.title}
               done={d.completedCount}
               target={d.targetCount}
-              ink={inks.indigo.fill}
+              ink={inks.indigo.accent}
             />
           ))}
         </Tile>
@@ -404,6 +425,7 @@ export default function CSRDashboard() {
              object into a four-column row. ---- */}
         <Tile
           icon={<RecentIcon />}
+          index={5}
           span={2}
           ink={NEUTRAL}
           label={`Recent activity · ${activities.length} logged`}

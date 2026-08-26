@@ -43,7 +43,7 @@ const NEUTRAL_TEXT = '#4E5A54';
 
 export const statusInk = (status) =>
   (status === 'Closed'
-    ? { dot: inks.plum.fill, text: inks.plum.text }
+    ? { dot: inks.plum.accent, text: inks.plum.text }
     : { dot: NEUTRAL_DOT, text: NEUTRAL_TEXT });
 
 export const formatMoney = (value) =>
@@ -80,7 +80,7 @@ export default function CSRProjectCard({ project, selected = false, onSelect }) 
           transition: `background-color ${motion.feedback} ${motion.easeOut}`,
           bgcolor: selected ? ink.tint : 'transparent',
           '&:hover': { bgcolor: selected ? ink.tint : surfaces.canvas },
-          '&:focus-visible': { outline: `2px solid ${ink.fill}`, outlineOffset: -2 },
+          '&:focus-visible': { outline: `2px solid ${ink.accent}`, outlineOffset: -2 },
         }}
       >
         {/* The identity spine. Present on every row so the colour reads as a
@@ -91,8 +91,11 @@ export default function CSRProjectCard({ project, selected = false, onSelect }) 
           sx={{
             width: 3,
             flexShrink: 0,
-            bgcolor: ink.fill,
-            opacity: selected ? 1 : 0.22,
+            bgcolor: ink.accent,
+            // 0.22 was set against the dark fill. The accent is a much lighter
+            // colour, so the same alpha over this card composites to almost
+            // nothing; 0.4 holds the spine at roughly the weight it had.
+            opacity: selected ? 1 : 0.4,
             transition: `opacity ${motion.feedback} ${motion.easeOut}`,
           }}
         />

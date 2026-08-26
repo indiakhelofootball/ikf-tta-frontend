@@ -41,6 +41,53 @@ const TEAL = '#00686A';    // funders & partners · everything facing outward
 const PLUM = '#833F6B';    // closed · frozen certificate
 const CLAY = '#8C4325';    // overspend · needs a decision
 
+// ACCENTS — the chroma-carrying variant, added 26 Aug 2026.
+//
+// THE PROBLEM THEY SOLVE. The six fills above are saturated on paper and dark
+// in the eye: moss, ochre and teal are at 100% saturation but sit at L 21-24%,
+// and at that lightness the eye reads a near-black with a hue smell, not a
+// colour. Six near-blacks on a 94%-lightness bone ground is a grey page with
+// coloured punctuation, which is what the client saw and called dull. It was
+// not a mistake — the 21 Aug retune pushed every fill down into one dark band
+// so a solid badge could carry a white glyph at AA — but it bought that by
+// spending all the chroma the page had.
+//
+// THE SPLIT IS THE SYSTEM'S OWN RULE, RUN THE OTHER WAY. `design-system.md`
+// says a fill that fails as text gets a darkened text variant, and never to
+// collapse the two back together. The collapse above (OCHRE_TEXT = OCHRE) is
+// that rule broken. Rather than un-darken the fills — which would break every
+// white glyph and every white button label — the missing variant is added at
+// the light end: ACCENT is the value for shapes that carry no white text.
+//
+//   fill    solid grounds under WHITE — badges, the active nav pill, buttons
+//   accent  shapes that carry nothing — spines, bars, progress, washes, rings
+//   text    anything a person reads
+//   tint    pale chip and banner grounds
+//
+// MEASURED, per the standing rule, against the DARKEST ground each one can
+// land on. A bar sits in a `surfaces.sunken` track, so sunk is the binding
+// case, not bone. All six clear the 3:1 that a UI boundary carrying meaning
+// must clear, on all three grounds:
+//                     sunk / bone / card
+const MOSS_A = '#0C9065';    // 3.30 / 3.56 / 3.89
+const INDIGO_A = '#477ED4';  // 3.29 / 3.55 / 3.89
+const OCHRE_A = '#A6760D';   // 3.28 / 3.54 / 3.87
+const TEAL_A = '#0C8C8F';    // 3.32 / 3.58 / 3.92
+const PLUM_A = '#BF5B9C';    // 3.30 / 3.56 / 3.89
+const CLAY_A = '#D25928';    // 3.29 / 3.55 / 3.89
+//
+// Equal CONTRAST, not equal lightness — which is why the L values run 30% to
+// 55% rather than sitting on one number the way the fills do. At a fixed
+// lightness a yellow is far heavier than a blue; matching the ratio is what
+// makes them read as one family on the page, and it is the ratio the rule is
+// written about. Saturation is capped per hue so the set stays a palette:
+// plum holds 44% and reads as wine rather than the hot pink 72% produced, and
+// clay 68% rather than a traffic-cone orange.
+//
+// AN ACCENT MUST NEVER GO UNDER WHITE TEXT. At ~3.3 it is a shape colour, not
+// a ground for type. That is what `fill` is still for, and the two are kept
+// apart deliberately.
+
 // Tints — chip and banner grounds, each ink's own hue at ~93% lightness, uniform
 // chroma to match the fills.
 const MOSS_T = '#DCEDE3';
@@ -433,14 +480,17 @@ export const surfaces = {
 };
 
 // The six inks, for spines, split bars and anything MUI has no slot for.
-// `fill` paints, `text` is legible on every ground, `tint` is the chip ground.
+// `fill` is the solid ground white sits on, `accent` is the chroma-carrying
+// shape colour that must never go under white, `text` is legible on every
+// ground, `tint` is the chip ground. See the ACCENTS block above for why there
+// are two paint values rather than one.
 export const inks = {
-  moss: { fill: MOSS, text: MOSS, tint: MOSS_T, means: 'money utilised, primary action' },
-  indigo: { fill: INDIGO, text: INDIGO, tint: INDIGO_T, means: 'contracts and deliverables' },
-  ochre: { fill: OCHRE, text: OCHRE_TEXT, tint: OCHRE_T, means: 'waiting on you' },
-  teal: { fill: TEAL, text: TEAL, tint: TEAL_T, means: 'funders and partners' },
-  plum: { fill: PLUM, text: PLUM, tint: PLUM_T, means: 'closed, frozen certificate' },
-  clay: { fill: CLAY, text: CLAY_TEXT, tint: CLAY_T, means: 'overspend, needs a decision' },
+  moss: { fill: MOSS, accent: MOSS_A, text: MOSS, tint: MOSS_T, means: 'money utilised, primary action' },
+  indigo: { fill: INDIGO, accent: INDIGO_A, text: INDIGO, tint: INDIGO_T, means: 'contracts and deliverables' },
+  ochre: { fill: OCHRE, accent: OCHRE_A, text: OCHRE_TEXT, tint: OCHRE_T, means: 'waiting on you' },
+  teal: { fill: TEAL, accent: TEAL_A, text: TEAL, tint: TEAL_T, means: 'funders and partners' },
+  plum: { fill: PLUM, accent: PLUM_A, text: PLUM, tint: PLUM_T, means: 'closed, frozen certificate' },
+  clay: { fill: CLAY, accent: CLAY_A, text: CLAY_TEXT, tint: CLAY_T, means: 'overspend, needs a decision' },
 };
 
 // Every figure on screen. A rupee value that changes width mid-render shoves
@@ -458,6 +508,36 @@ export const figure = {
 };
 
 export const fonts = { serif: SERIF, sans: SANS };
+
+// ── Entrance motion ────────────────────────────────────────────────────────
+// One shape, used everywhere: a short rise with a fade. No scale, no spring, no
+// bounce — the standing constraint from 18 Aug, and the design-system MCP rates
+// bouncy easing on financial products `critical`. The rise is 8px because the
+// UDS `enter.slide-up` preset is 8px; larger reads as the page assembling
+// itself, which on a ledger looks unserious.
+//
+// The stagger is capped, not open-ended. 40ms per item to a 400ms ceiling is
+// UDS's `stagger.grid` preset: a six-tile dashboard finishes in 200ms, and a
+// forty-row list still finishes in 400ms rather than making the last row wait
+// 1.6 seconds for a decoration.
+//
+// `both` fill mode matters. Without it the element paints at full opacity for
+// one frame before the delay elapses, which is a visible flash on every tile
+// that has a delay — the thing staggering was supposed to avoid.
+export const reveal = (index = 0) => ({
+  '@keyframes csrRise': {
+    from: { opacity: 0, transform: 'translateY(8px)' },
+    to: { opacity: 1, transform: 'translateY(0)' },
+  },
+  animation: `csrRise ${motion.enter} ${motion.easeOut} both`,
+  animationDelay: `${Math.min(index * 40, 400)}ms`,
+  // Not a nicety. An entrance animation is exactly the kind of motion that
+  // triggers vestibular symptoms, and the system already promises this
+  // everywhere else.
+  '@media (prefers-reduced-motion: reduce)': {
+    animation: 'none',
+  },
+});
 
 // ── Density ────────────────────────────────────────────────────────────────
 // CSR spans two surfaces at different densities: the operator workspace, used
