@@ -28,6 +28,11 @@ import {
 import { repAPI, courierAPI } from '../../services/api';
 import { getCourierItems } from '../../utils/adminStorage';
 import useGrants from '../../auth/useGrants';
+import { canDeleteShipment, deleteShipmentTooltip } from './courierDeletePermission';
+import { daysUntil, getShipmentFlag } from './courierShipmentFlag';
+import {
+  sanitizeQuantityInput, normalizeQuantity, normalizeItemsForSave, canSaveShipment,
+} from './courierItemQuantity';
 import useRefetchOnFocus from '../../hooks/useRefetchOnFocus';
 
 const TSHIRT_ITEM_NAME = 'Volunteer Tshirts';
@@ -90,22 +95,8 @@ const PAST_STATUSES = ['Delivered', 'Returned', 'Lost'];
 const STATUS_FILTERS = ['active', 'past', 'all', 'Draft', 'Dispatched', 'In Transit', 'Delivered', 'Returned', 'Lost'];
 const FILTER_LABELS = { active: 'Active', past: 'Past', all: 'All', deleted: 'Deleted' };
 
-function daysUntil(dateStr) {
-  if (!dateStr) return null;
-  return Math.ceil((new Date(dateStr) - new Date()) / 86400000);
-}
-
-function getShipmentFlag(shipment) {
-  const days = daysUntil(shipment.snapTrialDate);
-  if (days === null) return null;
-  if (['Delivered', 'Returned', 'Lost'].includes(shipment.status)) return null;
-  const hasUnreadyCustom = shipment.items.some(i => i.isCustom && i.productionStatus !== 'Received from Printer');
-  if (hasUnreadyCustom && days <= 60) return { level: 'error', msg: `Custom items not ready — trial in ${days}d` };
-  if (shipment.status === 'Draft' && days <= 30) return { level: 'error', msg: `Not dispatched — trial in ${days}d` };
-  if (hasUnreadyCustom && days <= 75) return { level: 'warning', msg: `Custom items pending — trial in ${days}d` };
-  if (shipment.status === 'Draft' && days <= 45) return { level: 'warning', msg: `Dispatch soon — trial in ${days}d` };
-  return null;
-}
+// daysUntil / getShipmentFlag now live in courierShipmentFlag.js — see the note
+// there on why (#9: an items array missing its fallback blanked the whole page).
 
 // Fetch a (possibly remote) image URL and return a data: URL for jsPDF.
 // Data URLs are passed straight through; failures resolve to null (logo skipped).
@@ -399,7 +390,8 @@ function ItemRow({ item, index, onChange, onDelete }) {
         slotProps={{ input: { readOnly: true } }}
         sx={{ '& .MuiInputBase-root': { bgcolor: '#fff', fontSize: '0.82rem', fontWeight: 600, color: '#1e293b' } }} />
       <TextField size="small" type="number" value={item.quantity} placeholder="Qty"
-        onChange={e => onChange(index, 'quantity', Number(e.target.value))}
+        onChange={e => onChange(index, 'quantity', sanitizeQuantityInput(e.target.value))}
+        onBlur={e => onChange(index, 'quantity', normalizeQuantity(e.target.value))}
         sx={{ '& .MuiInputBase-root': { bgcolor: '#fff', fontSize: '0.82rem' } }} />
       <Tooltip title="Mark as custom item (needs printing/production)">
         <FormControlLabel
@@ -444,6 +436,9 @@ export default function CourierManagementPage() {
   // new/edit modal
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  // updatedAt of the shipment as loaded into the edit form — the optimistic
+  // lock token sent back on save.
+  const [loadedUpdatedAt, setLoadedUpdatedAt] = useState('');
   const [fRepId, setFRepId] = useState('');
   const [fAsgId, setFAsgId] = useState('');
   const [fItems, setFItems] = useState([]);
@@ -566,6 +561,10 @@ export default function CourierManagementPage() {
 
   function openNew() {
     setEditingId(null); setFRepId(''); setFAsgId(''); setFItems([]); setFNotes(''); setError('');
+    // Clear the lock token too. A new shipment has no version to check against,
+    // and leaving the previous edit's token here means any future code path
+    // that reads it while creating would be checking against a different row.
+    setLoadedUpdatedAt('');
     setModalOpen(true);
   }
 
@@ -579,6 +578,9 @@ export default function CourierManagementPage() {
     }
     setEditingId(s.id); setFRepId(foundRepId); setFAsgId(s.assignmentId || '');
     setFItems((s.items || []).map(i => ({ ...i }))); setFNotes(s.notes || ''); setError('');
+    // Remember the version this form was opened against. Saving sends it back
+    // so the server can refuse a write that would erase someone else's edit.
+    setLoadedUpdatedAt(s.updatedAt || '');
     setModalOpen(true);
   }
 
@@ -611,24 +613,59 @@ export default function CourierManagementPage() {
   async function saveShipment() {
     // Updates only send notes/items, so they must not require a live
     // assignment — a shipment whose assignment was deleted is still editable.
-    if ((!editingId && !fAsgId) || !fItems.length) return;
+    if (!canSaveShipment({ editingId, assignmentId: fAsgId, items: fItems })) return;
     setSaving(true);
     setError('');
+    // A quantity box left empty mid-edit holds '' — coerce here so the API
+    // contract stays numeric no matter what the box was showing.
+    const itemsForSave = normalizeItemsForSave(fItems);
     try {
       if (editingId) {
-        const updated = await courierAPI.update(editingId, { notes: fNotes, items: fItems });
+        const updated = await courierAPI.update(editingId, {
+          notes: fNotes,
+          items: itemsForSave,
+          expectedUpdatedAt: loadedUpdatedAt,
+        });
         setShipments(prev => prev.map(s => s.id === editingId ? updated : s));
       } else {
         const created = await courierAPI.create({
           assignmentId: fAsgId,
           notes: fNotes,
-          items: fItems.map((it, i) => ({ ...it, order: i })),
+          items: itemsForSave.map((it, i) => ({ ...it, order: i })),
         });
         setShipments(prev => [created, ...prev]);
       }
       setModalOpen(false);
     } catch (e) {
-      setError(e.message || 'Save failed.');
+      // A stale-write refusal has to leave the user somewhere they can act.
+      // Without this the form keeps the token it loaded with, so every retry
+      // hits the same 409 and the only way out is closing the dialog — the
+      // save is refused correctly and the user is stranded, which is its own
+      // defect. The server returns currentUpdatedAt precisely so the client
+      // can recover; the API layer already carries it on err.response.data.
+      const code = e?.response?.data?.code;
+      if (code === 'stale_write' || code === 'missing_version_token') {
+        try {
+          const fresh = await courierAPI.getById(editingId);
+          setShipments(prev => prev.map(s => s.id === editingId ? fresh : s));
+          setFItems((fresh.items || []).map(i => ({ ...i })));
+          setFNotes(fresh.notes || '');
+          setLoadedUpdatedAt(fresh.updatedAt || '');
+          setError(
+            'Someone else changed this shipment while you had it open. Their '
+            + 'version is now loaded above — your unsaved changes were not '
+            + 'applied. Redo them and save again.'
+          );
+        } catch {
+          // Even the reload failed; say what is known rather than nothing.
+          setError(
+            (e.message || 'Save failed.')
+            + ' Reloading the shipment also failed — close and reopen it.'
+          );
+        }
+      } else {
+        setError(e.message || 'Save failed.');
+      }
     } finally {
       setSaving(false);
     }
@@ -898,11 +935,6 @@ export default function CourierManagementPage() {
                                 sx={{ fontSize: '0.72rem', py: 0.3, px: 1, minWidth: 'auto', bgcolor: '#FDE68A', color: '#1e293b', boxShadow: 'none', '&:hover': { bgcolor: '#FCD34D', boxShadow: 'none' } }}>
                                 Dispatch
                               </Button>
-                              <Tooltip title="Delete draft">
-                                <IconButton size="small" onClick={() => handleDeleteShipment(s)} sx={{ color: '#ef4444' }}>
-                                  <DeleteIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
                             </>
                           )}
                         </>
@@ -933,6 +965,18 @@ export default function CourierManagementPage() {
                         <Tooltip title="Download dispatch PDF">
                           <IconButton size="small" onClick={() => handleDownload(s)} sx={{ color: '#5B63D3' }}>
                             <PdfIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                      {/* One delete control per row, for every status. A draft is
+                          deletable by anyone who can edit courier; anything already
+                          dispatched is a super admin call. Deletion is a soft delete
+                          either way — the row moves to the Deleted view and can be
+                          restored, which is what handleDeleteShipment's confirm says. */}
+                      {canDeleteShipment({ isSuper, canEditCourier, status: s.status }) && (
+                        <Tooltip title={deleteShipmentTooltip(s.status)}>
+                          <IconButton size="small" onClick={() => handleDeleteShipment(s)} sx={{ color: '#ef4444' }}>
+                            <DeleteIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
                       )}

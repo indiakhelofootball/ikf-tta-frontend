@@ -27,6 +27,7 @@ import {
   computePaymentFlags, topSeverity,
   FLAG_COLORS, FLAG_LABELS,
 } from './flagEngine';
+import { computeTotals } from './paymentAuditTotals';
 
 // ── Formatting helpers ──────────────────────────────────────────────────────
 
@@ -50,16 +51,8 @@ const EXPORT_HEADERS = [
 // Indian lakh/crore grouping for real numeric cells — Excel's own equivalent of fmtINR
 const INR_NUM_FMT = '##,##,##0.00';
 
-// One place computes the cumulative figures: totals strip, table total row, Excel totals row
-const computeTotals = (rows) => rows.reduce((acc, p) => {
-  acc.gross += parseFloat(p.grossAmount) || 0;
-  acc.tds += parseFloat(p.tdsAmount) || 0;
-  acc.net += parseFloat(p.netAmount) || 0;
-  if (p.status === 'Sent to Accounts') acc.sent += 1;
-  else if (p.status === 'Payment Done') acc.done += 1;
-  else if (p.status === 'Payment Bounced') acc.bounced += 1;
-  return acc;
-}, { gross: 0, tds: 0, net: 0, sent: 0, done: 0, bounced: 0 });
+// computeTotals lives in ./paymentAuditTotals so it can be unit-tested; this
+// component imports react-router-dom, which CRA's Jest resolver cannot load.
 
 async function triggerXlsxDownload(wb, fileName) {
   const buffer = await wb.xlsx.writeBuffer();
@@ -652,6 +645,13 @@ function PaymentAuditReport() {
                     <span style={{ color: '#2563eb', fontWeight: 700 }}>{totals.sent}</span> sent · {' '}
                     <span style={{ color: '#dc2626', fontWeight: 700 }}>{totals.bounced}</span> bounced
                   </Typography>
+                  {totals.bounced > 0 && (
+                    // Bounced rows are excluded from the three money totals, so
+                    // the amount is shown here or it would vanish from the screen.
+                    <Typography variant="caption" sx={{ color: '#dc2626' }}>
+                      {fmtINR(totals.bouncedGross)} bounced, excluded from totals
+                    </Typography>
+                  )}
                 </Box>
               </Stack>
             </Paper>

@@ -258,6 +258,15 @@ export const trialsAPI = {
     });
   },
 
+  // Bulk PUT. It REPLACES the city list, so the server requires an optimistic
+  // lock token whenever `assignedCities` is present: include the `updatedAt`
+  // you loaded as `expectedUpdatedAt`, or the save is refused with 409
+  // `missing_version_token`. Without it, a list loaded before someone else
+  // added a city silently removed that city on save.
+  //
+  // Nothing calls this today — the project screen uses addCity / updateCity /
+  // removeCity / patch instead. Documented here so the first caller that needs
+  // it does not have to discover the 409 by hitting it.
   update: async (id, trialData) => {
     return apiService.request(`/trials/${id}/`, {
       method: 'PUT',

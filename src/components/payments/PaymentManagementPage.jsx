@@ -325,16 +325,19 @@ function PaymentManagementPage() {
     }
   };
 
+  // PATCH, not PUT: callers pass a partial object (often just { status }).
+  // A PUT makes the serializer non-partial, so it rejects the body for the
+  // required fields the caller never sent, and the save is lost.
   const handlePaymentUpdate = async (prId, updates) => {
     try {
-      await paymentRequestsAPI.update(prId, updates);
+      await paymentRequestsAPI.patch(prId, updates);
       showToast('Payment request updated');
       fetchPayments();
-    } catch {
-      setPayments(prev => prev.map(p => p.id === prId ? { ...p, ...updates } : p));
-      showToast('Payment request updated (offline)');
+      setDetailPayment(prev => prev ? { ...prev, ...updates } : prev);
+    } catch (err) {
+      const msg = err?.message || err?.detail || 'Failed to update payment request';
+      showToast(typeof msg === 'string' ? msg : JSON.stringify(msg), 'error');
     }
-    setDetailPayment(prev => prev ? { ...prev, ...updates } : prev);
   };
 
   const handlePaymentDelete = async (pr) => {
@@ -343,9 +346,9 @@ function PaymentManagementPage() {
       await paymentRequestsAPI.delete(pr.id);
       showToast('Payment request deleted');
       fetchPayments();
-    } catch {
-      setPayments(prev => prev.filter(p => p.id !== pr.id));
-      showToast('Payment request deleted (offline)');
+    } catch (err) {
+      const msg = err?.message || err?.detail || 'Failed to delete payment request';
+      showToast(typeof msg === 'string' ? msg : JSON.stringify(msg), 'error');
     }
   };
 

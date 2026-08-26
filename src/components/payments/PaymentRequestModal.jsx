@@ -692,7 +692,7 @@ function PaymentRequestModal({
               {isRetryOfBounced && (
                 <Alert severity="info" sx={{ mt: 2, borderRadius: 1.5 }}>
                   <strong>TDS already deducted</strong> on the earlier bounced payment for this {selectedWO?.type === 'Periodic' ? 'period' : 'work order'}.
-                  No new TDS will be recorded — you are re-raising the disbursement only. Please confirm.
+                  That deduction was cancelled when the payment bounced, so this re-raise records its own — the amount is not deducted twice. Please confirm.
                 </Alert>
               )}
 
@@ -700,7 +700,7 @@ function PaymentRequestModal({
               {gross > 0 && (
                 <Box sx={{ mt: 2, p: 1.5, bgcolor: '#fff', borderRadius: 1.5, border: '1px solid #e2e8f0' }}>
                   <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-                    TDS BREAKDOWN{isRetryOfBounced ? ' — already paid on bounced attempt' : ''}
+                    TDS BREAKDOWN{isRetryOfBounced ? ' — earlier deduction cancelled on bounce' : ''}
                   </Typography>
                   <Stack spacing={0.75}>
                     <Stack direction="row" justifyContent="space-between">
@@ -842,7 +842,7 @@ function PaymentRequestModal({
             {/* Retry-of-bounced cue */}
             {isRetryOfBounced && (
               <Alert severity="info" sx={{ mb: 2, borderRadius: 1.5 }}>
-                <strong>TDS already deducted</strong> on the earlier bounced payment. No new TDS row will be created on submit — this is a re-raise of the same disbursement.
+                <strong>TDS already deducted</strong> on the earlier bounced payment. That deduction was cancelled when it bounced, so this re-raise records its own — the amount is not deducted twice.
               </Alert>
             )}
 

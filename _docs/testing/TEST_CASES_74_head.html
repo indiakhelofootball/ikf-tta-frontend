@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TTA — Test Cases, End to End</title>
+<style>
+  @page { size: A3 landscape; margin: 12mm 14mm 10mm; }
+  :root {
+    --paper: oklch(0.995 0.004 95); --ink: oklch(0.23 0.018 255);
+    --ink-soft: oklch(0.45 0.016 255); --ink-faint: oklch(0.62 0.014 255);
+    --rule: oklch(0.87 0.008 255); --rule-soft: oklch(0.945 0.006 255);
+    --panel: oklch(0.975 0.006 250);
+    --flow: oklch(0.53 0.15 254); --good: oklch(0.46 0.13 158);
+    --gap: oklch(0.55 0.20 27); --silent: oklch(0.58 0.14 68); --dupe: oklch(0.52 0.16 305);
+    --flow-bg: oklch(0.955 0.030 254); --good-bg: oklch(0.952 0.036 158);
+    --gap-bg: oklch(0.960 0.040 27); --silent-bg: oklch(0.962 0.042 68); --dupe-bg: oklch(0.958 0.032 305);
+  }
+  * { box-sizing: border-box; }
+  html { font-size: 10px; }
+  body { margin:0; background:var(--paper); color:var(--ink);
+    font-family:"Segoe UI",-apple-system,system-ui,sans-serif; font-size:1rem; line-height:1.48;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .sheet { page-break-after: always; }
+  .sheet:last-child { page-break-after: auto; }
+  h1,h2,h3,h4 { font-weight:620; letter-spacing:-0.012em; margin:0; }
+  h1 { font-size:3.4rem; line-height:1.06; letter-spacing:-0.03em; }
+  h2 { font-size:1.85rem; margin-bottom:0.35rem; }
+  h3 { font-size:1.12rem; margin:1.2rem 0 0.35rem; }
+  h4 { font-size:1rem; margin:0 0 0.2rem; }
+  p { margin:0 0 0.6rem; max-width:112ch; }
+  .eyebrow { font-size:0.76rem; font-weight:700; letter-spacing:0.14em; text-transform:uppercase;
+    color:var(--ink-faint); margin-bottom:0.4rem; }
+  .lede { font-size:1.18rem; line-height:1.45; color:var(--ink-soft); max-width:125ch; margin-bottom:0.6rem; }
+  .rule { height:2px; background:var(--ink); margin:0.7rem 0 0.9rem; border:0; }
+  .rule.thin { height:1px; background:var(--rule); margin:1rem 0; }
+  .tag { display:inline-block; font-size:0.7rem; font-weight:700; letter-spacing:0.05em;
+    text-transform:uppercase; padding:1px 6px; border-radius:3px; white-space:nowrap; }
+  .t-good{background:var(--good-bg);color:var(--good)} .t-flow{background:var(--flow-bg);color:var(--flow)}
+  .t-dupe{background:var(--dupe-bg);color:var(--dupe)} .t-gap{background:var(--gap-bg);color:var(--gap)}
+  .t-silent{background:var(--silent-bg);color:var(--silent)}
+  .statline { display:flex; gap:5mm; align-items:center; margin:0 0 3.5mm; font-size:1rem; color:var(--ink-soft); }
+  .statline strong { color:var(--ink); font-size:1.25rem; }
+  table { border-collapse:collapse; width:100%; font-size:0.93rem; }
+  th { text-align:left; font-weight:660; border-bottom:1.5px solid var(--ink); padding:4px 8px 4px 0; }
+  td { border-bottom:1px solid var(--rule-soft); padding:5px 8px 5px 0; vertical-align:top; }
+  .mono { font-family:"Cascadia Mono",Consolas,monospace; font-size:0.84rem; color:var(--ink-faint); white-space:nowrap; }
+  .sub { display:inline-block; margin-top:2px; font-size:0.86rem; color:var(--ink-soft); line-height:1.4; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:10mm; }
+  .grid4 { display:grid; grid-template-columns:repeat(4,1fr); gap:6mm; }
+  .card { border:1px solid var(--rule); border-radius:5px; padding:3.5mm 4mm; background:var(--panel); }
+  .card p:last-child { margin-bottom:0; }
+  .big { font-size:2.6rem; font-weight:680; line-height:1; letter-spacing:-0.03em; }
+  .callout { border-radius:5px; padding:4mm 5mm; margin:1rem 0; }
+  .c-gap { background:var(--gap-bg); border-left:4px solid var(--gap); }
+  .c-good { background:var(--good-bg); border-left:4px solid var(--good); }
+  .c-silent { background:var(--silent-bg); border-left:4px solid var(--silent); }
+  .callout p:last-child { margin-bottom:0; }
+  .foot { font-size:0.8rem; color:var(--ink-faint); margin-top:5mm; border-top:1px solid var(--rule-soft); padding-top:2mm; }
+  svg { display:block; max-width:100%; }
+</style>
+</head>
+<body>
+
+<section class="sheet">
+  <p class="eyebrow">India Khelo Football &middot; Trial Tracking Application</p>
+  <h1>Test cases,<br>end to end</h1>
+  <hr class="rule">
+  <p class="lede">Every module, every use case, with the result you should expect and what actually
+  happens today. 74 cases across 11 modules plus a cross-cutting address set, written from the running code &mdash; not from
+  specification, and not from memory.</p>
+
+  <div class="grid4" style="margin-top:9mm">
+    <div class="card"><p class="big" style="color:var(--good)">44</p><h4>Should pass</h4>
+      <p>The behaviour is built and, as far as the code shows, correct. If one of these fails, it is news.</p></div>
+    <div class="card"><p class="big" style="color:var(--gap)">20</p><h4>Known defect</h4>
+      <p>Expected to fail today, with the cause named. Do not raise these as new bugs.</p></div>
+    <div class="card"><p class="big" style="color:var(--silent)">7</p><h4>Not built</h4>
+      <p>The behaviour does not exist. Failing is correct; the question is whether it should exist.</p></div>
+    <div class="card"><p class="big" style="color:var(--dupe)">3</p><h4>Needs live data</h4>
+      <p>Cannot be settled from code. Someone must look at production.</p></div>
+  </div>
+
+  <div class="grid2" style="margin-top:9mm">
+    <div>
+      <h3 style="margin-top:0">How to run this</h3>
+      <p>Work down a module in order. Each case names what to do, what should happen, and whether it is
+      expected to work. A case marked <span class="tag t-gap">known defect</span> that <em>passes</em> is
+      just as important to report as one marked <span class="tag t-good">should pass</span> that fails.</p>
+      <p>Record only three things per case: pass, fail, or blocked. Where it fails, the note already
+      says why &mdash; you do not need to diagnose it.</p>
+    </div>
+    <div>
+      <h3 style="margin-top:0">What this is not</h3>
+      <p>It is not a specification. It describes the product as it stands on 21 August 2026, including
+      behaviour nobody asked for and behaviour that was asked for and never built. Where a case traces
+      to something your team reported, the date of that report is given.</p>
+      <p>Counts of boxes on each screen are counted from the screens themselves and include search and
+      filter controls, not only data entry.</p>
+    </div>
+  </div>
+
+  <p class="foot">Prepared 21 August 2026. Companions: <em>How Your Data Actually Moves</em>,
+  <em>Complete Field Inventory</em>, <em>Database Schema and Architecture</em>.</p>
+</section>
+
+<section class="sheet">
+  <p class="eyebrow">Before the first case</p>
+  <h2>Where the app starts, and the road through it</h2>
+  <hr class="rule">
+  <p class="lede">One trial, from an empty system to a paid vendor and a report. Every operator passes
+  through these ten steps in this order; nothing later works if an earlier step was skipped.</p>
+
+  <svg viewBox="0 0 950 250" role="img" aria-label="The ten steps from an empty system to a completed trial">
+    <defs><marker id="j" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="oklch(0.53 0.15 254)"/></marker></defs>
+    <text x="0" y="12" font-size="11" font-weight="700" letter-spacing="1.1" fill="oklch(0.62 0.014 255)">SET UP</text>
+    <text x="360" y="12" font-size="11" font-weight="700" letter-spacing="1.1" fill="oklch(0.62 0.014 255)">DELIVER</text>
+    <text x="655" y="12" font-size="11" font-weight="700" letter-spacing="1.1" fill="oklch(0.62 0.014 255)">PAY AND REPORT</text>
+
+    <g font-size="11.5" fill="oklch(0.23 0.018 255)">
+      <rect x="0" y="22" width="108" height="56" rx="5" fill="oklch(0.955 0.030 254)" stroke="oklch(0.53 0.15 254)" stroke-width="1.5"/>
+      <text x="10" y="40" font-weight="680">1 &middot; Sign in</text><text x="10" y="56" font-size="10.5" fill="oklch(0.45 0.016 255)">role decides</text><text x="10" y="69" font-size="10.5" fill="oklch(0.45 0.016 255)">what you see</text>
+
+      <rect x="118" y="22" width="108" height="56" rx="5" fill="oklch(0.955 0.030 254)" stroke="oklch(0.53 0.15 254)" stroke-width="1.5"/>
+      <text x="128" y="40" font-weight="680">2 &middot; Admin lists</text><text x="128" y="56" font-size="10.5" fill="oklch(0.45 0.016 255)">project names,</text><text x="128" y="69" font-size="10.5" fill="oklch(0.45 0.016 255)">seasons &middot; 8 boxes</text>
+
+      <rect x="236" y="22" width="108" height="56" rx="5" fill="oklch(0.955 0.030 254)" stroke="oklch(0.53 0.15 254)" stroke-width="1.5"/>
+      <text x="246" y="40" font-weight="680">3 &middot; Project</text><text x="246" y="56" font-size="10.5" fill="oklch(0.45 0.016 255)">name + season,</text><text x="246" y="69" font-size="10.5" fill="oklch(0.45 0.016 255)">then its towns &middot; 29</text>
+
+      <rect x="360" y="22" width="130" height="56" rx="5" fill="oklch(0.958 0.032 305)" stroke="oklch(0.52 0.16 305)" stroke-width="1.8"/>
+      <text x="370" y="40" font-weight="680">4 &middot; Local partner</text><text x="370" y="56" font-size="10.5" fill="oklch(0.42 0.10 305)">per project + town.</text><text x="370" y="69" font-size="10.5" fill="oklch(0.42 0.10 305)">Both addresses &middot; 57</text>
+
+      <rect x="500" y="22" width="130" height="56" rx="5" fill="oklch(0.955 0.030 254)" stroke="oklch(0.53 0.15 254)" stroke-width="1.5"/>
+      <text x="510" y="40" font-weight="680">5 &middot; Courier</text><text x="510" y="56" font-size="10.5" fill="oklch(0.45 0.016 255)">items, dispatch,</text><text x="510" y="69" font-size="10.5" fill="oklch(0.45 0.016 255)">deliver &middot; 19 boxes</text>
+
+      <rect x="655" y="22" width="130" height="56" rx="5" fill="oklch(0.955 0.030 254)" stroke="oklch(0.53 0.15 254)" stroke-width="1.5"/>
+      <text x="665" y="40" font-weight="680">6 &middot; Vendor</text><text x="665" y="56" font-size="10.5" fill="oklch(0.45 0.016 255)">who gets paid,</text><text x="665" y="69" font-size="10.5" fill="oklch(0.45 0.016 255)">bank details &middot; 36</text>
+
+      <rect x="795" y="22" width="155" height="56" rx="5" fill="oklch(0.955 0.030 254)" stroke="oklch(0.53 0.15 254)" stroke-width="1.5"/>
+      <text x="805" y="40" font-weight="680">7 &middot; Work order</text><text x="805" y="56" font-size="10.5" fill="oklch(0.45 0.016 255)">tagged to project</text><text x="805" y="69" font-size="10.5" fill="oklch(0.45 0.016 255)">and town &middot; 25 boxes</text>
+
+      <rect x="655" y="100" width="130" height="56" rx="5" fill="oklch(0.955 0.030 254)" stroke="oklch(0.53 0.15 254)" stroke-width="1.5"/>
+      <text x="665" y="118" font-weight="680">8 &middot; Payment</text><text x="665" y="134" font-size="10.5" fill="oklch(0.45 0.016 255)">request, batch,</text><text x="665" y="147" font-size="10.5" fill="oklch(0.45 0.016 255)">bank file &middot; 13 boxes</text>
+
+      <rect x="795" y="100" width="155" height="56" rx="5" fill="oklch(0.955 0.030 254)" stroke="oklch(0.53 0.15 254)" stroke-width="1.5"/>
+      <text x="805" y="118" font-weight="680">9 &middot; TDS</text><text x="805" y="134" font-size="10.5" fill="oklch(0.45 0.016 255)">deduction booked,</text><text x="805" y="147" font-size="10.5" fill="oklch(0.45 0.016 255)">then deposited</text>
+
+      <rect x="500" y="100" width="130" height="56" rx="5" fill="oklch(0.955 0.032 158)" stroke="oklch(0.50 0.12 158)" stroke-width="1.6"/>
+      <text x="510" y="118" font-weight="680">10 &middot; Reports</text><text x="510" y="134" font-size="10.5" fill="oklch(0.33 0.10 158)">five of them, read</text><text x="510" y="147" font-size="10.5" fill="oklch(0.33 0.10 158)">only &middot; 22 filters</text>
+    </g>
+
+    <line x1="110" y1="50" x2="115" y2="50" stroke="oklch(0.53 0.15 254)" stroke-width="2" marker-end="url(#j)"/>
+    <line x1="228" y1="50" x2="233" y2="50" stroke="oklch(0.53 0.15 254)" stroke-width="2" marker-end="url(#j)"/>
+    <line x1="346" y1="50" x2="356" y2="50" stroke="oklch(0.53 0.15 254)" stroke-width="2" marker-end="url(#j)"/>
+    <line x1="492" y1="50" x2="497" y2="50" stroke="oklch(0.53 0.15 254)" stroke-width="2" marker-end="url(#j)"/>
+    <line x1="632" y1="50" x2="652" y2="50" stroke="oklch(0.53 0.15 254)" stroke-width="2" marker-end="url(#j)"/>
+    <line x1="787" y1="50" x2="792" y2="50" stroke="oklch(0.53 0.15 254)" stroke-width="2" marker-end="url(#j)"/>
+    <path d="M872,80 L872,96" stroke="oklch(0.53 0.15 254)" stroke-width="2" marker-end="url(#j)"/>
+    <line x1="793" y1="128" x2="788" y2="128" stroke="oklch(0.53 0.15 254)" stroke-width="2" marker-end="url(#j)"/>
+    <line x1="653" y1="128" x2="634" y2="128" stroke="oklch(0.53 0.15 254)" stroke-width="2" marker-end="url(#j)"/>
+
+    <rect x="0" y="180" width="950" height="58" rx="5" fill="oklch(0.975 0.006 250)" stroke="oklch(0.87 0.008 255)" stroke-width="1.4"/>
+    <text x="14" y="200" font-size="12" font-weight="680" fill="oklch(0.23 0.018 255)">The two steps everything else depends on</text>
+    <text x="14" y="217" font-size="11.5" fill="oklch(0.45 0.016 255)">Step 2 &mdash; if a project name is not in the Admin list, it cannot be chosen anywhere, and typing it by hand creates a record linked to nothing.</text>
+    <text x="14" y="232" font-size="11.5" fill="oklch(0.45 0.016 255)">Step 4 &mdash; the partner record is the only place any address is entered. Courier, the Trials Report and dispatch all read it. Wrong here means four screens wrong.</text>
+  </svg>
+
+  <div class="grid2" style="margin-top:5mm">
+    <div class="card">
+      <h4>Who does what</h4>
+      <p>In practice the work splits: project setup and oversight on one side, day-to-day operations
+      &mdash; partners, courier, vendors, payments &mdash; on the other. The system does not enforce that
+      split; module grants do. A user sees only the modules granted to them, so a tester should run each
+      module as the role that actually uses it, not as super admin.</p>
+    </div>
+    <div class="card">
+      <h4>Where a trial can stall</h4>
+      <p>A town with no partner assigned has no courier address and no venue, so steps 5 and 10 have
+      nothing to show for it. That is not a fault &mdash; it is an incomplete setup, and it is what a
+      blank on the Trials Report usually means. 45 of 100 town records currently have no ground address.</p>
+    </div>
+  </div>
+</section>

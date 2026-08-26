@@ -26,6 +26,7 @@ import { reportsAPI } from '../../services/api';
 import { csvBlob } from '../../utils/csv';
 import { exportReportExcel, datedFileName } from '../../utils/reportExcel';
 import { MONTHS } from '../trials/trialConstants';
+import { computeStats } from './trialsReportStats';
 
 const UNSCHEDULED = 'Unscheduled';
 
@@ -95,8 +96,13 @@ const addressOf = (r) => {
   // Rows needing attention become countable instead of invisible.
   if (!base) return '';
 
-  const seen = norm(base);
-  const missing = [r.city, r.state].filter((v) => v && !seen.includes(norm(v)));
+  // Word-boundary match, not substring. `norm(base).includes('kota')` is true
+  // for "Rajkota Road Stadium", so the city Kota was silently dropped from the
+  // one address it belonged to. Reducing both sides to space-delimited word
+  // runs makes the test exact without regex escaping of user-entered text.
+  const words = (s) => ` ${norm(s).replace(/[^\p{L}\p{N}]+/gu, ' ').trim()} `;
+  const haystack = words(base);
+  const missing = [r.city, r.state].filter((v) => v && !haystack.includes(words(v)));
   let out = [base, ...missing].filter(Boolean).join(', ');
 
   const pin = r.groundPinCode;
@@ -170,8 +176,13 @@ function TrialsReport() {
         if (!entry.physicalAddress && a.physicalAddress) entry.physicalAddress = a.physicalAddress;
         if (!entry.googleMapLink && a.googleMapLink) entry.googleMapLink = a.googleMapLink;
         if (!entry.groundLocation && a.groundLocation) entry.groundLocation = a.groundLocation;
-        // The PIN belongs to the ground, so groundPinCode first; pinCode is the
-        // REP's own and only stands in when the ground has none recorded.
+        // Prefer groundPinCode, fall back to pinCode. Both PIN inputs on the REP
+        // form sit under the "Trial Ground Location" heading and write pinCode
+        // (REPModal.jsx:1487 heading, :1497 and :1201 inputs); nothing anywhere
+        // writes groundPinCode. So pinCode IS the ground PIN the operator typed
+        // -- 51 assignments carry it, 0 carry groundPinCode. Dropping the
+        // fallback blanks the PIN on every row that has one, with no UI to
+        // restore it. Keep groundPinCode first in case an input is ever added.
         if (!entry.groundPinCode && (a.groundPinCode || a.pinCode)) {
           entry.groundPinCode = a.groundPinCode || a.pinCode;
         }
@@ -212,7 +223,11 @@ function TrialsReport() {
   const rows = useMemo(() => {
     const out = [];
     trials.forEach((t) => {
-      const projectName = t.trialName || t.trialType || '—';
+      // NOT '—'. That em-dash is a DISPLAY placeholder; putting it in the data
+      // wrote the literal character into the Project cell of every exported row
+      // and collapsed every unnamed project into a single '—' row of the
+      // month matrix. Blank stays blank here; the table renders the dash.
+      const projectName = t.trialName || t.trialType || '';
       (t.assignedCities || []).forEach((c) => {
         const assignment = repsByTrialCity.get(`${t.id}||${norm(c.cityName)}`);
         const assignedReps = assignment ? assignment.reps : [];
@@ -223,15 +238,25 @@ function TrialsReport() {
           season: t.season || '',
           state: c.state || '',
           city: c.cityName || '',
-          // The venue, kept whole. NOT truncated to the first comma segment --
-          // there is no Address column on screen, so this is the only place the
-          // address appears there. Falls back to the trial city's own field,
-          // which is blank on every production row (see addressOf).
-          location:
-            (assignment && assignment.groundLocation)
-            || c.groundLocation
-            || (assignment ? assignment.physicalAddress : '')
-            || '',
+          // The venue NAME, and only that. It does NOT fall back to the address:
+          // doing so made the exported Venue and Address columns print identical
+          // text on every row.
+          //
+          // Both sources are now writable, and rows do carry a venue:
+          //   - REPCityAssignment.ground_location: the "Ground Name" input in
+          //     REPModal's ground section (REPModal.jsx:1234-1238) writes it.
+          //     This is the normal path, and it is what fills the column today.
+          //   - TrialCity.ground_location: trials/views.py add_city no longer
+          //     hardcodes it to '' (trials/views.py:133 stores what is supplied);
+          //     no screen sends it yet, so it is a fallback, not the source.
+          // The "Ground Location" field on the trial City modal is still a
+          // different thing -- it writes TrialCityLocation, the standalone city
+          // catalogue in the trialcities app, which nothing copies into
+          // TrialCity. Filling it in there does not reach this report.
+          //
+          // A blank cell now means no one typed a Ground Name on the REP's city
+          // assignment, not that the column is unfillable.
+          location: (assignment && assignment.groundLocation) || c.groundLocation || '',
           // All from the REP's city assignment, the only place any of them are
           // entered. groundPinCode completes the address; without it "full
           // address" is missing its last component.
@@ -308,12 +333,10 @@ function TrialsReport() {
     return { monthsUsed, projects, counts, colTotals, grandTotal: filteredRows.length };
   }, [filteredRows]);
 
-  const stats = useMemo(() => ({
-    projects: new Set(rows.map((r) => r.projectName)).size,
-    cities: rows.length,
-    assigned: rows.filter((r) => r.assigned).length,
-    unassigned: rows.filter((r) => !r.assigned).length,
-  }), [rows]);
+  // From filteredRows, not rows: the cards head a view the table, the month
+  // matrix and the exports all read off the filtered set. Counting the whole
+  // dataset here made them stay frozen while everything under them narrowed.
+  const stats = useMemo(() => computeStats(filteredRows), [filteredRows]);
 
   // Typed twin of the CSV. Note the date is passed RAW, not through fmtDate:
   // the column is a real date cell, so Excel sorts and filters it properly,
@@ -451,7 +474,7 @@ function TrialsReport() {
                       const rowTotal = matrix.monthsUsed.reduce((s, m) => s + (matrix.counts[p][m] || 0), 0);
                       return (
                         <TableRow key={p} hover>
-                          <TableCell sx={{ ...cellSx, fontWeight: 600 }}>{p}</TableCell>
+                          <TableCell sx={{ ...cellSx, fontWeight: 600 }}>{p || '—'}</TableCell>
                           {matrix.monthsUsed.map((m) => (
                             <TableCell key={m} align="center" sx={cellSx}>
                               {matrix.counts[p][m] || <span style={{ color: '#cbd5e1' }}>·</span>}
@@ -523,7 +546,14 @@ function TrialsReport() {
               <Table size="small">
                 <TableHead>
                   <TableRow sx={{ bgcolor: '#f8fafc' }}>
-                    {['Project', 'Season', 'State', 'City', 'Address', 'Date', 'Map', 'REP', 'Status'].map((h) => (
+                    {/* Venue sits between City and Address, exactly where both
+                        exports put it. It reads `r.location` — the same single
+                        field the Excel and CSV builders print under their own
+                        'Venue' header — so the screen and the export cannot
+                        drift apart. Until this row existed, a user who typed a
+                        Ground Name saw it in the export and nowhere on the
+                        screen they typed it into. */}
+                    {['Project', 'Season', 'State', 'City', 'Venue', 'Address', 'Date', 'Map', 'REP', 'Status'].map((h) => (
                       <TableCell key={h} sx={headSx}>{h}</TableCell>
                     ))}
                   </TableRow>
@@ -531,20 +561,29 @@ function TrialsReport() {
                 <TableBody>
                   {filteredRows.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} align="center" sx={{ py: 5, color: '#5A6B82' }}>
+                      <TableCell colSpan={10} align="center" sx={{ py: 5, color: '#5A6B82' }}>
                         No trial cities match the current filters.
                       </TableCell>
                     </TableRow>
                   ) : (
                     filteredRows.map((r, i) => (
                       <TableRow key={`${r.trialId}-${r.city}-${i}`} hover>
-                        <TableCell sx={{ ...cellSx, fontWeight: 600 }}>{r.projectName}</TableCell>
+                        <TableCell sx={{ ...cellSx, fontWeight: 600 }}>{r.projectName || '—'}</TableCell>
                         <TableCell sx={cellSx}>{r.season || '—'}</TableCell>
                         {/* nowrap on these two: they were each stacking onto
                             2-3 lines and inflating row height while the address
                             went short of width. */}
                         <TableCell sx={{ ...cellSx, whiteSpace: 'nowrap' }}>{r.state || '—'}</TableCell>
                         <TableCell sx={{ ...cellSx, minWidth: 120 }}>{r.city || '—'}</TableCell>
+                        {/* Venue = the ground NAME only, never the address —
+                            same `r.location` the exports use. Most rows are
+                            blank today because the Ground Name input is new,
+                            which is expected, not a bug to paper over. The dash
+                            is the same grey placeholder the Map column uses for
+                            an absent value. */}
+                        <TableCell sx={{ ...cellSx, minWidth: 140 }}>
+                          {r.location || <span style={{ color: '#cbd5e1' }}>—</span>}
+                        </TableCell>
                         {/* The full address, PIN included. There is no separate
                             Address column on screen, so this cell has to carry
                             the whole thing — truncating it here is what made the
