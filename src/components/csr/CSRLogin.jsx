@@ -35,7 +35,7 @@
 // referent on a screen that has no data on it. The workspace behind this door
 // keeps the Ledger system; a login is the brand's one moment.
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   Box, Typography, TextField, Button, Alert, Link, InputAdornment, IconButton,
 } from '@mui/material';
@@ -618,19 +618,6 @@ export default function CSRLogin() {
             </Box>
           )}
 
-          {/* The other door. A CSR operator who took a wrong turn needs a way
-              across; a funder does not belong here at all and is served by
-              RequireClient redirecting them to their own branded door, so
-              telling them to check their email would be advice for a problem
-              they cannot have on this screen. */}
-          <Box sx={{
-            mt: 4, pt: 3, borderTop: `1px solid ${LINE}`,
-            fontFamily: UI, fontSize: '0.875rem', color: MUTED,
-          }}>
-            <Link component={RouterLink} to="/login" underline="hover" sx={{ color: PITCH, fontWeight: 600 }}>
-              TTA operations
-            </Link>
-          </Box>
         </Box>
       </Box>
     </Box>
