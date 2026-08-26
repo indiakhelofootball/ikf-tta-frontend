@@ -151,3 +151,21 @@ describe('#9b — GrantedRoute shows a loading state instead of a blank screen',
     expect(iSuper).toBeLessThan(iLoading);
   });
 });
+
+describe('the slip download reports an address that would not fit', () => {
+  test('the page builds the slip through courierSlipPdf, not its own copy', () => {
+    expect(wires(courierSrc, "import { downloadSlipPdf } from './courierSlipPdf';")).toBe(true);
+    expect(wires(courierSrc, 'await downloadSlipPdf(s, logoData)')).toBe(true);
+    // The old inline builder must be gone, or two slip layouts can drift apart.
+    expect(courierSrc.includes('newjsPDF(')).toBe(false);
+  });
+
+  test('the warning from the download reaches the screen', () => {
+    expect(wires(courierSrc, 'setSlipWarning(slipAddressWarning(result))')).toBe(true);
+    const iState = courierSrc.indexOf('const[slipWarning,setSlipWarning]=useState("")');
+    const iAlert = courierSrc.indexOf('{slipWarning&&(');
+    expect(iState).toBeGreaterThan(-1);
+    expect(iAlert).toBeGreaterThan(iState);
+    expect(courierSrc.slice(iAlert, iAlert + 200)).toContain('severity="warning"');
+  });
+});

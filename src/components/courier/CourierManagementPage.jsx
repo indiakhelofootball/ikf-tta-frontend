@@ -20,11 +20,8 @@ import {
   WhatsApp as WhatsAppIcon,
   Phone as PhoneIcon,
 } from '@mui/icons-material';
-import jsPDF from 'jspdf';
-import {
-  SLIP_PAGE_PT, SLIP_BLANK_PNG, SLIP_ITEM_TILES, SLIP_BADGE_TILES,
-  BARLOW_REGULAR_TTF, BARLOW_BOLD_TTF, BARLOW_EXTRABOLD_TTF,
-} from './courierSlipAssets';
+import { downloadSlipPdf } from './courierSlipPdf';
+import { slipAddressWarning } from './courierSlipText';
 import { repAPI, courierAPI } from '../../services/api';
 import { getCourierItems } from '../../utils/adminStorage';
 import useGrants from '../../auth/useGrants';
@@ -104,197 +101,9 @@ const FILTER_LABELS = { active: 'Active', past: 'Past', all: 'All', deleted: 'De
 // longer carries logos; repAPI.getLogoDataUrl fetches the one logo a slip needs
 // and does the conversion, with the auth header this helper never sent.)
 
-// Branded IKF "TYGER-IKF Trial Kit" package slip — pixel-identical to the official
-// artwork. The static layer (header, SHIP TO / DISPATCHED FROM labels, CONTENTS table
-// with empty badges, sidebar, footer) is a high-res raster of the source PDF. Only the
-// REP name, recipient details, PIN/MOB, QTY numbers and the REP logo are drawn live,
-// in the artwork's own font (Barlow) at the exact baselines, colours and letter-spacing.
-async function downloadPDF(shipment, logoDataURL) {
-  const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: SLIP_PAGE_PT });
-  const [pageW, pageH] = SLIP_PAGE_PT;   // 1440 x 810
-  const NAVY = [0, 36, 74];              // artwork navy
-  const QTY_COLOR = [241, 241, 241];     // off-white badge numbers
-
-  // Static template (CONTENTS rows erased), full page. The rows themselves are
-  // composited below from per-item tiles so zero-quantity contents are omitted.
-  doc.addImage(SLIP_BLANK_PNG, 'PNG', 0, 0, pageW, pageH, 'slipBlank', 'FAST');
-
-  // Register the artwork's fonts (full Barlow — covers any recipient text).
-  doc.addFileToVFS('Barlow-Regular.ttf', BARLOW_REGULAR_TTF);
-  doc.addFont('Barlow-Regular.ttf', 'Barlow', 'normal');
-  doc.addFileToVFS('Barlow-Bold.ttf', BARLOW_BOLD_TTF);
-  doc.addFont('Barlow-Bold.ttf', 'Barlow', 'bold');
-  doc.addFileToVFS('Barlow-ExtraBold.ttf', BARLOW_EXTRABOLD_TTF);
-  doc.addFont('Barlow-ExtraBold.ttf', 'BarlowXB', 'normal');
-
-  // Draw tracked text at an exact baseline (x, y in pt from the source artwork).
-  const put = (text, x, y, { font = 'Barlow', style = 'normal', size, color = NAVY, tc = 0, align } = {}) => {
-    if (text === undefined || text === null || text === '') return;
-    doc.setFont(font, style);
-    doc.setFontSize(size);
-    doc.setTextColor(...color);
-    doc.setCharSpace(tc);
-    doc.text(String(text), x, y, align ? { align } : undefined);
-    doc.setCharSpace(0);
-  };
-
-  // Width-aware wrap honouring the active letter-spacing (Barlow Regular 23.809pt).
-  const trackedWidth = (s, size, tc) => doc.getStringUnitWidth(s) * size + Math.max(0, s.length - 1) * tc;
-  const wrapTracked = (text, size, tc, maxW, maxLines) => {
-    const lines = [];
-    let cur = '';
-    for (const w of String(text).split(/\s+/).filter(Boolean)) {
-      const t = cur ? `${cur} ${w}` : w;
-      if (!cur || trackedWidth(t, size, tc) <= maxW) cur = t;
-      else { lines.push(cur); cur = w; }
-    }
-    if (cur) lines.push(cur);
-    return lines.slice(0, maxLines);
-  };
-
-  // ---- Header subtitle: "Trial kit for <REP>" (Barlow Regular 22.619pt) ----
-  put(`Trial kit for ${shipment.snapRepName || ''}`, 259.23, 97.35, { size: 22.619, tc: 1.416 });
-
-  // ---- SPOC name (Barlow ExtraBold 24.217pt) ----
-  put(shipment.snapAcceptingName, 46.0, 223.39, { font: 'BarlowXB', size: 24.217 });
-
-  // ---- Address (≤3 lines) + City + State, packed contiguously into the 5 slots ----
-  const ADDR_SIZE = 23.809, ADDR_TC = 1.536, ADDR_X = 43.57;
-  const SLOT_Y0 = 259.88, SLOT_STEP = 32.66;   // baselines: 259.88, 292.54, 325.19, 357.85, 390.51
-  const addrLines = shipment.snapAddress
-    ? wrapTracked(shipment.snapAddress, ADDR_SIZE, ADDR_TC, 640, 3)
-    : [];
-  const block = [...addrLines];
-  if (shipment.snapCity) block.push(shipment.snapCity);
-  if (shipment.snapState) block.push(shipment.snapState);
-  block.slice(0, 5).forEach((line, i) => {
-    put(line, ADDR_X, SLOT_Y0 + i * SLOT_STEP, { size: ADDR_SIZE, tc: ADDR_TC });
-  });
-
-  // ---- PIN / MOB line (Barlow Bold 18.584pt) — labels & divider at fixed x ----
-  const PM = { size: 18.584, font: 'Barlow', style: 'bold', tc: 0.932 };
-  const PM_Y = 433.58;
-  put('PIN CODE', 43.57, PM_Y, PM);
-  put(shipment.snapPinCode, 137.38, PM_Y, PM);
-  put('|', 239.02, PM_Y, PM);
-  put('MOB', 299.47, PM_Y, PM);
-  put(shipment.snapAcceptingPhone, 352.46, PM_Y, PM);
-
-  // ---- CONTENTS rows — every item with qty > 0 renders, packed top-down ----
-  // The blank template has the rows erased. The six standard items are composited from
-  // their original label tiles; anything else (admin-added items) is drawn as live Barlow
-  // text fitted to the tile typography, so a custom item can neither vanish from the slip
-  // nor steal a standard item's artwork. Badges (navy/orange, alternating by row position)
-  // and QTY numbers are drawn live for both kinds.
-  const QTY_X = 1207.7, QTY_SIZE = 17.02;
-  const items = (shipment.items || []).filter((i) => Number(i.quantity || 0) > 0);
-  const nameLower = (s) => String(s || '').toLowerCase();
-  const pad2 = (n) => String(n).padStart(2, '0');
-
-  // Canonical artwork rows in slip order. Each tile is claimed by at most ONE item —
-  // an exact canonical name wins first, then a legacy keyword variant — so a custom
-  // item like "School Banners Kit" can't steal the Banners artwork from the real
-  // "Banners" row; unclaimed items fall through to text.
-  const CONTENT_ROWS = [
-    { tile: 'vol',  exact: 'volunteer tshirts',    match: (n) => n.includes('volunteer') || n.includes('shirt') },
-    { tile: 'ban',  exact: 'banners',              match: (n) => n.includes('banner') },
-    { tile: 'mat',  exact: 'matchsheet',           match: (n) => n.includes('matchsheet') },
-    { tile: 'sco',  exact: 'scout dockets',        match: (n) => n.includes('scout') },
-    { tile: 'bibo', exact: 'numbered bibs orange', match: (n) => n.includes('bib') && n.includes('orange') },
-    { tile: 'bibg', exact: 'numbered bibs green',  match: (n) => n.includes('bib') && n.includes('green') },
-  ];
-
-  // Original slot geometry from the source art (pt). Surviving rows fill these from the
-  // top; the all-six case reproduces the original layout pixel-for-pixel.
-  const SLOT_CENTERS = [410.0, 468.5, 522.75, 579.0, 640.75, 706.0];
-  const DIVIDER_YS   = [437.75, 494.25, 551.0, 607.25, 675.25];
-  const LABEL_X = 690, LABEL_W = 320, LABEL_HALF = 25;   // label tile bounds (pt)
-  const BADGE_CX = 1207.5, BADGE_HALF = 20;               // badge tile centre / half-size (pt)
-  const DIV_X0 = 675, DIV_X1 = 1253;                      // divider rule extent in the source art
-
-  // Text-row typography, measured from the tile pixels: the artwork weight (~Barlow
-  // Medium) isn't embedded, but Bold at these metrics matches the measured tile text
-  // widths within 1.6pt. x-offset and baseline are the tile averages.
-  const ITEM_TXT = { x: LABEL_X + 29.8, base: 12.25, size: 15.1, tc: 1.35 };
-  const ITEM_TXT_MAXW = BADGE_CX - BADGE_HALF - ITEM_TXT.x - 15;
-
-  const claimed = new Set();
-  const claims = new Map();
-  CONTENT_ROWS.forEach((r) => {
-    const it = items.find((i) => !claimed.has(i) && nameLower(i.name).trim() === r.exact);
-    if (it) { claimed.add(it); claims.set(r.tile, it); }
-  });
-  CONTENT_ROWS.forEach((r) => {
-    if (claims.has(r.tile)) return;
-    const it = items.find((i) => !claimed.has(i) && r.match(nameLower(i.name)));
-    if (it) { claimed.add(it); claims.set(r.tile, it); }
-  });
-  const tiled = CONTENT_ROWS
-    .filter((r) => claims.has(r.tile))
-    .map((r) => ({ tile: r.tile, qty: Number(claims.get(r.tile).quantity) }));
-  const present = [
-    ...tiled,
-    ...items.filter((i) => !claimed.has(i))
-      .map((i) => ({ text: String(i.name || '').trim(), qty: Number(i.quantity) })),
-  ];
-
-  // Six rows or fewer sit in the original slots; a surplus respaces the same vertical
-  // span evenly and scales rows down proportionally so nothing overflows the template.
-  const rowCount = present.length;
-  const rowScale = rowCount <= 6 ? 1 : 6 / rowCount;
-  const centers = rowCount <= 6
-    ? SLOT_CENTERS
-    : present.map((_, k) => 410.0 + (k * (706.0 - 410.0)) / (rowCount - 1));
-
-  present.forEach((r, k) => {
-    const cy = centers[k];
-    if (r.tile) {
-      // Label tile, left-aligned, scaled about the row centre.
-      doc.addImage(SLIP_ITEM_TILES[r.tile], 'PNG',
-        LABEL_X, cy - LABEL_HALF * rowScale, LABEL_W * rowScale, LABEL_HALF * 2 * rowScale);
-    } else {
-      // Custom item: live text, shrunk to fit the label span if the name runs long.
-      doc.setFont('Barlow', 'bold');
-      let size = ITEM_TXT.size * rowScale;
-      const tc = ITEM_TXT.tc * rowScale;
-      while (size > 9 && trackedWidth(r.text, size, tc) > ITEM_TXT_MAXW) size -= 0.5;
-      put(r.text, ITEM_TXT.x, cy + ITEM_TXT.base * rowScale,
-        { font: 'Barlow', style: 'bold', size, tc });
-    }
-    // Badge (colour alternates navy/orange by row position), kept centred as it scales.
-    const badge = k % 2 === 0 ? SLIP_BADGE_TILES.navy : SLIP_BADGE_TILES.orange;
-    doc.addImage(badge, 'PNG',
-      BADGE_CX - BADGE_HALF * rowScale, cy - BADGE_HALF * rowScale,
-      BADGE_HALF * 2 * rowScale, BADGE_HALF * 2 * rowScale);
-    // QTY number — baseline = slot centre + half cap-height (6.84pt @17.02).
-    put(pad2(r.qty), QTY_X, cy + 6.84 * rowScale,
-      { font: 'BarlowXB', size: QTY_SIZE * rowScale, color: QTY_COLOR, align: 'center' });
-    // Divider below every row except the last present one (matches the source rule).
-    if (k < rowCount - 1) {
-      doc.setDrawColor(228, 227, 222);
-      doc.setLineWidth(0.75);
-      const dy = rowCount <= 6 ? DIVIDER_YS[k] : (centers[k] + centers[k + 1]) / 2;
-      doc.line(DIV_X0, dy, DIV_X1, dy);
-    }
-  });
-
-  // ---- REP logo, fitted (aspect-preserved) into the <REP LOGO SPACE> box ----
-  if (logoDataURL) {
-    try {
-      const props = doc.getImageProperties(logoDataURL);
-      const boxX = 319.3, boxY = 515.6, boxW = 204.7, boxH = 204.7;
-      const scale = Math.min(boxW / props.width, boxH / props.height);
-      const w = props.width * scale, h = props.height * scale;
-      doc.addImage(logoDataURL, props.fileType || 'PNG',
-        boxX + (boxW - w) / 2, boxY + (boxH - h) / 2, w, h);
-    } catch {
-      /* logo optional — skip on any decode error */
-    }
-  }
-
-  const city = (shipment.snapCity || 'Shipment').trim();
-  doc.save(`Package Slip - ${city}.pdf`);
-}
+// The slip build itself lives in courierSlipPdf.js: this file cannot be imported
+// under Jest or node (react-router-dom v7), and the slip has to be rendered to be
+// verified. Same reason courierItemQuantity.js and courierZeroReasons.js exist.
 
 const cardSx = { bgcolor: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', p: 2.5, mb: 2 };
 const labelSx = { fontSize: '0.75rem', fontWeight: 700, color: '#64748b', mb: 0.5, textTransform: 'uppercase', letterSpacing: '0.05em' };
@@ -417,6 +226,7 @@ export default function CourierManagementPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [slipWarning, setSlipWarning] = useState('');
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('active');
 
@@ -519,12 +329,23 @@ export default function CourierManagementPage() {
   // back to the snapshot name when the assignment link has been nulled — see
   // ./courierRepLookup. Without it an orphaned shipment printed with no logo.
   async function handleDownload(s) {
-    // Fetch this one REP's logo now, instead of having carried all 66 of them
-    // in the list. A REP with no logo, or one that cannot be resolved, yields
-    // null and the slip prints without a logo — the behaviour it always had.
+    // Composition of two fixes, and neither side is correct alone.
+    //
+    // The logo REF comes from the slim REP list (15c758c): the list no longer
+    // carries repLogoUrl — it was 17.44 MB of base64 across 66 rows — so the
+    // old loop over `r.repLogoUrl` would now read undefined and every slip
+    // would print with no logo. urlToDataURL is gone with it; getLogoDataUrl
+    // sends the auth header that a bare fetch never did.
+    //
+    // The RENDER comes from courierSlipPdf (12a7bc9), which reports whether the
+    // address fitted. The slip has five address slots and no room for a warning
+    // inside the artwork, so an address that did not fit has to be reported
+    // here — a parcel must not go out with a shortened label and nothing on
+    // screen saying so.
     const ref = findRepLogoRefForShipment(reps, s);
     const logoData = ref ? await repAPI.getLogoDataUrl(ref.id, ref.updatedAt) : null;
-    await downloadPDF(s, logoData);
+    const result = await downloadSlipPdf(s, logoData);
+    setSlipWarning(slipAddressWarning(result));
   }
 
   const stats = useMemo(() => ({
@@ -802,6 +623,9 @@ export default function CourierManagementPage() {
         )}
       </Stack>
 
+      {slipWarning && (
+        <Alert severity="warning" sx={{ mb: 2 }} onClose={() => setSlipWarning('')}>{slipWarning}</Alert>
+      )}
       {error && !modalOpen && !dispOpen && !deliveryOpen && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>
       )}
