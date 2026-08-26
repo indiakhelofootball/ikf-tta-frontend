@@ -26,7 +26,7 @@ import {
 import useGrants from '../../auth/useGrants';
 import { useAuth } from '../../auth/AuthContext';
 import { ROLES } from '../../auth/roles';
-import SidebarFrame, { NavItem } from './SidebarFrame';
+import SidebarFrame, { NavItem, NavSection } from './SidebarFrame';
 import './Sidebar.css';
 
 // Mirrors App.js's /csr/* routes. A project detail page (/csr/:id) has to light
@@ -53,6 +53,15 @@ export default function CSRSidebar({ collapsed, onToggle }) {
   const isAdminOrSuper = user?.role === ROLES.SUPER_ADMIN || user?.role === ROLES.ADMIN;
 
   const item = (props) => <NavItem {...props} collapsed={collapsed} />;
+  const section = (label) => <NavSection label={label} collapsed={collapsed} />;
+
+  // Two groups, and the split is the one the source draws. The visual flow's
+  // §2 sidebar lists exactly five CSR screens — Dashboard, Projects,
+  // Activities, Reports, Util. Cert — which is the work. Funders, Activity
+  // Types and Branding were added afterwards and are admin-gated already; they
+  // are things you configure once, not places you go. Putting all eight in one
+  // column said they were peers, which is why the rail read as unsorted.
+  const showSetup = isAdminOrSuper;
 
   return (
     <SidebarFrame
@@ -62,14 +71,16 @@ export default function CSRSidebar({ collapsed, onToggle }) {
       subtitle="Project Delivery"
       mark="CSR"
     >
+      {section('Delivery')}
       {item({ to: '/csr', icon: <CSRIcon fontSize="small" />, label: 'Dashboard', end: true })}
       {canView('csr') && item({ to: '/csr/projects', icon: <ProjectsIcon fontSize="small" />, label: 'Projects', forceActive: onProjectDetail })}
       {canView('csr') && item({ to: '/csr/activities', icon: <ActivitiesIcon fontSize="small" />, label: 'Activities' })}
       {canView('csr') && item({ to: '/csr/reports', icon: <ReportsIcon fontSize="small" />, label: 'Reports' })}
       {(canView('csr_certificate') || canView('csr')) && item({ to: '/csr/utilisation', icon: <UtilisationIcon fontSize="small" />, label: 'Utilisation' })}
-      {isAdminOrSuper && item({ to: '/csr/clients', icon: <FundersIcon fontSize="small" />, label: 'Funders' })}
-      {isAdminOrSuper && item({ to: '/csr/activity-types', icon: <CatalogIcon fontSize="small" />, label: 'Activity Types' })}
-      {isAdminOrSuper && item({ to: '/csr/branding', icon: <BrandingIcon fontSize="small" />, label: 'Branding' })}
+      {showSetup && section('Setup')}
+      {showSetup && item({ to: '/csr/clients', icon: <FundersIcon fontSize="small" />, label: 'Funders' })}
+      {showSetup && item({ to: '/csr/activity-types', icon: <CatalogIcon fontSize="small" />, label: 'Activity Types' })}
+      {showSetup && item({ to: '/csr/branding', icon: <BrandingIcon fontSize="small" />, label: 'Branding' })}
     </SidebarFrame>
   );
 }
