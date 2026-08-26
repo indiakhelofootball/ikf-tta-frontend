@@ -21,7 +21,7 @@ import { Box, ButtonBase, Typography } from '@mui/material';
 import { ChevronRight as ChevronIcon } from '@mui/icons-material';
 
 import { ttaProjectIdentity } from './CSRProjectDetailView';
-import { surfaces, inks, figure, motion } from '../../styles/ttaTheme';
+import { surfaces, inks, text, figure, motion } from '../../styles/ttaTheme';
 
 // Identity inks, in the dashboard's order. The hash below is character-for-
 // character the one in CSRDashboard.jsx: a grant that is teal on the dashboard
@@ -38,13 +38,10 @@ export const grantInk = (id) => {
 
 // Status carries a word as well as a colour, always — see the MuiChip note in
 // ttaTheme.js. The dot is redundancy, not the message.
-const NEUTRAL_DOT = '#98A199';
-const NEUTRAL_TEXT = '#4E5A54';
-
 export const statusInk = (status) =>
   (status === 'Closed'
     ? { dot: inks.plum.accent, text: inks.plum.text }
-    : { dot: NEUTRAL_DOT, text: NEUTRAL_TEXT });
+    : { dot: text.neutral, text: text.secondary });
 
 export const formatMoney = (value) =>
   (value == null || value === ''

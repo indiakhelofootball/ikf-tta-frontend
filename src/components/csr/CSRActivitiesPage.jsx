@@ -32,13 +32,13 @@ import {
 import { csrAPI } from '../../services/api';
 import useGrants from '../../auth/useGrants';
 import useRefetchOnFocus from '../../hooks/useRefetchOnFocus';
-import { surfaces, inks, figure, fonts, tabular } from '../../styles/ttaTheme';
+import { surfaces, inks, text, figure, fonts, tabular } from '../../styles/ttaTheme';
 
 const asList = (data) => (Array.isArray(data) ? data : data?.results || []);
 
 // Activities carry no meaning of their own in this system, so the page chrome
 // stays neutral rather than borrowing an ink that means something else.
-const NEUTRAL = { tint: surfaces.sunken, text: '#4E5A54' };
+const NEUTRAL = { tint: surfaces.sunken, text: text.secondary };
 
 // The serializer exposes `date` for point-in-time activities and start/end for
 // spans. Sorting needs one comparable value, so fall through in that order and

@@ -47,9 +47,12 @@ this enumeration; this is it.)
 | Plum | `#6E3F5C` | same | `#EEE3EA` | closed · frozen certificate |
 | Clay | `#A6512E` | **`#A34F2D`** | `#F2E3DB` | overspend · needs a decision |
 
-Ochre and clay needed darkened text variants — the fills score **3.41** and
-**4.37** on their own tints. **Ochre must never be a button fill** (white on it
-is 3.87).
+Ochre and clay used to need darkened text variants — the fills scored **3.41**
+and **4.37** on their own tints. The 21 Aug retune moved every ink to one
+lightness (OKLCH L 0.47), which brought both back above 4.5 as text, so the
+darkened variants collapsed into the fills. **Ochre may now be a button fill**
+(white on it measures 6.88, not the old 3.87 — that bar applied to the pale
+gold this ink used to be, not to the current dark bronze `#795300`).
 
 Surfaces: bone `#EFF1EC` (page floor) · card `#FAFBF8` · sunk `#E6E9E2`
 (table headers, wells) · hairline `#DBDED6`.
@@ -74,8 +77,8 @@ saturation with **zero pixels above 40%**, because six inks at ~10% alpha over
 bone are each a 4% grey. All three parts of the agreed fix now ship in
 `CSRDashboard.jsx`: figures carry their ink at full strength; the icon badges
 are **solid ink with a white glyph** where the fill clears 4.5:1 on white
-(moss/indigo/teal/plum/clay), falling back to a tinted chip with the ink's own
-glyph for ochre (white is 3.87, and ochre may never be a solid fill) and the
+(as of the 21 Aug retune this is all six inks, ochre included — white on it now
+measures 6.88), falling back to a tinted chip with its own dark text for the
 neutral `#98A199` (~2.0); and the glass gradient is **clean white, no ink**.
 Colour is now an object on the page, not atmosphere.
 
