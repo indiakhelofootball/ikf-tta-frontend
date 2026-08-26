@@ -45,6 +45,23 @@ const pageTitles = {
   "/csr/branding": "Branding",
 };
 
+// Dynamic routes (App.js path params) can't live in the exact-match map above
+// — no key is ever equal to "/trials/17" or "/csr/42". Checked only after an
+// exact match fails, so every static /csr/... route above still wins over the
+// /csr/:id pattern. DashboardLayout only has the pathname at render time (no
+// project fetch here — out of scope), so the label is the honest static noun
+// for "you opened one of these", not the project's own name.
+const dynamicRoutePatterns = [
+  { pattern: /^\/trials\/[^/]+$/, title: "Project" },
+  { pattern: /^\/csr\/[^/]+$/, title: "Project" },
+];
+
+function resolveTitle(pathname) {
+  if (pageTitles[pathname]) return pageTitles[pathname];
+  const match = dynamicRoutePatterns.find(({ pattern }) => pattern.test(pathname));
+  return match ? match.title : "Dashboard";
+}
+
 // `sidebar` takes a COMPONENT, not an element. The collapse state lives here and
 // is passed down as collapsed/onToggle, which an element could not receive
 // without cloneElement — CSR_IMPLEMENTATION.md §3.3 wrote it as an element, and
@@ -54,7 +71,7 @@ export default function DashboardLayout({ sidebar: SidebarComponent = Sidebar })
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const title = pageTitles[location.pathname] || "Dashboard";
+  const title = resolveTitle(location.pathname);
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
 
   const [anchorEl, setAnchorEl] = React.useState(null);
