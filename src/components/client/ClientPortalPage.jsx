@@ -6,10 +6,9 @@ import {
   LinearProgress,
 } from '@mui/material';
 import { OpenInNew as OpenIcon, Download as DownloadIcon } from '@mui/icons-material';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 
 import { clientAPI } from '../../services/api';
+import { downloadCertificatePdf } from '../../utils/certificatePdf';
 import { useAuth } from '../../auth/AuthContext';
 import clientThemeFrom from './clientTheme';
 import ClientChangePasswordDialog from './ClientChangePasswordDialog';
@@ -33,37 +32,9 @@ const rupees = (v) => `₹${Number(v || 0).toLocaleString('en-IN')}`;
 // The funder's copy of the Utilisation Certificate. Everything printed here
 // comes from the server's frozen snapshot — nothing is summed in the browser,
 // because this is the document that gets filed and a second implementation of
-// the total would eventually disagree with the one on record.
-const downloadCertificate = (cert) => {
-  const doc = new jsPDF();
-  doc.setFontSize(16);
-  doc.text('Utilisation Certificate', 14, 18);
-  doc.setFontSize(10);
-  doc.text(`Project: ${cert.projectName || ''}`, 14, 28);
-  doc.text(`Funder: ${cert.clientName || ''}`, 14, 34);
-  doc.text(`Contribution: INR ${Number(cert.sanctionedAmount || 0).toLocaleString('en-IN')}`, 14, 40);
-  doc.text(`Total Utilised: INR ${Number(cert.totalUtilised || 0).toLocaleString('en-IN')}`, 14, 46);
-  const period = cert.periodStart || cert.periodEnd
-    ? `Period: ${cert.periodStart || 'project inception'} to ${cert.periodEnd || 'date'}`
-    : 'Period: not stated on the project';
-  doc.text(period, 14, 52);
-  // The version and the freeze date are what make two copies of this document
-  // comparable. A funder who filed v1 must be able to see that what they hold
-  // is v1, not merely "the certificate".
-  doc.text(
-    `Frozen v${cert.certificateVersion} — figures as at ${cert.frozenAt ? new Date(cert.frozenAt).toLocaleString('en-IN') : 'project close'}`,
-    14, 58,
-  );
-  autoTable(doc, {
-    startY: 66,
-    head: [['Expense', 'Amount (INR)']],
-    body: (cert.lineItems || []).map((x) => [
-      x.note || '',
-      Number(x.amount || 0).toLocaleString('en-IN'),
-    ]),
-  });
-  doc.save(`utilisation_certificate_${cert.projectName || 'grant'}.pdf`);
-};
+// the total would eventually disagree with the one on record. The 'funder'
+// variant is what enforces the isolation boundary — see certificatePdf.js.
+const downloadCertificate = (cert) => downloadCertificatePdf(cert, { variant: 'funder' });
 
 function Field({ label, value }) {
   return (

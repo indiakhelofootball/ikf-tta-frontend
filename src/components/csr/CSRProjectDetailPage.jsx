@@ -13,9 +13,6 @@ import {
   Lock as LockIcon,
 } from '@mui/icons-material';
 
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
-
 import CSRProjectDetailView, { ttaProjectIdentity } from './CSRProjectDetailView';
 import CSRActivityModal from './CSRActivityModal';
 import CSRReportModal from './CSRReportModal';
@@ -23,9 +20,10 @@ import CSRContactModal from './CSRContactModal';
 import CSRExpenseTagModal from './CSRExpenseTagModal';
 import CSRContractManagementPage from './CSRContractManagementPage';
 import ConfirmDialog from '../common/ConfirmDialog';
-import { certificateFreezeState, formatFrozenAt } from './csrContractRules';
+import { certificateFreezeState } from './csrContractRules';
 import { csrAPI } from '../../services/api';
 import useGrants from '../../auth/useGrants';
+import { downloadCertificatePdf } from '../../utils/certificatePdf';
 
 export default function CSRProjectDetailPage() {
   const { id } = useParams();
@@ -253,7 +251,8 @@ export default function CSRProjectDetailPage() {
   const freeze = certificateFreezeState(project);
 
   // The PDF is a download of the server's authoritative figures, not a
-  // browser-side sum — fetch the certificate, then render it.
+  // browser-side sum — fetch the certificate, then render it. The 'internal'
+  // variant is what unlocks the Source column and the out-of-period note.
   const generateCertificate = async () => {
     let cert;
     try {
@@ -262,46 +261,7 @@ export default function CSRProjectDetailPage() {
       notify(e.message || 'Could not generate certificate.', 'error');
       return;
     }
-    const num = (v) => Number(v || 0).toLocaleString('en-IN');
-    const doc = new jsPDF();
-    doc.setFontSize(16);
-    doc.text('Utilisation Certificate', 14, 18);
-    doc.setFontSize(10);
-    doc.text(`Project: ${cert.projectName}`, 14, 28);
-    doc.text(`Client / Funder: ${cert.clientName}`, 14, 34);
-    doc.text(`Sanctioned: INR ${num(cert.sanctionedAmount)}`, 14, 40);
-    doc.text(`Total Utilised: INR ${num(cert.totalUtilised)}`, 14, 46);
-    // The certificate is filed against the grant period, so the document has to
-    // state it. An open bound is printed as "onwards"/"to date" rather than
-    // omitted: a reader who cannot see the period cannot tell whether a figure
-    // covers the grant or everything ever tagged, which is the ambiguity the
-    // server-side window exists to remove.
-    const period = cert.periodStart || cert.periodEnd
-      ? `Period: ${cert.periodStart || 'project inception'} to ${cert.periodEnd || 'date'}`
-      : 'Period: not stated on the project — covers all tagged expenses';
-    doc.text(period, 14, 52);
-    // The downloaded document has to carry the same distinction the screen
-    // makes, or a filed PDF cannot be told apart from a still-moving one.
-    const stamp = cert.frozen
-      ? `Frozen v${cert.certificateVersion} — figures as at ${formatFrozenAt(cert.frozenAt)}`
-      : 'Live — figures may still change';
-    doc.text(stamp, 14, 58);
-    if (cert.outOfPeriodCount > 0) {
-      doc.text(
-        `${cert.outOfPeriodCount} tagged expense(s) fall outside this period and are not included.`,
-        14, 64,
-      );
-    }
-    autoTable(doc, {
-      startY: cert.outOfPeriodCount > 0 ? 72 : 66,
-      head: [['Source', 'Note', 'Amount (INR)']],
-      body: (cert.lineItems || []).map((x) => [
-        x.source || 'Manual',
-        x.note || '',
-        num(x.amount),
-      ]),
-    });
-    doc.save(`utilisation_certificate_${cert.projectName}.pdf`);
+    downloadCertificatePdf(cert, { variant: 'internal' });
   };
 
   if (loading) {
