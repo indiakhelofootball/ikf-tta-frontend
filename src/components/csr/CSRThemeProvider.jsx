@@ -177,12 +177,12 @@ const csrDocumentStyles = (
       // visible. Same family as active, lighter, so the two read as related
       // steps on one axis rather than as two unrelated effects.
       '.sidebar-link:hover': {
-        backgroundColor: `${inks.moss.fill}14`,
+        backgroundColor: `${inks.moss.accent}24`,
         // Near-black, not moss. Moss-on-moss-wash measures 4.42 at the head of
         // the gradient but 3.89 at the foot -- under AA where the last nav
         // items sit. The wash carries the colour; the label just gets darker.
         color: '#1A2620',
-        borderLeftColor: `${inks.moss.fill}4D`,
+        borderLeftColor: `${inks.moss.accent}80`,
       },
       // Active is a SOLID moss fill. The tint was #E1EBE4 on a #DEE3D9 rail --
       // 1.07 contrast, which is no contrast at all. That tint was measured

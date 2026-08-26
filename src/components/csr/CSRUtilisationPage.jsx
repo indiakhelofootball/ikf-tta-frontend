@@ -302,7 +302,7 @@ export default function CSRUtilisationPage() {
                       <Box sx={{
                         height: '100%',
                         width: `${Math.min(100, Math.max(0, pct))}%`,
-                        bgcolor: over ? inks.clay.fill : inks.moss.fill,
+                        bgcolor: over ? inks.clay.accent : inks.moss.accent,
                       }} />
                     </Box>
                     <Box sx={{ ...figure.unit, ...tabular, mt: 0.75 }}>
