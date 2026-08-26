@@ -27,8 +27,7 @@ import {
 import { State, City } from 'country-state-city';
 import { generateTrialCityCode } from '../../utils/codeGenerator';
 import { repAPI } from '../../services/api';
-
-const ZONES = ['North', 'South', 'East', 'West', 'Central', 'Not Yet Decided'];
+import { buildCityPayload, REGIONS } from './cityPayload';
 
 function CityModal({ open, onClose, onSave, onSaveAndAddAnother, editingCity, existingCities }) {
   const isEditMode = !!editingCity;
@@ -46,7 +45,7 @@ function CityModal({ open, onClose, onSave, onSaveAndAddAnother, editingCity, ex
     state: '',
     stateCode: '',
     city: '',
-    zone: '',
+    region: '',
     assignedREP: '',
     groundLocation: '',
     groundVerified: false,
@@ -104,7 +103,7 @@ function CityModal({ open, onClose, onSave, onSaveAndAddAnother, editingCity, ex
           state: editingCity.state || '',
           stateCode: stateObj?.isoCode || '',
           city: editingCity.city || '',
-          zone: editingCity.zone || '',
+          region: editingCity.region || '',
           assignedREP: editingCity.assignedREP || '',
           groundLocation: editingCity.groundLocation || '',
           groundVerified: editingCity.groundVerified || false,
@@ -118,7 +117,7 @@ function CityModal({ open, onClose, onSave, onSaveAndAddAnother, editingCity, ex
           state: '',
           stateCode: '',
           city: '',
-          zone: '',
+          region: '',
           assignedREP: '',
           groundLocation: '',
           groundVerified: false,
@@ -245,18 +244,7 @@ function CityModal({ open, onClose, onSave, onSaveAndAddAnother, editingCity, ex
     setSaving(true);
 
     try {
-      const cityData = {
-        ...formData,
-        code: previewCode,
-        trialCityName: formData.city,
-        zone: formData.zone || null,
-        assignedREP: formData.assignedREP || null,
-        groundLocation: formData.groundLocation || null,
-        trialType: formData.trialType || null,
-        monthOnly: formData.monthOnly || null,
-        comment: formData.comment || null,
-      };
-      delete cityData.stateCode;
+      const cityData = buildCityPayload(formData, previewCode);
 
       // Call parent save function
       await onSave(cityData);
@@ -297,25 +285,14 @@ function CityModal({ open, onClose, onSave, onSaveAndAddAnother, editingCity, ex
     }
     setSaving(true);
     try {
-      const cityData = {
-        ...formData,
-        code: previewCode,
-        trialCityName: formData.city,
-        zone: formData.zone || null,
-        assignedREP: formData.assignedREP || null,
-        groundLocation: formData.groundLocation || null,
-        trialType: formData.trialType || null,
-        monthOnly: formData.monthOnly || null,
-        comment: formData.comment || null,
-      };
-      delete cityData.stateCode;
+      const cityData = buildCityPayload(formData, previewCode);
       await onSaveAndAddAnother(cityData);
       // Reset form for next city
       setFormData({
         state: '',
         stateCode: '',
         city: '',
-        zone: '',
+        region: '',
         assignedREP: '',
         groundLocation: '',
         groundVerified: false,
@@ -567,19 +544,19 @@ function CityModal({ open, onClose, onSave, onSaveAndAddAnother, editingCity, ex
 
             <Grid item xs={12} sm={6}>
               <Typography variant="caption" sx={{ mb: 0.5, display: 'block', fontWeight: 500 }}>
-                Zone
+                Region
               </Typography>
               <TextField
                 select
                 fullWidth
                 size="small"
-                value={formData.zone}
-                onChange={handleChange('zone')}
+                value={formData.region}
+                onChange={handleChange('region')}
                 disabled={saving}
               >
-                <MenuItem value=""><em>Select Zone</em></MenuItem>
-                {ZONES.map((zone) => (
-                  <MenuItem key={zone} value={zone}>{zone}</MenuItem>
+                <MenuItem value=""><em>Select Region</em></MenuItem>
+                {REGIONS.map((region) => (
+                  <MenuItem key={region} value={region}>{region}</MenuItem>
                 ))}
               </TextField>
             </Grid>
