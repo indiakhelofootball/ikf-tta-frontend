@@ -86,7 +86,7 @@ describe('CSRActivityModal', () => {
 
     test('offers the partner vendors the endpoint returns', async () => {
       renderModal();
-      const picker = screen.getByLabelText(/workshop partner/i);
+      const picker = screen.getByLabelText(/^partner$/i);
       fireEvent.mouseDown(picker);
       fireEvent.change(picker, { target: { value: '' } });
       expect(await screen.findByText(/Partner Co/)).toBeInTheDocument();
@@ -140,6 +140,59 @@ describe('CSRActivityModal', () => {
       expect(body.workshopId).toBeNull();
       expect(body.trainingProgrammeId).toBeNull();
       expect(body.linkedVendorId).toBeNull();
+    });
+  });
+
+  // Self vs Partner. The point of the field is that an empty partner stops
+  // meaning two different things, so these cover what each state may mean.
+  describe('delivery mode', () => {
+    const renderModal = (props = {}) => render(
+      <CSRActivityModal
+        open activity={null} activityTypes={types}
+        onClose={() => {}} onSave={() => {}} saving={false}
+        {...props}
+      />
+    );
+
+    const fillRequired = () => {
+      fireEvent.change(screen.getByLabelText(/title/i), { target: { value: 'A workshop' } });
+      fireEvent.mouseDown(screen.getByLabelText(/activity type/i));
+      fireEvent.click(screen.getByRole('option', { name: /Boys Trial/i }));
+    };
+
+    const pickMode = (label) => {
+      fireEvent.mouseDown(screen.getByLabelText(/delivered by/i));
+      fireEvent.click(screen.getByRole('option', { name: label }));
+    };
+
+    test('Self saves with no partner', () => {
+      const onSave = jest.fn();
+      renderModal({ onSave });
+      fillRequired();
+      pickMode(/Self/i);
+      fireEvent.click(screen.getByRole('button', { name: /save/i }));
+      expect(onSave).toHaveBeenCalledTimes(1);
+      expect(onSave.mock.calls[0][0].deliveryMode).toBe('Self');
+      expect(onSave.mock.calls[0][0].linkedVendorId).toBeNull();
+    });
+
+    test('Partner without a named partner is refused before the round trip', () => {
+      const onSave = jest.fn();
+      renderModal({ onSave });
+      fillRequired();
+      pickMode(/Partner/i);
+      fireEvent.click(screen.getByRole('button', { name: /save/i }));
+      expect(onSave).not.toHaveBeenCalled();
+      expect(screen.getByText(/Name the partner, or set delivery to Self/i)).toBeInTheDocument();
+    });
+
+    test('blank mode still saves, for activities that predate the field', () => {
+      const onSave = jest.fn();
+      renderModal({ onSave });
+      fillRequired();
+      fireEvent.click(screen.getByRole('button', { name: /save/i }));
+      expect(onSave).toHaveBeenCalledTimes(1);
+      expect(onSave.mock.calls[0][0].deliveryMode).toBe('');
     });
   });
 });
