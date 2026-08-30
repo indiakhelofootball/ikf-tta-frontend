@@ -6,7 +6,7 @@ import {
 
 const EMPTY = {
   reference: '', title: '', amount: '', contractFileName: '', contractDriveLink: '',
-  signedDate: '', startDate: '', endDate: '', notes: '',
+  startDate: '', endDate: '', notes: '',
 };
 
 export default function CSRContractModal({ open, contract, onClose, onSave, saving, serverErrors }) {
@@ -21,7 +21,6 @@ export default function CSRContractModal({ open, contract, onClose, onSave, savi
         amount: contract.amount ?? '',
         contractFileName: contract.contractFileName || '',
         contractDriveLink: contract.contractDriveLink || '',
-        signedDate: contract.signedDate || '',
         startDate: contract.startDate || '',
         endDate: contract.endDate || '',
         notes: contract.notes || '',
@@ -65,7 +64,6 @@ export default function CSRContractModal({ open, contract, onClose, onSave, savi
       amount: form.amount,
       contractFileName: form.contractFileName.trim(),
       contractDriveLink: form.contractDriveLink.trim(),
-      signedDate: form.signedDate || null,
       startDate: form.startDate || null,
       endDate: form.endDate || null,
       notes: form.notes.trim(),
@@ -89,12 +87,10 @@ export default function CSRContractModal({ open, contract, onClose, onSave, savi
             label="Contract Amount (₹)" value={form.amount} onChange={setField('amount')}
             type="number" error={!!errors.amount} helperText={errors.amount} fullWidth
           />
+          {/* Signed Date removed on the 26 Aug client review ("we will remove
+              the sign date"). The backend column is kept so no recorded date is
+              destroyed; it is simply no longer asked for or served. */}
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-            <TextField
-              label="Signed Date" value={form.signedDate} onChange={setField('signedDate')}
-              type="date" slotProps={{ inputLabel: { shrink: true } }}
-              error={!!errors.signedDate} helperText={errors.signedDate} fullWidth
-            />
             <TextField
               label="Start Date" value={form.startDate} onChange={setField('startDate')}
               type="date" slotProps={{ inputLabel: { shrink: true } }}
