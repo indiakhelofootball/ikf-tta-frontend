@@ -40,7 +40,6 @@ export default function CSRContractDetailView({
         <Field label="Reference" value={contract.reference} />
         <Field label="Title" value={contract.title} />
         <Field label="Amount" value={formatAmount(contract.amount)} />
-        <Field label="Signed" value={contract.signedDate} />
         <Field label="Start" value={contract.startDate} />
         <Field label="End" value={contract.endDate} />
         <Field label="Document">

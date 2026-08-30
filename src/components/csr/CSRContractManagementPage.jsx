@@ -20,7 +20,7 @@ import useGrants from '../../auth/useGrants';
 
 const CONTRACT_FIELDS = [
   'reference', 'title', 'amount', 'contractFileName', 'contractDriveLink',
-  'signedDate', 'startDate', 'endDate', 'notes',
+  'startDate', 'endDate', 'notes',
 ];
 const DELIVERABLE_FIELDS = [
   'title', 'description', 'targetCount', 'completedCount', 'dueDate', 'status', 'workOrderId',

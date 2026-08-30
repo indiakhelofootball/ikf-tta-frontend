@@ -4,8 +4,13 @@ import {
   TextField, MenuItem, Button, Stack, FormControlLabel, Switch,
 } from '@mui/material';
 
+// The kinds the 26 Aug review asked to distinguish: "what is the report of the
+// trial, what is the report of the workshop... what will be the type of report".
+const REPORT_TYPES = ['Trial', 'Workshop', 'Training Programme', 'Other'];
+
 const EMPTY = {
-  fileName: '', fileUrl: '', activityId: '', visibleToClient: false,
+  title: '', reportType: '', fileName: '', fileUrl: '', activityId: '',
+  visibleToClient: false,
 };
 
 export default function CSRReportModal({ open, report, activities, onClose, onSave, saving }) {
@@ -15,6 +20,12 @@ export default function CSRReportModal({ open, report, activities, onClose, onSa
   useEffect(() => {
     if (report) {
       setForm({
+        // Reports created before `title` existed put the report's name in
+        // fileName -- this modal literally labelled that field "Report Name".
+        // Falling back to it keeps the name the user actually typed rather
+        // than showing them an empty required field.
+        title: report.title || report.fileName || '',
+        reportType: report.reportType || '',
         fileName: report.fileName || '',
         fileUrl: report.fileUrl || '',
         activityId: report.activityId ?? '',
@@ -30,7 +41,7 @@ export default function CSRReportModal({ open, report, activities, onClose, onSa
 
   const validate = () => {
     const next = {};
-    if (!form.fileName.trim()) next.fileName = 'Required';
+    if (!form.title.trim()) next.title = 'Required';
     if (!form.fileUrl.trim()) next.fileUrl = 'Paste the document link';
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -39,6 +50,8 @@ export default function CSRReportModal({ open, report, activities, onClose, onSa
   const handleSave = () => {
     if (!validate()) return;
     onSave({
+      title: form.title.trim(),
+      reportType: form.reportType,
       fileName: form.fileName.trim(),
       fileUrl: form.fileUrl.trim(),
       activityId: form.activityId === '' ? null : Number(form.activityId),
@@ -52,8 +65,22 @@ export default function CSRReportModal({ open, report, activities, onClose, onSa
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
           <TextField
-            label="Report Name" value={form.fileName} onChange={setField('fileName')}
-            error={!!errors.fileName} helperText={errors.fileName} fullWidth
+            label="Report Name" value={form.title} onChange={setField('title')}
+            error={!!errors.title} helperText={errors.title || 'What this report is.'}
+            fullWidth
+          />
+          <TextField
+            label="Report Type" value={form.reportType} onChange={setField('reportType')}
+            select fullWidth helperText="Trial, workshop, training programme, or other."
+          >
+            <MenuItem value="">—</MenuItem>
+            {REPORT_TYPES.map((t) => (
+              <MenuItem key={t} value={t}>{t}</MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            label="File Name (optional)" value={form.fileName} onChange={setField('fileName')}
+            fullWidth helperText="The document's own file name, if it differs."
           />
           <TextField
             label="Document Link" value={form.fileUrl} onChange={setField('fileUrl')}
