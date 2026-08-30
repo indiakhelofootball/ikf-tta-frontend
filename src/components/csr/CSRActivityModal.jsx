@@ -10,10 +10,19 @@ import useConfigVersion from '../../hooks/useConfigVersion';
 
 const STATUS_OPTIONS = ['Planned', 'Completed'];
 
+// Who delivered it. Asked for four times on the 26 Aug review -- "either a self
+// or a partner, there will be no option". Blank remains selectable because
+// activities recorded before this field existed have no answer.
+const DELIVERY_MODES = [
+  { value: 'Self', label: 'Self — delivered by TTA' },
+  { value: 'Partner', label: 'Partner — delivered by a partner' },
+];
+
 const EMPTY = {
   title: '', activityTypeId: '', date: '', startDate: '', endDate: '',
   location: '', status: 'Planned', linkedTrialId: '',
   workshopId: '', trainingProgrammeId: '', linkedVendorId: '',
+  deliveryMode: '',
 };
 
 export default function CSRActivityModal({ open, activity, activityTypes, onClose, onSave, saving }) {
@@ -70,6 +79,7 @@ export default function CSRActivityModal({ open, activity, activityTypes, onClos
         workshopId: activity.workshopId ?? '',
         trainingProgrammeId: activity.trainingProgrammeId ?? '',
         linkedVendorId: activity.linkedVendorId ?? '',
+        deliveryMode: activity.deliveryMode || '',
       });
     } else {
       setForm(EMPTY);
@@ -83,6 +93,11 @@ export default function CSRActivityModal({ open, activity, activityTypes, onClos
     const next = {};
     if (!form.title.trim()) next.title = 'Required';
     if (!form.activityTypeId) next.activityTypeId = 'Pick an activity type';
+    // Mirrors the serializer's rule. Caught here too so the user is told before
+    // the round trip, not after it.
+    if (form.deliveryMode === 'Partner' && !form.linkedVendorId) {
+      next.linkedVendorId = 'Name the partner, or set delivery to Self.';
+    }
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -102,6 +117,7 @@ export default function CSRActivityModal({ open, activity, activityTypes, onClos
       trainingProgrammeId:
         form.trainingProgrammeId === '' ? null : Number(form.trainingProgrammeId),
       linkedVendorId: form.linkedVendorId === '' ? null : Number(form.linkedVendorId),
+      deliveryMode: form.deliveryMode,
     });
   };
 
@@ -167,18 +183,33 @@ export default function CSRActivityModal({ open, activity, activityTypes, onClos
               <MenuItem key={w.id} value={w.id}>{w.name}</MenuItem>
             ))}
           </TextField>
+          <TextField
+            label="Delivered By" value={form.deliveryMode} onChange={setField('deliveryMode')}
+            select fullWidth
+            helperText="Whether TTA ran this itself or a partner did."
+          >
+            <MenuItem value="">—</MenuItem>
+            {DELIVERY_MODES.map((m) => (
+              <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>
+            ))}
+          </TextField>
           <Autocomplete
             options={partners}
+            disabled={form.deliveryMode === 'Self'}
             value={partners.find((v) => v.id === Number(form.linkedVendorId)) || null}
             getOptionLabel={(v) => `${v.vendorName || `#${v.id}`}${v.partnerCategory ? ` · ${v.partnerCategory}` : ''}`}
             isOptionEqualToValue={(o, v) => o.id === v.id}
             onChange={(e, opt) => setForm((f) => ({ ...f, linkedVendorId: opt ? opt.id : '' }))}
             renderInput={(params) => (
               <TextField
-                {...params} label="Workshop Partner (optional)"
-                helperText={partners.length === 0
-                  ? 'No vendors carry a partner category yet. An admin flags them in TTA Admin, under Vendors.'
-                  : 'The partner who ran the workshop. Only vendors flagged with a partner category appear.'}
+                {...params} label="Partner"
+                error={!!errors.linkedVendorId}
+                helperText={errors.linkedVendorId
+                  || (form.deliveryMode === 'Self'
+                    ? 'Not needed — this one was delivered by TTA.'
+                    : partners.length === 0
+                      ? 'No vendors carry a partner category yet. An admin flags them in TTA Admin, under Vendors.'
+                      : 'The partner who delivered this. Only vendors flagged with a partner category appear.')}
               />
             )}
           />
