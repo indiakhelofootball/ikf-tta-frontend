@@ -74,9 +74,9 @@ export function NavSection({ label, collapsed }) {
   return <div className="sidebar-section">{label}</div>;
 }
 
-export default function SidebarFrame({ collapsed, onToggle, title, subtitle, mark, children }) {
+export default function SidebarFrame({ collapsed, onToggle, title, subtitle, mark, children, variant }) {
   return (
-    <aside className={`sidebar ${collapsed ? 'sidebar-collapsed' : ''}`}>
+    <aside className={`sidebar ${collapsed ? 'sidebar-collapsed' : ''} ${variant === 'csr' ? 'sidebar--csr' : ''}`}>
       <div className="sidebar-brand">
         {collapsed ? (
           <div className="sidebar-brand-icon">{mark}</div>

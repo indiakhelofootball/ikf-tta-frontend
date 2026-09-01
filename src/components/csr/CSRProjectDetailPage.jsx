@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box, Container, Typography, Button, Stack, Tabs, Tab, Snackbar, Alert,
-  CircularProgress, List, ListItem, ListItemText, IconButton, Chip, Link, Tooltip,
+  CircularProgress, List, ListItem, ListItemButton, ListItemText, IconButton, Chip,
+  Link, Tooltip, Collapse,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -22,12 +23,26 @@ import CSRContractManagementPage from './CSRContractManagementPage';
 import ConfirmDialog from '../common/ConfirmDialog';
 import { certificateFreezeState } from './csrContractRules';
 import { csrAPI } from '../../services/api';
+import '../../styles/csrDesign.css';
 import useGrants from '../../auth/useGrants';
 import { downloadCertificatePdf } from '../../utils/certificatePdf';
+
+// The same label/value idiom CSRContractDetailView uses for its expanded
+// panel — a caption above a value — kept local here since that file exports
+// no reusable piece and this page owns its own rows.
+function DetailField({ label, value }) {
+  return (
+    <Box sx={{ minWidth: 140 }}>
+      <Typography variant="caption" color="text.secondary" component="div">{label}</Typography>
+      <Typography variant="body2">{value || '—'}</Typography>
+    </Box>
+  );
+}
 
 export default function CSRProjectDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { canEdit, canView, isSuper } = useGrants();
   const editable = canEdit('csr');
   // Seeing the spend and controlling it are different jobs. The CSR manager reads
@@ -45,8 +60,23 @@ export default function CSRProjectDetailPage() {
   const [expenses, setExpenses] = useState([]);
   const [activityTypes, setActivityTypes] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState(0);
+  // A row opened from the cross-grant Activities/Reports log (CSRActivitiesPage,
+  // CSRReportsPage) arrives with the tab it belongs to in navigation state, so
+  // "open" lands you on the record instead of back on the Overview tab.
+  const [tab, setTab] = useState(() => {
+    const requested = location.state?.tab;
+    return typeof requested === 'number' ? requested : 0;
+  });
   const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
+  // Rows with no edit permission and no separate detail view (expense tags
+  // always; contacts/activities/reports for a view-only grant) open in place
+  // instead of doing nothing. Keyed "kind-id" so the four lists share one set.
+  const [expandedRows, setExpandedRows] = useState(() => new Set());
+  const toggleExpanded = (key) => setExpandedRows((prev) => {
+    const next = new Set(prev);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    return next;
+  });
 
   const [activityModal, setActivityModal] = useState({ open: false, editing: null });
   const [reportModal, setReportModal] = useState({ open: false, editing: null });
@@ -282,7 +312,7 @@ export default function CSRProjectDetailPage() {
   }
 
   return (
-    <Container maxWidth="md" sx={{ py: 3 }}>
+    <Container className="csrx" maxWidth="lg" sx={{ py: 3 }}>
       <Button startIcon={<BackIcon />} onClick={() => navigate('/csr')} sx={{ mb: 2 }}>
         All Projects
       </Button>
@@ -330,30 +360,55 @@ export default function CSRProjectDetailPage() {
             <Typography color="text.secondary" sx={{ py: 2 }}>No contacts yet.</Typography>
           ) : (
             <List dense>
-              {contacts.map((c) => (
-                <ListItem
-                  key={c.id}
-                  secondaryAction={editable && (
-                    <>
-                      <Tooltip title="Edit">
-                        <IconButton size="small" onClick={() => setContactModal({ open: true, editing: c })} aria-label={`Edit contact ${c.name}`}>
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Delete">
-                        <IconButton size="small" onClick={() => deleteContact(c)} aria-label={`Delete contact ${c.name}`}>
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    </>
-                  )}
-                >
-                  <ListItemText
-                    primary={[c.name, c.designation].filter(Boolean).join(' · ')}
-                    secondary={[c.email, c.phone].filter(Boolean).join(' · ') || null}
-                  />
-                </ListItem>
-              ))}
+              {contacts.map((c) => {
+                const key = `contact-${c.id}`;
+                const open = expandedRows.has(key);
+                return (
+                  <ListItem
+                    key={c.id}
+                    disablePadding
+                    sx={{ display: 'block' }}
+                    secondaryAction={editable && (
+                      <Stack direction="row" sx={{ position: 'absolute', right: 8, top: 8 }}>
+                        <Tooltip title="Edit">
+                          <IconButton size="small" onClick={() => setContactModal({ open: true, editing: c })} aria-label={`Edit contact ${c.name}`}>
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Delete">
+                          <IconButton size="small" onClick={() => deleteContact(c)} aria-label={`Delete contact ${c.name}`}>
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </Stack>
+                    )}
+                  >
+                    {/* Editable: opens the same edit form the pencil icon does — the
+                        row itself is now the affordance, not just the small icon.
+                        Read-only: nothing to edit into, so the row opens in place. */}
+                    <ListItemButton
+                      onClick={() => (editable
+                        ? setContactModal({ open: true, editing: c })
+                        : toggleExpanded(key))}
+                      aria-label={editable ? `Edit contact ${c.name}` : `Show details for contact ${c.name}`}
+                      sx={{ pr: editable ? 9 : 2 }}
+                    >
+                      <ListItemText
+                        primary={[c.name, c.designation].filter(Boolean).join(' · ')}
+                        secondary={[c.email, c.phone].filter(Boolean).join(' · ') || null}
+                      />
+                    </ListItemButton>
+                    <Collapse in={open} unmountOnExit>
+                      <Stack direction="row" spacing={3} flexWrap="wrap" useFlexGap sx={{ px: 2, pb: 1.5 }}>
+                        <DetailField label="Name" value={c.name} />
+                        <DetailField label="Designation" value={c.designation} />
+                        <DetailField label="Email" value={c.email} />
+                        <DetailField label="Phone" value={c.phone} />
+                      </Stack>
+                    </Collapse>
+                  </ListItem>
+                );
+              })}
             </List>
           )}
         </Box>
@@ -373,34 +428,63 @@ export default function CSRProjectDetailPage() {
             <Typography color="text.secondary" sx={{ py: 2 }}>No activities yet.</Typography>
           ) : (
             <List dense>
-              {activities.map((a) => (
-                <ListItem
-                  key={a.id}
-                  secondaryAction={editable && (
-                    <>
-                      <Tooltip title="Edit">
-                        <IconButton size="small" onClick={() => setActivityModal({ open: true, editing: a })} aria-label={`Edit activity ${a.title}`}>
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Delete">
-                        <IconButton size="small" onClick={() => deleteActivity(a)} aria-label={`Delete activity ${a.title}`}>
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    </>
-                  )}
-                >
-                  <ListItemText
-                    primary={a.title}
-                    secondary={[
-                      (a.startDate && a.endDate) ? `${a.startDate} → ${a.endDate}` : a.date,
-                      a.location,
-                    ].filter(Boolean).join(' · ') || null}
-                  />
-                  <Chip size="small" label={a.status} sx={{ mr: 1 }} />
-                </ListItem>
-              ))}
+              {activities.map((a) => {
+                const key = `activity-${a.id}`;
+                const open = expandedRows.has(key);
+                const activityType = activityTypes.find((t) => t.id === a.activityTypeId);
+                return (
+                  <ListItem
+                    key={a.id}
+                    disablePadding
+                    sx={{ display: 'block' }}
+                    secondaryAction={editable && (
+                      <Stack direction="row" sx={{ position: 'absolute', right: 8, top: 8 }}>
+                        <Tooltip title="Edit">
+                          <IconButton size="small" onClick={() => setActivityModal({ open: true, editing: a })} aria-label={`Edit activity ${a.title}`}>
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Delete">
+                          <IconButton size="small" onClick={() => deleteActivity(a)} aria-label={`Delete activity ${a.title}`}>
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </Stack>
+                    )}
+                  >
+                    <ListItemButton
+                      onClick={() => (editable
+                        ? setActivityModal({ open: true, editing: a })
+                        : toggleExpanded(key))}
+                      aria-label={editable ? `Edit activity ${a.title}` : `Show details for activity ${a.title}`}
+                      sx={{ pr: editable ? 9 : 2 }}
+                    >
+                      <ListItemText
+                        primary={a.title}
+                        secondary={[
+                          (a.startDate && a.endDate) ? `${a.startDate} → ${a.endDate}` : a.date,
+                          a.location,
+                        ].filter(Boolean).join(' · ') || null}
+                      />
+                      <Chip size="small" label={a.status} sx={{ mr: 1 }} />
+                    </ListItemButton>
+                    <Collapse in={open} unmountOnExit>
+                      <Stack direction="row" spacing={3} flexWrap="wrap" useFlexGap sx={{ px: 2, pb: 1.5 }}>
+                        <DetailField label="Activity type" value={activityType?.name} />
+                        <DetailField label="Status" value={a.status} />
+                        <DetailField
+                          label="Linked to"
+                          value={[
+                            a.linkedTrialId && 'a trial',
+                            a.workshopId && 'a workshop',
+                            a.trainingProgrammeId && 'a training programme',
+                          ].filter(Boolean).join(', ') || 'nothing else'}
+                        />
+                      </Stack>
+                    </Collapse>
+                  </ListItem>
+                );
+              })}
             </List>
           )}
         </Box>
@@ -420,46 +504,73 @@ export default function CSRProjectDetailPage() {
             <Typography color="text.secondary" sx={{ py: 2 }}>No reports yet.</Typography>
           ) : (
             <List dense>
-              {reports.map((r) => (
-                <ListItem
-                  key={r.id}
-                  secondaryAction={editable && (
-                    <>
-                      <Tooltip title="Edit">
-                        <IconButton size="small" onClick={() => setReportModal({ open: true, editing: r })} aria-label={`Edit report ${r.fileName}`}>
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Delete">
-                        <IconButton size="small" onClick={() => deleteReport(r)} aria-label={`Delete report ${r.fileName}`}>
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    </>
-                  )}
-                >
-                  <ListItemText
-                    primary={
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        {r.fileName}
-                        {r.fileUrl && (
-                          <Tooltip title="Open document">
-                            <Link href={r.fileUrl} target="_blank" rel="noopener" sx={{ display: 'inline-flex' }}>
-                              <OpenIcon fontSize="inherit" />
-                            </Link>
-                          </Tooltip>
-                        )}
+              {reports.map((r) => {
+                const key = `report-${r.id}`;
+                const open = expandedRows.has(key);
+                const linkedActivity = activities.find((a) => a.id === r.activityId);
+                return (
+                  <ListItem
+                    key={r.id}
+                    disablePadding
+                    sx={{ display: 'block' }}
+                    secondaryAction={editable && (
+                      <Stack direction="row" sx={{ position: 'absolute', right: 8, top: 8 }}>
+                        <Tooltip title="Edit">
+                          <IconButton size="small" onClick={() => setReportModal({ open: true, editing: r })} aria-label={`Edit report ${r.fileName}`}>
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Delete">
+                          <IconButton size="small" onClick={() => deleteReport(r)} aria-label={`Delete report ${r.fileName}`}>
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                       </Stack>
-                    }
-                  />
-                  <Chip
-                    size="small"
-                    label={r.visibleToClient ? 'Client-visible' : 'Internal'}
-                    color={r.visibleToClient ? 'success' : 'default'}
-                    sx={{ mr: 1 }}
-                  />
-                </ListItem>
-              ))}
+                    )}
+                  >
+                    <ListItemButton
+                      onClick={() => (editable
+                        ? setReportModal({ open: true, editing: r })
+                        : toggleExpanded(key))}
+                      aria-label={editable ? `Edit report ${r.fileName}` : `Show details for report ${r.fileName}`}
+                      sx={{ pr: editable ? 9 : 2 }}
+                    >
+                      <ListItemText
+                        primary={
+                          <Stack direction="row" spacing={1} alignItems="center">
+                            {r.fileName}
+                            {r.fileUrl && (
+                              <Tooltip title="Open document">
+                                <Link
+                                  href={r.fileUrl}
+                                  target="_blank"
+                                  rel="noopener"
+                                  onClick={(e) => e.stopPropagation()}
+                                  sx={{ display: 'inline-flex' }}
+                                >
+                                  <OpenIcon fontSize="inherit" />
+                                </Link>
+                              </Tooltip>
+                            )}
+                          </Stack>
+                        }
+                      />
+                      <Chip
+                        size="small"
+                        label={r.visibleToClient ? 'Client-visible' : 'Internal'}
+                        color={r.visibleToClient ? 'success' : 'default'}
+                        sx={{ mr: 1 }}
+                      />
+                    </ListItemButton>
+                    <Collapse in={open} unmountOnExit>
+                      <Stack direction="row" spacing={3} flexWrap="wrap" useFlexGap sx={{ px: 2, pb: 1.5 }}>
+                        <DetailField label="Activity" value={linkedActivity?.title} />
+                        <DetailField label="Gate" value={r.visibleToClient ? 'Client-visible' : 'Internal'} />
+                      </Stack>
+                    </Collapse>
+                  </ListItem>
+                );
+              })}
             </List>
           )}
         </Box>
@@ -543,39 +654,62 @@ export default function CSRProjectDetailPage() {
             <Typography color="text.secondary" sx={{ py: 2 }}>No expenses tagged yet.</Typography>
           ) : (
             <List dense>
-              {expenses.map((x) => (
-                <ListItem
-                  key={x.id}
-                  // An expense tag is audit-bound: permissions/registry.py sets
-                  // can_delete:false on csr_certificate, and the server refuses
-                  // DELETE for everyone except SUPER_ADMIN, who bypasses the
-                  // permission layer entirely. Rendering this for canEditCert
-                  // gave every real operator a button that only ever returned a
-                  // 403 — and it looked fine in testing precisely because the
-                  // owner tests as super-admin. The server rule is the correct
-                  // one; the button was the bug.
-                  secondaryAction={isSuper && (
-                    <Tooltip title="Remove tag (super-admin only — tags are audit-bound)">
-                      <IconButton
-                        size="small"
-                        onClick={() => deleteExpense(x)}
-                        aria-label={`Remove tag ${x.paymentLabel || 'Manual'}`}
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                  )}
-                >
-                  <ListItemText primary={x.paymentLabel || 'Manual'} secondary={x.note || null} />
-                  {!x.countsTowardCertificate && (
-                    <Chip
-                      size="small" color="warning" variant="outlined" sx={{ mr: 1 }}
-                      label={x.paymentStatus || 'Not counted'}
-                    />
-                  )}
-                  <Chip size="small" label={`₹${(Number(x.amount) || 0).toLocaleString('en-IN')}`} sx={{ mr: 1 }} />
-                </ListItem>
-              ))}
+              {expenses.map((x) => {
+                const key = `expense-${x.id}`;
+                const open = expandedRows.has(key);
+                return (
+                  <ListItem
+                    key={x.id}
+                    disablePadding
+                    sx={{ display: 'block' }}
+                    // An expense tag is audit-bound: permissions/registry.py sets
+                    // can_delete:false on csr_certificate, and the server refuses
+                    // DELETE for everyone except SUPER_ADMIN, who bypasses the
+                    // permission layer entirely. Rendering this for canEditCert
+                    // gave every real operator a button that only ever returned a
+                    // 403 — and it looked fine in testing precisely because the
+                    // owner tests as super-admin. The server rule is the correct
+                    // one; the button was the bug.
+                    secondaryAction={isSuper && (
+                      <Tooltip title="Remove tag (super-admin only — tags are audit-bound)">
+                        <IconButton
+                          size="small"
+                          onClick={() => deleteExpense(x)}
+                          aria-label={`Remove tag ${x.paymentLabel || 'Manual'}`}
+                          sx={{ position: 'absolute', right: 8, top: 8 }}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                  >
+                    {/* No edit view exists for a tag — server keeps these
+                        audit-bound and write-once — so the row's only honest
+                        "open" is showing the fields it doesn't have room for. */}
+                    <ListItemButton
+                      onClick={() => toggleExpanded(key)}
+                      aria-label={`Show details for tag ${x.paymentLabel || 'Manual'}`}
+                      sx={{ pr: isSuper ? 6 : 2 }}
+                    >
+                      <ListItemText primary={x.paymentLabel || 'Manual'} secondary={x.note || null} />
+                      {!x.countsTowardCertificate && (
+                        <Chip
+                          size="small" color="warning" variant="outlined" sx={{ mr: 1 }}
+                          label={x.paymentStatus || 'Not counted'}
+                        />
+                      )}
+                      <Chip size="small" label={`₹${(Number(x.amount) || 0).toLocaleString('en-IN')}`} sx={{ mr: 1 }} />
+                    </ListItemButton>
+                    <Collapse in={open} unmountOnExit>
+                      <Stack direction="row" spacing={3} flexWrap="wrap" useFlexGap sx={{ px: 2, pb: 1.5 }}>
+                        <DetailField label="Amount" value={`₹${(Number(x.amount) || 0).toLocaleString('en-IN')}`} />
+                        <DetailField label="Counted toward certificate" value={x.countsTowardCertificate ? 'Yes' : `No — ${x.paymentStatus || 'not counted'}`} />
+                        <DetailField label="Note" value={x.note} />
+                      </Stack>
+                    </Collapse>
+                  </ListItem>
+                );
+              })}
             </List>
           )}
         </Box>

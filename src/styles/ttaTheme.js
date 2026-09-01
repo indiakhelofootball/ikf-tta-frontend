@@ -1,7 +1,21 @@
+// ===========================================================================
+// COLOUR DECISION — settled 01 Sep 2026, by explicit product direction
+// The module is GREEN-LED. Moss #2C6A4F leads: primary action, money, success.
+// The ground is a cool green-white (#F4F7F4). Type is Fontshare — Zodiak
+// (serif), Switzer (UI), Cabinet Grotesk (figures). Glass and gradient surface
+// tokens are opt-in, see `surfaces.glass` / `surfaces.gradient`.
+//
+// SUPERSEDED, kept as provenance: the 26 Aug 2026 owner call was "it really
+// feels cheap and the color green remove it make it something others like
+// light coral. make it look good and well divided". Coral led the system from
+// 26 Aug until 01 Sep, when that call was reversed by the direction above. No
+// coral value survives in this file; `inks.coral` is a deprecated alias onto
+// moss and nothing else references the name.
+// ===========================================================================
 import { createTheme } from '@mui/material/styles';
 
 // ---------------------------------------------------------------------------
-// CSR theme — the LEDGER system.
+// CSR theme — the LEDGER system, green-led.
 // ---------------------------------------------------------------------------
 // Scoped to /csr only, through CSRThemeProvider. TTA keeps muiTheme.js and the
 // funder portal at /client keeps its per-funder white-label. Nothing here
@@ -12,11 +26,20 @@ import { createTheme } from '@mui/material/styles';
 // preceded it — amber was IKF's colour on the button, but a single accent
 // repeated down every screen is what made the module read administrative.
 //
-// Two owner decisions this encodes, both from 2026-08-18:
-//   "no dark anchor"                    → there is no inverse surface. None.
-//   "green needs to change its shades   → the moss moved #1F5F4B → #2C6A4F, and
-//    ... incorporate more color to         one accent became six with fixed
-//    break monotonity of same color"       jobs.
+// Three owner decisions this encodes:
+//   "no dark anchor"                       (2026-08-18) → there is no inverse
+//     surface. None.
+//   "green needs to change its shades      (2026-08-18) → the moss moved
+//    ... incorporate more color to           #1F5F4B → #2C6A4F, and one accent
+//    break monotonity of same color"         became six with fixed jobs.
+//   "it really feels cheap and the color   (2026-08-26) → retired green as the
+//    green remove it make it something        LEADING colour for one week.
+//    others like light coral. make it        REVERSED 2026-09-01: moss holds
+//    look good and well divided"             the primary-action / money seat
+//                                             again and the rail is green.
+//                                             What survives of the 26 Aug brief
+//                                             is "well divided" — the hairline
+//                                             and tint work below answers it.
 //
 // THE RULE THAT KEEPS IT CALM. One ink may lead a screen; the rest appear only
 // where their meaning applies. If a screen shows four accents it is because
@@ -25,119 +48,119 @@ import { createTheme } from '@mui/material/styles';
 // ---------------------------------------------------------------------------
 
 // ── The six inks ───────────────────────────────────────────────────────────
-// Retuned 21 Aug 2026. Every ink now sits at ONE lightness (OKLCH L 0.47) and a
-// near-uniform chroma, hue the only thing that changes between them. That is the
-// single rule behind a categorical set that reads as one considered family
-// rather than a rainbow -- the earlier values ranged L 0.43→0.61 and chroma
-// 0.074→0.122, so ochre and clay shouted while the identity greens sat flat,
-// which is exactly what reads as "cheap." Consequence of the uniform lightness:
-// all six clear AA as text on every ground AND carry a white glyph, so the two
-// darkened text variants below collapse into their fills and ochre is no longer
-// barred from being a fill. FILL values — spines, chips, progress, primary button.
-const MOSS = '#006C49';    // money utilised · primary action
-const INDIGO = '#335A97';  // contracts & deliverables · anything promised
-const OCHRE = '#795300';   // waiting on you · not started  (a bronze, not a gold)
-const TEAL = '#00686A';    // funders & partners · everything facing outward
-const PLUM = '#833F6B';    // closed · frozen certificate
-const CLAY = '#8C4325';    // overspend · needs a decision
+// A green-led family as of 01 Sep 2026. All six sit at one shared lightness
+// (relative luminance 0.114–0.119), which is what buys white text ≥6.2:1 on
+// every one of them and ≥5.4:1 as TEXT against the darkest ground, `sunk`,
+// with margin to spare. No ink in this set needs a lightness exception.
+//
+// FILL values — spines, chips, progress, primary button, solid grounds under
+// WHITE.
+const MOSS = '#2C6A4F';   // money utilised · primary action · success
+                           // luminance 0.114 · white on it 6.40:1
+const INDIGO = '#385DB2';  // contracts & deliverables · anything promised
+const OCHRE = '#815903';   // waiting on you · not started  (a bronze, not a gold)
+const STEEL = '#1B678D';   // funders & partners · everything facing outward
+const PLUM = '#A33969';    // closed · frozen certificate
+const CLAY = '#914F27';    // overspend · needs a decision
 
-// ACCENTS — the chroma-carrying variant, added 26 Aug 2026.
-//
-// THE PROBLEM THEY SOLVE. The six fills above are saturated on paper and dark
-// in the eye: moss, ochre and teal are at 100% saturation but sit at L 21-24%,
-// and at that lightness the eye reads a near-black with a hue smell, not a
-// colour. Six near-blacks on a 94%-lightness bone ground is a grey page with
-// coloured punctuation, which is what the client saw and called dull. It was
-// not a mistake — the 21 Aug retune pushed every fill down into one dark band
-// so a solid badge could carry a white glyph at AA — but it bought that by
-// spending all the chroma the page had.
-//
-// THE SPLIT IS THE SYSTEM'S OWN RULE, RUN THE OTHER WAY. `design-system.md`
-// says a fill that fails as text gets a darkened text variant, and never to
-// collapse the two back together. The collapse above (OCHRE_TEXT = OCHRE) is
-// that rule broken. Rather than un-darken the fills — which would break every
-// white glyph and every white button label — the missing variant is added at
-// the light end: ACCENT is the value for shapes that carry no white text.
-//
-//   fill    solid grounds under WHITE — badges, the active nav pill, buttons
-//   accent  shapes that carry nothing — spines, bars, progress, washes, rings
-//   text    anything a person reads
-//   tint    pale chip and banner grounds
+// Moss's fill is dark enough to read as TEXT on every ground in the system, so
+// `text` simply aliases `fill` — no darkened variant is needed, the way the
+// other five inks need none. The separate MOSS_TEXT name is kept only because
+// call sites reference it; it is the same value as MOSS and must stay so.
+const MOSS_TEXT = '#2C6A4F';  // = MOSS · bone 5.93 / card 6.40 / sunk 5.61 /
+                               // white 6.40 / own tint 5.24
+
+// ACCENTS — the chroma-carrying variant. Shapes that carry no text: spines,
+// bars, progress tracks, washes, focus rings. Sits lighter than fill/text
+// (luminance 0.210 for five of them and 0.253 for moss, vs 0.114–0.119 for
+// fill), which is what keeps it visibly distinct from a near-black in the eye
+// rather than reading as six dark punctuation marks on a pale page.
 //
 // MEASURED, per the standing rule, against the DARKEST ground each one can
 // land on. A bar sits in a `surfaces.sunken` track, so sunk is the binding
 // case, not bone. All six clear the 3:1 that a UI boundary carrying meaning
-// must clear, on all three grounds:
-//                     sunk / bone / card
-const MOSS_A = '#0C9065';    // 3.30 / 3.56 / 3.89
-const INDIGO_A = '#477ED4';  // 3.29 / 3.55 / 3.89
-const OCHRE_A = '#A6760D';   // 3.28 / 3.54 / 3.87
-const TEAL_A = '#0C8C8F';    // 3.32 / 3.58 / 3.92
-const PLUM_A = '#BF5B9C';    // 3.30 / 3.56 / 3.89
-const CLAY_A = '#D25928';    // 3.29 / 3.55 / 3.89
+// must clear, on all three grounds, and all six FAIL white at 4.5 — which is
+// what keeps `fill`/`text` and `accent` from collapsing into one value again.
+// MOSS_A is the lightest of the six and therefore the tightest: 3.04 on sunk
+// leaves almost no margin over the 3:1 floor, so it must not be lightened.
+//                     sunk / bone / card / white
+const MOSS_A = '#3E9A6E';   // gauge, pools, bars   // 3.04 / 3.21 / 3.47 / 3.47
+const INDIGO_A = '#527BDA';  // 3.54 / 3.74 / 4.04 / 4.04
+const OCHRE_A = '#AA7400';   // 3.53 / 3.74 / 4.03 / 4.03
+const STEEL_A = '#1586BE';   // 3.55 / 3.75 / 4.05 / 4.05
+const PLUM_A = '#D54B89';    // 3.54 / 3.74 / 4.04 / 4.04
+const CLAY_A = '#CD5E19';    // 3.53 / 3.73 / 4.03 / 4.03
 //
-// Equal CONTRAST, not equal lightness — which is why the L values run 30% to
-// 55% rather than sitting on one number the way the fills do. At a fixed
-// lightness a yellow is far heavier than a blue; matching the ratio is what
-// makes them read as one family on the page, and it is the ratio the rule is
-// written about. Saturation is capped per hue so the set stays a palette:
-// plum holds 44% and reads as wine rather than the hot pink 72% produced, and
-// clay 68% rather than a traffic-cone orange.
-//
-// AN ACCENT MUST NEVER GO UNDER WHITE TEXT. At ~3.3 it is a shape colour, not
-// a ground for type. That is what `fill` is still for, and the two are kept
-// apart deliberately.
+// AN ACCENT MUST NEVER GO UNDER WHITE TEXT. At 3.0–3.6 on sunk it is a shape
+// colour, not a ground for type. That is what `fill`/`text` is still for, and
+// the two are kept apart deliberately.
 
-// Tints — chip and banner grounds, each ink's own hue at ~93% lightness, uniform
-// chroma to match the fills.
-const MOSS_T = '#DCEDE3';
-const INDIGO_T = '#DFE9F7';
-const OCHRE_T = '#F0E6D8';
-const TEAL_T = '#D8EDED';
-const PLUM_T = '#F3E2EC';
-const CLAY_T = '#F6E3DD';
+// Tints — chip and banner grounds, each ink's own hue held near 0.74 relative
+// luminance. Measured, not eyeballed: `text` is the fill itself for all six
+// inks and sits at luminance 0.114–0.119, so a tint would clear 4.5:1 against
+// its own ink anywhere at or above luminance ≈0.70. The tints are deliberately
+// kept close to that floor rather than pushed toward white, because a tint
+// much lighter reads as barely-tinted white and was part of what made the
+// earlier pass look washed out. Five sit at 0.739–0.743 and clear 4.69–4.74;
+// MOSS_T sits lighter at 0.810 and clears 5.24 — it is the one tint that could
+// afford to go a step darker without breaking the floor.
+const MOSS_T = '#E1EBE4';
+const INDIGO_T = '#D8E0F1';
+const OCHRE_T = '#EDDEC0';
+const STEEL_T = '#CDE3ED';
+const PLUM_T = '#F0DAE4';
+const CLAY_T = '#EEDCD0';
+// A one-step-darker moss tint for the selected nav pill's hover state — see
+// MuiListItemButton below. Moss text on it measures 4.72, so the pill's label
+// still clears 4.5:1 while the pill is under the cursor.
+const MOSS_T_HOVER = '#D2E1D8';
 
-// TEXT variants. Measured, not chosen. After the 21 Aug retune ALL six inks
-// clear AA as text on every ground this module paints — the uniform L 0.47 is
-// what bought that — so every one is used directly and there are no separate
-// darkened variants any more. The two that used to fail (ochre, clay) now pass
-// because the retune darkened them; keeping OCHRE_TEXT/CLAY_TEXT as aliases of
-// the fills preserves every call site without a rename.
-//                    bone / card / sunk / white / own tint
-//   MOSS   5.70 / 6.24 / 5.28 / 6.48 / 5.33
-//   INDIGO 6.05 / 6.63 / 5.61 / 6.89 / 5.62
-//   OCHRE  6.05 / 6.63 / 5.61 / 6.88 / 5.58
-//   TEAL   5.79 / 6.34 / 5.37 / 6.59 / 5.41
-//   PLUM   6.39 / 7.00 / 5.93 / 7.27 / 5.85
-//   CLAY   6.27 / 6.87 / 5.81 / 7.13 / 5.76
-const OCHRE_TEXT = OCHRE;
-const CLAY_TEXT = CLAY;
-
-// White on any fill now measures ≥6.48, so every ink — ochre included — can be a
-// solid badge or button and carry white comfortably. The old bar on ochre as a
-// fill (white was 3.87 on the pale gold) is void: this ochre is a dark bronze.
+// TEXT variants. There are none — all six inks read directly as text, each
+// clearing 4.5:1 on bone, card, sunk AND its own tint at the fill value
+// itself, so a darkened variant would only restate the fill. MOSS_TEXT exists
+// as a name, not as a value: it holds the same #2C6A4F as MOSS and is kept
+// solely because call sites already reference it.
+//                bone / card / sunk / white / own tint
+//   MOSS         5.93 / 6.40 / 5.61 / 6.40 / 5.24
+//   INDIGO       5.76 / 6.22 / 5.45 / 6.22 / 4.69
+//   OCHRE        5.78 / 6.24 / 5.47 / 6.24 / 4.70
+//   STEEL        5.77 / 6.23 / 5.46 / 6.23 / 4.69
+//   PLUM         5.81 / 6.28 / 5.50 / 6.28 / 4.74
+//   CLAY         5.81 / 6.27 / 5.49 / 6.27 / 4.71
 
 // ── Surfaces ───────────────────────────────────────────────────────────────
-// Three tiers, all light. Bone carries a green bias rather than a cream, which
-// keeps the module away from the warm-paper-and-terracotta look the serif
-// would otherwise pull it toward.
-const BONE = '#EFF1EC';    // page floor
-const CARD = '#FAFBF8';    // cards, panels
-const SUNK = '#E6E9E2';    // table headers, wells, insets
-const HAIRLINE = '#DBDED6';
-const HAIRLINE_SOFT = '#E9EBE5';
+// Three tiers, all light, and all in the same cool green-white family as the
+// moss that leads the system — a near-neutral held at hue ~130° rather than
+// pushed to a warm cream. The point of the three tiers is a value ladder, not
+// a hue statement: bone → card is one step up, bone → sunk one step down, and
+// nothing on the page is darker than the type.
+const BONE = '#F4F7F4';    // page floor · luminance 0.923
+const CARD = '#FFFFFF';    // cards, panels · luminance 1.000
+const SUNK = '#EDF1ED';    // table headers, wells, insets · luminance 0.870
+//
+// The hairlines are the "well divided" half of the 26 Aug brief, and they are
+// the weakest measurement in the file: HAIRLINE is 1.21:1 against bone and
+// 1.31:1 against card — a division you have to be told about rather than one
+// you see. HAIRLINE_SOFT is weaker still by design; it is the gentle divider
+// and hover wash, not the structural one. If divisions need to read harder,
+// this is the pair to move, not the surfaces.
+const HAIRLINE = '#DCE3DD';       // luminance 0.754 · 1.21 on bone / 1.31 on card
+const HAIRLINE_SOFT = '#EAEFEA'; // luminance 0.852 · 1.08 on bone / 1.17 on card
 
 // ── Text ───────────────────────────────────────────────────────────────────
-// Measured on bone / card / sunk.
-const TEXT_PRIMARY = '#1A2620';    // 13.76 / 15.07 / 12.76
-const TEXT_SECONDARY = '#4E5A54';  // darkened from the mockup's #5C6A63, which
-                                   // scored 4.63 on sunk — inside the margin.
-const TEXT_MUTED = '#5C6A63';      // 4.99 / 5.47 — captions on bone and card
-                                   // only, never on sunk.
-const NEUTRAL_GREY = '#98A199';    // 2.66 on white — fails AA as text, so it is
-                                   // never a badge glyph; a status with no fixed
-                                   // ink (activities, "active") gets a tinted
-                                   // chip carrying its OWN dark text instead.
+// Measured on bone / card / sunk. Dark neutrals carrying a faint green cast
+// from the bone hue family, so type sits in the ground's colour rather than
+// on top of it.
+const TEXT_PRIMARY = '#1A2620';    // 14.50 / 15.65 / 13.72
+const TEXT_SECONDARY = '#4A5750';  // 7.02 / 7.58 / 6.64
+const TEXT_MUTED = '#70665C';      // 5.20 / 5.61 / 4.92 — the one warm-cast
+                                   // value left in the text set; it clears
+                                   // 4.5 on all three grounds, sunk with the
+                                   // least room.
+const NEUTRAL_GREY = '#ABA39C';    // 2.49 on white — fails AA as text, so it
+                                   // is never a badge glyph; a status with no
+                                   // fixed ink gets a tinted chip carrying its
+                                   // OWN dark text instead.
 
 // ── Type ───────────────────────────────────────────────────────────────────
 // The single biggest lever, and the reason the previous pass read like an OS
@@ -147,12 +170,14 @@ const NEUTRAL_GREY = '#98A199';    // 2.66 on white — fails AA as text, so it 
 // is what a utilisation ledger is. UI stays sans, because form labels, buttons
 // and table headers are controls rather than prose.
 //
-// Source Serif 4 is the production face and is self-hosted from
-// src/assets/fonts/ (see fonts.css). Constantia and Georgia stay in the stack
-// as the fallback for the instant before the variable font loads — both have
-// true tabular figures, so the layout doesn't shift when it swaps in.
-const SERIF = "'Source Serif 4', Constantia, Georgia, 'Times New Roman', serif";
-const SANS = "'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif";
+// Zodiak is the production serif as of 01 Sep 2026; Switzer carries UI and
+// Cabinet Grotesk the figures. Source Serif 4 stays in the stack behind
+// Zodiak, and Georgia behind that, as the fallback for the instant before the
+// variable font loads — both have true tabular figures, so the layout doesn't
+// shift when it swaps in.
+const SERIF = "'Zodiak', 'Source Serif 4', Georgia, serif";
+const SANS = "'Switzer', system-ui, -apple-system, 'Segoe UI', sans-serif";
+const DISPLAY = "'Cabinet Grotesk', 'Switzer', system-ui, sans-serif"; // figures that matter
 
 // ── Motion ─────────────────────────────────────────────────────────────────
 // Unchanged. NN/g timings, no spring, no bounce anywhere — the design-system
@@ -191,27 +216,34 @@ const radius = {
 // ── Elevation ──────────────────────────────────────────────────────────────
 // Depth comes from the three surface tiers, not from shadow. Shadows are tinted
 // toward the ground rather than neutral grey, so nothing floats over bone in a
-// colour the page never uses.
-const SHADOW_SOFT = '0 1px 2px rgba(20,28,24,0.05)';
-const SHADOW_RAISED = '0 4px 12px rgba(20,28,24,0.08)';
-const SHADOW_OVERLAY = '0 12px 32px rgba(20,28,24,0.12)';
+// colour the page never uses. The tint below is rgb(37, 31, 24), a warm brown
+// carried over from the coral pass; TEXT_PRIMARY is rgb(26, 38, 32), so the
+// shadow no longer matches the ink it was meant to follow.
+const SHADOW_SOFT = '0 1px 2px rgba(37,31,24,0.05)';
+const SHADOW_RAISED = '0 4px 12px rgba(37,31,24,0.08)';
+const SHADOW_OVERLAY = '0 12px 32px rgba(37,31,24,0.12)';
 
 const ttaTheme = createTheme({
   palette: {
-    // primary is moss: it is both the money ink and the primary action, which
-    // is correct here — the main verb in this module is always about spend.
-    primary: { main: MOSS, light: MOSS_T, dark: '#1F5039', contrastText: '#F3F8F5' },
+    // primary.main takes MOSS_TEXT, which is the same value as MOSS. The
+    // palette slot is read as TEXT far more often than as a fill (borders,
+    // selected labels, checked icons, the Tab underline's label colour), and
+    // naming the text constant here keeps that reading explicit at the call
+    // site. Nothing turns on the choice while the two are equal — but if moss
+    // ever needs a darkened text variant again, this is the line that already
+    // points at it.
+    primary: { main: MOSS_TEXT, light: MOSS_T, dark: '#234F3B', contrastText: '#FDF7F4' },
     // secondary is indigo — the other half of the product: what was promised.
-    secondary: { main: INDIGO, light: INDIGO_T, dark: '#253C5E', contrastText: '#FFFFFF' },
-    info: { main: TEAL, light: TEAL_T, dark: '#155152', contrastText: '#FFFFFF' },
-    // warning is ochre's TEXT variant — the palette slot is read as text far
-    // more often than as a fill, and the fill value fails there.
-    warning: { main: OCHRE_TEXT, light: OCHRE_T, dark: '#6B4D14', contrastText: '#FFFFFF' },
-    error: { main: CLAY_TEXT, light: CLAY_T, dark: '#7E3D22', contrastText: '#FFFFFF' },
-    success: { main: MOSS, light: MOSS_T, dark: '#1F5039', contrastText: '#F3F8F5' },
+    secondary: { main: INDIGO, light: INDIGO_T, dark: '#27417D', contrastText: '#FFFFFF' },
+    info: { main: STEEL, light: STEEL_T, dark: '#134863', contrastText: '#FFFFFF' },
+    warning: { main: OCHRE, light: OCHRE_T, dark: '#5A3E02', contrastText: '#FFFFFF' },
+    error: { main: CLAY, light: CLAY_T, dark: '#66371B', contrastText: '#FFFFFF' },
+    // success mirrors primary, as it always has here — the main verb in this
+    // module is spend, so "successful" and "primary action" are one ink.
+    success: { main: MOSS_TEXT, light: MOSS_T, dark: '#234F3B', contrastText: '#FDF7F4' },
     grey: {
-      50: BONE, 100: HAIRLINE_SOFT, 200: HAIRLINE, 300: '#C7CCC3', 400: NEUTRAL_GREY,
-      500: TEXT_MUTED, 600: TEXT_SECONDARY, 700: '#3D4842', 800: '#2B342E', 900: TEXT_PRIMARY,
+      50: BONE, 100: HAIRLINE_SOFT, 200: HAIRLINE, 300: '#D1C9C1', 400: NEUTRAL_GREY,
+      500: TEXT_MUTED, 600: TEXT_SECONDARY, 700: '#4E4439', 800: '#38312A', 900: TEXT_PRIMARY,
     },
     background: { default: BONE, paper: CARD },
     text: { primary: TEXT_PRIMARY, secondary: TEXT_SECONDARY, disabled: NEUTRAL_GREY },
@@ -239,7 +271,7 @@ const ttaTheme = createTheme({
     body2: { fontSize: '0.875rem', lineHeight: 1.5, fontWeight: 400, color: TEXT_PRIMARY },
     button: { textTransform: 'none', fontWeight: 600, fontSize: '0.875rem', letterSpacing: 0 },
     // The eyebrow. Uppercase survives from the mockup, but the tracking comes
-    // down from 0.06em and the colour is the muted green-grey, so it sits under
+    // down from 0.06em and the colour is TEXT_MUTED, so it sits under
     // the heading rather than competing with it.
     caption: { fontSize: '0.6875rem', lineHeight: 1.4, color: TEXT_MUTED, letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 600 },
     overline: { fontSize: '0.625rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: TEXT_MUTED },
@@ -286,24 +318,25 @@ const ttaTheme = createTheme({
         },
         sizeSmall: { padding: '6px 14px', minHeight: 32, fontSize: '0.8125rem' },
         sizeLarge: { padding: '12px 24px', minHeight: 48, fontSize: '0.9375rem' },
-        // Moss fill, white label, 6.40:1. The primary action is now the
-        // heaviest object in its region — which the pale amber never was.
+        // The MOSS fill under a near-white label: #FDF7F4 on moss is 6.03:1,
+        // pure white would be 6.40:1. The primary action is the heaviest
+        // object in its region — which the pale amber it replaced never was.
         containedPrimary: {
           backgroundColor: MOSS,
-          color: '#F3F8F5',
-          '&:hover': { backgroundColor: '#255943', boxShadow: 'none' },
+          color: '#FDF7F4',
+          '&:hover': { backgroundColor: '#AF3216', boxShadow: 'none' },
         },
         outlined: {
           backgroundColor: CARD,
           borderColor: HAIRLINE,
           color: TEXT_PRIMARY,
-          '&:hover': { backgroundColor: BONE, borderColor: '#C7CCC3' },
+          '&:hover': { backgroundColor: BONE, borderColor: '#C9BCA8' },
         },
-        outlinedPrimary: { borderColor: MOSS, color: MOSS, '&:hover': { backgroundColor: MOSS_T, borderColor: MOSS } },
-        textPrimary: { color: MOSS },
-        containedSecondary: { backgroundColor: INDIGO, color: '#FFFFFF', '&:hover': { backgroundColor: '#2B446B' } },
-        containedInfo: { backgroundColor: TEAL, color: '#FFFFFF', '&:hover': { backgroundColor: '#195D5F' } },
-        containedError: { backgroundColor: CLAY, color: '#FFFFFF', '&:hover': { backgroundColor: '#8E4527' } },
+        outlinedPrimary: { borderColor: MOSS_TEXT, color: MOSS_TEXT, '&:hover': { backgroundColor: MOSS_T, borderColor: MOSS_TEXT } },
+        textPrimary: { color: MOSS_TEXT },
+        containedSecondary: { backgroundColor: INDIGO, color: '#FFFFFF', '&:hover': { backgroundColor: '#305099' } },
+        containedInfo: { backgroundColor: STEEL, color: '#FFFFFF', '&:hover': { backgroundColor: '#175979' } },
+        containedError: { backgroundColor: CLAY, color: '#FFFFFF', '&:hover': { backgroundColor: '#7D4422' } },
       },
     },
 
@@ -324,10 +357,10 @@ const ttaTheme = createTheme({
           backgroundColor: CARD,
           transition: t(['border-color', 'box-shadow']),
           '& .MuiOutlinedInput-notchedOutline': { borderColor: HAIRLINE },
-          '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#C7CCC3' },
+          '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#C9BCA8' },
           // A ring, not a thicker border — a border-width change reflows the
           // field's contents by a pixel on every focus.
-          '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: MOSS, borderWidth: 1 },
+          '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: MOSS_TEXT, borderWidth: 1 },
           '&.Mui-focused': { boxShadow: '0 0 0 3px ' + MOSS_T },
         },
         input: { fontSize: '0.9375rem', padding: '10px 14px' },
@@ -339,8 +372,8 @@ const ttaTheme = createTheme({
           fontSize: '0.875rem', fontWeight: 500, color: TEXT_SECONDARY,
           // Deliberately NOT bolding on focus — a weight change re-flows the
           // label every time the field is focused.
-          '&.Mui-focused': { color: MOSS },
-          '&.Mui-error': { color: CLAY_TEXT },
+          '&.Mui-focused': { color: MOSS_TEXT },
+          '&.Mui-error': { color: CLAY },
         },
       },
     },
@@ -358,7 +391,7 @@ const ttaTheme = createTheme({
           // own header argues against, and it was redundant -- the border move
           // already reads, and unlike a shadow it reads on keyboard focus and
           // on touch too.
-          '&:hover': { borderColor: '#C7CCC3' },
+          '&:hover': { borderColor: '#C9BCA8' },
         },
       },
     },
@@ -381,7 +414,7 @@ const ttaTheme = createTheme({
     MuiDialogTitle: { styleOverrides: { root: { fontFamily: SERIF, fontSize: '1.25rem', fontWeight: 400, letterSpacing: '-0.01em', color: TEXT_PRIMARY, padding: '24px 24px 8px' } } },
     MuiDialogContent: { styleOverrides: { root: { padding: '8px 24px 16px' }, dividers: { borderColor: HAIRLINE } } },
     MuiDialogActions: { styleOverrides: { root: { padding: '8px 24px 24px', gap: 8 } } },
-    MuiBackdrop: { styleOverrides: { root: { backgroundColor: 'rgba(20,28,24,0.40)' } } },
+    MuiBackdrop: { styleOverrides: { root: { backgroundColor: 'rgba(37,31,24,0.40)' } } },
 
     MuiTableCell: {
       styleOverrides: {
@@ -406,13 +439,15 @@ const ttaTheme = createTheme({
           margin: '2px 0',
           transition: t(['background-color', 'color']),
           '&:hover': { backgroundColor: HAIRLINE_SOFT },
-          // A filled pill — never a left border, and never a weight change,
-          // which would re-flow the label on every navigation.
+          // The nav rail's selected item is a filled moss pill — never a left
+          // border, and never a weight change, which would re-flow the label
+          // on every navigation. Moss tint under moss text, 5.24:1 at rest and
+          // 4.72:1 on hover.
           '&.Mui-selected': {
             backgroundColor: MOSS_T,
-            color: MOSS,
-            '&:hover': { backgroundColor: '#D4E3D9' },
-            '& .MuiListItemIcon-root': { color: MOSS },
+            color: MOSS_TEXT,
+            '&:hover': { backgroundColor: MOSS_T_HOVER },
+            '& .MuiListItemIcon-root': { color: MOSS_TEXT },
           },
         },
       },
@@ -429,16 +464,16 @@ const ttaTheme = createTheme({
       styleOverrides: {
         root: { borderRadius: radius.pill, fontWeight: 600, fontSize: '0.75rem', height: 24, letterSpacing: 0 },
         sizeSmall: { height: 20, fontSize: '0.7rem' },
-        colorPrimary: { backgroundColor: MOSS_T, color: MOSS },
+        colorPrimary: { backgroundColor: MOSS_T, color: MOSS_TEXT },
         colorSecondary: { backgroundColor: INDIGO_T, color: INDIGO },
-        colorSuccess: { backgroundColor: MOSS_T, color: MOSS },
-        colorWarning: { backgroundColor: OCHRE_T, color: OCHRE_TEXT },
-        colorError: { backgroundColor: CLAY_T, color: CLAY_TEXT },
-        colorInfo: { backgroundColor: TEAL_T, color: TEAL },
+        colorSuccess: { backgroundColor: MOSS_T, color: MOSS_TEXT },
+        colorWarning: { backgroundColor: OCHRE_T, color: OCHRE },
+        colorError: { backgroundColor: CLAY_T, color: CLAY },
+        colorInfo: { backgroundColor: STEEL_T, color: STEEL },
         colorDefault: { backgroundColor: SUNK, color: TEXT_SECONDARY },
       },
     },
-    MuiAvatar: { styleOverrides: { root: { fontWeight: 600, fontSize: '0.875rem' }, colorDefault: { backgroundColor: MOSS_T, color: MOSS } } },
+    MuiAvatar: { styleOverrides: { root: { fontWeight: 600, fontSize: '0.875rem' }, colorDefault: { backgroundColor: MOSS_T, color: MOSS_TEXT } } },
 
     MuiTab: {
       styleOverrides: {
@@ -446,7 +481,7 @@ const ttaTheme = createTheme({
           textTransform: 'none', fontWeight: 500, fontSize: '0.875rem', letterSpacing: 0, color: TEXT_SECONDARY,
           transition: t(['color']),
           // Weight stays 500 when selected — see the nav note above.
-          '&.Mui-selected': { color: MOSS },
+          '&.Mui-selected': { color: MOSS_TEXT },
         },
       },
     },
@@ -455,16 +490,16 @@ const ttaTheme = createTheme({
     MuiAlert: {
       styleOverrides: {
         root: { borderRadius: radius.md, fontSize: '0.875rem', alignItems: 'center' },
-        standardSuccess: { backgroundColor: MOSS_T, color: MOSS },
-        standardWarning: { backgroundColor: OCHRE_T, color: OCHRE_TEXT },
-        standardError: { backgroundColor: CLAY_T, color: CLAY_TEXT },
-        standardInfo: { backgroundColor: TEAL_T, color: TEAL },
+        standardSuccess: { backgroundColor: MOSS_T, color: MOSS_TEXT },
+        standardWarning: { backgroundColor: OCHRE_T, color: OCHRE },
+        standardError: { backgroundColor: CLAY_T, color: CLAY },
+        standardInfo: { backgroundColor: STEEL_T, color: STEEL },
       },
     },
 
-    MuiCheckbox: { styleOverrides: { root: { color: '#C7CCC3', '&.Mui-checked': { color: MOSS } } } },
-    MuiRadio: { styleOverrides: { root: { color: '#C7CCC3', '&.Mui-checked': { color: MOSS } } } },
-    MuiSwitch: { styleOverrides: { switchBase: { '&.Mui-checked': { color: MOSS, '& + .MuiSwitch-track': { backgroundColor: MOSS_T } } } } },
+    MuiCheckbox: { styleOverrides: { root: { color: '#C9BCA8', '&.Mui-checked': { color: MOSS_TEXT } } } },
+    MuiRadio: { styleOverrides: { root: { color: '#C9BCA8', '&.Mui-checked': { color: MOSS_TEXT } } } },
+    MuiSwitch: { styleOverrides: { switchBase: { '&.Mui-checked': { color: MOSS_TEXT, '& + .MuiSwitch-track': { backgroundColor: MOSS_T } } } } },
     MuiLinearProgress: { styleOverrides: { root: { borderRadius: radius.pill, height: 8, backgroundColor: SUNK }, barColorPrimary: { backgroundColor: MOSS } } },
     MuiCircularProgress: { styleOverrides: { colorPrimary: { color: MOSS } } },
     MuiDivider: { styleOverrides: { root: { borderColor: HAIRLINE } } },
@@ -481,6 +516,18 @@ const ttaTheme = createTheme({
 export const surfaces = {
   canvas: BONE, surface: CARD, sunken: SUNK,
   hairline: HAIRLINE, hairlineSoft: HAIRLINE_SOFT,
+  // Opt-in Apple-glass surface. Spread onto a Paper/Box `sx` where depth is
+  // wanted (project detail, wizard card). The inset top line is the specular
+  // highlight; heavy blur+saturation lets the ground's colour glow through.
+  glass: {
+    background: 'linear-gradient(160deg, rgba(255,255,255,0.62), rgba(255,255,255,0.40))',
+    backdropFilter: 'blur(40px) saturate(1.8)',
+    WebkitBackdropFilter: 'blur(40px) saturate(1.8)',
+    border: '1px solid rgba(255,255,255,0.55)',
+    boxShadow: '0 1px 0 rgba(255,255,255,0.9) inset, 0 30px 70px rgba(30,54,42,0.16), 0 8px 20px rgba(30,54,42,0.08)',
+  },
+  // A soft green→teal→amber wash for the app canvas behind glass panels.
+  gradient: 'radial-gradient(1200px 700px at 88% -8%, rgba(196,232,214,0.55), transparent 60%), radial-gradient(1000px 620px at -8% 8%, rgba(196,226,232,0.40), transparent 55%), radial-gradient(900px 600px at 50% 108%, rgba(240,228,196,0.28), transparent 55%), linear-gradient(180deg,#F6F9F6,#F1F5F1)',
 };
 
 // Text colours MUI's palette can't carry a third tier for, plus the neutral
@@ -495,14 +542,22 @@ export const text = {
 // `fill` is the solid ground white sits on, `accent` is the chroma-carrying
 // shape colour that must never go under white, `text` is legible on every
 // ground, `tint` is the chip ground. See the ACCENTS block above for why there
-// are two paint values rather than one.
+// are two paint values rather than one. `text` equals `fill` for all six inks;
+// moss spells it MOSS_TEXT only because existing call sites use that name.
 export const inks = {
-  moss: { fill: MOSS, accent: MOSS_A, text: MOSS, tint: MOSS_T, means: 'money utilised, primary action' },
+  moss: { fill: MOSS, accent: MOSS_A, text: MOSS_TEXT, tint: MOSS_T, means: 'money utilised, primary action' },
   indigo: { fill: INDIGO, accent: INDIGO_A, text: INDIGO, tint: INDIGO_T, means: 'contracts and deliverables' },
-  ochre: { fill: OCHRE, accent: OCHRE_A, text: OCHRE_TEXT, tint: OCHRE_T, means: 'waiting on you' },
-  teal: { fill: TEAL, accent: TEAL_A, text: TEAL, tint: TEAL_T, means: 'funders and partners' },
+  ochre: { fill: OCHRE, accent: OCHRE_A, text: OCHRE, tint: OCHRE_T, means: 'waiting on you' },
+  steel: { fill: STEEL, accent: STEEL_A, text: STEEL, tint: STEEL_T, means: 'funders and partners' },
   plum: { fill: PLUM, accent: PLUM_A, text: PLUM, tint: PLUM_T, means: 'closed, frozen certificate' },
-  clay: { fill: CLAY, accent: CLAY_A, text: CLAY_TEXT, tint: CLAY_T, means: 'overspend, needs a decision' },
+  clay: { fill: CLAY, accent: CLAY_A, text: CLAY, tint: CLAY_T, means: 'overspend, needs a decision' },
+  // Deprecated aliases, kept so nothing breaks mid-rename. `coral` is the name
+  // the 26 Aug pitch gave this slot; that call was reversed 01 Sep 2026 and the
+  // slot has been moss green since. `teal` is the old name for steel. Neither
+  // is a distinct ink — both point at the canonical entry above. Do not reach
+  // for either in new code.
+  coral: { fill: MOSS, accent: MOSS_A, text: MOSS_TEXT, tint: MOSS_T, means: 'money utilised, primary action' },
+  teal: { fill: STEEL, accent: STEEL_A, text: STEEL, tint: STEEL_T, means: 'funders and partners' },
 };
 
 // Every figure on screen. A rupee value that changes width mid-render shoves
@@ -513,13 +568,13 @@ export const tabular = { fontVariantNumeric: 'tabular-nums', fontFeatureSettings
 // times its label — the reference decks all do this and the previous pass did
 // not, which is why its numbers read as data rather than as the point.
 export const figure = {
-  hero: { fontFamily: SERIF, fontSize: '2.75rem', fontWeight: 400, lineHeight: 1, letterSpacing: '-0.03em', ...tabular },
-  large: { fontFamily: SERIF, fontSize: '1.5625rem', fontWeight: 400, lineHeight: 1.1, letterSpacing: '-0.02em', ...tabular },
-  row: { fontFamily: SERIF, fontSize: '0.96875rem', fontWeight: 400, ...tabular },
+  hero: { fontFamily: DISPLAY, fontSize: '2.75rem', fontWeight: 600, lineHeight: 1, letterSpacing: '-0.032em', ...tabular },
+  large: { fontFamily: DISPLAY, fontSize: '1.5625rem', fontWeight: 500, lineHeight: 1.1, letterSpacing: '-0.03em', ...tabular },
+  row: { fontFamily: DISPLAY, fontSize: '0.96875rem', fontWeight: 500, letterSpacing: '-0.02em', ...tabular },
   unit: { fontFamily: SANS, fontSize: '0.71875rem', color: TEXT_MUTED, letterSpacing: 0 },
 };
 
-export const fonts = { serif: SERIF, sans: SANS };
+export const fonts = { serif: SERIF, sans: SANS, display: DISPLAY };
 
 // ── Entrance motion ────────────────────────────────────────────────────────
 // One shape, used everywhere: a short rise with a fade. No scale, no spring, no
@@ -569,8 +624,9 @@ export const MOBILE_INPUT_MIN_FONT_SIZE = 16;
 // ── White-label, funder portal only ────────────────────────────────────────
 // A funder's brand hex replaces exactly these three roles and nothing else.
 // Surfaces, text and semantics never rebrand, so a funder's colour cannot break
-// legibility anywhere that was not already measured above. Derive the ramp in
-// OKLCH — hold hue and chroma, move lightness.
+// legibility anywhere that was not already measured above. Outside the portal
+// all three roles are moss. Derive the ramp in OKLCH — hold hue and chroma,
+// move lightness.
 export const WHITE_LABEL_ROLES = ['primary.main', 'primary.light', 'brandMark'];
 export const WHITE_LABEL_TARGET_LIGHTNESS = { fill: 0.44, subtle: 0.92, text: 0.44 };
 

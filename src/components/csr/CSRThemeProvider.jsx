@@ -34,35 +34,42 @@ import ttaTheme, { surfaces, inks, fonts } from '../../styles/ttaTheme';
 // Local to the CSR shell, deliberately NOT added to `surfaces`. Every value is
 // measured, and every ratio quoted below is against the ground it lands on.
 //
-//   RAIL_HEAD  #DEE3D9  luminance 0.755 — 1.15 against the bone page
-//   RAIL_FOOT  #CFD6C9  luminance 0.656 — 1.31 against the bone page
+// Re-pitched 26 Aug 2026 off the old green-tinted rail (`#DEE3D9`/`#CFD6C9`,
+// hue ~100°) onto the same warm cream family as the re-hued bone (hue ~35°) —
+// the owner's brief named green specifically, and the rail was the loudest
+// green thing on any CSR screen: a 100vh-tall gradient, not a chip.
+//
+//   RAIL_HEAD  #E7E1D9  luminance 0.759 — 1.15 against the bone page
+//   RAIL_FOOT  #DCD3C8  luminance 0.660 — 1.31 against the bone page
 //
 // Text on the rail, worst case (the foot) / best case (the head):
-//   #1A2620  primary ink, hovered labels     10.52 / 11.99
-//   #4E5A54  resting labels, eyebrow, stamp   4.84 /  5.52   AA
-//   #2C6A4F  moss, brand mark only, pinned to the head        4.90   AA
-//   moss on the active pill (#E1EBE4), independent of the rail 5.24   AA
+//   #251F18  primary ink, hovered labels       11.02 / 12.56   AA
+//   #64594F  resting labels, eyebrow, stamp     4.60 /  5.24   AA
+//   #B23316  coral TEXT, brand mark only, pinned to the head    4.79   AA
+//   coral FILL on the active pill (white text), independent of rail  5.02  AA
 //
-// Moss never lands on the deep end: it appears in the brand block, which is
-// pinned flat to RAIL_HEAD, and in the active pill, which carries its own
-// ground. On the foot it would measure 4.39 and fail — hence the pinning.
-const RAIL_HEAD = '#DEE3D9';
-const RAIL_FOOT = '#CFD6C9';
+// Coral's TEXT variant never lands on the deep end: it appears only in the
+// brand block, which is pinned flat to RAIL_HEAD, and the active pill uses
+// the FILL variant against white, which carries its own ground regardless of
+// what the rail is doing underneath. On the foot, CORAL_TEXT would measure
+// 4.20 and fail — hence the pinning, same rule as before.
+const RAIL_HEAD = '#E7E1D9';
+const RAIL_FOOT = '#DCD3C8';
 // The rail's divider and its edge against the page. 1.48 on bone, so the rail
 // still has a drawn boundary and not only a tonal one.
-const RAIL_EDGE = '#C2CABB';
-// Hover is a wash, not a colour: it deepens the gradient by a constant 1.20
+const RAIL_EDGE = '#D2C7B8';
+// Hover is a wash, not a colour: it deepens the gradient by a constant amount
 // wherever it is applied, which a fixed hex cannot do over a gradient.
-const RAIL_HOVER = 'rgba(26, 38, 32, 0.10)';
+const RAIL_HOVER = 'rgba(37, 31, 24, 0.10)';
 
 const csrDocumentStyles = (
   <GlobalStyles
     styles={{
       body: { backgroundColor: surfaces.canvas },
-      '::selection': { backgroundColor: inks.moss.tint, color: '#1A2620' },
+      '::selection': { backgroundColor: inks.moss.tint, color: '#251F18' },
       '::-webkit-scrollbar-track': { backgroundColor: surfaces.sunken },
-      '::-webkit-scrollbar-thumb': { backgroundColor: '#98A199' },
-      '::-webkit-scrollbar-thumb:hover': { backgroundColor: '#5C6A63' },
+      '::-webkit-scrollbar-thumb': { backgroundColor: '#ABA39C' },
+      '::-webkit-scrollbar-thumb:hover': { backgroundColor: '#70665C' },
 
       // ---- Layout ground -------------------------------------------------
       '.dashboard-layout': { backgroundColor: surfaces.canvas },
@@ -70,15 +77,15 @@ const csrDocumentStyles = (
       // ---- Sidebar -------------------------------------------------------
       // A fourth tonal step, below sunken, that exists only here.
       //
-      // Sunken (#E6E9E2) measured 1.08 against the bone page — a step you have
-      // to be told about. The rail now runs #DEE3D9 → #CFD6C9 top to bottom,
+      // Sunken (#EEE8E0) measured 1.10 against the bone page — a step you have
+      // to be told about. The rail now runs #E7E1D9 → #DCD3C8 top to bottom,
       // which is 1.15 at the top and 1.31 at the foot: it reads as its own
       // surface without becoming one.
       //
       // IT IS STILL NOT A DARK ANCHOR, and must not become one. The owner
       // rejected dark chrome on 2026-08-18 and ttaTheme.smoke.test.js holds
       // every exported surface above 0.70 relative luminance. Both stops here
-      // clear that bar on purpose — top 0.755, foot 0.656 — so the rule this
+      // clear that bar on purpose — top 0.759, foot 0.660 — so the rule this
       // rail obeys is "deeper step, same light family". The values live in
       // this file rather than in `surfaces` precisely because they are the CSR
       // shell's own tones, not a fourth tier for the whole system to reach for.
@@ -104,9 +111,9 @@ const csrDocumentStyles = (
         transition: 'none',
       },
       '.dashboard-content': { transition: 'none' },
-      // Pinned to the flat head tone rather than left transparent, so the moss
-      // brand mark below is measured against a known ground (4.90) instead of
-      // against wherever the gradient happens to be.
+      // Pinned to the flat head tone rather than left transparent, so the
+      // coral brand mark below is measured against a known ground (4.79)
+      // instead of against wherever the gradient happens to be.
       '.sidebar-brand': {
         background: 'none',
         backgroundColor: RAIL_HEAD,
@@ -117,39 +124,40 @@ const csrDocumentStyles = (
         fontWeight: 400,
         fontSize: '1.375rem',
         letterSpacing: '-0.01em',
-        color: '#1A2620',
+        color: '#251F18',
       },
-      // #5C6A63 measured 4.39 on the head tone and 4.10 at the foot — it
-      // passed on sunken and stops passing here. Everything quiet on this rail
-      // moves up to #4E5A54, which holds 5.52 / 4.84 across the whole sweep.
-      '.sidebar-brand span': { color: '#4E5A54', letterSpacing: '0.14em' },
+      // #70665C measured 4.20 on the foot tone — it passes on sunken and
+      // stops passing at the deep end of the rail. Everything quiet on this
+      // rail moves up to #64594F, which holds 5.24 / 4.60 across the whole
+      // sweep (head / foot).
+      '.sidebar-brand span': { color: '#64594F', letterSpacing: '0.14em' },
       '.sidebar-brand-icon': { color: inks.moss.text },
 
-      // Section labels. #6B7280 is the shared default and measures 4.44 at the
-      // rail's foot — the same near-miss the design system calls out on tinted
-      // grounds. #4E5A54 is the rail's documented resting-label colour and
-      // holds 4.84 / 5.52 across the whole sweep.
-      '.sidebar-section': { color: '#4E5A54' },
+      // Section labels. #6B7280 is the shared default and would measure under
+      // 4.5 at the rail's foot — the same near-miss the design system calls
+      // out on tinted grounds. #64594F is the rail's documented resting-label
+      // colour and holds 4.60 / 5.24 across the whole sweep.
+      '.sidebar-section': { color: '#64594F' },
       '.sidebar-section-rule': { backgroundColor: RAIL_EDGE },
 
       '.sidebar-toggle': {
         backgroundColor: 'transparent',
         borderBottom: `1px solid ${RAIL_EDGE}`,
-        color: '#4E5A54',
+        color: '#64594F',
       },
-      '.sidebar-toggle:hover': { backgroundColor: RAIL_HOVER, color: '#1A2620' },
+      '.sidebar-toggle:hover': { backgroundColor: RAIL_HOVER, color: '#251F18' },
 
       // HOVER AND ACTIVE MOVE IN OPPOSITE DIRECTIONS ON THE TONAL AXIS.
       //
       // Hover presses IN: a translucent ink wash that deepens whatever the
       // gradient is doing at that point in the rail, so the step is the same
-      // 1.20 at the top as at the foot — a flat hover colour cannot be, over a
-      // gradient. The label darkens #4E5A54 → #1A2620 with it.
+      // at the top as at the foot — a flat hover colour cannot be, over a
+      // gradient. The label darkens #64594F → #251F18 with it.
       //
-      // Active lifts OUT: the moss pill, lighter than the rail everywhere,
-      // carrying moss text and a moss spine. Nothing about hover is moss and
-      // nothing about hover is lighter, so the two can never be read for each
-      // other — which is the whole job of the active state.
+      // Active lifts OUT: the coral pill, a solid fill under white, carrying
+      // its own ground regardless of the rail. Nothing about hover is coral
+      // and nothing about hover is lighter, so the two can never be read for
+      // each other — which is the whole job of the active state.
       //
       // Weight stays 500 in every state. The shared stylesheet bolds the
       // active link 500 → 600, which re-flows the label on every navigation.
@@ -160,7 +168,7 @@ const csrDocumentStyles = (
       // (Spelling that keyword out in prose trips designLint -- it greps, it
       // does not parse.)
       '.sidebar-link': {
-        color: '#4E5A54',
+        color: '#64594F',
         borderLeftColor: 'transparent',
         fontWeight: 500,
         transition: [
@@ -170,25 +178,23 @@ const csrDocumentStyles = (
         ].join(', '),
       },
 
-      // Hover is MOSS, not ink. It was `rgba(26,38,32,0.10)` -- near-black at
-      // 10% -- which over any ground composites to grey (#CAD0C7 on this rail).
-      // A grey smudge under a green pill reads as damage, not as a state, and
-      // it made hover look STRONGER than active because at least the smudge was
+      // Hover is CORAL's accent, not ink text. It was near-black at 10% before
+      // the rail was green, which over any ground composites to grey — a grey
+      // smudge under a coloured pill reads as damage, not as a state, and it
+      // made hover look STRONGER than active because at least the smudge was
       // visible. Same family as active, lighter, so the two read as related
       // steps on one axis rather than as two unrelated effects.
       '.sidebar-link:hover': {
         backgroundColor: `${inks.moss.accent}24`,
-        // Near-black, not moss. Moss-on-moss-wash measures 4.42 at the head of
-        // the gradient but 3.89 at the foot -- under AA where the last nav
-        // items sit. The wash carries the colour; the label just gets darker.
-        color: '#1A2620',
+        // Near-black, not coral. The wash carries the colour; the label just
+        // gets darker.
+        color: '#251F18',
         borderLeftColor: `${inks.moss.accent}80`,
       },
-      // Active is a SOLID moss fill. The tint was #E1EBE4 on a #DEE3D9 rail --
-      // 1.07 contrast, which is no contrast at all. That tint was measured
-      // against bone (#EFF1EC); once the rail was darkened underneath it the
-      // pill and its ground converged and the current page stopped being
-      // visible. A fill cannot converge with anything.
+      // Active is a SOLID coral fill, white text — the fill clears 5.02:1
+      // against white on its own, independent of whatever the rail gradient
+      // is doing underneath. A fill cannot converge with its ground the way
+      // the old pale tint did on a darkened rail.
       //
       // Weight stays 500. The shared stylesheet bumps it to 600 on this
       // selector, which re-flows the label on every navigation.
@@ -200,20 +206,20 @@ const csrDocumentStyles = (
         borderLeftColor: inks.moss.fill,
       },
       '.sidebar-link.active:hover': {
-        backgroundColor: '#255943',
+        backgroundColor: '#AF3216',
         color: '#FFFFFF',
       },
       '.sidebar-link.active .sidebar-icon': { color: '#FFFFFF' },
       '.sidebar-collapsed .sidebar-link.active': { background: inks.moss.fill },
-      // Was #98A199: 1.92 on this rail, and only 2.8 on the old one. It has
-      // never actually passed. #4E5A54 holds 4.84 at the foot, where it sits.
+      // #64594F holds 4.60 at the foot, where it sits — see the rail-tone
+      // measurements above.
       '.sidebar-build': {
         borderTopColor: RAIL_EDGE,
-        color: '#4E5A54',
+        color: '#64594F',
       },
       '.sidebar-nav::-webkit-scrollbar-track': { background: 'transparent' },
-      '.sidebar-nav::-webkit-scrollbar-thumb': { background: '#8B9885' },
-      '.sidebar-nav::-webkit-scrollbar-thumb:hover': { background: '#6E7B69' },
+      '.sidebar-nav::-webkit-scrollbar-thumb': { background: '#A4917C' },
+      '.sidebar-nav::-webkit-scrollbar-thumb:hover': { background: '#87745E' },
 
       // ---- Header --------------------------------------------------------
       // It was the heaviest object on every screen: a 30px bold sans page
@@ -231,15 +237,15 @@ const csrDocumentStyles = (
         fontSize: '1.125rem',
         fontWeight: 400,
         letterSpacing: '-0.01em',
-        color: '#4E5A54',
+        color: '#64594F',
         margin: 0,
       },
       '.dashboard-breadcrumb': { display: 'none' },
       '.user-info': { padding: '0.25rem 0.5rem' },
       // Whose account it is ranks below what is on screen. It was bold
       // near-black, which made it the heaviest object in a quietened header.
-      '.user-info .user-name': { fontSize: '0.875rem', fontWeight: 500, color: '#4E5A54' },
-      '.user-info .user-role': { fontSize: '0.6875rem', fontWeight: 500, color: '#98A199', letterSpacing: '0.1em' },
+      '.user-info .user-name': { fontSize: '0.875rem', fontWeight: 500, color: '#64594F' },
+      '.user-info .user-role': { fontSize: '0.6875rem', fontWeight: 500, color: '#ABA39C', letterSpacing: '0.1em' },
 
       // The avatar was #FDE68A inside a #FEF3C7 ring — amber, set inline, so
       // no theme could reach it. Two class selectors beat the one-class

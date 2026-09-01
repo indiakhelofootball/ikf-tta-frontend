@@ -28,6 +28,7 @@ import { useAuth } from '../../auth/AuthContext';
 import { ROLES } from '../../auth/roles';
 import SidebarFrame, { NavItem, NavSection } from './SidebarFrame';
 import './Sidebar.css';
+import '../../styles/csrDesign.css';
 
 // Mirrors App.js's /csr/* routes. A project detail page (/csr/:id) has to light
 // up Projects — it is a row of that list — but /csr/:id also matches every
@@ -70,13 +71,14 @@ export default function CSRSidebar({ collapsed, onToggle }) {
       title="CSR"
       subtitle="Project Delivery"
       mark="CSR"
+      variant="csr"
     >
       {section('Delivery')}
       {item({ to: '/csr', icon: <CSRIcon fontSize="small" />, label: 'Dashboard', end: true })}
       {canView('csr') && item({ to: '/csr/projects', icon: <ProjectsIcon fontSize="small" />, label: 'Projects', forceActive: onProjectDetail })}
       {canView('csr') && item({ to: '/csr/activities', icon: <ActivitiesIcon fontSize="small" />, label: 'Activities' })}
-      {canView('csr') && item({ to: '/csr/reports', icon: <ReportsIcon fontSize="small" />, label: 'Reports' })}
       {(canView('csr_certificate') || canView('csr')) && item({ to: '/csr/utilisation', icon: <UtilisationIcon fontSize="small" />, label: 'Utilisation' })}
+      {canView('csr') && item({ to: '/csr/reports', icon: <ReportsIcon fontSize="small" />, label: 'Reports' })}
       {showSetup && section('Setup')}
       {showSetup && item({ to: '/csr/clients', icon: <FundersIcon fontSize="small" />, label: 'Funders' })}
       {showSetup && item({ to: '/csr/activity-types', icon: <CatalogIcon fontSize="small" />, label: 'Activity Types' })}
