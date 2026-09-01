@@ -33,6 +33,11 @@ import { surfaces, inks, figure, fonts, tabular } from '../../styles/ttaTheme';
 
 const asList = (data) => (Array.isArray(data) ? data : data?.results || []);
 
+// Where a report actually lives on the grant page. CSRProjectDetailPage reads
+// location.state.tab, so a row can open on the Reports tab instead of dropping
+// you on Overview to hunt for the record you just clicked.
+const REPORTS_TAB = 3;
+
 // The three views of the gate. 'Internal' is deliberately first in the list and
 // is what the count in the header points at — it is the only one of the three
 // that is somebody's outstanding work.
@@ -266,7 +271,18 @@ export default function CSRReportsPage() {
           ) : rows.map((r) => (
             <Box
               key={r.id}
+              role="button"
+              tabIndex={0}
+              aria-label={`Open ${r.fileName || 'Untitled'}, filed under ${projectName(r.projectId)}`}
+              onClick={() => navigate(`/csr/${r.projectId}`, { state: { tab: REPORTS_TAB } })}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  navigate(`/csr/${r.projectId}`, { state: { tab: REPORTS_TAB } });
+                }
+              }}
               sx={{
+                cursor: 'pointer',
                 display: 'grid',
                 gridTemplateColumns: { xs: '1fr', md: '132px 1fr 200px 180px 132px' },
                 gap: { xs: 0.5, md: 2 },
@@ -276,6 +292,11 @@ export default function CSRReportsPage() {
                 borderBottom: '1px solid',
                 borderColor: surfaces.hairlineSoft,
                 '&:last-of-type': { borderBottom: 0 },
+                transition: 'background-color 120ms cubic-bezier(0, 0, 0.2, 1)',
+                '&:hover': { bgcolor: surfaces.sunken },
+                // globals.css owns the ring's colour; a full-width row just needs it
+                // pulled inside its own bounds so it does not sit over the row above.
+                '&:focus-visible': { outlineOffset: -2 },
               }}
             >
               <Box sx={{ ...figure.unit, ...tabular, whiteSpace: 'nowrap' }}>
@@ -291,6 +312,7 @@ export default function CSRReportsPage() {
                       href={r.fileUrl}
                       target="_blank"
                       rel="noopener"
+                      onClick={(e) => e.stopPropagation()}
                       sx={{ display: 'inline-flex', color: 'text.secondary' }}
                     >
                       <OpenIcon fontSize="inherit" />
@@ -301,25 +323,7 @@ export default function CSRReportsPage() {
               <Box sx={{ fontFamily: fonts.sans, fontSize: '0.8125rem', color: 'text.secondary', minWidth: 0 }}>
                 {activityTitle(r.activityId) || '—'}
               </Box>
-              <Box
-                component="button"
-                type="button"
-                onClick={() => navigate(`/csr/${r.projectId}`)}
-                sx={{
-                  font: 'inherit',
-                  fontFamily: fonts.sans,
-                  fontSize: '0.8125rem',
-                  textAlign: 'left',
-                  border: 0,
-                  p: 0,
-                  bgcolor: 'transparent',
-                  color: 'text.secondary',
-                  cursor: 'pointer',
-                  minWidth: 0,
-                  transition: 'color 120ms cubic-bezier(0, 0, 0.2, 1)',
-                  '&:hover': { color: 'text.primary', textDecoration: 'underline' },
-                }}
-              >
+              <Box sx={{ fontFamily: fonts.sans, fontSize: '0.8125rem', color: 'text.secondary', minWidth: 0 }}>
                 {projectName(r.projectId)}
               </Box>
               <Box><GateChip visible={Boolean(r.visibleToClient)} /></Box>
@@ -330,7 +334,7 @@ export default function CSRReportsPage() {
 
       {!loading && rows.length > 0 && (
         <Typography variant="caption" component="div" sx={{ mt: 1.5 }}>
-          Showing {rows.length} of {reports.length}
+          Showing {rows.length} of {reports.length} {reports.length === 1 ? 'report' : 'reports'} filed in total
         </Typography>
       )}
     </Container>
