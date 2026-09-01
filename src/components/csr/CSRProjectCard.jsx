@@ -18,7 +18,10 @@
 
 import React from 'react';
 import { Box, ButtonBase, Typography } from '@mui/material';
-import { ChevronRight as ChevronIcon } from '@mui/icons-material';
+import {
+  ChevronRight as ChevronIcon,
+  CheckCircle as SelectedIcon,
+} from '@mui/icons-material';
 
 import { ttaProjectIdentity } from './CSRProjectDetailView';
 import { surfaces, inks, text, figure, motion } from '../../styles/ttaTheme';
@@ -81,12 +84,16 @@ export default function CSRProjectCard({ project, selected = false, onSelect }) 
         }}
       >
         {/* The identity spine. Present on every row so the colour reads as a
-            property of the grant rather than of the selection; the selected row
-            simply shows it at full strength on a tinted ground. */}
+            property of the grant rather than of the selection. Selection itself
+            must not be colour-only (a tint a colour-blind reader can't
+            separate from "hover" is not a selected state), so the spine also
+            WIDENS when selected — a shape change, not just a stronger tint.
+            Width is in ttaTheme's NEVER_ANIMATE list (it thrashes layout), so
+            it switches instantly; only the opacity transitions. */}
         <Box
           aria-hidden
           sx={{
-            width: 3,
+            width: selected ? 5 : 3,
             flexShrink: 0,
             bgcolor: ink.accent,
             // 0.22 was set against the dark fill. The accent is a much lighter
@@ -101,7 +108,10 @@ export default function CSRProjectCard({ project, selected = false, onSelect }) 
             <Typography
               sx={{
                 fontSize: '0.9375rem',
-                fontWeight: 500,
+                // Weight carries selection too — never colour alone. Weight is
+                // in NEVER_ANIMATE, so this switches instantly with no
+                // transition rather than tweening through the font faces.
+                fontWeight: selected ? 700 : 500,
                 letterSpacing: '-0.01em',
                 lineHeight: 1.35,
                 display: '-webkit-box',
@@ -134,7 +144,16 @@ export default function CSRProjectCard({ project, selected = false, onSelect }) 
               </Typography>
             </Box>
           </Box>
-          <ChevronIcon fontSize="small" sx={{ color: surfaces.hairline, flexShrink: 0 }} />
+          {/* The one unambiguous selected marker: a filled glyph replacing an
+              outline one. Shape, not colour, carries the meaning, so it reads
+              the same to a colour-blind viewer and survives any repaint of
+              `ink`. The plain chevron still says "this row opens something"
+              on every other row. */}
+          {selected ? (
+            <SelectedIcon fontSize="small" aria-hidden sx={{ color: ink.text, flexShrink: 0 }} />
+          ) : (
+            <ChevronIcon fontSize="small" sx={{ color: surfaces.hairline, flexShrink: 0 }} />
+          )}
         </Box>
       </ButtonBase>
     </Box>
