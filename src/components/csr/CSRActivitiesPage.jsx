@@ -36,6 +36,11 @@ import { surfaces, inks, text, figure, fonts, tabular } from '../../styles/ttaTh
 
 const asList = (data) => (Array.isArray(data) ? data : data?.results || []);
 
+// Where an activity actually lives on the grant page. CSRProjectDetailPage
+// reads location.state.tab, so a row can open on the Activities tab instead of
+// dropping you on Overview to hunt for the record you just clicked.
+const ACTIVITIES_TAB = 2;
+
 // Activities carry no meaning of their own in this system, so the page chrome
 // stays neutral rather than borrowing an ink that means something else.
 const NEUTRAL = { tint: surfaces.sunken, text: text.secondary };
@@ -224,7 +229,17 @@ export default function CSRActivitiesPage() {
           ) : rows.map((a) => (
             <Box
               key={a.id}
+              component="button"
+              type="button"
+              aria-label={`Open ${a.title}, logged under ${projectName(a.projectId)}`}
+              onClick={() => navigate(`/csr/${a.projectId}`, { state: { tab: ACTIVITIES_TAB } })}
               sx={{
+                width: '100%',
+                font: 'inherit',
+                textAlign: 'left',
+                border: 0,
+                cursor: 'pointer',
+                bgcolor: 'transparent',
                 display: 'grid',
                 gridTemplateColumns: { xs: '1fr', md: '132px 1fr 200px 180px 108px' },
                 gap: { xs: 0.5, md: 2 },
@@ -234,6 +249,11 @@ export default function CSRActivitiesPage() {
                 borderBottom: '1px solid',
                 borderColor: surfaces.hairlineSoft,
                 '&:last-of-type': { borderBottom: 0 },
+                transition: 'background-color 120ms cubic-bezier(0, 0, 0.2, 1)',
+                '&:hover': { bgcolor: surfaces.sunken },
+                // globals.css owns the ring's colour; a full-width row just needs it
+                // pulled inside its own bounds so it does not sit over the row above.
+                '&:focus-visible': { outlineOffset: -2 },
               }}
             >
               <Box sx={{ ...figure.unit, ...tabular, whiteSpace: 'nowrap' }}>
@@ -245,25 +265,7 @@ export default function CSRActivitiesPage() {
               <Box sx={{ fontFamily: fonts.sans, fontSize: '0.8125rem', color: 'text.secondary', minWidth: 0 }}>
                 {a.location || '—'}
               </Box>
-              <Box
-                component="button"
-                type="button"
-                onClick={() => navigate(`/csr/${a.projectId}`)}
-                sx={{
-                  font: 'inherit',
-                  fontFamily: fonts.sans,
-                  fontSize: '0.8125rem',
-                  textAlign: 'left',
-                  border: 0,
-                  p: 0,
-                  bgcolor: 'transparent',
-                  color: 'text.secondary',
-                  cursor: 'pointer',
-                  minWidth: 0,
-                  transition: 'color 120ms cubic-bezier(0, 0, 0.2, 1)',
-                  '&:hover': { color: 'text.primary', textDecoration: 'underline' },
-                }}
-              >
+              <Box sx={{ fontFamily: fonts.sans, fontSize: '0.8125rem', color: 'text.secondary', minWidth: 0 }}>
                 {projectName(a.projectId)}
               </Box>
               <Box><StatusChip status={a.status} /></Box>
@@ -274,7 +276,7 @@ export default function CSRActivitiesPage() {
 
       {!loading && rows.length > 0 && (
         <Typography variant="caption" component="div" sx={{ mt: 1.5 }}>
-          {rows.length} of {activities.length} logged
+          Showing {rows.length} of {activities.length} {activities.length === 1 ? 'activity' : 'activities'} logged in total
         </Typography>
       )}
     </Container>
