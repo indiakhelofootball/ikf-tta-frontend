@@ -1675,3 +1675,75 @@
 .csrx .pairbars.k5 .bar.util{background:linear-gradient(180deg,#C2E0EC,#9FCEE0)}
 .csrx .pairbars.k6 .bar.sanc{background:linear-gradient(180deg,#C25C8A,#A8386A)}
 .csrx .pairbars.k6 .bar.util{background:linear-gradient(180deg,#F2CFDF,#E3AEC7)}
+
+/* =========================================================================
+   THE STATISTIC PANEL, IN COLOUR.
+   One green stepped six ways meant the donut told you nothing without the
+   legend. Each funder takes its own hue, the legend dot carries it, and the
+   two figures above the ring get the colours they refer to.
+   ========================================================================= */
+.csrx .statistic{
+  background:linear-gradient(178deg,#F7FAF9 0%,#FFFFFF 34%);
+}
+.csrx .donut svg circle{transition:stroke .2s}
+.csrx .donut-v{font-size:18px;font-weight:600}
+.csrx .donut-k{font-size:10.5px}
+
+/* The pair above the ring names what the ring is made of, so it is inked:
+   utilised in moss, remaining in the neutral it is measured against. */
+.csrx .stat-pair > div:first-child span:last-child{color:#1B5E42}
+.csrx .stat-pair > div:last-child span:last-child{color:#2F5FBF}
+.csrx .stat-pair > div{
+  padding:7px 10px;border-radius:var(--r-ctl);
+}
+.csrx .stat-pair > div:first-child{background:#EAF5EF}
+.csrx .stat-pair > div:last-child{background:#EDF1FB}
+.csrx .stat-pair{gap:7px;margin-bottom:14px}
+
+/* A legend row is a key, so the dot is the loudest thing in it and the name
+   sits at reading weight beside it. */
+.csrx .legend-dot{width:9px;height:9px}
+.csrx .legend-row{padding:9px 0}
+.csrx .legend-nm{color:var(--ink)}
+
+/* =========================================================================
+   SPACE. Everything on this screen had been tuned tighter and tighter chasing
+   a reference measured at the wrong scale, and the result reads as cramped:
+   cards touching, panels with no breathing room, rows stacked on each other.
+   One step out, everywhere.
+   ========================================================================= */
+.csrx.csrx-page{padding:32px 36px 72px}
+.csrx .dash{gap:18px}
+.csrx .stats{gap:18px}
+.csrx .stats > .stat{padding:22px}
+.csrx .stat-top{margin-bottom:16px}
+.csrx .trend{margin-bottom:14px}
+
+.csrx .statistic{padding:20px}
+.csrx .stat-head{margin-bottom:16px}
+.csrx .donut{margin:4px auto 18px}
+.csrx .legend-row{padding:10px 0}
+
+.csrx .quick .qa{padding:18px 10px;gap:9px}
+.csrx .quick .limit{padding:18px 20px}
+.csrx .limit-top{margin-bottom:12px}
+.csrx .limit-sub{margin-top:11px}
+
+.csrx .flow{padding:20px}
+.csrx .flow-key{margin:8px 0 14px}
+.csrx .pairs{margin-top:16px}
+.csrx .pairs-plot{height:170px;padding-bottom:26px}
+.csrx .pairlbl{bottom:-24px}
+
+/* The section strip needs the same air as the content under it. */
+.dashboard-layout:has(.sidebar--csr) .dashboard-header{
+  padding-left:36px;padding-right:36px;min-height:64px;
+}
+
+/* The chart key shows the PAIR convention, not a series colour — each grant
+   owns its hue, so a coloured dot here would claim to name a series. */
+.csrx .key-sw{
+  display:inline-block;width:11px;height:11px;border-radius:3px;flex:none;
+}
+.csrx .key-sw.solid{background:#4A5750}
+.csrx .key-sw.pale{background:#C7D1CB}

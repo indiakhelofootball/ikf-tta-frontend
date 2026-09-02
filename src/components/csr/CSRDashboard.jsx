@@ -25,7 +25,11 @@ const fmtINR = (v) => {
   if (n >= 100000) return `₹${(n / 100000).toFixed(2)} L`;
   return `₹${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(n)}`;
 };
-const DONUT = ['#1B5E42', '#2C6A4F', '#3E8C67', '#5CA684', '#8AC3A7', '#B7DCC9'];
+// One hue per funder, not one green stepped six ways. A donut where every
+// segment is the same colour makes you read the legend to tell them apart,
+// which is the one job the picture was supposed to do. Same palette order as
+// the bar chart, so a colour means the same kind of thing on both.
+const DONUT = ['#2C6A4F', '#2F5FBF', '#B5651D', '#7A3E8F', '#1B678D', '#A8386A'];
 
 // The donut. Segments are drawn as stroke-dasharray arcs on one circle rather
 // than as pie wedges: an arc needs no path maths, stays crisp at any size, and
@@ -341,9 +345,14 @@ export default function CSRDashboard() {
               </div>
               <div className="flow-k">Total sanctioned</div>
               <div className="flow-total fig">{fmtINR(sanctioned)}</div>
+              {/* Colour now means WHICH GRANT, so the key cannot use a colour to
+                  mean "sanctioned" — it would be claiming green is a series
+                  when green is Grassroots. The key states the convention that
+                  actually holds: the solid bar is the sanction, the pale one
+                  beside it is what has been used of it. */}
               <div className="flow-key">
-                <span><span className="legend-dot" style={{ background: '#2C6A4F' }} /> Sanctioned</span>
-                <span><span className="legend-dot" style={{ background: '#9FCBB4' }} /> Utilised</span>
+                <span><span className="key-sw solid" /> Sanctioned</span>
+                <span><span className="key-sw pale" /> Utilised</span>
               </div>
               {series.length === 0 ? (
                 <div className="panel-empty">No grants yet.</div>
