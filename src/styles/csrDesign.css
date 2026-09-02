@@ -997,32 +997,32 @@
 .csrx .flow-total{margin-top:2px}
 
 /* =========================================================================
-   THE APP FLOATS. In the reference the whole product is a rounded card lifted
-   off a tinted field, with the ground visible around all four edges. That is
-   the single biggest reason the two read as different products: mine ran
-   edge-to-edge, so it had no outside.
+   THE APP FILLS THE VIEWPORT.
+   An earlier pass floated the whole product on a tinted field, reading that
+   off the reference screenshot. That was a mistake: the field and the rounded
+   corners belong to the MOCKUP the screenshot was presented in — a picture of
+   an app on a marketing background — not to the app. What is being copied is
+   the white screen inside the frame, so the app runs edge to edge and the
+   frame is gone.
    ========================================================================= */
 .dashboard-layout:has(.sidebar--csr){
-  /* The field the app sits on. A pale wash of the CSR ground, not lavender —
-     the reference's lavender is its brand, ours is moss. */
-  background:#E7EDE9;
+  background:#fff;
   min-height:100vh;
-  --rail-w:248px;          /* 18 gap + 212 rail + 18 gap */
-  --rail-w-collapsed:100px; /* 18 + 64 + 18 */
+  --rail-w:212px;
+  --rail-w-collapsed:64px;
 }
 .sidebar.sidebar--csr{
-  top:18px;left:18px;height:calc(100vh - 36px);
-  border-radius:16px;border-right:0 !important;
-  box-shadow:0 1px 2px rgba(28,44,38,.05),0 10px 30px rgba(28,44,38,.08);
+  top:0;left:0;height:100vh;
+  border-radius:0;border-right:1px solid var(--line) !important;
+  box-shadow:none;
 }
 .dashboard-layout:has(.sidebar--csr) .dashboard-content{
-  margin-top:18px;margin-right:18px;margin-bottom:18px;
-  background:#fff !important;border-radius:16px;overflow:hidden;
-  min-height:calc(100vh - 36px);
-  box-shadow:0 1px 2px rgba(28,44,38,.05),0 10px 30px rgba(28,44,38,.08);
+  margin-top:0;margin-right:0;margin-bottom:0;
+  background:#fff !important;border-radius:0;
+  min-height:100vh;box-shadow:none;
 }
-/* The interior is white now, so the section strip and the cards need their
-   hairlines back — a shadow alone disappears on a white ground. */
+/* The ground behind the cards is white, so a shadow alone will not separate
+   them — the hairline is doing the work, and the shadow only lifts them. */
 .dashboard-layout:has(.sidebar--csr) .dashboard-header{border-bottom:1px solid #EEF1F0}
 .csrx .stat,
 .csrx .statistic,
