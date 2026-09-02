@@ -132,9 +132,10 @@ export default function TagToCSRProjectDialog({ open, onClose, payment, onTagged
               helperText="A payment may be tagged to only one CSR project."
             >
               {projects.length === 0 && <MenuItem disabled value="">No open CSR projects</MenuItem>}
+              {/* 26 Aug review, 04:35: funder prime, project name secondary. */}
               {projects.map((p) => (
                 <MenuItem key={p.id} value={p.id}>
-                  {p.name} — {p.clientName}
+                  {p.clientName} — {p.name}
                 </MenuItem>
               ))}
             </TextField>

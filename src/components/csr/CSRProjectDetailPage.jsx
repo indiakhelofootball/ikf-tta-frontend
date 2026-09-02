@@ -330,9 +330,11 @@ export default function CSRProjectDetailPage() {
           {ttaProjectIdentity(project)}
         </Typography>
       )}
-      <Typography variant="h5" sx={{ mb: 0.5 }}>{project.name}</Typography>
+      {/* 26 Aug review, 04:35: "BDSA तुम्हारा prime रहेगा" — the funder takes
+          the h5 headline, the project name drops to the secondary line. */}
+      <Typography variant="h5" sx={{ mb: 0.5 }}>{project.clientName}</Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        {project.clientName}
+        {project.name}
       </Typography>
 
       <Tabs value={tab} onChange={(e, v) => setTab(v)} sx={{ mb: 2 }}>

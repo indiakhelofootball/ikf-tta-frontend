@@ -105,6 +105,11 @@ export default function CSRProjectCard({ project, selected = false, onSelect }) 
         />
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexGrow: 1, minWidth: 0, px: 1.75, py: 1.5 }}>
           <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+            {/* 26 Aug review, 04:35: "BDSA तुम्हारा prime रहेगा" — the funder
+                is prime, so it gets the large/bold line; the project name
+                gets the small/muted one that used to belong to the funder.
+                The two Typography blocks kept their sx, only the strings
+                filling them swapped. */}
             <Typography
               sx={{
                 fontSize: '0.9375rem',
@@ -120,10 +125,10 @@ export default function CSRProjectCard({ project, selected = false, onSelect }) 
                 overflow: 'hidden',
               }}
             >
-              {project.name}
+              {project.clientName || '—'}
             </Typography>
             <Typography variant="body2" color="text.secondary" noWrap sx={{ fontSize: '0.8125rem' }}>
-              {project.clientName || '—'}
+              {project.name}
             </Typography>
             {/* The TTA identity only when it exists — an unlinked grant's row
                 stays two lines rather than growing a placeholder. */}

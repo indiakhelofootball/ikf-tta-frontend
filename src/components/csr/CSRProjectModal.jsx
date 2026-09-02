@@ -134,7 +134,11 @@ export default function CSRProjectModal({ open, project, onClose, onSave, saving
               fullWidth
               renderInput={(params) => (
                 <TextField
-                  {...params} label="Runs Under TTA Project (optional)"
+                  {...params} label="TTA Project (optional)"
+                  // Not "Runs Under" — the 26 Aug review (03:27-04:17) called out
+                  // exactly this phrasing on the CSR project screen: a grant does
+                  // not run under a trial catalogue entry, the relationship reads
+                  // backwards. This is a link to the catalogue row, not a container.
                   helperText="Which existing TTA project this grant funds."
                 />
               )}
