@@ -6,7 +6,6 @@ import {
 
 import { getProjectNames } from '../../utils/adminStorage';
 import useConfigVersion from '../../hooks/useConfigVersion';
-import { SEASONS } from '../trials/trialConstants';
 
 const STATUS_OPTIONS = ['Active', 'Closed'];
 
@@ -73,6 +72,12 @@ export default function CSRProjectModal({ open, project, onClose, onSave, saving
       startDate: form.startDate || null,
       endDate: form.endDate || null,
       projectRefId: form.projectRefId === '' ? null : Number(form.projectRefId),
+      // Still SENT, never asked. 26 Aug, 04:35: «तुमको season पूछने की जरूरत ही
+      // नहीं रह जाएगा। वो trial तो किसी season का ही आएगा» — you won't need to
+      // ask for season at all, the trial carries one anyway. The form stopped
+      // asking; the value is carried through untouched so that saving a grant
+      // recorded before today does not blank the column, and so the identity
+      // pair the model documents (project + season) survives an edit.
       season: form.season,
     });
   };
@@ -143,15 +148,6 @@ export default function CSRProjectModal({ open, project, onClose, onSave, saving
                 />
               )}
             />
-            <TextField
-              label="Season (optional)" value={form.season} onChange={setField('season')}
-              select fullWidth helperText="The season of that TTA project."
-            >
-              <MenuItem value=""><em>Not set</em></MenuItem>
-              {SEASONS.map((s) => (
-                <MenuItem key={s} value={s}>{s}</MenuItem>
-              ))}
-            </TextField>
           </Stack>
         </Stack>
       </DialogContent>

@@ -56,9 +56,6 @@ const whenLabel = (a) => {
 // yet done is precisely "waiting on you". 'Completed' takes the neutral chip
 // rather than moss, because moss means money and an activity is not money.
 function StatusChip({ status }) {
-  // Cancelled is not one more status — it is a failure, and it has to look like
-  // one. 26 Aug review, 1067s: "if it is cancelled, then it will be an error."
-  if (status === 'Cancelled') return <span className="pill bad">Cancelled</span>;
   return (
     <span className={`pill ${status === 'Planned' ? 'wait' : 'closed'}`}>
       {status || 'Unknown'}
@@ -196,7 +193,7 @@ export default function CSRActivitiesPage() {
               <div
                 role="button"
                 tabIndex={0}
-                className={`lgrid lrow${a.status === 'Cancelled' ? ' bad' : ''}`}
+                className="lgrid lrow"
                 aria-label={`Open ${a.title}, logged under ${projectName(a.projectId)}`}
                 onClick={() => navigate(`/csr/${a.projectId}`, { state: { tab: ACTIVITIES_TAB } })}
                 onKeyDown={(e) => {

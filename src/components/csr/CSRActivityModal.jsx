@@ -8,11 +8,7 @@ import { trialsAPI, csrAPI } from '../../services/api';
 import { getWorkshopNames, getTrainingProgrammes } from '../../utils/adminStorage';
 import useConfigVersion from '../../hooks/useConfigVersion';
 
-// 'Cancelled' is a real outcome, not the absence of one — an activity that was
-// called off is not 'Planned' forever and is not 'Completed'. Added with the
-// backend choice in migration 0011 (26 Aug review, 1067s: "if it is cancelled,
-// then it will be an error").
-const STATUS_OPTIONS = ['Planned', 'Completed', 'Cancelled'];
+const STATUS_OPTIONS = ['Planned', 'Completed'];
 
 // Who delivered it. Asked for four times on the 26 Aug review -- "either a self
 // or a partner, there will be no option". Blank remains selectable because
