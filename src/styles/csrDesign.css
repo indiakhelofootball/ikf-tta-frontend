@@ -1391,3 +1391,52 @@
    ========================================================================= */
 .dashboard-layout:has(.sidebar--csr) .dashboard-page{padding-left:0;padding-right:0}
 .dashboard-layout:has(.sidebar--csr) .dashboard-header{padding-left:32px;padding-right:32px}
+
+/* =========================================================================
+   TYPE, UP A STEP. An earlier pass shrank the dashboard to match a reference
+   screenshot measured at the wrong scale — the labels ended up smaller than
+   the nav beside them, which put the numbers this page exists for below the
+   chrome around them.
+   ========================================================================= */
+.csrx .stat{min-height:130px;padding:14px}
+.csrx .stat-ic{width:28px;height:28px}
+.csrx .stat-ic svg{width:14px;height:14px}
+.csrx .trend{font-size:11px;padding:3px 9px;margin-bottom:10px}
+.csrx .stat-k{font-size:12.5px}
+.csrx .stat-v{font-size:21px;margin-top:4px}
+
+.csrx .statistic{padding:16px}
+.csrx .stat-head h3{font-size:13.5px}
+.csrx .stat-when{font-size:11px}
+.csrx .stat-pair span:first-child,
+.csrx .stat-pair span:last-child{font-size:12px}
+.csrx .donut-v{font-size:15.5px}
+.csrx .legend-row{padding:8px 0}
+.csrx .legend-nm,.csrx .legend-amt{font-size:12px}
+
+.csrx .qa{padding:14px 8px;font-size:12.5px;gap:7px}
+.csrx .qa-ic{width:30px;height:30px}
+.csrx .qa-ic svg{width:15px;height:15px}
+.csrx .limit{padding:16px}
+.csrx .limit-k{font-size:12.5px}
+.csrx .limit-pc{font-size:12.5px}
+.csrx .limit-sub,.csrx .limit-warn{font-size:11.5px}
+.csrx .flow{padding:16px}
+.csrx .flow-k{font-size:11.5px}
+.csrx .flow-total{font-size:22px}
+.csrx .flow-key{font-size:11.5px}
+.csrx .flow .histlbl,.csrx .pairlbl{font-size:10.5px}
+.csrx .tip-t{font-size:11.5px}
+.csrx .tip-r span,.csrx .tip-r b{font-size:11px}
+
+/* =========================================================================
+   THE LINES AT THE TOP. The reference divides the shell with rules, not with
+   whitespace: one down the rail's edge and one under the section strip, both
+   running the full length of what they separate. Ours were a shade lighter
+   than the hairline used everywhere else, so at a glance the top of the screen
+   had no edge at all.
+   ========================================================================= */
+.dashboard-layout:has(.sidebar--csr) .dashboard-header{
+  border-bottom:1px solid var(--line);
+}
+.sidebar.sidebar--csr{border-right:1px solid var(--line) !important}
