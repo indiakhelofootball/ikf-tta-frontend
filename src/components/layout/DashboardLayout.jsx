@@ -43,6 +43,9 @@ const pageTitles = {
   "/csr/clients": "Funders",
   "/csr/activity-types": "Activity Types",
   "/csr/branding": "Branding",
+  // Without this, /csr/account falls through to the /csr/:id pattern below
+  // and the strip reads "Project" on the account page.
+  "/csr/account": "Account",
 };
 
 // Dynamic routes (App.js path params) can't live in the exact-match map above
@@ -128,10 +131,34 @@ export default function DashboardLayout({ sidebar: SidebarComponent = Sidebar })
     <div className="dashboard-layout">
       <SidebarComponent collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(v => !v)} />
 
-      <div className="dashboard-content" style={{ marginLeft: sidebarCollapsed ? 64 : 260, transition: 'margin-left 0.25s ease' }}>
+      {/* The rail's width is a variable so a shell can set its own without an
+          !important fight against this inline style. TTA sets nothing and
+          falls back to 64 / 260; CSR narrows it to match its reference. */}
+      <div
+        className="dashboard-content"
+        style={{
+          marginLeft: sidebarCollapsed ? 'var(--rail-w-collapsed, 64px)' : 'var(--rail-w, 260px)',
+          transition: 'margin-left 0.25s ease',
+        }}
+      >
         {/* Header */}
         <div className="dashboard-header">
           <div className="dashboard-header-left">
+            {/* CSR has no top-level nav other than the rail, so a detail page
+                is a dead end without this. Gated to /csr so TTA's header is
+                unchanged, and hidden on the CSR root, which has nowhere to go
+                back TO. */}
+            {location.pathname.startsWith('/csr') && location.pathname !== '/csr' && (
+              <button
+                type="button"
+                className="header-back"
+                aria-label="Go back"
+                onClick={() => navigate(-1)}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                     strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+              </button>
+            )}
             <h1>{title}</h1>
             <div className="dashboard-breadcrumb">
               Home / {title}

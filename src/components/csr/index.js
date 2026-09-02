@@ -8,6 +8,7 @@ export { default as CSRUtilisationPage } from './CSRUtilisationPage';
 export { default as CSRActivityTypesPage } from './CSRActivityTypesPage';
 export { default as CSRClientsPage } from './CSRClientsPage';
 export { default as CSRBrandingPage } from './CSRBrandingPage';
+export { default as CSRAccountPage } from './CSRAccountPage';
 export { default as CSRProjectCard } from './CSRProjectCard';
 export { default as CSRProjectDetailView } from './CSRProjectDetailView';
 export { default as CSRProjectModal } from './CSRProjectModal';

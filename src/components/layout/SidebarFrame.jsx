@@ -74,7 +74,9 @@ export function NavSection({ label, collapsed }) {
   return <div className="sidebar-section">{label}</div>;
 }
 
-export default function SidebarFrame({ collapsed, onToggle, title, subtitle, mark, children, variant }) {
+export default function SidebarFrame({
+  collapsed, onToggle, title, subtitle, mark, children, variant, brandIcon, footer,
+}) {
   return (
     <aside className={`sidebar ${collapsed ? 'sidebar-collapsed' : ''} ${variant === 'csr' ? 'sidebar--csr' : ''}`}>
       <div className="sidebar-brand">
@@ -82,8 +84,11 @@ export default function SidebarFrame({ collapsed, onToggle, title, subtitle, mar
           <div className="sidebar-brand-icon">{mark}</div>
         ) : (
           <>
-            <h2>{title}</h2>
-            <span>{subtitle}</span>
+            {brandIcon && <span className="sidebar-brand-mark">{brandIcon}</span>}
+            <span className="sidebar-brand-words">
+              <h2>{title}</h2>
+              <span>{subtitle}</span>
+            </span>
           </>
         )}
       </div>
@@ -93,6 +98,8 @@ export default function SidebarFrame({ collapsed, onToggle, title, subtitle, mar
       </button>
 
       <nav className="sidebar-nav">{children}</nav>
+
+      {footer && !collapsed && <div className="sidebar-footer">{footer}</div>}
 
       {/* Build stamp — lets a bug report be tied to an exact bundle. Without it,
           "it went blank again" cannot be distinguished from a Cloudflare-cached

@@ -1,7 +1,15 @@
-// CSR Projects — the DECIDED design (green · glass · Fontshare), rebuilt as a
-// full-width colour-coded data table. Data/state logic is unchanged; the render
-// is pure markup styled entirely by src/styles/csrDesign.css (scope: .csrx).
-// No MUI sx, no coral-era theme tokens, no inline styles beyond page padding.
+// CSR Projects — MASTER-DETAIL, as the approved reference draws it: the grant
+// list on the left, the whole record on the right. You never leave this screen
+// to read a grant; clicking a row fills the pane beside it.
+//
+// This replaced a full-width flat table. The table was not a smaller version of
+// the reference, it was a different screen: it showed four columns and then had
+// to navigate away for everything else — funder, dates, work order, certificate
+// state, description. The reference puts all of that one click from the list,
+// which is the whole point of the layout.
+//
+// Data/state logic is unchanged. The render is pure markup styled entirely by
+// src/styles/csrDesign.css (scope: .csrx). No MUI sx, no inline styles.
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Snackbar, Alert } from '@mui/material';
@@ -16,10 +24,11 @@ import '../../styles/csrDesign.css';
 const PAGE_SIZE = 8;
 
 const SORTS = {
-  latest: { compare: (a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')) },
-  name: { compare: (a, b) => String(a.name || '').localeCompare(String(b.name || '')) },
-  amount: { compare: (a, b) => (Number(b.sanctionedAmount) || 0) - (Number(a.sanctionedAmount) || 0) },
+  latest: { label: 'Latest', compare: (a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')) },
+  name: { label: 'Name', compare: (a, b) => String(a.name || '').localeCompare(String(b.name || '')) },
+  amount: { label: 'Amount', compare: (a, b) => (Number(b.sanctionedAmount) || 0) - (Number(a.sanctionedAmount) || 0) },
 };
+const SORT_KEYS = Object.keys(SORTS);
 
 // deterministic 1..8 palette index from a string (funder → colour, project → avatar)
 const paletteIdx = (str) => {
@@ -43,6 +52,14 @@ const fmtMoney = (v) => {
   return `₹${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(n)}`;
 };
 
+const fmtDay = (v) => {
+  if (!v) return null;
+  const d = new Date(v);
+  return Number.isNaN(d.getTime())
+    ? null
+    : d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
 const statusPill = (status) => {
   const s = String(status || '').toLowerCase();
   if (s === 'closed') return { cls: 'closed', label: 'Closed' };
@@ -50,6 +67,19 @@ const statusPill = (status) => {
   if (s.includes('over')) return { cls: 'over', label: status };
   return { cls: 'act', label: status || 'Active' };
 };
+
+// One cell of the fact strip. An absent value is shown as absent rather than
+// omitted — a missing work order is information, and a strip that reflows when
+// a field is empty stops being scannable down the column.
+function Fact({ label, value, empty = '—' }) {
+  const has = value !== null && value !== undefined && value !== '';
+  return (
+    <div className="fc">
+      <div className="fl">{label}</div>
+      <div className={`fv${has ? '' : ' em'}`}>{has ? value : empty}</div>
+    </div>
+  );
+}
 
 export default function CSRProjectManagementPage() {
   const { canEdit } = useGrants();
@@ -87,6 +117,9 @@ export default function CSRProjectManagementPage() {
   useRefetchOnFocus(() => load(true));
 
   const openCreate = () => { setEditing(null); setModalOpen(true); };
+  const openEdit = (p) => { setEditing(p); setModalOpen(true); };
+  const cycleSort = () =>
+    setSortKey((k) => SORT_KEYS[(SORT_KEYS.indexOf(k) + 1) % SORT_KEYS.length]);
 
   const handleSave = async (payload) => {
     setSaving(true);
@@ -131,7 +164,12 @@ export default function CSRProjectManagementPage() {
   useEffect(() => { if (page !== safePage) setPage(safePage); }, [page, safePage]);
   useEffect(() => { setPage(1); }, [search, statusFilter, sortKey]);
 
-  const openRow = (p) => { setSelectedId(p.id); navigate(`/csr/${p.id}`); };
+  // The detail pane must never sit empty while there is a row to show, and the
+  // selection has to survive a filter change that drops the selected grant.
+  const selected = useMemo(
+    () => paged.find((p) => p.id === selectedId) || paged[0] || null,
+    [paged, selectedId],
+  );
 
   return (
     <div className="csrx csrx-page">
@@ -162,6 +200,8 @@ export default function CSRProjectManagementPage() {
             <button
               key={s}
               type="button"
+              role="tab"
+              aria-selected={statusFilter === s}
               className={`s${statusFilter === s ? ' on' : ''}`}
               onClick={() => setStatusFilter(s)}
             >
@@ -173,78 +213,152 @@ export default function CSRProjectManagementPage() {
 
       {loading ? (
         <div className="loading"><div className="spin" /></div>
+      ) : filtered.length === 0 ? (
+        <div className="panel">
+          <div className="empty">
+            <h3>{projects.length === 0 ? 'No grants yet' : 'No projects match'}</h3>
+            {projects.length === 0
+              ? 'A CSR project records what a funder sanctioned and what IKF promised in return.'
+              : 'Clear the search or change the filter.'}
+          </div>
+        </div>
       ) : (
-        <div className="twrap">
-          <table className="dt">
-            <thead>
-              <tr>
-                <th className={sortKey === 'name' ? 'on' : ''} onClick={() => setSortKey('name')}>
-                  Project <span className="car">▾</span>
-                </th>
-                <th>Funder</th>
-                <th className={`r${sortKey === 'amount' ? ' on' : ''}`} onClick={() => setSortKey('amount')}>
-                  Sanctioned <span className="car">⇅</span>
-                </th>
-                <th>Status</th>
-                <th aria-label="Open" />
-              </tr>
-            </thead>
-            <tbody>
-              {paged.length === 0 ? (
-                <tr>
-                  <td colSpan={5}>
-                    <div className="empty">
-                      <h3>{projects.length === 0 ? 'No grants yet' : 'No projects match'}</h3>
-                      {projects.length === 0
-                        ? 'A CSR project records what a funder sanctioned and what IKF promised in return.'
-                        : 'Clear the search or change the filter.'}
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                paged.map((p) => {
-                  const st = statusPill(p.status);
-                  return (
-                    <tr key={p.id} className={p.id === selectedId ? 'sel' : ''} onClick={() => openRow(p)}>
-                      <td>
-                        <div className="pcell">
-                          <div className={`av a${paletteIdx(p.id)}`}>{initials(p.name)}</div>
-                          <div>
-                            <div className="nm">{p.name}</div>
-                            {p.season && <div className="loc">{p.season}</div>}
-                          </div>
-                        </div>
-                      </td>
-                      <td><span className={`chip plain k${paletteIdx(p.clientName)}`}>{p.clientName || '—'}</span></td>
-                      <td className="r amt fig">{fmtMoney(p.sanctionedAmount)}</td>
-                      <td><span className={`pill ${st.cls}`}>{st.label}</span></td>
-                      <td>
-                        <span className="rowchev">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 6l6 6-6 6" /></svg>
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-          {filtered.length > 0 && (
-            <div className="tfoot">
-              <span className="cnt">
-                Showing {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} of {filtered.length}
-              </span>
-              {pageCount > 1 && (
-                <div className="pgr">
-                  {Array.from({ length: pageCount }, (_, i) => i + 1).map((n) => (
-                    <button key={n} type="button" className={`b${n === safePage ? ' on' : ''}`} onClick={() => setPage(n)}>
-                      {n}
-                    </button>
-                  ))}
-                </div>
-              )}
+        <div className="md">
+          {/* ---- the list ---- */}
+          <div className="panel">
+            <div className="lh">
+              <span>All projects ({filtered.length})</span>
+              <button type="button" className="sort" onClick={cycleSort}>
+                Sort by: {SORTS[sortKey].label} <span className="cv">▾</span>
+              </button>
             </div>
-          )}
+
+            {paged.map((p) => {
+              const st = statusPill(p.status);
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  className={`lr${p.id === selected?.id ? ' on' : ''}`}
+                  aria-current={p.id === selected?.id ? 'true' : undefined}
+                  aria-label={`Show ${p.name}, ${p.clientName || 'no funder'}`}
+                  onClick={() => setSelectedId(p.id)}
+                >
+                  <span className={`av a${paletteIdx(p.id)}`}>{initials(p.name)}</span>
+                  <span className="lc">
+                    <span className="nm">{p.name}</span>
+                    <span className="fn">{p.clientName || '—'}</span>
+                  </span>
+                  <span className="rt">
+                    <span className="am fig">{fmtMoney(p.sanctionedAmount)}</span>
+                    <span className={`stt${st.cls === 'act' ? '' : ' off'}`}>{st.label}</span>
+                  </span>
+                  <span className="cv">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 6l6 6-6 6" /></svg>
+                  </span>
+                </button>
+              );
+            })}
+
+            {pageCount > 1 && (
+              <div className="pager">
+                {Array.from({ length: pageCount }, (_, i) => i + 1).map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    className={`pg${n === safePage ? ' on' : ''}`}
+                    aria-label={`Page ${n}`}
+                    aria-current={n === safePage ? 'page' : undefined}
+                    onClick={() => setPage(n)}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* ---- the record ---- */}
+          <div className="panel">
+            {!selected ? (
+              <div className="dempty">Select a grant to see its record.</div>
+            ) : (
+              <div className="dtl">
+                <div className="dh">
+                  <div>
+                    <h3>{selected.name}</h3>
+                    <div className="sub">
+                      {selected.clientName || '—'} · <b className="fig">{fmtMoney(selected.sanctionedAmount)}</b>
+                    </div>
+                  </div>
+                  <div className="acts">
+                    <span className={`pill ${statusPill(selected.status).cls}`}>
+                      {statusPill(selected.status).label}
+                    </span>
+                    {editable && (
+                      <button type="button" className="ico g" aria-label={`Edit ${selected.name}`} onClick={() => openEdit(selected)}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+                      </button>
+                    )}
+                    <button type="button" className="ico" aria-label={`Open the full page for ${selected.name}`} onClick={() => navigate(`/csr/${selected.id}`)}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 6l6 6-6 6" /></svg>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="facts">
+                  <Fact label="TTA Project" value={selected.ttaProjectName} empty="Not linked yet" />
+                  <Fact label="Client / Funder" value={selected.clientName} />
+                  <Fact label="Sanctioned" value={fmtMoney(selected.sanctionedAmount)} />
+                  <Fact label="Season" value={selected.season} empty="Not set" />
+                </div>
+                <div className="facts nb">
+                  <Fact label="Start Date" value={fmtDay(selected.startDate)} />
+                  <Fact label="End Date" value={fmtDay(selected.endDate)} />
+                  <Fact label="Work Order" value={selected.workOrderNumber} />
+                  <Fact label="Certificate" value={selected.certificateFrozenAt ? 'Frozen' : 'Live'} />
+                </div>
+
+                <div className="blocks">
+                  <div className="blk">
+                    <h4>About the project</h4>
+                    <p>{selected.description || 'No description recorded yet.'}</p>
+                  </div>
+                  <div className="blk">
+                    <div className="sr">
+                      <div>
+                        <div className="sl">Funder</div>
+                        <div className="sv">{selected.clientName || '—'}</div>
+                      </div>
+                    </div>
+                    <div className="sr">
+                      <div>
+                        <div className="sl">Contract</div>
+                        <div className="sv">
+                          {selected.workOrderContractLink ? (
+                            <a href={selected.workOrderContractLink} target="_blank" rel="noopener noreferrer">
+                              Open contract
+                            </a>
+                          ) : '—'}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="sr">
+                      <div>
+                        <div className="sl">Status</div>
+                        <div className="sv">{selected.status || 'Active'}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="stamp">
+                  {fmtDay(selected.createdAt) ? `Created on ${fmtDay(selected.createdAt)}` : ''}
+                  {fmtDay(selected.updatedAt) ? ` · Updated on ${fmtDay(selected.updatedAt)}` : ''}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

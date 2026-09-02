@@ -33,7 +33,7 @@ import VendorAuditReport from "./components/reports/VendorAuditReport";
 import TrialSpendReport from "./components/reports/TrialSpendReport";
 import TrialsReport from "./components/reports/TrialsReport";
 import CourierManagementPage from "./components/courier/CourierManagementPage";
-import { CSRLogin, CSRDashboard, CSRProjectManagementPage, CSRProjectDetailPage, CSRActivitiesPage, CSRReportsPage, CSRUtilisationPage, CSRActivityTypesPage, CSRClientsPage, CSRBrandingPage } from "./components/csr";
+import { CSRLogin, CSRDashboard, CSRProjectManagementPage, CSRProjectDetailPage, CSRActivitiesPage, CSRReportsPage, CSRUtilisationPage, CSRActivityTypesPage, CSRClientsPage, CSRBrandingPage, CSRAccountPage } from "./components/csr";
 import ClientPortalPage from "./components/client/ClientPortalPage";
 import ClientLogin from "./components/client/ClientLogin";
 import PermissionsManagementPage from "./components/permissions/PermissionsManagementPage";
@@ -264,6 +264,12 @@ function App() {
               <CSRBrandingPage />
             </RoleBasedRoute>
           } />
+          {/* The signed-in user's own page, inside the CSR shell. The rail's
+              account menu used to point at /profile, which renders under TTA's
+              layout — clicking it dropped a CSR operator out of CSR entirely.
+              No grant gate: everyone who reached this shell has an account.
+              Static path must precede the dynamic /csr/:id route. */}
+          <Route path="/csr/account" element={<CSRAccountPage />} />
           <Route path="/csr/:id" element={
             <GrantedRoute module="csr">
               <CSRProjectDetailPage />
