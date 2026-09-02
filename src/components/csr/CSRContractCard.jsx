@@ -17,9 +17,6 @@ const ROLLUP_COLOR = {
   'In Progress': 'info',
   Pending: 'warning',
   'No deliverables': 'default',
-  // A contract holding a cancelled or undelivered promise. Red, because the
-  // collapsed card is the only place most people ever look.
-  Attention: 'error',
 };
 
 export default function CSRContractCard({

@@ -238,7 +238,6 @@
 }
 
 
-
 /* --- seam fixes: sidebar brand band + header alignment --- */
 .sidebar--csr .sidebar-brand{background:transparent !important;border-bottom:1px solid #EAEFEA}
 .sidebar--csr{padding-top:0}
@@ -963,7 +962,6 @@
 .csrx .qa-ic{width:24px;height:24px}
 .csrx .quick-grid{gap:8px}
 
-
 /* =========================================================================
    Corrections from a proper read of the reference screenshot.
    ========================================================================= */
@@ -1034,7 +1032,6 @@
 .csrx .flow,
 .csrx .limit,
 .csrx .dash .panel{border:1px solid #EDF0EF;box-shadow:0 1px 2px rgba(28,44,38,.04)}
-
 
 /* ---- the paired bar chart ---------------------------------------------- */
 .csrx .pairs{margin-top:12px}
@@ -1865,16 +1862,3 @@
   .csrx .ldetail{grid-template-columns:1fr 1fr}
 }
 
-/* =========================================================================
-   A FAILED ROW READS AS AN ERROR, NOT AS ANOTHER STATUS.
-   26 Aug review, 1067s: "if it is cancelled, then it will be an error." A
-   cancelled activity or an undelivered promise wearing a plain grey chip
-   disappears into a list of ordinary rows — which is the complaint. The row
-   takes a red spine and a faint wash so it is findable while scrolling, not
-   merely readable once found.
-   ========================================================================= */
-.csrx .pill.bad{background:#FBEBE9;color:#8F2A21}
-.csrx .pill.bad::before{background:#B3352A}
-.csrx .lrow.bad{background:#FEF7F6;box-shadow:inset 3px 0 0 #B3352A}
-.csrx .lrow.bad:hover{background:#FDF0EE}
-.csrx .lrow.bad .t1{color:#8F2A21}
