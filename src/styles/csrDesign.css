@@ -5,12 +5,30 @@
    ========================================================================= */
 
 .csrx{
-  --ground:#F4F7F4; --card:#FFFFFF; --ground2:#EDF1ED;
-  --ink:#1A2620; --soft:#4A5750; --muted:#7A857E; --faint:#AEB6B0;
-  --line:#DCE3DD; --line2:#C9D2CB; --line-soft:#EAEFEA;
+  /* GROUNDS ARE NEUTRAL. The approved reference is white cards on a flat pale
+     grey-blue field — no green wash anywhere. Green is a signal (mark, primary
+     button, active pill, status dot, selected spine, active tab), never an
+     atmosphere. The green gradient that used to be here is what made the app
+     read as a different product from the reference. */
+  --ground:#F7F8FB; --card:#FFFFFF; --ground2:#F4F6F5;
+  --ink:#1C2320; --soft:#414A46; --muted:#7C8783; --faint:#A9B2AE;
+  /* "well divided" — a hairline has to be visible to divide anything. --line
+     is the structural rule (panel edges, header underlines, fact-strip
+     dividers); --line2 separates repeating rows, one step lighter so a list
+     does not read as a grid. Both were lifted a step for exactly this. */
+  --line:#DDE2E1; --line2:#E8ECEB; --line-soft:#EFF2F1;
   --g:#2C6A4F; --g-deep:#234F3B; --g-bright:#3E9A6E; --g-wash:#E7F1EB; --g-glow:rgba(44,106,79,.16);
   --o:#B7791F; --o-deep:#8C5A11; --o-wash:#FBF1DF;
   --red:#B3352A; --red-wash:#FBEBE9;
+  /* RADIUS SCALE — four steps, and nothing off them. The file had grown 4, 6,
+     7, 9, 10 and 12px all doing the same job in different places, which is why
+     nothing lined up: a card beside a control beside a chip each rounded to a
+     different curve. Pick by ROLE, never by eye.
+       --r-card  surfaces that hold things: panels, cards, blocks, the promo
+       --r-ctl   things you press or type in: buttons, inputs, nav links, pagers
+       --r-chip  small identity squares: avatars, badges
+       --r-pill  status pills only */
+  --r-card:8px; --r-ctl:6px; --r-chip:5px; --r-pill:999px;
   --rf:999px;
   --serif:"Zodiak",Georgia,serif; --ui:"Switzer",system-ui,-apple-system,sans-serif;
   --disp:"Cabinet Grotesk","Switzer",system-ui,sans-serif;
@@ -32,26 +50,26 @@
 .csrx .ph h2{font-family:var(--serif);font-size:28px;font-weight:500;letter-spacing:-.018em;color:var(--ink);line-height:1.1;margin:0}
 .csrx .ph p{font-size:14px;color:var(--muted);margin:6px 0 0;line-height:1.5}
 .csrx .newbtn{margin-left:auto;background:var(--g);color:#fff;border:0;font-family:var(--ui);font-weight:500;font-size:14px;
-  padding:11px 18px;border-radius:4px;cursor:pointer;display:inline-flex;gap:8px;align-items:center;box-shadow:0 2px 6px var(--g-glow);transition:.16s}
+  padding:11px 18px;border-radius:var(--r-ctl);cursor:pointer;display:inline-flex;gap:8px;align-items:center;box-shadow:0 2px 6px var(--g-glow);transition:.16s}
 .csrx .newbtn:hover{background:var(--g-deep);transform:translateY(-1px)}
 .csrx .newbtn svg{width:15px;height:15px}
 
 /* toolbar */
 .csrx .toolbar{display:flex;gap:12px;align-items:center;margin-bottom:20px}
 .csrx .sb{flex:1;display:flex;align-items:center;gap:11px;background:rgba(255,255,255,.6);border:1px solid rgba(60,80,70,.16);
-  border-radius:4px;padding:12px 16px;max-width:420px;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);transition:.16s}
+  border-radius:var(--r-ctl);padding:12px 16px;max-width:420px;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);transition:.16s}
 .csrx .sb svg{width:16px;height:16px;color:var(--faint)}
 .csrx .sb input{border:0;background:transparent;font-family:var(--ui);font-size:14px;color:var(--ink);flex:1;outline:none;letter-spacing:-.006em}
 .csrx .sb input::placeholder{color:var(--muted)}
 .csrx .sb:focus-within{border-color:var(--g);box-shadow:0 0 0 3px var(--g-wash)}.csrx .sb:focus-within svg{color:var(--g)}
-.csrx .segbar{display:flex;background:rgba(255,255,255,.6);border:1px solid rgba(60,80,70,.16);border-radius:4px;padding:3px;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
-.csrx .segbar .s{font-size:13px;font-weight:500;color:var(--muted);padding:7px 14px;border-radius:4px;cursor:pointer;transition:.14s;border:0;background:transparent;font-family:var(--ui)}
+.csrx .segbar{display:flex;background:rgba(255,255,255,.6);border:1px solid rgba(60,80,70,.16);border-radius:var(--r-ctl);padding:3px;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.csrx .segbar .s{font-size:13px;font-weight:500;color:var(--muted);padding:7px 14px;border-radius:var(--r-ctl);cursor:pointer;transition:.14s;border:0;background:transparent;font-family:var(--ui)}
 .csrx .segbar .s.on{background:var(--g-wash);color:var(--g-deep)}
 
 /* glass table */
 .csrx .twrap{background:linear-gradient(160deg,rgba(255,255,255,.75),rgba(255,255,255,.55));
   -webkit-backdrop-filter:blur(28px) saturate(1.5);backdrop-filter:blur(28px) saturate(1.5);
-  border:1px solid rgba(255,255,255,.6);border-radius:4px;overflow:hidden;
+  border:1px solid rgba(255,255,255,.6);border-radius:var(--r-ctl);overflow:hidden;
   box-shadow:0 1px 2px rgba(30,54,42,.04),0 8px 22px rgba(30,54,42,.06)}
 .csrx table.dt{width:100%;border-collapse:collapse}
 .csrx table.dt thead th{text-align:left;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);
@@ -73,11 +91,11 @@
 .csrx table.dt tbody tr.sel .rowchev{color:#fff;opacity:1}
 .csrx td.r{text-align:right;font-variant-numeric:tabular-nums}
 .csrx .pcell{display:flex;align-items:center;gap:13px}
-.csrx .pcell .av{width:38px;height:38px;border-radius:4px;display:grid;place-items:center;flex:none;font-family:var(--disp);font-weight:500;font-size:13px;color:#fff}
+.csrx .pcell .av{width:38px;height:38px;border-radius:var(--r-ctl);display:grid;place-items:center;flex:none;font-family:var(--disp);font-weight:500;font-size:13px;color:#fff}
 .csrx .pcell .nm{color:var(--ink);font-weight:500;line-height:1.35}
 .csrx .pcell .loc{font-size:13px;color:var(--muted);margin-top:2px}
 .csrx .amt{color:var(--ink);font-weight:500}
-.csrx .chip{font-size:13px;font-weight:500;padding:4px 11px;border-radius:var(--rf);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.csrx .chip{font-size:13px;font-weight:500;padding:4px 11px;border-radius:var(--r-pill);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 .csrx .chip::before{content:"";width:6px;height:6px;border-radius:50%}
 .csrx .chip.plain::before{display:none}
 .csrx .chip.k1{color:var(--c1);background:var(--c1w)}.csrx .chip.k1::before{background:var(--c1)}
@@ -88,7 +106,7 @@
 .csrx .chip.k6{color:var(--c6);background:var(--c6w)}.csrx .chip.k6::before{background:var(--c6)}
 .csrx .chip.k7{color:var(--c7);background:var(--c7w)}.csrx .chip.k7::before{background:var(--c7)}
 .csrx .chip.k8{color:var(--c8);background:var(--c8w)}.csrx .chip.k8::before{background:var(--c8)}
-.csrx .pill{font-size:13px;font-weight:500;padding:4px 12px;border-radius:var(--rf);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.csrx .pill{font-size:13px;font-weight:500;padding:4px 12px;border-radius:var(--r-pill);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 .csrx .pill::before{content:"";width:6px;height:6px;border-radius:50%}
 .csrx .pill.act{color:var(--g-deep);background:var(--g-wash)}.csrx .pill.act::before{background:var(--g-bright)}
 .csrx .pill.wait{color:var(--o-deep);background:var(--o-wash)}.csrx .pill.wait::before{background:var(--o)}
@@ -99,7 +117,7 @@
 .csrx .tfoot{display:flex;align-items:center;padding:16px 22px;border-top:1px solid var(--line)}
 .csrx .tfoot .cnt{font-size:13px;color:var(--muted)}
 .csrx .pgr{margin-left:auto;display:flex;gap:5px}
-.csrx .pgr .b{min-width:30px;height:30px;padding:0 6px;border-radius:4px;border:1px solid var(--line);background:rgba(255,255,255,.5);
+.csrx .pgr .b{min-width:30px;height:30px;padding:0 6px;border-radius:var(--r-ctl);border:1px solid var(--line);background:rgba(255,255,255,.5);
   display:grid;place-items:center;font-size:13px;font-weight:500;color:var(--soft);cursor:pointer;font-family:var(--ui)}
 .csrx .pgr .b.on{background:var(--g);color:#fff;border-color:var(--g)}
 .csrx .empty{padding:64px 22px;text-align:center;color:var(--muted)}
@@ -111,8 +129,8 @@
 .csrx .pcell .av.a7{background:var(--c7)}.csrx .pcell .av.a8{background:var(--c8)}
 /* utilisation bar */
 .csrx .ubar{display:inline-flex;align-items:center;gap:10px}
-.csrx .ubar .track{width:88px;height:7px;border-radius:var(--rf);background:#DCE3DD;overflow:hidden;flex:none}
-.csrx .ubar .track i{display:block;height:100%;border-radius:var(--rf);background:var(--g)}
+.csrx .ubar .track{width:88px;height:7px;border-radius:var(--r-pill);background:#DCE3DD;overflow:hidden;flex:none}
+.csrx .ubar .track i{display:block;height:100%;border-radius:var(--r-pill);background:var(--g)}
 .csrx .ubar .track i.warn{background:var(--o)}.csrx .ubar .track i.over{background:var(--red)}
 .csrx .ubar .pc{font-size:13px;color:var(--soft);font-weight:500;width:38px;text-align:right;font-variant-numeric:tabular-nums}
 .csrx .ubar .pc.over{color:var(--red)}
@@ -126,11 +144,11 @@
 @media(max-width:1000px){.csrx .kpis{grid-template-columns:repeat(2,1fr)}}
 .csrx .glasscard{background:linear-gradient(160deg,rgba(255,255,255,.75),rgba(255,255,255,.55));
   -webkit-backdrop-filter:blur(28px) saturate(1.5);backdrop-filter:blur(28px) saturate(1.5);
-  border:1px solid rgba(255,255,255,.6);border-radius:4px;
+  border:1px solid rgba(255,255,255,.6);border-radius:var(--r-ctl);
   box-shadow:0 1px 2px rgba(30,54,42,.04),0 8px 22px rgba(30,54,42,.06)}
 .csrx .kpi{padding:20px 22px}
 .csrx .kpi .top{display:flex;align-items:center;gap:10px;margin-bottom:14px}
-.csrx .kpi .ic{width:34px;height:34px;border-radius:4px;display:grid;place-items:center;flex:none}
+.csrx .kpi .ic{width:34px;height:34px;border-radius:var(--r-ctl);display:grid;place-items:center;flex:none}
 .csrx .kpi .ic svg{width:17px;height:17px}
 .csrx .kpi .ic.g{background:var(--c1w);color:var(--c1)}.csrx .kpi .ic.b{background:var(--c2w);color:var(--c2)}
 .csrx .kpi .ic.o{background:var(--c9w);color:var(--c9)}.csrx .kpi .ic.p{background:var(--c3w);color:var(--c3)}
@@ -151,7 +169,7 @@
 .csrx .rg .ctr{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--disp);font-weight:600;font-size:18px;color:var(--g-deep)}
 .csrx .dleg .r{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line-soft)}
 .csrx .dleg .r:last-child{border-bottom:0}
-.csrx .dleg .r i{width:10px;height:10px;border-radius:4px;flex:none}
+.csrx .dleg .r i{width:10px;height:10px;border-radius:var(--r-ctl);flex:none}
 .csrx .dleg .r .nm{font-size:14px;color:var(--soft)}
 .csrx .dleg .r .vl{margin-left:auto;font-size:14px;color:var(--ink);font-weight:500;font-variant-numeric:tabular-nums}
 .csrx .tw-head{display:flex;align-items:center;padding:18px 22px;border-bottom:1px solid var(--line)}
@@ -165,22 +183,31 @@
    because the shell renders outside .csrx).
    ========================================================================= */
 .sidebar--csr{
-  --g:#2C6A4F;--g-deep:#234F3B;--g-wash:#E7F1EB;--ink:#1A2620;--soft:#4A5750;--muted:#7A857E;--faint:#AEB6B0;--line:#DCE3DD;
-  background:rgba(255,255,255,.6) !important;
-  -webkit-backdrop-filter:blur(24px) saturate(1.4);backdrop-filter:blur(24px) saturate(1.4);
+  --g:#1B7A4B;--g-deep:#15603B;--g-wash:#E7F3EB;--g-spine:#17693F;
+  --ink:#1C2320;--soft:#414A46;--muted:#7C8783;--faint:#A9B2AE;--line:#DDE2E1;--line2:#E8ECEB;--line-soft:#EFF2F1;--sunk:#F4F6F5;
+  /* Solid white, flush to the viewport edge, with a drawn right edge — the
+     reference rail is a full-height column, not a floating glass card. The
+     backdrop-filter is gone with the gradient it was blurring. */
+  background:#FFFFFF !important;
+  -webkit-backdrop-filter:none;backdrop-filter:none;
   border-right:1px solid var(--line) !important;
   font-family:"Switzer",system-ui,-apple-system,sans-serif;
+  display:flex;flex-direction:column;
 }
-.sidebar--csr .sidebar-brand h2{font-family:"Zodiak",Georgia,serif;font-weight:500;letter-spacing:-.018em;color:var(--ink)}
-.sidebar--csr .sidebar-brand span{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);font-weight:500}
-.sidebar--csr .sidebar-brand-icon{background:var(--g);color:#fff;font-family:"Cabinet Grotesk","Switzer",sans-serif;font-weight:700;border-radius:4px}
+.sidebar--csr .sidebar-brand{display:flex;flex-direction:row;align-items:center;gap:10px;background:transparent;border-bottom:1px solid var(--line2);min-height:0;padding:20px 16px}
+.sidebar--csr .sidebar-brand-mark{flex:none;width:20px;height:20px;color:var(--g);display:block}
+.sidebar--csr .sidebar-brand-mark svg{width:100%;height:100%;display:block}
+.sidebar--csr .sidebar-brand-words{display:flex;flex-direction:column;min-width:0;font-size:inherit;letter-spacing:normal;text-transform:none;color:inherit}
+.sidebar--csr .sidebar-brand h2{font-family:"Zodiak",Georgia,serif;font-weight:500;letter-spacing:-.018em;color:var(--ink);line-height:1}
+.sidebar--csr .sidebar-brand-words > span{font-size:9.5px;letter-spacing:.17em;text-transform:uppercase;color:var(--muted);font-weight:500;margin-top:3px}
+.sidebar--csr .sidebar-brand-icon{background:var(--g);color:#fff;font-family:"Cabinet Grotesk","Switzer",sans-serif;font-weight:700;border-radius:var(--r-ctl)}
 .sidebar--csr .sidebar-section{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);font-weight:500}
 .sidebar--csr .sidebar-section-rule{background:var(--line)}
 .sidebar--csr .sidebar-link{
-  color:var(--soft);border-radius:4px;font-weight:500;font-size:14px;letter-spacing:-.006em;
+  color:var(--soft);border-radius:var(--r-ctl);font-weight:500;font-size:14px;letter-spacing:-.006em;
   transition:background .16s,color .16s;margin-bottom:2px;
 }
-.sidebar--csr .sidebar-link:hover{background:#EFF3EF;color:var(--ink)}
+.sidebar--csr .sidebar-link:hover{background:#F5F6F6;color:var(--ink)}
 .sidebar--csr .sidebar-link .sidebar-icon{color:var(--faint);transition:color .16s}
 .sidebar--csr .sidebar-link:hover .sidebar-icon{color:var(--soft)}
 .sidebar--csr .sidebar-link.active{background:var(--g-wash) !important;color:var(--g-deep) !important}
@@ -190,15 +217,15 @@
 
 /* CSR content frame: the gradient ground the glass panels sit on */
 .dashboard-layout:has(.sidebar--csr) .dashboard-content{
-  background:
-    radial-gradient(1100px 640px at 88% -6%, rgba(196,232,214,.5), transparent 60%),
-    radial-gradient(920px 560px at -6% 6%, rgba(196,226,232,.38), transparent 55%),
-    radial-gradient(820px 560px at 55% 108%, rgba(240,228,196,.26), transparent 55%),
-    linear-gradient(180deg,#F6F9F6,#F1F5F1) !important;
+  background:#F7F8FB !important;
 }
+/* The reference has NO top bar — the page title lives in the content column.
+   The app's shared header cannot be deleted from here without touching TTA, so
+   it is reduced to a thin identity strip: no title competing with the page's
+   own, just the signed-in user. */
 .dashboard-layout:has(.sidebar--csr) .dashboard-header{
-  background:rgba(255,255,255,.5);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);
-  border-bottom:1px solid #DCE3DD;
+  background:#FFFFFF;-webkit-backdrop-filter:none;backdrop-filter:none;
+  border-bottom:1px solid #DDE2E1;
 }
 .dashboard-layout:has(.sidebar--csr) .dashboard-header h1,
 .dashboard-layout:has(.sidebar--csr) .dashboard-header-title{
@@ -215,7 +242,7 @@
 .dashboard-layout:has(.sidebar--csr) .dashboard-header-title{background:transparent !important;line-height:1.2}
 
 /* --- KPI cards: real blurred imagery, soft rounding, gentle shadow --- */
-.csrx .kpis .kpi{position:relative;overflow:hidden;border-radius:4px;padding:22px 24px;background-color:#fff;background-repeat:no-repeat;background-position:right -20px top -20px;background-size:60% auto;box-shadow:0 1px 2px rgba(30,54,42,.04),0 6px 16px rgba(30,54,42,.05);border:1px solid rgba(255,255,255,.7)}
+.csrx .kpis .kpi{position:relative;overflow:hidden;border-radius:var(--r-ctl);padding:22px 24px;background-color:#fff;background-repeat:no-repeat;background-position:right -20px top -20px;background-size:60% auto;box-shadow:0 1px 2px rgba(30,54,42,.04),0 6px 16px rgba(30,54,42,.05);border:1px solid rgba(255,255,255,.7)}
 .csrx .kpis .kpi::before{content:"";position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.4),rgba(255,255,255,.85) 60%);pointer-events:none}
 .csrx .kpis .kpi:nth-child(1){background-image:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iMjQwIiB2aWV3Qm94PSIwIDAgNDAwIDI0MCI+CjxkZWZzPjxmaWx0ZXIgaWQ9ImIiIHg9Ii0zMCUiIHk9Ii0zMCUiIHdpZHRoPSIxNjAlIiBoZWlnaHQ9IjE2MCUiPjxmZUdhdXNzaWFuQmx1ciBzdGREZXZpYXRpb249IjM0Ii8+PC9maWx0ZXI+PC9kZWZzPgo8ZyBmaWx0ZXI9InVybCgjYikiIG9wYWNpdHk9IjAuNTUiPgo8Y2lyY2xlIGN4PSIzMzAiIGN5PSI2MCIgcj0iOTAiIGZpbGw9IiMzRTlBNkUiLz4KPGNpcmNsZSBjeD0iMjUwIiBjeT0iMjAwIiByPSI4MCIgZmlsbD0iIzJDNkE0RiIvPgo8Y2lyY2xlIGN4PSIzODAiIGN5PSIxODAiIHI9IjcwIiBmaWxsPSIjOEZEM0I0Ii8+CjwvZz48L3N2Zz4=")}
 .csrx .kpis .kpi:nth-child(2){background-image:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iMjQwIiB2aWV3Qm94PSIwIDAgNDAwIDI0MCI+CjxkZWZzPjxmaWx0ZXIgaWQ9ImIiIHg9Ii0zMCUiIHk9Ii0zMCUiIHdpZHRoPSIxNjAlIiBoZWlnaHQ9IjE2MCUiPjxmZUdhdXNzaWFuQmx1ciBzdGREZXZpYXRpb249IjM0Ii8+PC9maWx0ZXI+PC9kZWZzPgo8ZyBmaWx0ZXI9InVybCgjYikiIG9wYWNpdHk9IjAuNTUiPgo8Y2lyY2xlIGN4PSIzMzAiIGN5PSI2MCIgcj0iOTAiIGZpbGw9IiM1QTdGRDYiLz4KPGNpcmNsZSBjeD0iMjUwIiBjeT0iMjAwIiByPSI4MCIgZmlsbD0iIzM4NURCMiIvPgo8Y2lyY2xlIGN4PSIzODAiIGN5PSIxODAiIHI9IjcwIiBmaWxsPSIjQTlDMEYwIi8+CjwvZz48L3N2Zz4=")}
@@ -234,14 +261,832 @@
 .csrx .barrow-top{grid-area:top;display:flex;justify-content:space-between;align-items:baseline}
 .csrx .barrow-nm{font-size:14px;color:#1A2620;font-weight:500}
 .csrx .barrow-amt{font-size:13px;color:#4A5750}
-.csrx .bartrack{grid-area:track;height:10px;border-radius:4px;background:#EDF1ED;overflow:hidden}
-.csrx .barfill{height:100%;border-radius:4px;transition:width .6s cubic-bezier(.2,.7,.2,1)}
+.csrx .bartrack{grid-area:track;height:10px;border-radius:var(--r-ctl);background:#EDF1ED;overflow:hidden}
+.csrx .barfill{height:100%;border-radius:var(--r-ctl);transition:width .6s cubic-bezier(.2,.7,.2,1)}
 .csrx .barrow-pc{grid-area:pc;font-size:13px;color:#4A5750;font-weight:500;font-variant-numeric:tabular-nums;min-width:36px;text-align:right}
 
 /* --- multicolor histogram (vertical bars) --- */
 .csrx .histo{display:flex;align-items:flex-end;gap:14px;height:200px;padding-top:24px}
 .csrx .histbar{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;height:100%;justify-content:flex-end;min-width:0}
 .csrx .histamt{font-size:12px;color:#4A5750;white-space:nowrap}
-.csrx .histcol{width:100%;max-width:54px;border-radius:4px 4px 0 0;min-height:6px;transition:height .7s cubic-bezier(.2,.7,.2,1);position:relative}
-.csrx .histcol::after{content:"";position:absolute;inset:0;border-radius:4px 4px 0 0;background:linear-gradient(180deg,rgba(255,255,255,.28),transparent 45%)}
+.csrx .histcol{width:100%;max-width:54px;border-radius:var(--r-ctl) var(--r-ctl) 0 0;min-height:6px;transition:height .7s cubic-bezier(.2,.7,.2,1);position:relative}
+.csrx .histcol::after{content:"";position:absolute;inset:0;border-radius:var(--r-ctl) var(--r-ctl) 0 0;background:linear-gradient(180deg,rgba(255,255,255,.28),transparent 45%)}
 .csrx .histlbl{font-size:12px;color:#7A857E;text-align:center;line-height:1.25;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%}
+
+/* =========================================================================
+   THE RAIL'S FOOT — the promo card from the approved reference.
+   `margin-top:auto` pins it to the bottom of the flex column, which is what
+   stops the nav list trailing off into empty white.
+   ========================================================================= */
+.sidebar--csr .sidebar-nav{flex:1 1 auto}
+.sidebar--csr .sidebar-footer{margin-top:auto;padding:0 12px 12px}
+.sidebar--csr .sidebar-promo{
+  position:relative;overflow:hidden;min-height:118px;
+  background:var(--sunk);border:1px solid var(--line2);border-radius:var(--r-card);padding:12px 12px 0;
+}
+.sidebar--csr .sidebar-promo-icon{
+  display:grid;place-items:center;width:22px;height:22px;border-radius:var(--r-chip);
+  background:var(--g-wash);color:var(--g);margin-bottom:9px;
+}
+.sidebar--csr .sidebar-promo-icon svg{width:12px;height:12px;display:block}
+.sidebar--csr .sidebar-promo p{
+  position:relative;z-index:1;font-size:11px;line-height:1.55;color:var(--muted);margin:0;
+}
+.sidebar--csr .sidebar-promo-wave{
+  position:absolute;left:0;right:0;bottom:0;height:44px;width:100%;display:block;color:var(--g);
+}
+/* Collapsed, there is no room for a card and the frame already withholds it —
+   the build stamp becomes the foot again. */
+.sidebar--csr .sidebar-build{margin-top:0;border-top:1px solid var(--line2)}
+.sidebar--csr:not(.sidebar-collapsed) .sidebar-build{margin-top:0}
+
+/* =========================================================================
+   MASTER-DETAIL — a list on the left, the whole record on the right.
+   The reference's defining move: you never leave the screen to read a grant.
+   Measured off the approved capture at 997px — sidebar 149 | list 276 |
+   detail (rest) — expressed as percentages, because that capture is a
+   ~1420px design shown at 997px and its raw pixels make type read oversized.
+   ========================================================================= */
+.csrx .md{display:grid;grid-template-columns:35% 1fr;gap:1.4%;align-items:start}
+.csrx .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--r-card);overflow:hidden}
+
+/* ---- list side ---- */
+.csrx .lh{
+  display:flex;align-items:center;gap:8px;padding:11px 14px;
+  border-bottom:1px solid var(--line);font-size:11px;color:var(--muted);
+}
+.csrx .lh .sort{
+  margin-left:auto;display:flex;align-items:center;gap:5px;cursor:pointer;
+  color:var(--soft);font-weight:500;background:none;border:0;font:inherit;
+}
+.csrx .lh .sort .cv{color:var(--faint);font-size:8px}
+.csrx .lr{
+  display:flex;align-items:flex-start;gap:10px;width:100%;text-align:left;
+  padding:11px 14px;border:0;border-bottom:1px solid var(--line2);
+  background:transparent;font:inherit;cursor:pointer;transition:background .13s;
+}
+.csrx .lr:last-of-type{border-bottom:0}
+.csrx .lr:hover{background:#FAFBFB}
+.csrx .lr.on{background:var(--g-wash);box-shadow:inset 3px 0 0 var(--g-spine)}
+.csrx .lr:focus-visible{outline-offset:-2px}
+.csrx .lr .lc{min-width:0;flex:1;display:block}
+.csrx .lr .nm{display:block;font-size:12.5px;font-weight:600;color:var(--ink);line-height:1.32;letter-spacing:-.01em}
+.csrx .lr .fn{display:block;font-size:11px;color:var(--muted);margin-top:3px}
+.csrx .lr .rt{text-align:right;flex:none;display:block}
+.csrx .lr .am{display:block;font-size:12px;font-weight:600;color:var(--ink);letter-spacing:-.015em}
+.csrx .lr .stt{
+  font-size:10.5px;color:var(--g);margin-top:4px;
+  display:flex;align-items:center;gap:4px;justify-content:flex-end;
+}
+.csrx .lr .stt::before{content:"";width:5px;height:5px;border-radius:50%;background:#22A55F}
+.csrx .lr .stt.off{color:var(--muted)}
+.csrx .lr .stt.off::before{background:var(--faint)}
+.csrx .lr .cv{color:var(--faint);flex:none;margin-top:2px}
+.csrx .lr .cv svg{width:14px;height:14px;display:block}
+
+.csrx .pager{display:flex;align-items:center;justify-content:center;gap:5px;padding:12px;border-top:1px solid var(--line)}
+.csrx .pg{
+  min-width:24px;height:24px;padding:0 6px;border-radius:var(--r-chip);border:1px solid var(--line);
+  background:var(--card);display:grid;place-items:center;font:inherit;font-size:11px;font-weight:500;
+  color:var(--soft);cursor:pointer;font-variant-numeric:tabular-nums;
+}
+.csrx .pg:hover{border-color:var(--g);color:var(--g)}
+.csrx .pg.on{background:var(--g);border-color:var(--g);color:#fff}
+
+/* ---- detail side ---- */
+.csrx .dtl{padding:16px 18px 18px}
+.csrx .dh{display:flex;align-items:flex-start;gap:10px;margin-bottom:16px}
+.csrx .dh h3{
+  font-family:"Zodiak",Georgia,serif;font-size:19px;font-weight:500;color:var(--ink);
+  letter-spacing:-.02em;line-height:1.25;margin:0;
+}
+.csrx .dh .sub{font-size:12px;color:var(--muted);margin-top:5px}
+.csrx .dh .sub b{color:var(--soft);font-weight:600}
+.csrx .dh .acts{margin-left:auto;display:flex;align-items:center;gap:7px;flex:none}
+.csrx .ico{
+  width:28px;height:28px;border-radius:var(--r-chip);border:1px solid var(--line);background:var(--card);
+  display:grid;place-items:center;cursor:pointer;color:var(--muted);transition:.14s;padding:0;
+}
+.csrx .ico svg{width:14px;height:14px}
+.csrx .ico:hover{background:var(--ground2)}
+.csrx .ico.g{color:var(--g);border-color:#CFE3D7}
+.csrx .ico.g:hover{background:var(--g-wash)}
+.csrx .ico.r{color:#C0392B;border-color:#EFD5D1}
+.csrx .ico.r:hover{background:#FBEDEB}
+
+/* The fact strip. Dividers run BETWEEN the columns, never under the labels —
+   a rule under every cell turns a strip of facts into a spreadsheet. */
+.csrx .facts{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+}
+.csrx .facts.nb{border-bottom:0}
+.csrx .fc{padding:12px 14px;border-left:1px solid var(--line2)}
+.csrx .fc:first-child{border-left:0;padding-left:0}
+.csrx .fc .fl{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--muted);margin-bottom:5px}
+.csrx .fc .fl svg{width:12px;height:12px;color:var(--faint);flex:none}
+.csrx .fc .fv{font-size:12.5px;color:var(--ink);font-weight:500;letter-spacing:-.008em}
+.csrx .fc .fv.em{color:var(--faint);font-weight:400}
+.csrx .fc .fv.gr{color:var(--g);font-weight:600}
+
+.csrx .blocks{display:grid;grid-template-columns:1fr 300px;gap:14px;margin-top:16px}
+.csrx .blk{background:var(--ground2);border:1px solid var(--line2);border-radius:var(--r-card);padding:14px}
+.csrx .blk h4{font-size:12px;font-weight:600;color:var(--ink);margin:0 0 8px}
+.csrx .blk p{font-size:12px;line-height:1.65;color:var(--soft);margin:0}
+.csrx .sr{display:flex;align-items:flex-start;gap:10px;padding:7px 0;border-top:1px solid var(--line2)}
+.csrx .sr:first-of-type{border-top:0;padding-top:0}
+.csrx .sr svg{width:15px;height:15px;color:var(--muted);flex:none;margin-top:2px}
+.csrx .sr .sl{font-size:10.5px;color:var(--muted)}
+.csrx .sr .sv{font-size:12.5px;color:var(--ink);font-weight:500;margin-top:2px}
+.csrx .stamp{font-size:11px;color:var(--faint);margin-top:14px;padding-top:12px;border-top:1px solid var(--line2)}
+
+.csrx .dempty{padding:64px 20px;text-align:center;color:var(--muted);font-size:12.5px}
+
+@media (max-width: 1100px){
+  .csrx .md{grid-template-columns:1fr;gap:14px}
+  .csrx .blocks{grid-template-columns:1fr}
+  .csrx .facts{grid-template-columns:repeat(2,1fr)}
+  .csrx .fc:nth-child(odd){border-left:0;padding-left:0}
+}
+
+/* =========================================================================
+   Two things the approved reference does NOT have, corrected here rather
+   than by editing shared chrome that TTA also renders.
+   ========================================================================= */
+
+/* 1. The collapse control. Base Sidebar.css draws it full-width with its own
+      ground, which under a white rail reads as an empty bar wedged between the
+      brand and the first nav item. The reference has no such control at all;
+      keeping the function but not the bar, it becomes a small square tucked
+      into the brand row's right edge. */
+.sidebar--csr .sidebar-brand{position:relative}
+.sidebar--csr .sidebar-toggle{
+  /* The toggle is a SIBLING of .sidebar-brand, so it resolves against the
+     rail itself (position:fixed). A fixed offset puts it on the brand
+     row; a percentage would put it halfway down the nav list. */
+  position:absolute;top:26px;right:12px;z-index:2;
+  width:24px;height:24px;padding:0;border-radius:var(--r-chip);
+  border:1px solid var(--line2) !important;background:#fff !important;color:var(--faint);
+}
+.sidebar--csr .sidebar-toggle:hover{background:var(--sunk) !important;color:var(--soft)}
+.sidebar--csr .sidebar-toggle svg{width:14px;height:14px}
+.sidebar--csr.sidebar-collapsed .sidebar-toggle{position:static;width:100%;border-radius:0;border:0 !important;border-bottom:1px solid var(--line2) !important}
+
+/* 2. The page title, twice. The shared header prints the route name and the
+      page prints its own heading directly beneath it, so "Projects" appeared
+      above "CSR Projects". The reference puts the title in the content column
+      only, so the header keeps the signed-in user and drops the title. */
+
+/* =========================================================================
+   RAIL WIDTH, BRAND HEIGHT, AND THE DIVIDERS.
+   ========================================================================= */
+
+/* The shared rail is 260px. The approved reference measures 149px of a 997px
+   capture of a ~1420px design — 212px in the design's own pixels — so 260 was
+   nearly a quarter too wide and made every nav label float in space.
+   `--rail-w` is read by DashboardLayout's content margin, so the content
+   column follows the rail instead of leaving a gap beside it. */
+.dashboard-layout:has(.sidebar--csr){--rail-w:212px;--rail-w-collapsed:64px}
+.sidebar.sidebar--csr{width:212px}
+.sidebar.sidebar--csr.sidebar-collapsed{width:64px}
+
+/* The brand block inherited an 80px floor and 1.5rem of padding from the
+   shared rail, which left a tall empty band above the first nav item. The
+   reference's lockup sits close to the top and the nav starts under it. */
+.sidebar.sidebar--csr .sidebar-brand{min-height:0;padding:13px 14px 11px;gap:8px}
+.sidebar.sidebar--csr .sidebar-brand h2{font-size:13.5px}
+.sidebar.sidebar--csr .sidebar-nav{padding:8px}
+
+/* SEPARATION. Every nav item is now divided from the next by a hairline, the
+   rail is divided from the content by its right edge, the brand is divided
+   from the nav, and the promo card is divided from the list above it. The
+   rule stops before the last item so the list does not end on a dangling
+   line, and the active pill covers its own so a selected row reads as one
+   solid block rather than a striped one. */
+.sidebar.sidebar--csr .sidebar-link{
+  border-bottom:1px solid var(--line2);border-radius:0;margin-bottom:0;
+}
+.sidebar.sidebar--csr .sidebar-nav > *:last-child .sidebar-link,
+.sidebar.sidebar--csr .sidebar-link.active{border-bottom-color:transparent}
+.sidebar.sidebar--csr .sidebar-link.active{border-radius:var(--r-chip)}
+.sidebar.sidebar--csr .sidebar-footer{border-top:1px solid var(--line2);padding-top:12px;margin-top:auto}
+
+/* The narrower rail left no room for the toggle beside the wordmark — it
+   landed on top of "PROJECT DELIVERY". The lockup keeps a reserved lane on its
+   right, and the subtitle tightens to fit what is left. */
+.sidebar.sidebar--csr .sidebar-brand-words{padding-right:30px}
+.sidebar.sidebar--csr .sidebar-brand-words > span{font-size:7.5px;letter-spacing:.12em;margin-top:2px}
+.sidebar.sidebar--csr .sidebar-toggle{top:11px;right:10px;width:22px;height:22px}
+
+/* The dividers were set on --line-soft, which is a wash, not a rule — at
+   #EFF2F1 on white it is invisible at 1px. They take --line2, the same weight
+   that separates rows in every list on the app. */
+.sidebar.sidebar--csr .sidebar-link{border-bottom-color:var(--line2)}
+
+/* =========================================================================
+   THE RAIL'S FOOT AND ITS STATES — owner direction, 2 Sep 2026.
+   ========================================================================= */
+
+/* The build stamp is gone from CSR. It was a developer's crumb sitting in the
+   most valuable slot on the rail. (It stays on TTA, where it is still what
+   ties a bug report to a bundle.) */
+.sidebar.sidebar--csr .sidebar-build{display:none}
+
+/* ONE divider, where delivery ends and the catalogs begin — not a rule under
+   every item. A line between two groups says "these are different kinds of
+   thing" without a heading claiming to name them. */
+.sidebar.sidebar--csr .sidebar-link{border-bottom:0}
+.sidebar.sidebar--csr .sidebar-divider{
+  height:1px;background:var(--line);margin:9px 10px;
+}
+
+/* HOVER AND ACTIVE ARE DIFFERENT MATERIALS, not two strengths of one.
+   Hover is a NEUTRAL wash — a transient "you are pointing here", no hue, so it
+   cannot be mistaken for state. Active is a GREEN tint with green ink and a
+   green icon — a persistent "you are here". Reading them as light-green and
+   darker-green was the whole confusion. */
+.sidebar.sidebar--csr .sidebar-link{
+  border-left:0;border-radius:var(--r-ctl);margin:1px 0;transition:background .15s,color .15s;
+}
+.sidebar.sidebar--csr .sidebar-link:hover{background:#F1F3F2;color:var(--ink)}
+.sidebar.sidebar--csr .sidebar-link:hover .sidebar-icon{color:var(--soft)}
+
+/* No border on the active item — no left spine, no amber edge inherited from
+   TTA's rail, no outline. The tint alone carries it. */
+.sidebar.sidebar--csr .sidebar-link.active{
+  background:#E4F0E9 !important;color:var(--g-deep) !important;
+  border:0 !important;border-left:0 !important;box-shadow:none;font-weight:600;
+}
+.sidebar.sidebar--csr .sidebar-link.active .sidebar-icon{color:var(--g) !important}
+.sidebar.sidebar--csr .sidebar-link.active:hover{background:#DBEAE1 !important}
+.sidebar.sidebar--csr.sidebar-collapsed .sidebar-link.active{background:#E4F0E9 !important}
+
+/* The identity block the top bar used to hold. It sits under the promo line,
+   divided from it, because it is a different kind of fact. */
+.sidebar.sidebar--csr .sidebar-who{
+  position:relative;z-index:1;display:flex;align-items:center;gap:8px;
+  margin-top:12px;padding-top:10px;border-top:1px solid var(--line2);
+}
+.sidebar.sidebar--csr .sidebar-who-av{
+  flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;
+  background:var(--g-wash);color:var(--g-deep);font-size:9.5px;font-weight:700;letter-spacing:.02em;
+}
+.sidebar.sidebar--csr .sidebar-who-txt{display:flex;flex-direction:column;min-width:0}
+.sidebar.sidebar--csr .sidebar-who-name{
+  font-size:10.5px;font-weight:600;color:var(--ink);line-height:1.2;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.sidebar.sidebar--csr .sidebar-who-role{
+  font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:2px;
+}
+
+/* The top strip comes back, but only to name the section you are in — the
+   Monetra reference does exactly this: a quiet "Dashboard" above the content,
+   with identity living in the rail. The user chip stays down in the promo
+   card; only the section name is here, and the breadcrumb goes because "Home /
+   Projects" is noise when the rail already shows where you are. */
+.dashboard-layout:has(.sidebar--csr) .dashboard-header{
+  display:flex;align-items:center;
+  background:transparent;border-bottom:1px solid var(--line);
+  padding:0 30px;min-height:52px;
+}
+.dashboard-layout:has(.sidebar--csr) .dashboard-header-left{visibility:visible}
+.dashboard-layout:has(.sidebar--csr) .dashboard-header-right{display:none}
+.dashboard-layout:has(.sidebar--csr) .dashboard-breadcrumb{display:none}
+.dashboard-layout:has(.sidebar--csr) .dashboard-header h1{
+  font-family:"Switzer",system-ui,sans-serif !important;
+  font-size:12.5px !important;font-weight:600 !important;
+  letter-spacing:.02em;color:#414A46 !important;margin:0;background:transparent !important;
+}
+
+/* The identity row is a sibling of the card now, so it needs its own frame
+   rather than a rule inside one. */
+.sidebar.sidebar--csr .sidebar-who{
+  display:flex;align-items:center;gap:8px;margin-top:10px;padding:9px 4px 0;
+  border-top:1px solid var(--line2);
+}
+
+/* =========================================================================
+   THE PROMO CARD — pink-to-green gradient, with the identity row inside it.
+   The one place in CSR that carries an atmosphere rather than a signal: it is
+   decoration, not data, so the "green is a signal, never a ground" rule does
+   not bind here. Everything else on the rail stays neutral.
+   ========================================================================= */
+/* Back to the first version: a small neutral block, no tint, no gradient, no
+   shadow. The card is the quietest thing on the rail — it sits under the nav
+   and must not compete with it. The wave is the only colour it carries. */
+.sidebar.sidebar--csr .sidebar-promo{
+  position:relative;overflow:hidden;min-height:0;padding:0;
+  border:1px solid var(--line2);border-radius:var(--r-card);
+  background:var(--sunk);box-shadow:none;
+}
+.sidebar.sidebar--csr .sidebar-promo-body{position:relative;z-index:1;padding:13px 13px 14px}
+
+/* The wave is the card's floor: full width, pinned to the bottom, beneath the
+   body. Two stops so it reads as depth rather than a single flat band. */
+.sidebar.sidebar--csr .sidebar-promo-wave{
+  /* The hill is the card's floor and its whole illustration — it runs behind
+     the line AND the name, which is why they are one block and not two. It
+     grows on hover, same colour: the card acknowledges the pointer without
+     changing what it is. Height, not transform, so the crest reshapes against
+     the card's own width instead of stretching. */
+  position:absolute;left:0;right:0;bottom:0;height:74px;width:100%;display:block;z-index:0;
+  transition:height .3s cubic-bezier(.2,.7,.2,1);
+}
+.sidebar.sidebar--csr .sidebar-promo-wave path:first-child{fill:#D5E5DA}
+.sidebar.sidebar--csr .sidebar-promo-wave path:last-child{fill:#B7D4C2}
+.sidebar.sidebar--csr .sidebar-promo:hover .sidebar-promo-wave{height:104px}
+@media (prefers-reduced-motion:reduce){
+  .sidebar.sidebar--csr .sidebar-promo-wave{transition:none}
+}
+
+.sidebar.sidebar--csr .sidebar-promo-icon{
+  width:20px;height:20px;margin-bottom:10px;
+  background:var(--g-wash);color:var(--g);box-shadow:none;
+}
+.sidebar.sidebar--csr .sidebar-promo-icon svg{width:11px;height:11px}
+.sidebar.sidebar--csr .sidebar-promo p{font-size:10.5px;line-height:1.62;color:var(--muted)}
+
+/* The identity row sits on its own translucent plate so it stays legible
+   wherever the wave happens to crest behind it. It is a button — the account
+   menu opens from here. */
+/* The account row is part of the card, sitting over the hill. No plate, no
+   border, no blur — a rule divides it from the line above and the hill shows
+   through beneath it. */
+.sidebar.sidebar--csr .sidebar-who{
+  display:flex;align-items:center;gap:8px;width:100%;text-align:left;
+  margin-top:12px;padding:10px 0 0;border:0;border-top:1px solid rgba(60,80,70,.14);
+  border-radius:0;background:transparent;
+  -webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:none;
+  font:inherit;cursor:pointer;transition:opacity .15s;
+}
+.sidebar.sidebar--csr .sidebar-who:hover{background:transparent;box-shadow:none;opacity:.7}
+.sidebar.sidebar--csr .sidebar-who:focus-visible{outline-offset:2px}
+.sidebar.sidebar--csr .sidebar-who-av{
+  flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;
+  background:#fff;color:var(--g-deep);
+  font-size:8.5px;font-weight:700;letter-spacing:.02em;
+}
+.sidebar.sidebar--csr .sidebar-who-txt{display:flex;flex-direction:column;min-width:0;flex:1}
+.sidebar.sidebar--csr .sidebar-who-name{
+  font-size:10.5px;font-weight:600;color:var(--ink);line-height:1.2;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.sidebar.sidebar--csr .sidebar-who-role{
+  font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:1px;
+}
+.sidebar.sidebar--csr .sidebar-who-cv{flex:none}
+.sidebar.sidebar--csr .sidebar-who-cv svg{width:12px;height:12px;display:block;color:var(--faint)}
+
+/* =========================================================================
+   RADIUS, ENFORCED. Anything that HOLDS content takes the card curve; the
+   blanket pass above rounded some of these as controls because they were
+   authored at 4px. Named here so the role is explicit and a later edit cannot
+   quietly demote a panel to a button.
+   ========================================================================= */
+.csrx .panel,
+.csrx .twrap,
+.csrx .blk,
+.csrx .empty,
+.csrx .kpis .kpi{border-radius:var(--r-card)}
+
+/* Controls, uniformly. */
+.csrx .newbtn,
+.csrx .sb,
+.csrx .segbar,
+.csrx .ico,
+.csrx .pg,
+.csrx .lh .sort{border-radius:var(--r-ctl)}
+
+/* The segmented control's own buttons sit inside a rounded track, so they take
+   one step less — a control nested in a control must never share its curve. */
+.csrx .segbar .s{border-radius:var(--r-chip)}
+
+/* Identity squares and status pills. */
+.csrx .av{border-radius:var(--r-chip)}
+.csrx .pill,
+.csrx .chip{border-radius:var(--r-pill)}
+
+/* ---- Account page ------------------------------------------------------ */
+.csrx .acct{display:grid;grid-template-columns:1fr 1fr;gap:1.4%;align-items:start}
+.csrx .acct-id{display:flex;align-items:center;gap:14px;margin-bottom:18px}
+.csrx .acct-av{
+  flex:none;width:52px;height:52px;border-radius:50%;display:grid;place-items:center;
+  background:linear-gradient(140deg,#7C5CE0,#4F46C4);color:#fff;
+  font-size:16px;font-weight:700;letter-spacing:.02em;
+}
+.csrx .acct-id h3{
+  font-family:"Zodiak",Georgia,serif;font-size:19px;font-weight:500;color:var(--ink);
+  letter-spacing:-.02em;margin:0;line-height:1.2;
+}
+.csrx .acct-id .sub{font-size:12px;color:var(--muted);margin-top:4px}
+.csrx .acct-actions{margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
+.csrx .newbtn.danger{background:#B3352A;box-shadow:0 2px 6px rgba(179,53,42,.18)}
+.csrx .newbtn.danger:hover{background:#8F2A21}
+.csrx .acct-h{font-size:12.5px;font-weight:600;color:var(--ink);margin:0 0 4px}
+.csrx .acct-note{font-size:11.5px;color:var(--muted);margin:0 0 12px;line-height:1.55}
+.csrx .acct-row{
+  display:flex;align-items:center;gap:12px;
+  padding:11px 0;border-top:1px solid var(--line2);
+}
+.csrx .acct-row > div{flex:1;min-width:0}
+.csrx .acct-row-name{font-size:12.5px;font-weight:600;color:var(--ink)}
+.csrx .acct-row-why{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.5}
+@media (max-width:1100px){.csrx .acct{grid-template-columns:1fr;gap:14px}}
+
+/* =========================================================================
+   THE RAIL'S OWN CURVES. Deliberately NOT the content scale — the rail is a
+   different surface, and a card pinned in a 212px column reads flatter than
+   the same radius does on an 1100px panel. It gets a softer set.
+   ========================================================================= */
+.sidebar.sidebar--csr .sidebar-promo{border-radius:18px}
+.sidebar.sidebar--csr .sidebar-link{border-radius:10px}
+.sidebar.sidebar--csr .sidebar-toggle{border-radius:8px}
+.sidebar.sidebar--csr .sidebar-brand-icon,
+.sidebar.sidebar--csr .sidebar-promo-icon{border-radius:8px}
+
+/* The name is the thing you actually read down here — it was set smaller than
+   the nav labels above it, which made the person signed in the quietest item
+   on the rail. */
+.sidebar.sidebar--csr .sidebar-who-av{width:28px;height:28px;font-size:10px}
+.sidebar.sidebar--csr .sidebar-who-name{font-size:13px;letter-spacing:-.008em}
+.sidebar.sidebar--csr .sidebar-who-role{font-size:8.5px;margin-top:2px}
+.sidebar.sidebar--csr .sidebar-who-cv svg{width:13px;height:13px}
+
+/* =========================================================================
+   DASHBOARD — featured card, stat tiles, statistic panel, quick actions.
+   ========================================================================= */
+.csrx .dash-top{display:grid;grid-template-columns:220px 1fr 300px;gap:14px;align-items:stretch}
+
+/* The one card that carries colour. It leads on a single grant, so it is the
+   only surface allowed a fill — everything beside it stays white, which is
+   what makes it read as the lead rather than as one tile among four. */
+.csrx .feature{
+  display:flex;flex-direction:column;border-radius:var(--r-card);padding:16px;color:#fff;
+  background:linear-gradient(150deg,#2F7355 0%,#245B44 55%,#1C4736 100%);
+  box-shadow:0 1px 2px rgba(28,71,54,.14),0 10px 24px rgba(28,71,54,.16);
+}
+.csrx .feature-top{display:flex;align-items:center;margin-bottom:20px}
+.csrx .feature-ic{
+  width:26px;height:26px;border-radius:var(--r-chip);display:grid;place-items:center;
+  background:rgba(255,255,255,.18);color:#fff;
+}
+.csrx .feature-ic svg{width:13px;height:13px}
+.csrx .feature-pct{margin-left:auto;font-size:11px;font-weight:600;color:rgba(255,255,255,.9)}
+.csrx .feature-name{
+  font-size:13.5px;font-weight:600;line-height:1.35;letter-spacing:-.012em;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+.csrx .feature-funder{font-size:11px;color:rgba(255,255,255,.72);margin-top:4px}
+.csrx .feature-foot{
+  margin-top:auto;padding-top:16px;display:flex;align-items:flex-end;gap:10px;
+}
+.csrx .feature-foot .fl{display:block;font-size:9.5px;color:rgba(255,255,255,.68);margin-bottom:3px}
+.csrx .feature-foot .fv{display:block;font-size:16px;font-weight:600;letter-spacing:-.02em}
+.csrx .feature-status{
+  margin-left:auto;font-size:9.5px;font-weight:600;padding:3px 8px;border-radius:var(--r-pill);
+  background:rgba(255,255,255,.16);color:#fff;white-space:nowrap;
+}
+
+/* Three figures, equal weight between them, all subordinate to the feature. */
+.csrx .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.csrx .stat{
+  display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);
+  border-radius:var(--r-card);padding:14px;
+}
+.csrx .stat-top{display:flex;align-items:flex-start;margin-bottom:14px}
+.csrx .stat-ic{
+  width:26px;height:26px;border-radius:var(--r-chip);display:grid;place-items:center;
+  background:var(--ground2);color:var(--soft);
+}
+.csrx .stat-ic svg{width:13px;height:13px}
+.csrx .stat-dots{margin-left:auto;color:var(--faint);font-size:14px;line-height:1}
+.csrx .trend{
+  align-self:flex-start;font-size:10px;font-weight:600;padding:3px 8px;
+  border-radius:var(--r-pill);margin-bottom:10px;white-space:nowrap;
+}
+.csrx .trend.good{background:#E7F1EB;color:#1B7A4B}
+.csrx .trend.bad{background:#FBEBE9;color:#B3352A}
+.csrx .trend.neutral{background:var(--ground2);color:var(--soft)}
+.csrx .stat-k{font-size:11.5px;color:var(--muted);margin-top:auto}
+.csrx .stat-v{font-size:19px;font-weight:600;color:var(--ink);letter-spacing:-.022em;margin-top:3px}
+
+/* The statistic panel: donut over a legend, as the reference has it. */
+.csrx .statistic{padding:14px;display:flex;flex-direction:column}
+.csrx .stat-head{display:flex;align-items:baseline;margin-bottom:14px}
+.csrx .stat-head h3{font-size:12.5px;font-weight:600;color:var(--ink);margin:0}
+.csrx .stat-when{margin-left:auto;font-size:10.5px;color:var(--muted)}
+.csrx .donut{position:relative;margin:2px auto 14px}
+.csrx .donut svg{display:block}
+.csrx .donut-ctr{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;
+}
+.csrx .donut-v{font-size:15px;font-weight:600;color:var(--ink);letter-spacing:-.02em}
+.csrx .donut-k{font-size:9.5px;color:var(--muted);margin-top:2px}
+.csrx .legend{display:flex;flex-direction:column}
+.csrx .legend-row{
+  display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--line2);
+}
+.csrx .legend-row:first-child{border-top:0}
+.csrx .legend-dot{width:7px;height:7px;border-radius:50%;flex:none}
+.csrx .legend-nm{
+  font-size:11.5px;color:var(--soft);flex:1;min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.csrx .legend-amt{font-size:11.5px;font-weight:600;color:var(--ink)}
+
+/* ---- row 2 ---- */
+.csrx .dash-bot{display:grid;grid-template-columns:300px 1fr;gap:14px;margin-top:14px;align-items:start}
+.csrx .quick{display:flex;flex-direction:column;gap:14px}
+.csrx .quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.csrx .qa{
+  display:flex;flex-direction:column;align-items:center;gap:7px;
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r-card);
+  padding:14px 8px;font:inherit;font-size:11.5px;font-weight:500;color:var(--soft);
+  cursor:pointer;transition:border-color .15s,background .15s,color .15s;
+}
+.csrx .qa:hover{border-color:#BFD7C9;background:#F7FBF8;color:var(--g-deep)}
+.csrx .qa-ic{
+  width:28px;height:28px;border-radius:var(--r-chip);display:grid;place-items:center;
+  background:var(--ground2);color:var(--soft);transition:background .15s,color .15s;
+}
+.csrx .qa:hover .qa-ic{background:#E7F1EB;color:var(--g)}
+.csrx .qa-ic svg{width:14px;height:14px}
+
+.csrx .limit{padding:14px}
+.csrx .limit-top{display:flex;align-items:baseline;margin-bottom:9px}
+.csrx .limit-k{font-size:12px;font-weight:600;color:var(--ink)}
+.csrx .limit-pc{margin-left:auto;font-size:11.5px;font-weight:600;color:var(--soft)}
+.csrx .limit-track{height:6px;border-radius:var(--r-pill);background:var(--ground2);overflow:hidden}
+.csrx .limit-fill{height:100%;border-radius:var(--r-pill);background:#2C6A4F;transition:width .4s cubic-bezier(.2,.7,.2,1)}
+.csrx .limit-fill.over{background:#B3352A}
+.csrx .limit-sub{font-size:11px;color:var(--muted);margin-top:9px}
+.csrx .limit-warn{font-size:11px;color:#B3352A;margin-top:5px}
+
+.csrx .flow{padding:14px}
+.csrx .flow-total{font-size:22px;font-weight:600;color:var(--ink);letter-spacing:-.025em}
+.csrx .flow-key{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--muted);margin:5px 0 6px}
+
+@media (max-width:1280px){
+  .csrx .dash-top{grid-template-columns:1fr 300px}
+  .csrx .feature{grid-column:1 / -1}
+  .csrx .dash-bot{grid-template-columns:1fr}
+  .csrx .quick-grid{grid-template-columns:repeat(4,1fr)}
+}
+@media (max-width:900px){
+  .csrx .dash-top{grid-template-columns:1fr}
+  .csrx .stats{grid-template-columns:1fr}
+}
+
+/* The Statistic panel is inherently the tallest thing in the row — a donut
+   plus a legend. With `stretch`, it dragged the feature and the three tiles up
+   to its height and left them hollow in the middle. `start` lets each take its
+   own height; the feature keeps a floor so it still reads as the lead. */
+.csrx .dash-top{align-items:start}
+.csrx .feature{min-height:196px}
+.csrx .stat{min-height:130px}
+
+/* The bar labels sit under the columns, so the chart needs room for them or
+   they are clipped by the panel's own edge. */
+.csrx .flow .histo{padding-bottom:22px}
+.csrx .flow .histlbl{
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;
+}
+
+/* ---- back control in the section strip --------------------------------- */
+.dashboard-layout:has(.sidebar--csr) .dashboard-header-left{
+  display:flex;align-items:center;gap:10px;
+}
+.dashboard-layout:has(.sidebar--csr) .header-back{
+  display:grid;place-items:center;width:24px;height:24px;flex:none;padding:0;
+  border:1px solid #DDE2E1;border-radius:6px;background:#fff;color:#7C8783;
+  cursor:pointer;transition:background .15s,color .15s,border-color .15s;
+}
+.dashboard-layout:has(.sidebar--csr) .header-back:hover{
+  background:#F1F3F2;color:#1C2320;border-color:#C9D0CE;
+}
+.dashboard-layout:has(.sidebar--csr) .header-back svg{width:13px;height:13px}
+
+/* =========================================================================
+   DASHBOARD — colour on the tiles, and smaller type throughout.
+   The reference sets its labels at ~11px and its figures at ~17px, with the
+   colour carried by small chips and icon badges rather than by the surfaces.
+   Mine was set a size or two up across the board, which is what made it read
+   as a different, heavier product.
+   ========================================================================= */
+.csrx .stat-ic.g{background:#E7F1EB;color:#1B7A4B}
+.csrx .stat-ic.b{background:#E7ECF7;color:#385DB2}
+.csrx .stat-ic.o{background:#FBF1DF;color:#B5651D}
+.csrx .trend.info{background:#E7ECF7;color:#2F5FBF}
+.csrx .trend.warn{background:#FBF1DF;color:#8C5A11}
+
+.csrx .stat{min-height:118px;padding:12px}
+.csrx .stat-top{margin-bottom:10px}
+.csrx .stat-ic{width:24px;height:24px}
+.csrx .stat-ic svg{width:12px;height:12px}
+.csrx .trend{font-size:9.5px;padding:2px 7px;margin-bottom:8px}
+.csrx .stat-k{font-size:10.5px}
+.csrx .stat-v{font-size:16px;margin-top:2px}
+
+.csrx .feature{min-height:170px;padding:14px}
+.csrx .feature-top{margin-bottom:14px}
+.csrx .feature-ic{width:24px;height:24px}
+.csrx .feature-ic svg{width:12px;height:12px}
+.csrx .feature-pct{font-size:10px}
+.csrx .feature-k{font-size:12.5px;font-weight:600;letter-spacing:-.01em}
+.csrx .feature-sub{font-size:10px;color:rgba(255,255,255,.7);margin-top:3px}
+.csrx .feature-foot{padding-top:14px;gap:14px;align-items:flex-end}
+.csrx .feature-foot .fl{font-size:9px}
+.csrx .feature-foot .fv{font-size:17px}
+.csrx .feature-foot .fv.sm{font-size:12.5px;font-weight:600}
+
+.csrx .statistic{padding:12px}
+.csrx .stat-head{margin-bottom:10px}
+.csrx .stat-head h3{font-size:11.5px}
+.csrx .stat-when{font-size:9.5px}
+.csrx .donut-v{font-size:13.5px}
+.csrx .donut-k{font-size:9px}
+.csrx .legend-row{padding:6px 0}
+.csrx .legend-nm,.csrx .legend-amt{font-size:10.5px}
+
+.csrx .qa{padding:12px 8px;font-size:10.5px;gap:6px}
+.csrx .qa-ic{width:26px;height:26px}
+.csrx .qa-ic svg{width:13px;height:13px}
+.csrx .limit{padding:12px}
+.csrx .limit-k{font-size:11px}
+.csrx .limit-pc,.csrx .limit-sub,.csrx .limit-warn{font-size:10px}
+.csrx .flow{padding:12px}
+.csrx .flow-total{font-size:19px}
+.csrx .flow-key{font-size:9.5px}
+.csrx .flow .histlbl,.csrx .flow .histamt{font-size:9.5px}
+
+/* =========================================================================
+   ONE GRID, NOT TWO ROWS.
+   The Statistic panel is a donut plus a legend — roughly twice the height of
+   a stat tile. Laid out as two separate rows, the tiles had to sit in a row
+   sized by that panel, which is where the dead space under them came from.
+   Spanning it across both rows, as the reference does, lets row 1 be exactly
+   as tall as a tile and hands the leftover height to the panel that needs it.
+   ========================================================================= */
+.csrx .dash{
+  display:grid;
+  grid-template-columns:220px 1fr 300px;
+  grid-template-rows:auto auto;
+  gap:14px;
+  align-items:start;
+}
+.csrx .dash > .feature  {grid-column:1;grid-row:1}
+.csrx .dash > .stats    {grid-column:2;grid-row:1}
+.csrx .dash > .statistic{grid-column:3;grid-row:1 / span 2;align-self:stretch}
+.csrx .dash > .quick    {grid-column:1;grid-row:2}
+.csrx .dash > .flow     {grid-column:2;grid-row:2}
+
+/* Row 1 is one tile tall, so the feature matches the tiles beside it instead
+   of towering over them. */
+.csrx .feature{min-height:0;height:100%}
+.csrx .stats{height:100%}
+.csrx .stat{min-height:0;height:100%}
+
+/* The reference's action tiles are wider than they are tall. Mine were square,
+   which made four of them read as a keypad rather than as a row of verbs. */
+.csrx .qa{padding:10px 8px;gap:5px}
+.csrx .qa-ic{width:24px;height:24px}
+.csrx .quick-grid{gap:8px}
+
+@media (max-width:1280px){
+  .csrx .dash{grid-template-columns:1fr 300px}
+  .csrx .dash > .feature  {grid-column:1;grid-row:1}
+  .csrx .dash > .stats    {grid-column:1;grid-row:2}
+  .csrx .dash > .statistic{grid-column:2;grid-row:1 / span 3}
+  .csrx .dash > .quick    {grid-column:1;grid-row:3}
+  .csrx .dash > .flow     {grid-column:1;grid-row:4}
+}
+@media (max-width:900px){
+  .csrx .dash{grid-template-columns:1fr}
+  .csrx .dash > *{grid-column:1 !important;grid-row:auto !important}
+  .csrx .stats{grid-template-columns:1fr}
+}
+
+/* =========================================================================
+   Corrections from a proper read of the reference screenshot.
+   ========================================================================= */
+
+/* The reference's cards carry NO border — they are separated from the field by
+   a soft shadow alone. A 1px rule around each one is what made the layout read
+   as a form rather than as floating cards. */
+.csrx .stat,
+.csrx .statistic,
+.csrx .flow,
+.csrx .limit,
+.csrx .dash .panel{
+  border:0;box-shadow:0 1px 2px rgba(28,44,38,.05),0 4px 14px rgba(28,44,38,.05);
+}
+
+/* Quick actions are TINTED, not white — in the reference they are the only
+   filled controls on the row, which is what marks them as verbs rather than as
+   three more panels. */
+.csrx .qa{
+  background:#EEF4F0;border:0;box-shadow:none;color:var(--soft);
+}
+.csrx .qa:hover{background:#E4EEE8;color:var(--g-deep)}
+.csrx .qa-ic{background:rgba(255,255,255,.75);color:var(--g)}
+.csrx .qa:hover .qa-ic{background:#fff;color:var(--g-deep)}
+
+/* The figure pair above the donut. */
+.csrx .stat-pair{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.csrx .stat-pair > div{display:flex;align-items:baseline;justify-content:space-between}
+.csrx .stat-pair span:first-child{font-size:10.5px;color:var(--muted)}
+.csrx .stat-pair span:last-child{font-size:10.5px;font-weight:600;color:var(--ink)}
+
+.csrx .donut{margin:0 auto 12px}
+.csrx .donut-v{font-size:14px}
+
+.csrx .flow-k{font-size:10px;color:var(--muted)}
+.csrx .flow-total{margin-top:2px}
+
+/* =========================================================================
+   THE APP FLOATS. In the reference the whole product is a rounded card lifted
+   off a tinted field, with the ground visible around all four edges. That is
+   the single biggest reason the two read as different products: mine ran
+   edge-to-edge, so it had no outside.
+   ========================================================================= */
+.dashboard-layout:has(.sidebar--csr){
+  /* The field the app sits on. A pale wash of the CSR ground, not lavender —
+     the reference's lavender is its brand, ours is moss. */
+  background:#E7EDE9;
+  min-height:100vh;
+  --rail-w:248px;          /* 18 gap + 212 rail + 18 gap */
+  --rail-w-collapsed:100px; /* 18 + 64 + 18 */
+}
+.sidebar.sidebar--csr{
+  top:18px;left:18px;height:calc(100vh - 36px);
+  border-radius:16px;border-right:0 !important;
+  box-shadow:0 1px 2px rgba(28,44,38,.05),0 10px 30px rgba(28,44,38,.08);
+}
+.dashboard-layout:has(.sidebar--csr) .dashboard-content{
+  margin-top:18px;margin-right:18px;margin-bottom:18px;
+  background:#fff !important;border-radius:16px;overflow:hidden;
+  min-height:calc(100vh - 36px);
+  box-shadow:0 1px 2px rgba(28,44,38,.05),0 10px 30px rgba(28,44,38,.08);
+}
+/* The interior is white now, so the section strip and the cards need their
+   hairlines back — a shadow alone disappears on a white ground. */
+.dashboard-layout:has(.sidebar--csr) .dashboard-header{border-bottom:1px solid #EEF1F0}
+.csrx .stat,
+.csrx .statistic,
+.csrx .flow,
+.csrx .limit,
+.csrx .dash .panel{border:1px solid #EDF0EF;box-shadow:0 1px 2px rgba(28,44,38,.04)}
+
+/* Column proportions, measured off the reference: the action block is wider
+   than a stat tile and the chart panel is correspondingly narrower. */
+.csrx .dash{grid-template-columns:288px 1fr 300px}
+
+/* ---- the paired bar chart ---------------------------------------------- */
+.csrx .pairs{margin-top:12px}
+.csrx .pairs-plot{
+  position:relative;display:flex;align-items:flex-end;gap:2px;
+  height:150px;padding-bottom:22px;
+}
+.csrx .pairgrp{
+  position:relative;flex:1;min-width:0;height:100%;
+  display:flex;flex-direction:column;justify-content:flex-end;align-items:center;
+  border-radius:var(--r-ctl);cursor:default;transition:background .14s;
+}
+.csrx .pairgrp:hover,.csrx .pairgrp.on{background:#F4F8F6}
+.csrx .pairbars{
+  display:flex;align-items:flex-end;justify-content:center;gap:3px;
+  width:100%;height:100%;padding:0 4px;
+}
+.csrx .pairbars .bar{
+  flex:1;max-width:14px;border-radius:4px 4px 0 0;transition:opacity .14s;
+}
+.csrx .pairbars .bar.sanc{background:#2C6A4F}
+.csrx .pairbars .bar.util{background:#9FCBB4}
+.csrx .pairlbl{
+  position:absolute;bottom:-20px;left:0;right:0;text-align:center;
+  font-size:9px;color:var(--muted);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px;
+}
+.csrx .tip{
+  position:absolute;bottom:calc(100% - 6px);transform:translateX(-50%);
+  background:#fff;border:1px solid var(--line);border-radius:var(--r-ctl);
+  padding:8px 10px;min-width:132px;pointer-events:none;z-index:3;
+  box-shadow:0 6px 18px rgba(28,44,38,.14);
+}
+.csrx .tip-t{
+  font-size:10px;font-weight:600;color:var(--ink);margin-bottom:5px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px;
+}
+.csrx .tip-r{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.csrx .tip-r span{font-size:9.5px;color:var(--muted)}
+.csrx .tip-r b{font-size:10px;font-weight:600;color:var(--ink)}
+.csrx .flow-key{display:flex;gap:12px}
+.csrx .flow-key > span{display:flex;align-items:center;gap:5px}
+
+/* With only a few grants each group is wide, and `flex:1` bars capped at 14px
+   left the pair floating in the middle of empty space. Fixed widths centred in
+   the group keep the pair reading as a pair at any count. */
+.csrx .pairbars{gap:5px}
+.csrx .pairbars .bar{flex:none;width:16px;max-width:none}

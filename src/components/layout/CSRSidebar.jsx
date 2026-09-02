@@ -12,7 +12,7 @@
 // signs into it at /login.
 
 import React from 'react';
-import { matchRoutes, useLocation } from 'react-router-dom';
+import { matchRoutes, useLocation, useNavigate } from 'react-router-dom';
 import {
   VolunteerActivism as CSRIcon,
   FolderSpecial as ProjectsIcon,
@@ -23,10 +23,15 @@ import {
   Category as CatalogIcon,
   Palette as BrandingIcon,
 } from '@mui/icons-material';
+import { Menu, MenuItem, ListItemIcon } from '@mui/material';
+import {
+  AccountCircleOutlined as AccountIcon,
+  LogoutOutlined as LogoutIcon,
+} from '@mui/icons-material';
 import useGrants from '../../auth/useGrants';
 import { useAuth } from '../../auth/AuthContext';
 import { ROLES } from '../../auth/roles';
-import SidebarFrame, { NavItem, NavSection } from './SidebarFrame';
+import SidebarFrame, { NavItem } from './SidebarFrame';
 import './Sidebar.css';
 import '../../styles/csrDesign.css';
 
@@ -42,8 +47,110 @@ const CSR_ROUTES = [
   { path: '/csr/clients' },
   { path: '/csr/activity-types' },
   { path: '/csr/branding' },
+  { path: '/csr/account' },
   { path: '/csr/:id' },
 ];
+
+// The reference's brand lockup is a leaf mark beside the words, not words
+// alone. Inline rather than an asset so it takes `currentColor` and cannot go
+// stale against the palette.
+const LeafMark = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"
+       strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M12 21v-8" />
+    <path d="M12 13c0-3.9 2.9-7 6.5-7 0 3.9-2.9 7-6.5 7Z" />
+    <path d="M12 15c0-3-2.2-5.5-5-5.5 0 3 2.2 5.5 5 5.5Z" />
+  </svg>
+);
+
+const initials = (name) =>
+  String(name || '?')
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase() || '?';
+
+// The rail ends on a card, not on a version string. It carries two things: the
+// line the reference prints, and who is signed in — the identity chip used to
+// sit in a top bar the reference does not have, so it comes down here rather
+// than being dropped.
+// The identity row is also the account control. CSR is its own front door at
+// /csr/login, so signing out returns there rather than to TTA's /login.
+function AccountRow({ user }) {
+  const name = [user?.first_name, user?.last_name].filter(Boolean).join(' ') || user?.name || user?.email || '';
+  const [anchor, setAnchor] = React.useState(null);
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  const signOut = () => {
+    setAnchor(null);
+    logout();
+    navigate('/csr/login', { replace: true });
+  };
+
+  if (!name) return null;
+
+  return (
+    <>
+      <button
+        type="button"
+        className="sidebar-who"
+        aria-haspopup="menu"
+        aria-expanded={Boolean(anchor)}
+        aria-label={`Account menu for ${name}`}
+        onClick={(e) => setAnchor(e.currentTarget)}
+      >
+        <span className="sidebar-who-av">{initials(name)}</span>
+        <span className="sidebar-who-txt">
+          <span className="sidebar-who-name">{name}</span>
+          <span className="sidebar-who-role">{user?.role}</span>
+        </span>
+        <span className="sidebar-who-cv" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6" /></svg>
+        </span>
+      </button>
+
+      <Menu
+        anchorEl={anchor}
+        open={Boolean(anchor)}
+        onClose={() => setAnchor(null)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        transformOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <MenuItem onClick={() => { setAnchor(null); navigate('/csr/account'); }}>
+          <ListItemIcon><AccountIcon fontSize="small" /></ListItemIcon>
+          Account
+        </MenuItem>
+        <MenuItem onClick={signOut}>
+          <ListItemIcon><LogoutIcon fontSize="small" /></ListItemIcon>
+          Sign out
+        </MenuItem>
+      </Menu>
+    </>
+  );
+}
+
+function PromoCard({ user }) {
+  return (
+    <div className="sidebar-promo">
+      {/* The wave is the card's floor. It sits at z-index 0 with everything
+          else above it, so it can run the full width without cutting through
+          the line or the name the way it did when the name sat over it. */}
+      <svg className="sidebar-promo-wave" viewBox="0 0 200 44" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M0 41 C 70 41, 112 12, 200 5 L200 44 L0 44 Z" opacity=".55" />
+        <path d="M0 44 C 84 44, 126 24, 200 17 L200 44 L0 44 Z" opacity=".85" />
+      </svg>
+
+      <div className="sidebar-promo-body">
+        <span className="sidebar-promo-icon">{LeafMark}</span>
+        <p>Building a better tomorrow through meaningful action today.</p>
+        <AccountRow user={user} />
+      </div>
+    </div>
+  );
+}
 
 export default function CSRSidebar({ collapsed, onToggle }) {
   const location = useLocation();
@@ -54,14 +161,13 @@ export default function CSRSidebar({ collapsed, onToggle }) {
   const isAdminOrSuper = user?.role === ROLES.SUPER_ADMIN || user?.role === ROLES.ADMIN;
 
   const item = (props) => <NavItem {...props} collapsed={collapsed} />;
-  const section = (label) => <NavSection label={label} collapsed={collapsed} />;
 
-  // Two groups, and the split is the one the source draws. The visual flow's
-  // §2 sidebar lists exactly five CSR screens — Dashboard, Projects,
-  // Activities, Reports, Util. Cert — which is the work. Funders, Activity
-  // Types and Branding were added afterwards and are admin-gated already; they
-  // are things you configure once, not places you go. Putting all eight in one
-  // column said they were peers, which is why the rail read as unsorted.
+  // ONE flat column. The approved reference screen draws the rail as a single
+  // undifferentiated list with a card at its foot, and that is the design the
+  // owner signed off. The Delivery/Setup split that used to be here was an
+  // internal judgement about which items are "places" and which are
+  // "settings"; it is not in the reference, so it is gone. The admin gate on
+  // the last three is unchanged — it was never what the headings were for.
   const showSetup = isAdminOrSuper;
 
   return (
@@ -72,14 +178,15 @@ export default function CSRSidebar({ collapsed, onToggle }) {
       subtitle="Project Delivery"
       mark="CSR"
       variant="csr"
+      brandIcon={LeafMark}
+      footer={<PromoCard user={user} />}
     >
-      {section('Delivery')}
       {item({ to: '/csr', icon: <CSRIcon fontSize="small" />, label: 'Dashboard', end: true })}
       {canView('csr') && item({ to: '/csr/projects', icon: <ProjectsIcon fontSize="small" />, label: 'Projects', forceActive: onProjectDetail })}
       {canView('csr') && item({ to: '/csr/activities', icon: <ActivitiesIcon fontSize="small" />, label: 'Activities' })}
-      {(canView('csr_certificate') || canView('csr')) && item({ to: '/csr/utilisation', icon: <UtilisationIcon fontSize="small" />, label: 'Utilisation' })}
       {canView('csr') && item({ to: '/csr/reports', icon: <ReportsIcon fontSize="small" />, label: 'Reports' })}
-      {showSetup && section('Setup')}
+      {(canView('csr_certificate') || canView('csr')) && item({ to: '/csr/utilisation', icon: <UtilisationIcon fontSize="small" />, label: 'Utilisation' })}
+      {showSetup && <div className="sidebar-divider" role="presentation" />}
       {showSetup && item({ to: '/csr/clients', icon: <FundersIcon fontSize="small" />, label: 'Funders' })}
       {showSetup && item({ to: '/csr/activity-types', icon: <CatalogIcon fontSize="small" />, label: 'Activity Types' })}
       {showSetup && item({ to: '/csr/branding', icon: <BrandingIcon fontSize="small" />, label: 'Branding' })}
