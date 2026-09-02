@@ -1561,7 +1561,9 @@
    under the rest rather than starving what sits beside it. */
 @media (max-width:1200px){
   .csrx .dash{grid-template-columns:288px 1fr}
-  .csrx .dash > .stats    {grid-column:1 / span 2;grid-row:1;grid-template-columns:repeat(2,1fr)}
+  /* FOUR ACROSS. Never 2x2 — that is the shape the reference does not have,
+     and it is what has been showing at every width below 1200. */
+  .csrx .dash > .stats    {grid-column:1 / span 2;grid-row:1;grid-template-columns:repeat(4,1fr)}
   .csrx .dash > .quick    {grid-column:1;grid-row:2}
   .csrx .dash > .flow     {grid-column:2;grid-row:2}
   .csrx .dash > .statistic{grid-column:1 / span 2;grid-row:3}
@@ -1570,4 +1572,35 @@
   .csrx .dash{grid-template-columns:1fr}
   .csrx .dash > *{grid-column:1;grid-row:auto}
   .csrx .dash > .stats{grid-template-columns:1fr}
+}
+
+/* The top row is FOUR ACROSS at every width the app is used at. Only a phone
+   drops it, and then to a single column — never to 2x2. */
+.csrx .dash > .stats{grid-template-columns:repeat(4,1fr)}
+@media (max-width:640px){
+  .csrx .dash > .stats{grid-template-columns:1fr}
+}
+
+/* The Statistic card stays BESIDE the two rows, spanning both, which is where
+   the reference puts it. It was dropping under everything below 1280 — the
+   width most of these screens are actually read at — so the shape people saw
+   was never the one in the reference. It narrows instead of moving, and only
+   goes full-width under 1000, where a donut plus a legend genuinely will not
+   fit in a column. */
+@media (min-width:1000px){
+  .csrx .dash{grid-template-columns:270px 1fr 264px}
+  .csrx .dash > .stats    {grid-column:1 / span 2;grid-row:1;grid-template-columns:repeat(4,1fr)}
+  .csrx .dash > .statistic{grid-column:3;grid-row:1 / span 2;align-self:stretch}
+  .csrx .dash > .quick    {grid-column:1;grid-row:2;align-self:start}
+  .csrx .dash > .flow     {grid-column:2;grid-row:2;align-self:start}
+}
+@media (min-width:1400px){
+  .csrx .dash{grid-template-columns:288px 1fr 300px}
+}
+@media (max-width:999px){
+  .csrx .dash{grid-template-columns:270px 1fr}
+  .csrx .dash > .stats    {grid-column:1 / span 2;grid-row:1}
+  .csrx .dash > .quick    {grid-column:1;grid-row:2}
+  .csrx .dash > .flow     {grid-column:2;grid-row:2}
+  .csrx .dash > .statistic{grid-column:1 / span 2;grid-row:3}
 }
