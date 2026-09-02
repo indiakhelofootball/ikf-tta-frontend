@@ -113,19 +113,17 @@ const ic = (d) => (
 // `trend` is a plain statement of the same number in another form, not an
 // invented period-over-period delta — there is no history series behind this
 // data, and a fabricated arrow would be a lie in a financial view.
-const STATS = (sanctioned, utilised, remaining, utilPct, openCount) => [
+// The three figures BESIDE the card, and none of them may repeat what the card
+// already says. The card owns the sanctioned total, the way the reference's
+// card owns the balance; these are the three ways that total is currently
+// accounted for. "Not counted" is the one an operator has to act on: money
+// tagged to a grant whose payment never completed, invisible in every other
+// total on this screen.
+const STATS = (utilised, remaining, excluded, excludedCount, utilPct) => [
   {
-    k: 'Total Sanctioned',
-    v: fmtINR(sanctioned),
-    trend: `${openCount} open`,
-    tone: 'info',
-    hue: 'b',
-    icon: ic(<><circle cx="12" cy="12" r="9" /><path d="M12 7v10M9.5 9.5c0-1 1-1.7 2.5-1.7s2.5.7 2.5 1.7-1 1.5-2.5 1.5-2.5.7-2.5 1.7 1 1.8 2.5 1.8 2.5-.8 2.5-1.8" /></>),
-  },
-  {
-    k: 'Total Utilised',
+    k: 'Utilised',
     v: fmtINR(utilised || 0),
-    trend: `${Math.round(utilPct)}% of grant`,
+    trend: `${Math.round(utilPct)}% of sanction`,
     tone: utilPct > 100 ? 'bad' : 'good',
     hue: 'g',
     icon: ic(<><path d="M3 3v18h18" /><path d="M7 14l4-4 3 3 5-6" /></>),
@@ -134,9 +132,19 @@ const STATS = (sanctioned, utilised, remaining, utilPct, openCount) => [
     k: 'Remaining',
     v: fmtINR(remaining),
     trend: remaining < 0 ? 'overspent' : `${Math.round(100 - Math.min(100, utilPct))}% left`,
-    tone: remaining < 0 ? 'bad' : 'warn',
-    hue: 'o',
+    tone: remaining < 0 ? 'bad' : 'info',
+    hue: 'b',
     icon: ic(<><rect x="2" y="6" width="20" height="13" rx="2" /><path d="M2 11h20" /></>),
+  },
+  {
+    k: 'Not counted',
+    v: fmtINR(excluded),
+    trend: excludedCount === 0
+      ? 'nothing pending'
+      : `${excludedCount} ${excludedCount === 1 ? 'expense' : 'expenses'}`,
+    tone: excluded > 0 ? 'bad' : 'warn',
+    hue: 'o',
+    icon: ic(<><circle cx="12" cy="12" r="9" /><path d="M12 8v5M12 16h.01" /></>),
   },
 ];
 
@@ -208,6 +216,27 @@ export default function CSRDashboard() {
     [projects],
   );
 
+  // The window the portfolio actually covers: earliest start to latest end
+  // across the open grants. An em dash between two years, or a single year when
+  // they coincide; "—" when no grant carries dates at all.
+  const period = useMemo(() => {
+    // The falsy guard is load-bearing: `new Date(null)` is the epoch, not an
+    // invalid date, so a grant with no start date parsed as 1970 and dragged
+    // the whole portfolio period back with it.
+    const year = (v) => {
+      if (!v) return null;
+      const d = new Date(v);
+      return Number.isNaN(d.getTime()) ? null : d.getFullYear();
+    };
+    const starts = openP.map((x) => year(x.startDate)).filter(Boolean);
+    const ends = openP.map((x) => year(x.endDate)).filter(Boolean);
+    if (!starts.length && !ends.length) return '\u2014';
+    const from = starts.length ? Math.min(...starts) : Math.min(...ends);
+    const to = ends.length ? Math.max(...ends) : Math.max(...starts);
+    return from === to ? String(from) : `${from}\u2013${to}`;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projects]);
+
   // Sanctioned against utilised, per grant — the pair the reference charts.
   const series = useMemo(() => {
     const rows = openP
@@ -274,20 +303,23 @@ export default function CSRDashboard() {
               <div className="feature-sub">
                 {openP.length} open grant{openP.length === 1 ? '' : 's'} · {funderCount} funder{funderCount === 1 ? '' : 's'}
               </div>
+              {/* Left is the balance, right is the detail that qualifies it —
+                  the same shape as the reference's card, where the balance sits
+                  beside the expiry rather than beside a second copy of itself. */}
               <div className="feature-foot">
                 <span>
                   <span className="fl">Total sanctioned</span>
                   <span className="fv fig">{fmtINR(sanctioned)}</span>
                 </span>
                 <span>
-                  <span className="fl">Remaining</span>
-                  <span className="fv sm fig">{fmtINR(remaining)}</span>
+                  <span className="fl">Period</span>
+                  <span className="fv sm fig">{period}</span>
                 </span>
               </div>
             </div>
 
             <div className="stats">
-              {STATS(sanctioned, utilised, remaining, utilPct, openP.length).map((t) => (
+              {STATS(utilised, remaining, excluded.amount, excluded.count, utilPct).map((t) => (
                 <div className="stat" key={t.k}>
                   <div className="stat-top">
                     <span className={`stat-ic ${t.hue}`}>{t.icon}</span>
