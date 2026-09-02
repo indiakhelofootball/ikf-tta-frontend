@@ -58,9 +58,15 @@ describe('CSRActivityModal', () => {
   });
 
   describe('the workshop, programme and partner links', () => {
-    // The agreed spec gives each activity type something to point at. Before
-    // this, only the trial link existed: an operator could say "Workshop" but
-    // not which workshop, or who ran it.
+    // Fields now show per activity kind (26 Aug review, item N1), so this
+    // block needs one type per kind rather than the trial-only fixture used
+    // elsewhere in the file.
+    const types = [
+      { id: 1, name: 'Boys Trial' },
+      { id: 2, name: 'Community Workshop' },
+      { id: 3, name: 'Skill Training' },
+    ];
+
     beforeEach(() => {
       adminStorage.getWorkshopNames.mockReturnValue([
         { id: 11, name: 'Financial Literacy' },
@@ -104,6 +110,9 @@ describe('CSRActivityModal', () => {
     test('an empty catalog says where the entries are maintained', () => {
       adminStorage.getWorkshopNames.mockReturnValue([]);
       renderModal();
+      // The Workshop field only shows for a workshop-kind type.
+      fireEvent.mouseDown(screen.getByLabelText(/activity type/i));
+      fireEvent.click(screen.getByRole('option', { name: /Community Workshop/i }));
       // Named in full: the partner picker now also points at TTA Admin, so a
       // bare /TTA Admin/ match would pass on the wrong field's helper text.
       expect(
@@ -111,15 +120,43 @@ describe('CSRActivityModal', () => {
       ).toBeInTheDocument();
     });
 
-    test('an existing activity prefills all three links', () => {
+    test('an existing workshop activity prefills the workshop and partner', () => {
       renderModal({
         activity: {
-          id: 5, title: 'Workshop at Bhilai', activityTypeId: 1,
-          workshopId: 11, trainingProgrammeId: 22, linkedVendorId: 31,
+          id: 5, title: 'Workshop at Bhilai', activityTypeId: 2,
+          workshopId: 11, linkedVendorId: 31,
         },
       });
       expect(screen.getByText('Financial Literacy')).toBeInTheDocument();
+    });
+
+    test('an existing training activity prefills the training programme', () => {
+      renderModal({
+        activity: {
+          id: 6, title: 'Coaching cohort', activityTypeId: 3,
+          trainingProgrammeId: 22,
+        },
+      });
       expect(screen.getByText('Grassroots Coaching L1')).toBeInTheDocument();
+    });
+
+    test('switching from a workshop type to a trial type clears the workshop id', () => {
+      // Otherwise the stale workshop id rides along under a trial and the
+      // serializer, which validates these per-category, rejects it.
+      const onSave = jest.fn();
+      renderModal({ onSave });
+      fireEvent.change(screen.getByLabelText(/title/i), { target: { value: 'Switched type' } });
+      fireEvent.mouseDown(screen.getByLabelText(/activity type/i));
+      fireEvent.click(screen.getByRole('option', { name: /Community Workshop/i }));
+      fireEvent.mouseDown(screen.getByLabelText(/^workshop$/i));
+      fireEvent.click(screen.getByRole('option', { name: /Financial Literacy/i }));
+
+      fireEvent.mouseDown(screen.getByRole('combobox', { name: /activity type/i }));
+      fireEvent.click(screen.getByRole('option', { name: /Boys Trial/i }));
+      fireEvent.click(screen.getByRole('button', { name: /save/i }));
+
+      expect(onSave).toHaveBeenCalledTimes(1);
+      expect(onSave.mock.calls[0][0].workshopId).toBeNull();
     });
 
     test('links left blank are sent as null, not as an empty string', () => {
@@ -146,6 +183,10 @@ describe('CSRActivityModal', () => {
   // Self vs Partner. The point of the field is that an empty partner stops
   // meaning two different things, so these cover what each state may mean.
   describe('delivery mode', () => {
+    // Delivered By / Partner show for workshop and generic kinds, not trial --
+    // so this block needs its own type whose name doesn't match any keyword.
+    const types = [{ id: 1, name: 'Community Engagement' }];
+
     const renderModal = (props = {}) => render(
       <CSRActivityModal
         open activity={null} activityTypes={types}
@@ -157,7 +198,7 @@ describe('CSRActivityModal', () => {
     const fillRequired = () => {
       fireEvent.change(screen.getByLabelText(/title/i), { target: { value: 'A workshop' } });
       fireEvent.mouseDown(screen.getByLabelText(/activity type/i));
-      fireEvent.click(screen.getByRole('option', { name: /Boys Trial/i }));
+      fireEvent.click(screen.getByRole('option', { name: /Community Engagement/i }));
     };
 
     const pickMode = (label) => {

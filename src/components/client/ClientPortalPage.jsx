@@ -12,9 +12,11 @@ import { downloadCertificatePdf } from '../../utils/certificatePdf';
 import { useAuth } from '../../auth/AuthContext';
 import clientThemeFrom from './clientTheme';
 import ClientChangePasswordDialog from './ClientChangePasswordDialog';
+import { FAILED_STATUSES } from '../csr/csrContractRules';
 
-// Deliverable statuses are stored as readable labels server-side
-// (Pending / In Progress / Completed), so only the colour is mapped here.
+// Deliverable statuses are stored as readable labels server-side, so only the
+// colour is mapped here. 'Not Delivered' and 'Cancelled' aren't listed --
+// those get the error treatment below (FAILED_STATUSES), not a chip colour.
 const DELIVERABLE_STATUS_COLOR = {
   Completed: 'success',
   'In Progress': 'info',
@@ -294,8 +296,18 @@ export default function ClientPortalPage() {
                 <List>
                   {deliverables.map((d) => {
                     const percent = deliverablePercent(d);
+                    const failed = FAILED_STATUSES.includes(d.status);
                     return (
-                      <ListItem key={d.id} sx={{ display: 'block', py: 2 }}>
+                      <ListItem
+                        key={d.id}
+                        sx={failed ? {
+                          display: 'block',
+                          py: 2,
+                          bgcolor: '#FBEBE9',
+                          borderLeft: '3px solid #B3352A',
+                          pl: 2,
+                        } : { display: 'block', py: 2 }}
+                      >
                         <Stack
                           direction="row"
                           spacing={2}
@@ -303,6 +315,7 @@ export default function ClientPortalPage() {
                         >
                           <ListItemText
                             primary={d.title}
+                            primaryTypographyProps={failed ? { sx: { color: '#8F2A21' } } : undefined}
                             secondary={[
                               d.targetCount != null
                                 ? `${d.completedCount ?? 0} of ${d.targetCount} completed`
@@ -314,6 +327,11 @@ export default function ClientPortalPage() {
                             size="small"
                             label={d.status}
                             color={DELIVERABLE_STATUS_COLOR[d.status] || 'default'}
+                            sx={failed ? {
+                              bgcolor: '#FBEBE9',
+                              color: '#8F2A21',
+                              border: '1px solid #B3352A',
+                            } : undefined}
                           />
                         </Stack>
                         {percent != null && (

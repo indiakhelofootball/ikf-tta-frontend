@@ -196,7 +196,7 @@ export default function CSRContractManagementPage({ projectId }) {
         <Typography variant="subtitle1">Grant Contracts</Typography>
         {editable && (
           <Button size="small" startIcon={<AddIcon />} onClick={openCreateContract}>
-            New Contract
+            Record Contract
           </Button>
         )}
       </Stack>

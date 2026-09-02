@@ -8,7 +8,11 @@ import { trialsAPI, csrAPI } from '../../services/api';
 import { getWorkshopNames, getTrainingProgrammes } from '../../utils/adminStorage';
 import useConfigVersion from '../../hooks/useConfigVersion';
 
-const STATUS_OPTIONS = ['Planned', 'Completed'];
+// 'Cancelled' is a real outcome, not the absence of one — an activity that was
+// called off is not 'Planned' forever and is not 'Completed'. Added with the
+// backend choice in migration 0011 (26 Aug review, 1067s: "if it is cancelled,
+// then it will be an error").
+const STATUS_OPTIONS = ['Planned', 'Completed', 'Cancelled'];
 
 // Who delivered it. Asked for four times on the 26 Aug review -- "either a self
 // or a partner, there will be no option". Blank remains selectable because
@@ -16,6 +20,32 @@ const STATUS_OPTIONS = ['Planned', 'Completed'];
 const DELIVERY_MODES = [
   { value: 'Self', label: 'Self — delivered by TTA' },
   { value: 'Partner', label: 'Partner — delivered by a partner' },
+];
+
+// The activity type's own name says what kind of activity this is (26 Aug
+// review, item N1: every field showed regardless of type, which read as a
+// pile of unrelated dropdowns). Keying off the name rather than adding a
+// separate "kind" column means no catalog migration is needed.
+function kindOfTypeName(name) {
+  const n = (name || '').toLowerCase();
+  if (n.includes('trial')) return 'trial';
+  if (n.includes('workshop')) return 'workshop';
+  if (n.includes('training')) return 'training';
+  return 'generic';
+}
+
+// Which of the five category fields apply to each kind. Delivered By and
+// Partner stay on both 'workshop' and 'generic' -- a partner can run either,
+// and an activity whose type doesn't match a known keyword shouldn't lose
+// the field outright.
+const KIND_FIELDS = {
+  trial: ['linkedTrialId'],
+  workshop: ['workshopId', 'deliveryMode', 'linkedVendorId'],
+  training: ['trainingProgrammeId'],
+  generic: ['deliveryMode', 'linkedVendorId'],
+};
+const ALL_KIND_FIELDS = [
+  'linkedTrialId', 'workshopId', 'trainingProgrammeId', 'deliveryMode', 'linkedVendorId',
 ];
 
 const EMPTY = {
@@ -89,6 +119,21 @@ export default function CSRActivityModal({ open, activity, activityTypes, onClos
 
   const setField = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
+  // Changing the type changes which category fields apply. Clearing the ones
+  // that no longer belong (rather than just hiding them) matters because the
+  // serializer validates these per-category -- a stale workshop id surviving
+  // under a trial would submit clean and come back as a confusing 400.
+  const handleTypeChange = (e) => {
+    const newId = e.target.value;
+    const newType = (activityTypes || []).find((t) => t.id === Number(newId));
+    const keep = new Set(KIND_FIELDS[kindOfTypeName(newType?.name)]);
+    setForm((f) => {
+      const next = { ...f, activityTypeId: newId };
+      ALL_KIND_FIELDS.forEach((k) => { if (!keep.has(k)) next[k] = ''; });
+      return next;
+    });
+  };
+
   const validate = () => {
     const next = {};
     if (!form.title.trim()) next.title = 'Required';
@@ -122,6 +167,9 @@ export default function CSRActivityModal({ open, activity, activityTypes, onClos
   };
 
   const noTypes = !activityTypes || activityTypes.length === 0;
+  const selectedType = (activityTypes || []).find((t) => t.id === Number(form.activityTypeId));
+  const kind = kindOfTypeName(selectedType?.name);
+  const showField = (name) => KIND_FIELDS[kind].includes(name);
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
@@ -133,7 +181,7 @@ export default function CSRActivityModal({ open, activity, activityTypes, onClos
             error={!!errors.title} helperText={errors.title} fullWidth
           />
           <TextField
-            label="Activity Type" value={form.activityTypeId} onChange={setField('activityTypeId')}
+            label="Activity Type" value={form.activityTypeId} onChange={handleTypeChange}
             select fullWidth error={!!errors.activityTypeId}
             helperText={noTypes ? 'No activity types defined yet — add them in the catalog first.' : errors.activityTypeId}
             disabled={noTypes}
@@ -167,75 +215,86 @@ export default function CSRActivityModal({ open, activity, activityTypes, onClos
               <MenuItem key={s} value={s}>{s}</MenuItem>
             ))}
           </TextField>
-          {/* What this activity actually was. The agreed spec gives each of the
-              three activity types something to point at: a trial, a workshop
-              plus the partner who ran it, or a training programme. All optional
-              -- the type is chosen above, and only its own fields apply. */}
-          <TextField
-            label="Workshop" value={form.workshopId} onChange={setField('workshopId')}
-            select fullWidth disabled={workshops.length === 0}
-            helperText={workshops.length === 0
-              ? 'No workshops in the catalog yet — an admin adds them in TTA Admin → Setup.'
-              : 'For a workshop activity. Leave blank otherwise.'}
-          >
-            <MenuItem value="">— none —</MenuItem>
-            {workshops.map((w) => (
-              <MenuItem key={w.id} value={w.id}>{w.name}</MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            label="Delivered By" value={form.deliveryMode} onChange={setField('deliveryMode')}
-            select fullWidth
-            helperText="Whether TTA ran this itself or a partner did."
-          >
-            <MenuItem value="">—</MenuItem>
-            {DELIVERY_MODES.map((m) => (
-              <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>
-            ))}
-          </TextField>
-          <Autocomplete
-            options={partners}
-            disabled={form.deliveryMode === 'Self'}
-            value={partners.find((v) => v.id === Number(form.linkedVendorId)) || null}
-            getOptionLabel={(v) => `${v.vendorName || `#${v.id}`}${v.partnerCategory ? ` · ${v.partnerCategory}` : ''}`}
-            isOptionEqualToValue={(o, v) => o.id === v.id}
-            onChange={(e, opt) => setForm((f) => ({ ...f, linkedVendorId: opt ? opt.id : '' }))}
-            renderInput={(params) => (
-              <TextField
-                {...params} label="Partner"
-                error={!!errors.linkedVendorId}
-                helperText={errors.linkedVendorId
-                  || (form.deliveryMode === 'Self'
-                    ? 'Not needed — this one was delivered by TTA.'
-                    : partners.length === 0
-                      ? 'No vendors carry a partner category yet. An admin flags them in TTA Admin, under Vendors.'
-                      : 'The partner who delivered this. Only vendors flagged with a partner category appear.')}
-              />
-            )}
-          />
-          <TextField
-            label="Training Programme" value={form.trainingProgrammeId}
-            onChange={setField('trainingProgrammeId')}
-            select fullWidth disabled={programmes.length === 0}
-            helperText={programmes.length === 0
-              ? 'No training programmes in the catalog yet — an admin adds them in TTA Admin → Setup.'
-              : 'For a multi-month training. Pair it with the start and end dates above.'}
-          >
-            <MenuItem value="">— none —</MenuItem>
-            {programmes.map((t) => (
-              <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>
-            ))}
-          </TextField>
-          <Autocomplete
-            options={trials}
-            value={trials.find((t) => t.id === Number(form.linkedTrialId)) || null}
-            getOptionLabel={(t) => `${t.trialCode ? `${t.trialCode} — ` : ''}${t.trialName || `#${t.id}`}`}
-            isOptionEqualToValue={(o, v) => o.id === v.id}
-            onChange={(e, opt) => setForm((f) => ({ ...f, linkedTrialId: opt ? opt.id : '' }))}
-            renderInput={(params) => (
-              <TextField {...params} label="Linked Trial (optional)" helperText="Link an existing trial, if this activity is one." />
-            )}
-          />
+          {/* What this activity actually was. Which of these show is driven by
+              the activity type selected above (26 Aug review, item N1) --
+              a trial gets the trial link, a workshop gets the catalog entry
+              plus who delivered it, a training gets the programme. Showing
+              all four regardless of type was the exact complaint. */}
+          {showField('workshopId') && (
+            <TextField
+              label="Workshop" value={form.workshopId} onChange={setField('workshopId')}
+              select fullWidth disabled={workshops.length === 0}
+              helperText={workshops.length === 0
+                ? 'No workshops in the catalog yet — an admin adds them in TTA Admin → Setup.'
+                : 'For a workshop activity. Leave blank otherwise.'}
+            >
+              <MenuItem value="">— none —</MenuItem>
+              {workshops.map((w) => (
+                <MenuItem key={w.id} value={w.id}>{w.name}</MenuItem>
+              ))}
+            </TextField>
+          )}
+          {showField('deliveryMode') && (
+            <TextField
+              label="Delivered By" value={form.deliveryMode} onChange={setField('deliveryMode')}
+              select fullWidth
+              helperText="Whether TTA ran this itself or a partner did."
+            >
+              <MenuItem value="">—</MenuItem>
+              {DELIVERY_MODES.map((m) => (
+                <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>
+              ))}
+            </TextField>
+          )}
+          {showField('linkedVendorId') && (
+            <Autocomplete
+              options={partners}
+              disabled={form.deliveryMode === 'Self'}
+              value={partners.find((v) => v.id === Number(form.linkedVendorId)) || null}
+              getOptionLabel={(v) => `${v.vendorName || `#${v.id}`}${v.partnerCategory ? ` · ${v.partnerCategory}` : ''}`}
+              isOptionEqualToValue={(o, v) => o.id === v.id}
+              onChange={(e, opt) => setForm((f) => ({ ...f, linkedVendorId: opt ? opt.id : '' }))}
+              renderInput={(params) => (
+                <TextField
+                  {...params} label="Partner"
+                  error={!!errors.linkedVendorId}
+                  helperText={errors.linkedVendorId
+                    || (form.deliveryMode === 'Self'
+                      ? 'Not needed — this one was delivered by TTA.'
+                      : partners.length === 0
+                        ? 'No vendors carry a partner category yet. An admin flags them in TTA Admin, under Vendors.'
+                        : 'The partner who delivered this. Only vendors flagged with a partner category appear.')}
+                />
+              )}
+            />
+          )}
+          {showField('trainingProgrammeId') && (
+            <TextField
+              label="Training Programme" value={form.trainingProgrammeId}
+              onChange={setField('trainingProgrammeId')}
+              select fullWidth disabled={programmes.length === 0}
+              helperText={programmes.length === 0
+                ? 'No training programmes in the catalog yet — an admin adds them in TTA Admin → Setup.'
+                : 'For a multi-month training. Pair it with the start and end dates above.'}
+            >
+              <MenuItem value="">— none —</MenuItem>
+              {programmes.map((t) => (
+                <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>
+              ))}
+            </TextField>
+          )}
+          {showField('linkedTrialId') && (
+            <Autocomplete
+              options={trials}
+              value={trials.find((t) => t.id === Number(form.linkedTrialId)) || null}
+              getOptionLabel={(t) => `${t.trialCode ? `${t.trialCode} — ` : ''}${t.trialName || `#${t.id}`}`}
+              isOptionEqualToValue={(o, v) => o.id === v.id}
+              onChange={(e, opt) => setForm((f) => ({ ...f, linkedTrialId: opt ? opt.id : '' }))}
+              renderInput={(params) => (
+                <TextField {...params} label="Linked Trial (optional)" helperText="Link an existing trial, if this activity is one." />
+              )}
+            />
+          )}
         </Stack>
       </DialogContent>
       <DialogActions>
