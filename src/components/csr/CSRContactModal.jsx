@@ -9,7 +9,15 @@ import { csrAPI } from '../../services/api';
 // representative, vendor representative. Blank stays selectable because
 // contacts recorded before the field existed carry no type, and picking one
 // for them would be inventing a fact about a real person.
-const CONTACT_TYPES = ['Client', 'IKF', 'Vendor'];
+// The stored values are the API's, and they do not change. The LABELS are what
+// the client reads, and on 26 Aug (08:18) he named them himself: «vendor भी होगा
+// ना partner, partner representative। vendor is the partner» — in his language a
+// vendor IS the partner, so the form says partner and the database keeps Vendor.
+const CONTACT_TYPES = [
+  { value: 'Client', label: 'Client representative' },
+  { value: 'IKF', label: 'IKF representative' },
+  { value: 'Vendor', label: 'Partner representative' },
+];
 
 const EMPTY = { name: '', designation: '', contactType: '', email: '', phone: '' };
 
@@ -89,6 +97,20 @@ export default function CSRContactModal({ open, contact, onClose, onSave, saving
       <DialogTitle>{contact ? 'Edit Contact' : 'New Contact'}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
+          {/* Type comes FIRST. 26 Aug, 08:07: «अच्छे last में दोगे ना ये, शुरू
+              में ही पहले select drop downs select कराओगे ना» — "you're giving
+              this at the end; make them select it at the very start". Whose
+              representative this is decides which master you would look the
+              person up in, so asking it after the name is asking it too late. */}
+          <TextField
+            label="Contact Type" value={form.contactType} onChange={setField('contactType')}
+            select fullWidth helperText="Whose representative this is."
+          >
+            <MenuItem value="">—</MenuItem>
+            {CONTACT_TYPES.map((t) => (
+              <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>
+            ))}
+          </TextField>
           <Autocomplete
             freeSolo
             fullWidth
@@ -124,15 +146,6 @@ export default function CSRContactModal({ open, contact, onClose, onSave, saving
             )}
           />
           <TextField label="Designation" value={form.designation} onChange={setField('designation')} fullWidth />
-          <TextField
-            label="Contact Type" value={form.contactType} onChange={setField('contactType')}
-            select fullWidth helperText="Whose representative this is."
-          >
-            <MenuItem value="">—</MenuItem>
-            {CONTACT_TYPES.map((t) => (
-              <MenuItem key={t} value={t}>{t} representative</MenuItem>
-            ))}
-          </TextField>
           <TextField label="Email" value={form.email} onChange={setField('email')} fullWidth />
           <TextField label="Phone" value={form.phone} onChange={setField('phone')} fullWidth />
         </Stack>
