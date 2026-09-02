@@ -1798,3 +1798,69 @@
 .csrx .ph p{font-size:13.5px}
 .csrx .sb input,.csrx .sel{font-size:13.5px}
 .csrx .sb,.csrx .sel{height:42px}
+
+/* =========================================================================
+   LINE HEIGHT 1.7, AND ROOM TO BREATHE.
+   Text was set between 1.2 and 1.55 throughout, which is why the screens read
+   as squeezed however much padding went around them — the crowding was inside
+   the text, not around it. 1.7 is the base; only a figure and a single-line
+   chip stay tighter, because leading on a number that occupies one line does
+   nothing but push its own label away.
+   ========================================================================= */
+.csrx{line-height:1.7}
+.csrx p,
+.csrx .ph p,
+.csrx .lrow .t1,
+.csrx .lrow .t2,
+.csrx .stat-k,
+.csrx .legend-nm,
+.csrx .setrow-n,
+.csrx .setrow-s,
+.csrx .blk p,
+.csrx .limit-sub,
+.csrx .limit-warn,
+.csrx .ucard-pc,
+.csrx .ucard-oop,
+.csrx .uk,
+.csrx .dv,
+.csrx .empty{line-height:1.7}
+
+/* A figure is one line by definition; 1.7 on it only pushes its label away. */
+.csrx .stat-v,.csrx .flow-total,.csrx .donut-v,.csrx .gate-n,
+.csrx .utot-v,.csrx .uv,.csrx .ph h2{line-height:1.2}
+.csrx .pill,.csrx .trend,.csrx .chip{line-height:1.4}
+
+/* Rows get the height that leading needs. */
+.csrx .lrow{padding:18px 20px}
+.csrx .setrow{padding:16px 20px}
+.csrx .lgrid-head{padding:15px 20px}
+
+/* ---- the expand control ---- */
+.csrx .lwrap{border-bottom:1px solid var(--line2)}
+.csrx .lwrap:last-of-type{border-bottom:0}
+.csrx .lwrap .lrow{border-bottom:0}
+.csrx .lend{display:flex;align-items:center;gap:10px;justify-content:flex-end}
+.csrx .xpand{
+  display:grid;place-items:center;width:28px;height:28px;flex:none;padding:0;
+  border:1px solid var(--line);border-radius:var(--r-ctl);background:var(--card);
+  color:var(--muted);cursor:pointer;
+  transition:background .15s,color .15s,border-color .15s,transform .2s;
+}
+.csrx .xpand:hover{background:var(--ground2);color:var(--ink);border-color:var(--line2)}
+.csrx .xpand svg{width:15px;height:15px;display:block}
+.csrx .xpand.on{transform:rotate(180deg);background:var(--g-wash);color:var(--g-deep);border-color:#CFE3D7}
+
+/* ---- what the chevron opens ---- */
+.csrx .ldetail{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:18px 24px;
+  padding:4px 20px 22px;background:#FAFCFB;
+  border-top:1px solid var(--line2);
+}
+.csrx .ldetail > div{display:flex;flex-direction:column;min-width:0;padding-top:16px}
+.csrx .ldetail .dfull{grid-column:1 / -1}
+.csrx .dk{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.csrx .dv{font-size:13.5px;color:var(--ink);margin-top:4px}
+
+@media (max-width:900px){
+  .csrx .ldetail{grid-template-columns:1fr 1fr}
+}

@@ -69,22 +69,36 @@ export default function CSRActivitiesPage() {
 
   const [activities, setActivities] = useState([]);
   const [projects, setProjects] = useState([]);
+  const [activityTypes, setActivityTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [projectFilter, setProjectFilter] = useState('All');
+  // Which rows are showing their detail. A Set so several can be open at
+  // once — an operator comparing two activities should not have to keep
+  // reopening the first.
+  const [open, setOpen] = useState(() => new Set());
+  const toggle = (id) => setOpen((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
       // The activity serializer ships projectId, not a project name — the name
       // has to come from the projects list and be joined here.
-      const [acts, projs] = await Promise.all([
+      const [acts, projs, types] = await Promise.all([
         csrAPI.activities.getAll(),
         csrAPI.projects.getAll(),
+        // The serializer ships activityTypeId, not a name — same join the
+        // project name already needs.
+        csrAPI.activityTypes.getAll().catch(() => []),
       ]);
       setActivities(asList(acts));
       setProjects(asList(projs));
+      setActivityTypes(asList(types));
       setError('');
     } catch (e) {
       setError(e.message || 'Could not load activities.');
@@ -95,6 +109,11 @@ export default function CSRActivitiesPage() {
 
   useEffect(() => { load(); }, [load]);
   useRefetchOnFocus(() => load(true));
+
+  const typeName = useMemo(() => {
+    const map = new Map(activityTypes.map((t) => [String(t.id), t.name]));
+    return (id) => map.get(String(id)) || null;
+  }, [activityTypes]);
 
   const projectName = useMemo(() => {
     const map = new Map(projects.map((p) => [String(p.id), p.name]));
@@ -170,19 +189,79 @@ export default function CSRActivitiesPage() {
                 : 'Clear the search or change the filter.'}
             </div>
           ) : rows.map((a) => (
-            <button
-              key={a.id}
-              type="button"
-              className="lgrid lrow"
-              aria-label={`Open ${a.title}, logged under ${projectName(a.projectId)}`}
-              onClick={() => navigate(`/csr/${a.projectId}`, { state: { tab: ACTIVITIES_TAB } })}
-            >
-              <span className="fig nowrap">{whenLabel(a)}</span>
-              <span className="t1">{a.title}</span>
-              <span className="t2">{a.location || '—'}</span>
-              <span className="t2">{projectName(a.projectId)}</span>
-              <span><StatusChip status={a.status} /></span>
-            </button>
+            <div className="lwrap" key={a.id}>
+              <div
+                role="button"
+                tabIndex={0}
+                className="lgrid lrow"
+                aria-label={`Open ${a.title}, logged under ${projectName(a.projectId)}`}
+                onClick={() => navigate(`/csr/${a.projectId}`, { state: { tab: ACTIVITIES_TAB } })}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    navigate(`/csr/${a.projectId}`, { state: { tab: ACTIVITIES_TAB } });
+                  }
+                }}
+              >
+                <span className="fig nowrap">{whenLabel(a)}</span>
+                <span className="t1">{a.title}</span>
+                <span className="t2">{a.location || '—'}</span>
+                <span className="t2">{projectName(a.projectId)}</span>
+                <span className="lend">
+                  <StatusChip status={a.status} />
+                  <button
+                    type="button"
+                    className={`xpand${open.has(a.id) ? ' on' : ''}`}
+                    aria-expanded={open.has(a.id)}
+                    aria-label={`${open.has(a.id) ? 'Hide' : 'Show'} details for ${a.title}`}
+                    onClick={(e) => { e.stopPropagation(); toggle(a.id); }}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                         strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
+                  </button>
+                </span>
+              </div>
+
+              {/* Only fields the serializer actually returns. It ships ids, not
+                  names, and carries no description — a row of em dashes for
+                  fields that cannot exist is worse than not offering them. */}
+              {open.has(a.id) && (
+                <div className="ldetail">
+                  <div>
+                    <span className="dk">Activity type</span>
+                    <span className="dv">{typeName(a.activityTypeId) || 'Not set'}</span>
+                  </div>
+                  <div>
+                    <span className="dk">Delivered by</span>
+                    <span className="dv">{a.deliveryMode || 'Not set'}</span>
+                  </div>
+                  <div>
+                    <span className="dk">Starts</span>
+                    <span className="dv">{fmtDay(a.startDate || a.date)}</span>
+                  </div>
+                  <div>
+                    <span className="dk">Ends</span>
+                    <span className="dv">{a.endDate ? fmtDay(a.endDate) : 'Single day'}</span>
+                  </div>
+                  <div>
+                    <span className="dk">Linked trial</span>
+                    <span className="dv">{a.linkedTrialId ? `Trial #${a.linkedTrialId}` : 'None'}</span>
+                  </div>
+                  <div>
+                    <span className="dk">Partner</span>
+                    <span className="dv">{a.linkedVendorId ? `Vendor #${a.linkedVendorId}` : 'Delivered in-house'}</span>
+                  </div>
+                  <div>
+                    <span className="dk">Logged</span>
+                    <span className="dv">{fmtDay(a.createdAt)}</span>
+                  </div>
+                  <div>
+                    <span className="dk">Status</span>
+                    <span className="dv">{a.status || 'Unknown'}</span>
+                  </div>
+                </div>
+              )}
+            </div>
           ))}
 
           {rows.length > 0 && (
