@@ -28,7 +28,12 @@
        --r-ctl   things you press or type in: buttons, inputs, nav links, pagers
        --r-chip  small identity squares: avatars, badges
        --r-pill  status pills only */
-  --r-card:8px; --r-ctl:6px; --r-chip:5px; --r-pill:999px;
+  /* ONE radius. The three-step scale was correct in principle and wrong in
+     practice: a card at 8, a search field at 6 and an avatar at 5 read as
+     three slightly-off curves rather than as a system, because nothing on
+     these screens is far enough apart in size to justify the steps. Every
+     rectangle takes the same value; only a pill stays a pill. */
+  --r-card:8px; --r-ctl:8px; --r-chip:8px; --r-pill:999px;
   --rf:999px;
   --serif:"Zodiak",Georgia,serif; --ui:"Switzer",system-ui,-apple-system,sans-serif;
   --disp:"Cabinet Grotesk","Switzer",system-ui,sans-serif;
@@ -701,9 +706,9 @@
    ========================================================================= */
 .sidebar.sidebar--csr .sidebar-promo{border-radius:18px}
 .sidebar.sidebar--csr .sidebar-link{border-radius:10px}
-.sidebar.sidebar--csr .sidebar-toggle{border-radius:8px}
+.sidebar.sidebar--csr .sidebar-toggle,
 .sidebar.sidebar--csr .sidebar-brand-icon,
-.sidebar.sidebar--csr .sidebar-promo-icon{border-radius:8px}
+.sidebar.sidebar--csr .sidebar-promo-icon{border-radius:10px}
 
 /* The name is the thing you actually read down here — it was set smaller than
    the nav labels above it, which made the person signed in the quietest item
@@ -1374,3 +1379,15 @@
 @media (max-width:720px){
   .csrx .dash > .stats{grid-template-columns:1fr}
 }
+
+/* =========================================================================
+   ONE LEFT EDGE.
+   The section title sat 42px left of the cards below it. Two different insets
+   were in play: the header is a sibling of .dashboard-page and carried its own
+   30px, while the content went through .dashboard-page's 40px AND .csrx-page's
+   32px. Give the content wrapper no horizontal padding for CSR and let
+   .csrx-page own the inset, then hand the header the same number. Both edges
+   are now 32px from the rail, and there is exactly one value to change.
+   ========================================================================= */
+.dashboard-layout:has(.sidebar--csr) .dashboard-page{padding-left:0;padding-right:0}
+.dashboard-layout:has(.sidebar--csr) .dashboard-header{padding-left:32px;padding-right:32px}
