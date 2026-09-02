@@ -86,7 +86,7 @@ const initials = (name) =>
 // than being dropped.
 // The identity row is also the account control. CSR is its own front door at
 // /csr/login, so signing out returns there rather than to TTA's /login.
-function AccountRow({ user }) {
+function AccountRow({ user, compact = false }) {
   const name = [user?.first_name, user?.last_name].filter(Boolean).join(' ') || user?.name || user?.email || '';
   const [anchor, setAnchor] = React.useState(null);
   const { logout } = useAuth();
@@ -104,20 +104,25 @@ function AccountRow({ user }) {
     <>
       <button
         type="button"
-        className="sidebar-who"
+        className={`sidebar-who${compact ? ' sidebar-who--mini' : ''}`}
         aria-haspopup="menu"
         aria-expanded={Boolean(anchor)}
         aria-label={`Account menu for ${name}`}
+        title={compact ? name : undefined}
         onClick={(e) => setAnchor(e.currentTarget)}
       >
         <span className="sidebar-who-av">{initials(name)}</span>
-        <span className="sidebar-who-txt">
-          <span className="sidebar-who-name">{name}</span>
-          <span className="sidebar-who-role">{user?.role}</span>
-        </span>
-        <span className="sidebar-who-cv" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6" /></svg>
-        </span>
+        {!compact && (
+          <>
+            <span className="sidebar-who-txt">
+              <span className="sidebar-who-name">{name}</span>
+              <span className="sidebar-who-role">{user?.role}</span>
+            </span>
+            <span className="sidebar-who-cv" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6" /></svg>
+            </span>
+          </>
+        )}
       </button>
 
       <Menu
@@ -188,6 +193,7 @@ export default function CSRSidebar({ collapsed, onToggle }) {
       variant="csr"
       brandIcon={LeafMark}
       footer={<PromoCard user={user} />}
+      footerCollapsed={<AccountRow user={user} compact />}
     >
       {item({ to: '/csr', icon: <CSRIcon fontSize="small" />, label: 'Dashboard', end: true })}
       {canView('csr') && item({ to: '/csr/projects', icon: <ProjectsIcon fontSize="small" />, label: 'Projects', forceActive: onProjectDetail })}
