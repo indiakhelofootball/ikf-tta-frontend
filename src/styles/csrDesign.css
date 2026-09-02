@@ -1498,3 +1498,38 @@
    inside a box. */
 .csrx .dash > .stats,
 .csrx .dash > .quick{padding:0}
+
+/* =========================================================================
+   TOP ROW, BUILT TO THE REFERENCE.
+   Measured across the reference's top row: cards at 182 / 181 / 181px with
+   13px and 12px gaps between them, each with its own border and its own four
+   rounded corners. They are SEPARATE cards. The divided strip built earlier
+   was wrong; this reverts it.
+
+   The left block in row two stays a divided panel, because there the reference
+   genuinely does draw one — which is what misled me into dividing this row.
+   ========================================================================= */
+.csrx .dash > .stats{
+  background:transparent;border:0;box-shadow:none;overflow:visible;
+  gap:14px;align-items:stretch;padding:0;
+}
+.csrx .stats > .stat{
+  background:var(--card);border:1px solid #EDF0EF;border-left:1px solid #EDF0EF;
+  border-radius:var(--r-card);box-shadow:0 1px 2px rgba(28,44,38,.04);
+}
+
+/* The badge is GREY in every cell. The reference carries colour on the chip
+   alone; tinting the badge as well makes four cells shout at once, which is
+   the loudest difference between the two screens. */
+.csrx .stat-ic,
+.csrx .stat-ic.g,
+.csrx .stat-ic.b,
+.csrx .stat-ic.o,
+.csrx .stat-ic.n{background:var(--ground2);color:var(--soft)}
+
+/* Cell metrics off the reference: ~18px of padding, and a figure set a step
+   below what I had it at. */
+.csrx .stats > .stat{padding:18px}
+.csrx .stat-top{margin-bottom:12px}
+.csrx .stat-v{font-size:18px;margin-top:4px}
+.csrx .stat-k{font-size:12px}
