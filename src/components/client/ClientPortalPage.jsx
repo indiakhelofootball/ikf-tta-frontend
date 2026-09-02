@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { ThemeProvider } from '@mui/material/styles';
 import {
-  Box, Container, Typography, Tabs, Tab, List, ListItem, ListItemText, Chip,
-  CircularProgress, AppBar, Toolbar, Button, Link, Stack, Alert, Divider, Tooltip,
+  Box, Typography, List, ListItem, ListItemText, Chip,
+  CircularProgress, Button, Link, Stack, Alert, Divider, Tooltip,
   LinearProgress,
 } from '@mui/material';
 import { OpenInNew as OpenIcon, Download as DownloadIcon } from '@mui/icons-material';
@@ -11,6 +11,7 @@ import { clientAPI } from '../../services/api';
 import { downloadCertificatePdf } from '../../utils/certificatePdf';
 import { useAuth } from '../../auth/AuthContext';
 import clientThemeFrom from './clientTheme';
+import '../../styles/clientPortal.css';
 import ClientChangePasswordDialog from './ClientChangePasswordDialog';
 import { FAILED_STATUSES } from '../csr/csrContractRules';
 
@@ -105,49 +106,69 @@ export default function ClientPortalPage() {
 
   return (
     <ThemeProvider theme={clientThemeFrom(brand)}>
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <AppBar position="static" color="default" elevation={1}>
-        <Toolbar sx={{ gap: 1 }}>
-          {/* A funder's logo is hosted wherever they gave us a URL, so it can
-              rot without warning. Without onError, one dead link makes a broken
-              image glyph the first thing they see on their own branded portal.
-              Failing back to the wordmark alone is invisible; a broken icon is
-              not. */}
-          {brand?.logoUrl && !logoBroken && (
-            <Box
-              component="img"
-              src={brand.logoUrl}
-              alt={title}
-              onError={() => setLogoBroken(true)}
-              sx={{ height: 36, mr: 1 }}
-            />
-          )}
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
-            {title}
-          </Typography>
-          <Button onClick={() => setPwOpen(true)}>Change password</Button>
-          <Button onClick={logout}>Sign out</Button>
-        </Toolbar>
-      </AppBar>
+    {/* The funder's own colour drives every accent below. clientTheme already
+        derives a readable ink for it; the CSS reads both as variables so a
+        funder with nothing recorded falls back to graphite rather than to
+        another funder's brand — or to CSR's green, which would be worse. */}
+    <div
+      className="cportal"
+      style={brand?.primaryColor ? {
+        '--brand': brand.primaryColor,
+        '--brand-wash': `${brand.primaryColor}14`,
+      } : undefined}
+    >
+      <div className="cbar">
+        {/* A funder's logo is hosted wherever they gave us a URL, so it can rot
+            without warning. Without onError, one dead link makes a broken image
+            glyph the first thing they see on their own branded portal. Failing
+            back to the wordmark alone is invisible; a broken icon is not. */}
+        {brand?.logoUrl && !logoBroken && (
+          <img
+            className="cbar-logo"
+            src={brand.logoUrl}
+            alt={title}
+            onError={() => setLogoBroken(true)}
+          />
+        )}
+        <span className="cbar-name">{title}</span>
+        <Button onClick={() => setPwOpen(true)}>Change password</Button>
+        <Button onClick={logout}>Sign out</Button>
+      </div>
 
-      <Container maxWidth="md" sx={{ py: 3 }}>
+      <div className="cwrap">
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}><CircularProgress /></Box>
         ) : error ? (
           <Alert severity="error">{error}</Alert>
         ) : !project ? (
-          <Typography color="text.secondary" sx={{ py: 4 }}>
-            No project is linked to your account yet.
-          </Typography>
+          <div className="cpanel">
+            <div className="cempty">
+              <strong>No project is linked to your account yet.</strong>
+              Ask your programme contact to link one.
+            </div>
+          </div>
         ) : (
           <>
-            <Tabs value={tab} onChange={(e, v) => setTab(v)} sx={{ mb: 2 }}>
-              <Tab label="My Project" />
-              <Tab label={`Activities (${activities.length})`} />
-              <Tab label={`Reports (${reports.length})`} />
-              <Tab label={`Deliverables (${deliverables.length})`} />
-              <Tab label="Certificate" />
-            </Tabs>
+            <div className="ctabs" role="tablist">
+              {[
+                'My Project',
+                `Activities (${activities.length})`,
+                `Reports (${reports.length})`,
+                `Deliverables (${deliverables.length})`,
+                'Certificate',
+              ].map((label, i) => (
+                <button
+                  key={label}
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === i}
+                  className={`ctab${tab === i ? ' on' : ''}`}
+                  onClick={() => setTab(i)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
 
             {/* Delivery leads. This tab used to open with Funder / Sanctioned /
                 Status / Start / End and nothing else -- five facts the funder
@@ -165,75 +186,89 @@ export default function ClientPortalPage() {
                 funder payload by isolation policy, and adding one is a policy
                 change with an allowlist serializer attached, not a UI edit. */}
             {tab === 0 && (
-              <Box>
-                <Typography variant="overline" color="text.secondary">
-                  Delivered so far
-                </Typography>
-                {deliverables.length === 0 ? (
-                  <Typography color="text.secondary" sx={{ py: 1, maxWidth: '52ch' }}>
-                    {activities.length > 0
-                      ? `${activities.length} activit${activities.length === 1 ? 'y has' : 'ies have'} been recorded under this grant. Once the grant agreement is loaded, what was promised is tracked here against what has been delivered.`
-                      : 'Nothing has been recorded against this grant yet. Activities and delivery progress appear here as they happen.'}
-                  </Typography>
-                ) : (
-                  <Stack spacing={2.5} sx={{ mt: 1.5 }}>
-                    {deliverables.map((d) => {
+              <>
+                <div className="cpanel">
+                  <div className="ckicker">Delivered so far</div>
+                  {deliverables.length === 0 ? (
+                    <p className="clede">
+                      {activities.length > 0
+                        ? `${activities.length} activit${activities.length === 1 ? 'y has' : 'ies have'} been recorded under this grant. Once the grant agreement is loaded, what was promised is tracked here against what has been delivered.`
+                        : 'Nothing has been recorded against this grant yet. Activities and delivery progress appear here as they happen.'}
+                    </p>
+                  ) : (
+                    deliverables.map((d) => {
                       const percent = deliverablePercent(d);
                       return (
-                        <Box key={d.id}>
-                          <Stack
-                            direction="row" spacing={2}
-                            sx={{ alignItems: 'baseline', justifyContent: 'space-between' }}
-                          >
-                            <Typography variant="body1">{d.title}</Typography>
-                            <Typography variant="h6" component="p" sx={{ whiteSpace: 'nowrap' }}>
-                              {d.completedCount ?? 0}
-                              <Typography component="span" variant="body2" color="text.secondary">
-                                {d.targetCount != null ? ` of ${d.targetCount}` : ''}
-                              </Typography>
-                            </Typography>
-                          </Stack>
-                          {percent != null && (
-                            <LinearProgress
-                              variant="determinate"
-                              value={percent}
-                              aria-label={`Progress for ${d.title}`}
-                              sx={{ mt: 0.75, height: 6, borderRadius: 3 }}
-                            />
-                          )}
-                        </Box>
+                        <div className="crow" key={d.id}>
+                          <div className="crow-main">
+                            <div className="crow-t">{d.title}</div>
+                            {percent != null && (
+                              <div className="ctrack">
+                                <div
+                                  className="cfill"
+                                  style={{ width: `${Math.min(100, percent)}%` }}
+                                  role="progressbar"
+                                  aria-label={`Progress for ${d.title}`}
+                                  aria-valuenow={Math.round(percent)}
+                                />
+                              </div>
+                            )}
+                          </div>
+                          <div className="crow-end">
+                            <span className="cfact-v">{d.completedCount ?? 0}</span>
+                            {d.targetCount != null && (
+                              <span className="crow-s"> of {d.targetCount}</span>
+                            )}
+                          </div>
+                        </div>
                       );
-                    })}
-                  </Stack>
-                )}
+                    })
+                  )}
 
-                <Stack direction="row" spacing={4} flexWrap="wrap" useFlexGap sx={{ mt: 3 }}>
-                  <Field
-                    label="Activities recorded"
-                    value={activities.length ? String(activities.length) : '—'}
-                  />
-                  <Field
-                    label="Reports available"
-                    value={reports.length ? String(reports.length) : '—'}
-                  />
-                </Stack>
+                  <div className="ccounts">
+                    <div>
+                      <div className="ccount-n">{activities.length || '—'}</div>
+                      <div className="ccount-k">Activities recorded</div>
+                    </div>
+                    <div>
+                      <div className="ccount-n">{reports.length || '—'}</div>
+                      <div className="ccount-k">Reports available</div>
+                    </div>
+                  </div>
+                </div>
 
-                <Divider sx={{ my: 2.5 }} />
-
-                <Stack direction="row" spacing={4} flexWrap="wrap" useFlexGap>
-                  <Field label="Funder" value={project.clientName} />
-                  <Field label="Sanctioned" value={`₹${Number(project.sanctionedAmount || 0).toLocaleString('en-IN')}`} />
-                  <Field label="Status" value={project.status} />
-                  <Field label="Start" value={project.startDate} />
-                  <Field label="End" value={project.endDate} />
-                </Stack>
-                {project.description && (
-                  <>
-                    <Divider sx={{ my: 2 }} />
-                    <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{project.description}</Typography>
-                  </>
-                )}
-              </Box>
+                <div className="cpanel">
+                  <div className="ckicker">The grant</div>
+                  <div className="cfacts">
+                    <div className="cfact">
+                      <div className="cfact-k">Funder</div>
+                      <div className="cfact-v">{project.clientName || '\u2014'}</div>
+                    </div>
+                    <div className="cfact">
+                      <div className="cfact-k">Sanctioned</div>
+                      <div className="cfact-v">
+                        &#8377;{Number(project.sanctionedAmount || 0).toLocaleString('en-IN')}
+                      </div>
+                    </div>
+                    <div className="cfact">
+                      <div className="cfact-k">Status</div>
+                      <div className="cfact-v">{project.status || '\u2014'}</div>
+                    </div>
+                    <div className="cfact">
+                      <div className="cfact-k">Period</div>
+                      <div className="cfact-v">
+                        {project.startDate || '\u2014'}
+                        {project.endDate ? ` \u2013 ${project.endDate}` : ''}
+                      </div>
+                    </div>
+                  </div>
+                  {project.description && (
+                    <p className="clede" style={{ marginTop: 18, whiteSpace: 'pre-wrap' }}>
+                      {project.description}
+                    </p>
+                  )}
+                </div>
+              </>
             )}
 
             {tab === 1 && (
@@ -427,9 +462,9 @@ export default function ClientPortalPage() {
             )}
           </>
         )}
-      </Container>
+      </div>
       <ClientChangePasswordDialog open={pwOpen} onClose={() => setPwOpen(false)} />
-    </Box>
+    </div>
     </ThemeProvider>
   );
 }
