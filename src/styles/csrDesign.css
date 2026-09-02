@@ -1350,3 +1350,27 @@
 .sidebar.sidebar--csr.sidebar-collapsed .sidebar-toggle{
   display:flex;align-items:center;justify-content:center;height:32px;
 }
+
+/* =========================================================================
+   FOUR CARDS ACROSS THE TOP. The featured card is gone; the stats row takes
+   the width it held and runs four equal tiles. Must stay after the responsive
+   block above, so it re-states its own breakpoints.
+   ========================================================================= */
+.csrx .dash > .stats{grid-column:1 / span 2;grid-row:1;grid-template-columns:repeat(4,1fr)}
+.csrx .stat-ic.n{background:var(--ground2);color:var(--soft)}
+
+@media (max-width:1280px){
+  .csrx .dash > .stats{grid-column:1;grid-row:1;grid-template-columns:repeat(2,1fr)}
+  .csrx .dash > .statistic{grid-column:2;grid-row:1 / span 3}
+  .csrx .dash > .quick    {grid-column:1;grid-row:2}
+  .csrx .dash > .flow     {grid-column:1;grid-row:3}
+}
+@media (max-width:1040px){
+  .csrx .dash > .stats{grid-column:1;grid-row:auto}
+  .csrx .dash > .statistic,
+  .csrx .dash > .quick,
+  .csrx .dash > .flow{grid-column:1;grid-row:auto}
+}
+@media (max-width:720px){
+  .csrx .dash > .stats{grid-template-columns:1fr}
+}

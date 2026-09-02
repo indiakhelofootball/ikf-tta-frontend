@@ -113,13 +113,20 @@ const ic = (d) => (
 // `trend` is a plain statement of the same number in another form, not an
 // invented period-over-period delta — there is no history series behind this
 // data, and a fabricated arrow would be a lie in a financial view.
-// The three figures BESIDE the card, and none of them may repeat what the card
-// already says. The card owns the sanctioned total, the way the reference's
-// card owns the balance; these are the three ways that total is currently
-// accounted for. "Not counted" is the one an operator has to act on: money
-// tagged to a grant whose payment never completed, invisible in every other
-// total on this screen.
-const STATS = (utilised, remaining, excluded, excludedCount, utilPct) => [
+// Four cards across the top, each a different figure. "Not counted" is the one
+// an operator has to act on: money tagged to a grant whose payment never
+// completed, invisible in every other total on this screen — sanctioned does
+// not include it, utilised excludes it by definition, and remaining counts it
+// as unspent.
+const STATS = (sanctioned, utilised, remaining, excluded, excludedCount, utilPct, openCount) => [
+  {
+    k: 'Total Sanctioned',
+    v: fmtINR(sanctioned),
+    trend: `${openCount} open ${openCount === 1 ? 'grant' : 'grants'}`,
+    tone: 'neutral',
+    hue: 'n',
+    icon: ic(<><circle cx="12" cy="12" r="9" /><path d="M12 7v10M9.5 9.5c0-1 1-1.7 2.5-1.7s2.5.7 2.5 1.7-1 1.5-2.5 1.5-2.5.7-2.5 1.7 1 1.8 2.5 1.8 2.5-.8 2.5-1.8" /></>),
+  },
   {
     k: 'Utilised',
     v: fmtINR(utilised || 0),
@@ -211,32 +218,6 @@ export default function CSRDashboard() {
   const sanctioned = openP.reduce((s, p) => s + (Number(p.sanctionedAmount) || 0), 0);
   const utilPct = sanctioned > 0 ? ((utilised || 0) / sanctioned) * 100 : 0;
   const remaining = sanctioned - (utilised || 0);
-  const funderCount = useMemo(
-    () => new Set(projects.map((x) => x.clientName).filter(Boolean)).size,
-    [projects],
-  );
-
-  // The window the portfolio actually covers: earliest start to latest end
-  // across the open grants. An em dash between two years, or a single year when
-  // they coincide; "—" when no grant carries dates at all.
-  const period = useMemo(() => {
-    // The falsy guard is load-bearing: `new Date(null)` is the epoch, not an
-    // invalid date, so a grant with no start date parsed as 1970 and dragged
-    // the whole portfolio period back with it.
-    const year = (v) => {
-      if (!v) return null;
-      const d = new Date(v);
-      return Number.isNaN(d.getTime()) ? null : d.getFullYear();
-    };
-    const starts = openP.map((x) => year(x.startDate)).filter(Boolean);
-    const ends = openP.map((x) => year(x.endDate)).filter(Boolean);
-    if (!starts.length && !ends.length) return '\u2014';
-    const from = starts.length ? Math.min(...starts) : Math.min(...ends);
-    const to = ends.length ? Math.max(...ends) : Math.max(...starts);
-    return from === to ? String(from) : `${from}\u2013${to}`;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projects]);
-
   // Sanctioned against utilised, per grant — the pair the reference charts.
   const series = useMemo(() => {
     const rows = openP
@@ -286,40 +267,8 @@ export default function CSRDashboard() {
         <>
           {/* ---- row 1: the lead grant, the three figures, the split ---- */}
           <div className="dash">
-            {/* The reference's lead card is the ACCOUNT — one balance, whose
-                money it is, and the card it sits on. The CSR equivalent is the
-                portfolio, not one grant picked by size: "how much do we hold
-                and how much is left" is the question this screen exists to
-                answer. Naming a single grant here answered a question nobody
-                asked and left the total homeless. */}
-            <div className="feature">
-              <div className="feature-top">
-                <span className="feature-ic">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M7 17L17 7M9 7h8v8" /></svg>
-                </span>
-                <span className="feature-pct">{Math.round(utilPct)}% used</span>
-              </div>
-              <div className="feature-k">CSR Portfolio</div>
-              <div className="feature-sub">
-                {openP.length} open grant{openP.length === 1 ? '' : 's'} · {funderCount} funder{funderCount === 1 ? '' : 's'}
-              </div>
-              {/* Left is the balance, right is the detail that qualifies it —
-                  the same shape as the reference's card, where the balance sits
-                  beside the expiry rather than beside a second copy of itself. */}
-              <div className="feature-foot">
-                <span>
-                  <span className="fl">Total sanctioned</span>
-                  <span className="fv fig">{fmtINR(sanctioned)}</span>
-                </span>
-                <span>
-                  <span className="fl">Period</span>
-                  <span className="fv sm fig">{period}</span>
-                </span>
-              </div>
-            </div>
-
             <div className="stats">
-              {STATS(utilised, remaining, excluded.amount, excluded.count, utilPct).map((t) => (
+              {STATS(sanctioned, utilised, remaining, excluded.amount, excluded.count, utilPct, openP.length).map((t) => (
                 <div className="stat" key={t.k}>
                   <div className="stat-top">
                     <span className={`stat-ic ${t.hue}`}>{t.icon}</span>
