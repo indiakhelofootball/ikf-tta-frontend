@@ -6,7 +6,7 @@ import {
 
 const EMPTY = {
   reference: '', title: '', amount: '', contractFileName: '', contractDriveLink: '',
-  documentDate: '', startDate: '', endDate: '', notes: '',
+  startDate: '', endDate: '', notes: '',
 };
 
 export default function CSRContractModal({ open, contract, onClose, onSave, saving, serverErrors }) {
@@ -21,7 +21,6 @@ export default function CSRContractModal({ open, contract, onClose, onSave, savi
         amount: contract.amount ?? '',
         contractFileName: contract.contractFileName || '',
         contractDriveLink: contract.contractDriveLink || '',
-        documentDate: contract.documentDate || '',
         startDate: contract.startDate || '',
         endDate: contract.endDate || '',
         notes: contract.notes || '',
@@ -65,7 +64,6 @@ export default function CSRContractModal({ open, contract, onClose, onSave, savi
       amount: form.amount,
       contractFileName: form.contractFileName.trim(),
       contractDriveLink: form.contractDriveLink.trim(),
-      documentDate: form.documentDate || null,
       startDate: form.startDate || null,
       endDate: form.endDate || null,
       notes: form.notes.trim(),
@@ -97,17 +95,6 @@ export default function CSRContractModal({ open, contract, onClose, onSave, savi
           {/* Signed Date removed on the 26 Aug client review ("we will remove
               the sign date"). The backend column is kept so no recorded date is
               destroyed; it is simply no longer asked for or served. */}
-          {/* Document date sits WITH the other two, not where the sign date
-              used to be. The 26 Aug review removed the sign date and named this
-              as its replacement in the same breath — by the time a grant
-              reaches CSR the contract is signed, so the date that matters is
-              the one printed on the document in hand. */}
-          <TextField
-            label="Document Date" value={form.documentDate}
-            onChange={setField('documentDate')}
-            type="date" slotProps={{ inputLabel: { shrink: true } }}
-            error={!!errors.documentDate} helperText={errors.documentDate} fullWidth
-          />
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
             <TextField
               label="Start Date" value={form.startDate} onChange={setField('startDate')}
