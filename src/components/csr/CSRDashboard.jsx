@@ -80,7 +80,7 @@ function BarPairs({ rows }) {
             onMouseEnter={() => setHot(i)}
             onMouseLeave={() => setHot((h) => (h === i ? null : h))}
           >
-            <div className="pairbars">
+            <div className={`pairbars k${(i % 6) + 1}`}>
               <span className="bar sanc" style={{ height: `${Math.max(3, r.hs)}%` }} />
               <span className="bar util" style={{ height: `${Math.max(3, r.hu)}%` }} />
             </div>
@@ -269,7 +269,7 @@ export default function CSRDashboard() {
           <div className="dash">
             <div className="panel stats">
               {STATS(sanctioned, utilised, remaining, excluded.amount, excluded.count, utilPct, openP.length).map((t) => (
-                <div className="stat" key={t.k}>
+                <div className={`stat tint-${t.hue}`} key={t.k}>
                   <div className="stat-top">
                     <span className={`stat-ic ${t.hue}`}>{t.icon}</span>
                     <span className="stat-dots" aria-hidden="true">⋮</span>

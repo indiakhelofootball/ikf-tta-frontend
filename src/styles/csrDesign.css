@@ -1604,3 +1604,74 @@
   .csrx .dash > .flow     {grid-column:2;grid-row:2}
   .csrx .dash > .statistic{grid-column:1 / span 2;grid-row:3}
 }
+
+/* =========================================================================
+   COLOUR AND SCALE ON THE DASHBOARD.
+   The screen was white cards on a white ground with two greens in the chart —
+   correct and characterless. Each card now carries a light gradient of its own
+   figure's hue, the header strip sits on a wash rather than on nothing, and
+   every grant in the chart gets its own colour instead of the whole series
+   being one green.
+
+   The tints are pale on purpose: the card ground stays a ground, the figure
+   stays the thing you read. Grounds tint, they do not shout.
+   ========================================================================= */
+
+/* ---- the section strip ---- */
+.dashboard-layout:has(.sidebar--csr) .dashboard-header{
+  background:linear-gradient(180deg,#F4F8F6 0%,#FBFCFB 100%);
+  min-height:60px;
+}
+.dashboard-layout:has(.sidebar--csr) .dashboard-header h1{
+  font-size:16px !important;font-weight:600 !important;letter-spacing:-.01em;
+  color:#1C2320 !important;
+}
+
+/* ---- the four cards, each a wash of its own figure ---- */
+.csrx .stats > .stat{border-color:rgba(28,44,38,.07)}
+.csrx .stat.tint-n{background:linear-gradient(158deg,#F1F5FA 0%,#FDFEFE 62%)}
+.csrx .stat.tint-g{background:linear-gradient(158deg,#EAF5EF 0%,#FBFDFC 62%)}
+.csrx .stat.tint-b{background:linear-gradient(158deg,#EDF1FB 0%,#FCFDFE 62%)}
+.csrx .stat.tint-o{background:linear-gradient(158deg,#FDF3E4 0%,#FEFDFB 62%)}
+
+/* With the card tinted, the badge takes the same hue again — greying it made
+   sense on a white card and reads as a hole on a coloured one. */
+.csrx .stat.tint-n .stat-ic{background:#E7ECF3;color:#4A5568}
+.csrx .stat.tint-g .stat-ic{background:#DCEDE4;color:#1B5E42}
+.csrx .stat.tint-b .stat-ic{background:#E1E9F8;color:#2F5FBF}
+.csrx .stat.tint-o .stat-ic{background:#FBE9CF;color:#8C5A11}
+
+/* ---- type, up a step across the block ---- */
+.csrx .stats > .stat{padding:20px}
+.csrx .stat-v{font-size:22px;line-height:1.15}
+.csrx .stat-k{font-size:13px}
+.csrx .trend{font-size:11.5px;padding:4px 10px}
+.csrx .stat-ic{width:30px;height:30px}
+.csrx .stat-ic svg{width:15px;height:15px}
+
+.csrx .stat-head h3{font-size:14.5px}
+.csrx .legend-nm,.csrx .legend-amt{font-size:12.5px}
+.csrx .stat-pair span{font-size:12.5px !important}
+.csrx .donut-v{font-size:16.5px}
+.csrx .qa{font-size:13px}
+.csrx .limit-k{font-size:13.5px}
+.csrx .limit-pc{font-size:13px}
+.csrx .limit-sub,.csrx .limit-warn{font-size:12px}
+.csrx .flow-total{font-size:24px}
+.csrx .flow-k,.csrx .flow-key{font-size:12px}
+.csrx .pairlbl{font-size:11px}
+
+/* ---- the chart: one colour per grant, and a gradient in the bar ---- */
+.csrx .pairbars .bar{border-radius:5px 5px 0 0}
+.csrx .pairbars.k1 .bar.sanc{background:linear-gradient(180deg,#3E8C67,#1B5E42)}
+.csrx .pairbars.k1 .bar.util{background:linear-gradient(180deg,#B7DCC9,#8AC3A7)}
+.csrx .pairbars.k2 .bar.sanc{background:linear-gradient(180deg,#5A7FD6,#2F5FBF)}
+.csrx .pairbars.k2 .bar.util{background:linear-gradient(180deg,#C6D5F3,#A9C0F0)}
+.csrx .pairbars.k3 .bar.sanc{background:linear-gradient(180deg,#D08A3C,#B5651D)}
+.csrx .pairbars.k3 .bar.util{background:linear-gradient(180deg,#F4DCBC,#E8C79A)}
+.csrx .pairbars.k4 .bar.sanc{background:linear-gradient(180deg,#9A5AAE,#7A3E8F)}
+.csrx .pairbars.k4 .bar.util{background:linear-gradient(180deg,#E3CFEA,#CDB0D9)}
+.csrx .pairbars.k5 .bar.sanc{background:linear-gradient(180deg,#3E93B5,#1B678D)}
+.csrx .pairbars.k5 .bar.util{background:linear-gradient(180deg,#C2E0EC,#9FCEE0)}
+.csrx .pairbars.k6 .bar.sanc{background:linear-gradient(180deg,#C25C8A,#A8386A)}
+.csrx .pairbars.k6 .bar.util{background:linear-gradient(180deg,#F2CFDF,#E3AEC7)}
