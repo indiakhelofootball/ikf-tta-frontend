@@ -49,7 +49,7 @@ const ALL_KIND_FIELDS = [
 ];
 
 const EMPTY = {
-  title: '', activityTypeId: '', date: '', startDate: '', endDate: '',
+  title: '', activityTypeId: '', startDate: '', endDate: '',
   location: '', status: 'Planned', linkedTrialId: '',
   workshopId: '', trainingProgrammeId: '', linkedVendorId: '',
   deliveryMode: '',
@@ -100,8 +100,9 @@ export default function CSRActivityModal({ open, activity, activityTypes, onClos
       setForm({
         title: activity.title || '',
         activityTypeId: activity.activityTypeId ?? '',
-        date: activity.date || '',
-        startDate: activity.startDate || '',
+        // A row created before the third field went carries only `date`;
+        // it loads into Start so the operator sees what was recorded.
+        startDate: activity.startDate || activity.date || '',
         endDate: activity.endDate || '',
         location: activity.location || '',
         status: activity.status || 'Planned',
@@ -152,7 +153,11 @@ export default function CSRActivityModal({ open, activity, activityTypes, onClos
     onSave({
       title: form.title.trim(),
       activityTypeId: Number(form.activityTypeId),
-      date: form.date || null,
+      // `date` is deliberately still sent. An activity EDITED after this
+      // change would otherwise keep a stale single date the form no longer
+      // shows and the user cannot correct — so the start date becomes the
+      // authority for both, and the two can never disagree again.
+      date: form.startDate || null,
       startDate: form.startDate || null,
       endDate: form.endDate || null,
       location: form.location.trim(),
@@ -192,24 +197,29 @@ export default function CSRActivityModal({ open, activity, activityTypes, onClos
               </MenuItem>
             ))}
           </TextField>
+          {/* TWO dates, not three. The form used to ask a single "Date" AND a
+              start/end pair, and the 26 Aug review caught it: «Activities का एक
+              date है। उसके नीचे फिर start date है। दोनों क्या लिख रहे हो?»
+              (10:10) — "activity has one date, below it a start date, why are
+              you writing both?" — and «I think यहाँ पर कुछ गलती हुआ है» (11:26).
+              A single-day activity sets start and leaves end blank; nothing
+              needs a third field to say so.
+
+              `date` is no longer collected. It stays on the model for rows that
+              already carry one, and every reader already falls through to
+              startDate — see sortKey and whenLabel in CSRActivitiesPage. */}
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
             <TextField
-              label="Date" value={form.date} onChange={setField('date')}
+              label="Start Date" value={form.startDate} onChange={setField('startDate')}
               type="date" slotProps={{ inputLabel: { shrink: true } }} fullWidth
-            />
-            <TextField label="Location" value={form.location} onChange={setField('location')} fullWidth />
-          </Stack>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-            <TextField
-              label="Start (multi-month)" value={form.startDate} onChange={setField('startDate')}
-              type="date" slotProps={{ inputLabel: { shrink: true } }} fullWidth
-              helperText="For programmes that run over months, e.g. a 6-month training."
+              helperText="Leave End blank for a single-day activity."
             />
             <TextField
-              label="End (multi-month)" value={form.endDate} onChange={setField('endDate')}
+              label="End Date" value={form.endDate} onChange={setField('endDate')}
               type="date" slotProps={{ inputLabel: { shrink: true } }} fullWidth
             />
           </Stack>
+          <TextField label="Location" value={form.location} onChange={setField('location')} fullWidth />
           <TextField label="Status" value={form.status} onChange={setField('status')} select fullWidth>
             {STATUS_OPTIONS.map((s) => (
               <MenuItem key={s} value={s}>{s}</MenuItem>

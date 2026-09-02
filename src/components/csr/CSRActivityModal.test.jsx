@@ -235,5 +235,44 @@ describe('CSRActivityModal', () => {
       expect(onSave).toHaveBeenCalledTimes(1);
       expect(onSave.mock.calls[0][0].deliveryMode).toBe('');
     });
+
+    // 26 Aug review, 10:10: "activity has one date, below it a start date, why
+    // are you writing both?" The form asked three. Pinned as a COUNT, because
+    // the failure mode is a third date creeping back and it has already
+    // happened once on the contract form.
+    describe('two dates, never three', () => {
+      test('the form offers exactly Start and End', () => {
+        renderModal();
+        const dateLabels = screen
+          .getAllByText(/date/i)
+          .map((el) => el.textContent.trim())
+          .filter((t) => /date/i.test(t));
+
+        expect(dateLabels).toEqual(
+          expect.arrayContaining(['Start Date', 'End Date']),
+        );
+        expect(screen.queryByLabelText(/^date$/i)).toBeNull();
+        expect(screen.queryByLabelText(/multi-month/i)).toBeNull();
+      });
+
+      test('the start date is the authority — date follows it, never diverges', () => {
+        const onSave = jest.fn();
+        renderModal({ onSave });
+        fillRequired();
+        fireEvent.change(screen.getByLabelText(/start date/i), {
+          target: { value: '2026-09-09' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: /save/i }));
+
+        const payload = onSave.mock.calls[0][0];
+        expect(payload.startDate).toBe('2026-09-09');
+        expect(payload.date).toBe('2026-09-09');
+      });
+
+      test('a row carrying only the old single date loads into Start', () => {
+        renderModal({ activity: { id: 5, title: 'Old one', activityTypeId: 1, date: '2026-05-05' } });
+        expect(screen.getByLabelText(/start date/i)).toHaveValue('2026-05-05');
+      });
+    });
   });
 });
