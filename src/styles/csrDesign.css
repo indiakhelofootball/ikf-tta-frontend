@@ -1090,3 +1090,72 @@
    the group keep the pair reading as a pair at any count. */
 .csrx .pairbars{gap:5px}
 .csrx .pairbars .bar{flex:none;width:16px;max-width:none}
+
+/* =========================================================================
+   CROSS-GRANT LOG PAGES — Activities and Reports.
+   Both are logs, not tables: every row is one record and the whole row opens
+   it, so a row is a <button> laid out on a grid rather than a <tr>. That is
+   why these do not reuse table.dt.
+   ========================================================================= */
+.csrx .lgrid{
+  display:grid;
+  grid-template-columns:150px 1fr 168px 190px 112px;
+  gap:14px;align-items:center;
+}
+.csrx .lgrid-head{
+  padding:11px 16px;border-bottom:1px solid var(--line);
+  font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:500;
+}
+.csrx .lrow{
+  width:100%;text-align:left;font:inherit;background:transparent;
+  border:0;border-bottom:1px solid var(--line2);
+  padding:12px 16px;cursor:pointer;
+  transition:background .13s;
+}
+.csrx .lrow:last-of-type{border-bottom:0}
+.csrx .lrow:hover{background:#F7FAF8}
+.csrx .lrow:focus-visible{outline-offset:-2px}
+.csrx .lrow .t1{
+  font-size:12.5px;font-weight:600;color:var(--ink);letter-spacing:-.008em;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.csrx .lrow .t2{
+  font-size:11.5px;color:var(--muted);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.csrx .lrow .fig{font-size:11.5px;color:var(--soft)}
+.csrx .nowrap{white-space:nowrap}
+
+/* The grant/document cell on Reports holds a link beside the name, so it is a
+   flex row rather than a bare span. */
+.csrx .lrow .t1wrap{display:flex;align-items:center;gap:7px;min-width:0}
+.csrx .lrow .t1wrap a{display:inline-flex;color:var(--muted);flex:none}
+.csrx .lrow .t1wrap a:hover{color:var(--g)}
+.csrx .lrow .t1wrap svg{width:13px;height:13px}
+
+/* Native select styled to match the search field beside it. */
+.csrx .sel{
+  font:inherit;font-size:13px;color:var(--ink);
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r-ctl);
+  padding:0 32px 0 13px;height:38px;min-width:200px;cursor:pointer;
+  appearance:none;-webkit-appearance:none;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237C8783' stroke-width='2'><path d='M6 9l6 6 6-6'/></svg>");
+  background-repeat:no-repeat;background-position:right 10px center;background-size:13px;
+}
+.csrx .sel:focus{outline:none;border-color:var(--g);box-shadow:0 0 0 3px var(--g-wash)}
+
+@media (max-width:1100px){
+  .csrx .lgrid{grid-template-columns:1fr;gap:4px}
+  .csrx .lgrid-head{display:none}
+}
+
+/* The gate figure on Reports — one number the page exists to keep at zero. */
+.csrx .gate{
+  display:flex;align-items:baseline;gap:12px;
+  background:var(--ground2);border-radius:var(--r-card);
+  padding:15px 18px;margin-bottom:16px;
+}
+.csrx .gate.hot{background:#FBF1DF}
+.csrx .gate-n{font-size:24px;font-weight:600;color:var(--ink);letter-spacing:-.025em}
+.csrx .gate.hot .gate-n{color:#8C5A11}
+.csrx .gate-t{font-size:12px;color:var(--muted);line-height:1.5}

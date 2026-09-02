@@ -41,9 +41,17 @@ import '../../styles/csrDesign.css';
 // up on Funders and Branding too. Handing the whole set to matchRoutes lets
 // react-router's own ranking (static segment beats dynamic) pick the one owner,
 // which is the same rule the router used to choose the page being rendered.
+//
+// EVERY static /csr route must be listed. Activities, Reports and Utilisation
+// were added to the rail without being added here, so `/csr/:id` was the best
+// match for all three and Projects lit up beside the real active item on each
+// of them.
 const CSR_ROUTES = [
   { path: '/csr' },
   { path: '/csr/projects' },
+  { path: '/csr/activities' },
+  { path: '/csr/reports' },
+  { path: '/csr/utilisation' },
   { path: '/csr/clients' },
   { path: '/csr/activity-types' },
   { path: '/csr/branding' },
