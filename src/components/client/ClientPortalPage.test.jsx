@@ -2,7 +2,7 @@
 // used to open with five facts the funder already knew -- funder, sanctioned,
 // status, start, end -- and put what was actually delivered two tabs away.
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
 jest.mock('react-router-dom', () => ({ __esModule: true, useNavigate: () => jest.fn() }), {
@@ -98,4 +98,76 @@ test('with no deliverables loaded the tab still says where the grant stands', as
   expect(
     await screen.findByText(/1 activity has been recorded under this grant/i)
   ).toBeInTheDocument();
+});
+
+// ---------------------------------------------------------------------------
+// The shell. Added when the portal was given a design (26 Aug review, 27:13 —
+// "inside, the website isn't coming"): the tab bar stopped being MUI's <Tabs>
+// and became plain buttons, and the brand colour started flowing through a CSS
+// variable. Both are behaviour, and neither had a test.
+// ---------------------------------------------------------------------------
+
+test('the tabs actually switch — the bar is our own markup now, not MUI\'s', async () => {
+  render(<ClientPortalPage />);
+  await screen.findByText(/Delivered so far/i);
+
+  // landing tab first
+  expect(screen.getByRole('tab', { name: /My Project/i })).toHaveAttribute('aria-selected', 'true');
+
+  fireEvent.click(screen.getByRole('tab', { name: /^Activities/i }));
+  expect(await screen.findByText(/Trial at Bhilai/i)).toBeInTheDocument();
+  expect(screen.getByRole('tab', { name: /^Activities/i })).toHaveAttribute('aria-selected', 'true');
+  expect(screen.getByRole('tab', { name: /My Project/i })).toHaveAttribute('aria-selected', 'false');
+
+  fireEvent.click(screen.getByRole('tab', { name: /^Reports/i }));
+  expect(await screen.findByText(/q1\.pdf/i)).toBeInTheDocument();
+});
+
+test('every tab the funder is offered is reachable', async () => {
+  render(<ClientPortalPage />);
+  await screen.findByText(/Delivered so far/i);
+
+  const tabs = screen.getAllByRole('tab');
+  expect(tabs).toHaveLength(5);
+
+  // each one selects when clicked — a tab that renders but cannot be chosen is
+  // worse than one that is absent
+  tabs.forEach((t, i) => {
+    fireEvent.click(t);
+    expect(screen.getAllByRole('tab')[i]).toHaveAttribute('aria-selected', 'true');
+  });
+});
+
+// THE WHITE-LABEL RULE. A funder's portal carries the FUNDER's colour. The
+// internal CSR system is moss green and must never reach this surface, and one
+// funder must never see another's brand. This is the same class of invariant as
+// "no utilisation figure reaches the funder" above — policy, not decoration.
+// Reading a CSS custom property needs the node — Testing Library has no query
+// for "what inline style does the shell carry", and the white-label rule lives
+// precisely in that style. Isolated here so the two tests below stay clean.
+const brandVar = () => {
+  // eslint-disable-next-line testing-library/no-node-access
+  const shell = document.querySelector('.cportal');
+  expect(shell).not.toBeNull();
+  return shell.style.getPropertyValue('--brand');
+};
+
+test("the funder's own colour drives the portal", async () => {
+  clientAPI.myBranding.mockResolvedValue({
+    slug: 'acme', displayName: 'Acme Foundation CSR', primaryColor: '#1B3A6B',
+  });
+  render(<ClientPortalPage />);
+  await screen.findByText(/Delivered so far/i);
+
+  expect(brandVar()).toBe('#1B3A6B');
+});
+
+test('a funder with no colour recorded gets the neutral fallback, never a borrowed brand', async () => {
+  clientAPI.myBranding.mockResolvedValue({ slug: 'acme', displayName: 'Acme Foundation CSR' });
+  render(<ClientPortalPage />);
+  await screen.findByText(/Delivered so far/i);
+
+  // nothing inline: the stylesheet's graphite default holds, and in particular
+  // no green leaks in from the internal system
+  expect(brandVar()).toBe('');
 });
