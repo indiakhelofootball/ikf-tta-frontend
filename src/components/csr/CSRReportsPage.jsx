@@ -16,20 +16,12 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Alert, Box, Container, InputAdornment, Link, MenuItem, Skeleton, Stack,
-  TextField, Tooltip, Typography,
-} from '@mui/material';
-import {
-  DescriptionOutlined as ReportsIcon,
-  OpenInNew as OpenIcon,
-  Search as SearchIcon,
-} from '@mui/icons-material';
+import { Alert } from '@mui/material';
 
 import { csrAPI } from '../../services/api';
 import useGrants from '../../auth/useGrants';
 import useRefetchOnFocus from '../../hooks/useRefetchOnFocus';
-import { surfaces, inks, figure, fonts, tabular } from '../../styles/ttaTheme';
+import '../../styles/csrDesign.css';
 
 const asList = (data) => (Array.isArray(data) ? data : data?.results || []);
 
@@ -54,28 +46,16 @@ const fmtDay = (value) => {
   return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 };
 
+// Steel for released, ochre for held back. Ochre means "waiting on you", which
+// is exactly what an unreleased report is.
 function GateChip({ visible }) {
-  const ink = visible ? inks.teal : inks.ochre;
   return (
-    <Box
-      component="span"
-      sx={{
-        display: 'inline-block',
-        px: 1,
-        py: 0.25,
-        borderRadius: 9999,
-        fontFamily: fonts.sans,
-        fontSize: '0.6875rem',
-        fontWeight: 600,
-        whiteSpace: 'nowrap',
-        bgcolor: ink.tint,
-        color: ink.text,
-      }}
-    >
+    <span className={`pill ${visible ? 'act' : 'wait'}`}>
       {visible ? 'Client-visible' : 'Internal'}
-    </Box>
+    </span>
   );
 }
+
 
 export default function CSRReportsPage() {
   const navigate = useNavigate();
@@ -151,128 +131,75 @@ export default function CSRReportsPage() {
   }
 
   return (
-    <Container maxWidth="xl" sx={{ py: 3 }}>
-      <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 0.5 }}>
-        <Box sx={{
-          width: 34, height: 34, borderRadius: 1.5, flex: 'none',
-          display: 'grid', placeItems: 'center',
-          bgcolor: inks.ochre.tint, color: inks.ochre.text,
-          '& svg': { fontSize: 18 },
-        }}>
-          <ReportsIcon />
-        </Box>
-        <Typography variant="h4">Reports</Typography>
-      </Stack>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
-        Every report across every grant. A report reaches the funder only once it
-        is marked client-visible.
-      </Typography>
+    <div className="csrx csrx-page">
+      <div className="ph">
+        <div>
+          <h2>Reports</h2>
+          <p>
+            Every report across every grant. A report reaches the funder only
+            once it is marked client-visible.
+          </p>
+        </div>
+      </div>
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       {/* The gate, stated as a figure. A count of things waiting on you is the
           one number this page exists to keep at zero. */}
       {!loading && (
-        <Box sx={{
-          bgcolor: pending > 0 ? inks.ochre.tint : surfaces.sunken,
-          borderRadius: 2,
-          px: 2.5,
-          py: 2,
-          mb: 2,
-          display: 'flex',
-          alignItems: 'baseline',
-          gap: 1.5,
-        }}>
-          <Box sx={{ ...figure.large, color: pending > 0 ? inks.ochre.text : 'text.primary' }}>
-            {pending}
-          </Box>
-          <Box sx={figure.unit}>
+        <div className={`gate${pending > 0 ? ' hot' : ''}`}>
+          <span className="gate-n fig">{pending}</span>
+          <span className="gate-t">
             {pending === 1 ? 'report is' : 'reports are'} written but not yet
             released to the funder{reports.length > 0 && `, of ${reports.length} in all`}
-          </Box>
-        </Box>
+          </span>
+        </div>
       )}
 
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mb: 2 }}>
-        <TextField
-          size="small"
-          placeholder="Search file, grant or activity"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          sx={{ flex: 1, minWidth: 220 }}
-          slotProps={{
-            input: {
-              startAdornment: (
-                <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>
-              ),
-            },
-          }}
-        />
-        <TextField
-          select
-          size="small"
-          label="Gate"
-          value={view}
-          onChange={(e) => setView(e.target.value)}
-          sx={{ minWidth: 200 }}
-        >
-          {VIEWS.map((v) => (
-            <MenuItem key={v.value} value={v.value}>{v.label}</MenuItem>
-          ))}
-        </TextField>
-        <TextField
-          select
-          size="small"
-          label="Grant"
+      <div className="toolbar">
+        <label className="sb">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4-4" /></svg>
+          <input
+            placeholder="Search file, grant or activity"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </label>
+        <select className="sel" aria-label="Gate" value={view} onChange={(e) => setView(e.target.value)}>
+          {VIEWS.map((v) => <option key={v.value} value={v.value}>{v.label}</option>)}
+        </select>
+        <select
+          className="sel"
+          aria-label="Grant"
           value={projectFilter}
           onChange={(e) => setProjectFilter(e.target.value)}
-          sx={{ minWidth: 200 }}
         >
-          <MenuItem value="All">All grants</MenuItem>
-          {projects.map((p) => (
-            <MenuItem key={p.id} value={String(p.id)}>{p.name}</MenuItem>
-          ))}
-        </TextField>
-      </Stack>
+          <option value="All">All grants</option>
+          {projects.map((p) => <option key={p.id} value={String(p.id)}>{p.name}</option>)}
+        </select>
+      </div>
 
       {loading ? (
-        <Stack spacing={1}>
-          {[0, 1, 2, 3, 4, 5].map((i) => <Skeleton key={i} variant="rounded" height={52} />)}
-        </Stack>
+        <div className="loading"><div className="spin" /></div>
       ) : (
-        <Box sx={{
-          bgcolor: surfaces.surface,
-          borderRadius: 2,
-          border: '1px solid',
-          borderColor: 'divider',
-          overflow: 'hidden',
-        }}>
-          <Box sx={{
-            display: { xs: 'none', md: 'grid' },
-            gridTemplateColumns: '132px 1fr 200px 180px 132px',
-            gap: 2,
-            px: 2,
-            py: 1.25,
-            bgcolor: surfaces.sunken,
-            borderBottom: '1px solid',
-            borderColor: 'divider',
-          }}>
-            {['Added', 'File', 'Activity', 'Grant', 'Gate'].map((h) => (
-              <Typography key={h} variant="caption" component="div">{h}</Typography>
-            ))}
-          </Box>
+        <div className="twrap">
+          <div className="lgrid lgrid-head">
+            {['Added', 'File', 'Activity', 'Grant', 'Gate'].map((h) => <span key={h}>{h}</span>)}
+          </div>
 
           {rows.length === 0 ? (
-            <Typography color="text.secondary" sx={{ p: 3 }}>
+            <div className="empty">
+              <h3>{reports.length === 0 ? 'No reports yet' : 'No reports match'}</h3>
               {reports.length === 0
-                ? 'No reports yet.'
-                : 'No reports match this filter.'}
-            </Typography>
+                ? 'A report is a document filed against a grant or one of its activities.'
+                : 'Clear the search or change the filter.'}
+            </div>
           ) : rows.map((r) => (
-            <Box
+            <div
               key={r.id}
               role="button"
               tabIndex={0}
+              className="lgrid lrow"
               aria-label={`Open ${r.fileName || 'Untitled'}, filed under ${projectName(r.projectId)}`}
               onClick={() => navigate(`/csr/${r.projectId}`, { state: { tab: REPORTS_TAB } })}
               onKeyDown={(e) => {
@@ -281,62 +208,36 @@ export default function CSRReportsPage() {
                   navigate(`/csr/${r.projectId}`, { state: { tab: REPORTS_TAB } });
                 }
               }}
-              sx={{
-                cursor: 'pointer',
-                display: 'grid',
-                gridTemplateColumns: { xs: '1fr', md: '132px 1fr 200px 180px 132px' },
-                gap: { xs: 0.5, md: 2 },
-                alignItems: { md: 'center' },
-                px: 2,
-                py: 1.5,
-                borderBottom: '1px solid',
-                borderColor: surfaces.hairlineSoft,
-                '&:last-of-type': { borderBottom: 0 },
-                transition: 'background-color 120ms cubic-bezier(0, 0, 0.2, 1)',
-                '&:hover': { bgcolor: surfaces.sunken },
-                // globals.css owns the ring's colour; a full-width row just needs it
-                // pulled inside its own bounds so it does not sit over the row above.
-                '&:focus-visible': { outlineOffset: -2 },
-              }}
             >
-              <Box sx={{ ...figure.unit, ...tabular, whiteSpace: 'nowrap' }}>
-                {fmtDay(r.createdAt)}
-              </Box>
-              <Stack direction="row" spacing={0.75} alignItems="center" sx={{ minWidth: 0 }}>
-                <Box sx={{ fontFamily: fonts.sans, fontSize: '0.875rem', minWidth: 0 }}>
-                  {r.fileName || 'Untitled'}
-                </Box>
+              <span className="fig nowrap">{fmtDay(r.createdAt)}</span>
+              <span className="t1wrap">
+                <span className="t1">{r.fileName || 'Untitled'}</span>
                 {r.fileUrl && (
-                  <Tooltip title="Open document">
-                    <Link
-                      href={r.fileUrl}
-                      target="_blank"
-                      rel="noopener"
-                      onClick={(e) => e.stopPropagation()}
-                      sx={{ display: 'inline-flex', color: 'text.secondary' }}
-                    >
-                      <OpenIcon fontSize="inherit" />
-                    </Link>
-                  </Tooltip>
+                  <a
+                    href={r.fileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Open document"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" /><path d="M15 3h6v6M10 14L21 3" /></svg>
+                  </a>
                 )}
-              </Stack>
-              <Box sx={{ fontFamily: fonts.sans, fontSize: '0.8125rem', color: 'text.secondary', minWidth: 0 }}>
-                {activityTitle(r.activityId) || '—'}
-              </Box>
-              <Box sx={{ fontFamily: fonts.sans, fontSize: '0.8125rem', color: 'text.secondary', minWidth: 0 }}>
-                {projectName(r.projectId)}
-              </Box>
-              <Box><GateChip visible={Boolean(r.visibleToClient)} /></Box>
-            </Box>
+              </span>
+              <span className="t2">{activityTitle(r.activityId) || '—'}</span>
+              <span className="t2">{projectName(r.projectId)}</span>
+              <span><GateChip visible={Boolean(r.visibleToClient)} /></span>
+            </div>
           ))}
-        </Box>
-      )}
 
-      {!loading && rows.length > 0 && (
-        <Typography variant="caption" component="div" sx={{ mt: 1.5 }}>
-          Showing {rows.length} of {reports.length} {reports.length === 1 ? 'report' : 'reports'} filed in total
-        </Typography>
+          {rows.length > 0 && (
+            <div className="tfoot">
+              Showing {rows.length} of {reports.length}
+              {' '}{reports.length === 1 ? 'report' : 'reports'} filed in total
+            </div>
+          )}
+        </div>
       )}
-    </Container>
+    </div>
   );
 }

@@ -20,19 +20,12 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Alert, Box, Container, MenuItem, Skeleton, Stack, TextField, Typography,
-  InputAdornment,
-} from '@mui/material';
-import {
-  EventNoteOutlined as ActivityIcon,
-  Search as SearchIcon,
-} from '@mui/icons-material';
+import { Alert } from '@mui/material';
 
 import { csrAPI } from '../../services/api';
 import useGrants from '../../auth/useGrants';
 import useRefetchOnFocus from '../../hooks/useRefetchOnFocus';
-import { surfaces, inks, text, figure, fonts, tabular } from '../../styles/ttaTheme';
+import '../../styles/csrDesign.css';
 
 const asList = (data) => (Array.isArray(data) ? data : data?.results || []);
 
@@ -40,10 +33,6 @@ const asList = (data) => (Array.isArray(data) ? data : data?.results || []);
 // reads location.state.tab, so a row can open on the Activities tab instead of
 // dropping you on Overview to hunt for the record you just clicked.
 const ACTIVITIES_TAB = 2;
-
-// Activities carry no meaning of their own in this system, so the page chrome
-// stays neutral rather than borrowing an ink that means something else.
-const NEUTRAL = { tint: surfaces.sunken, text: text.secondary };
 
 // The serializer exposes `date` for point-in-time activities and start/end for
 // spans. Sorting needs one comparable value, so fall through in that order and
@@ -63,26 +52,14 @@ const whenLabel = (a) => {
   return fmtDay(a.date || a.startDate || a.endDate);
 };
 
+// Ochre on 'Planned' is the one ink that genuinely applies here: logged but not
+// yet done is precisely "waiting on you". 'Completed' takes the neutral chip
+// rather than moss, because moss means money and an activity is not money.
 function StatusChip({ status }) {
-  const planned = status === 'Planned';
   return (
-    <Box
-      component="span"
-      sx={{
-        display: 'inline-block',
-        px: 1,
-        py: 0.25,
-        borderRadius: 9999,
-        fontFamily: fonts.sans,
-        fontSize: '0.6875rem',
-        fontWeight: 600,
-        whiteSpace: 'nowrap',
-        bgcolor: planned ? inks.ochre.tint : surfaces.sunken,
-        color: planned ? inks.ochre.text : 'text.secondary',
-      }}
-    >
+    <span className={`pill ${status === 'Planned' ? 'wait' : 'closed'}`}>
       {status || 'Unknown'}
-    </Box>
+    </span>
   );
 }
 
@@ -142,143 +119,80 @@ export default function CSRActivitiesPage() {
   }
 
   return (
-    <Container maxWidth="xl" sx={{ py: 3 }}>
-      <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 0.5 }}>
-        <Box sx={{
-          width: 34, height: 34, borderRadius: 1.5, flex: 'none',
-          display: 'grid', placeItems: 'center',
-          bgcolor: NEUTRAL.tint, color: NEUTRAL.text,
-          '& svg': { fontSize: 18 },
-        }}>
-          <ActivityIcon />
-        </Box>
-        <Typography variant="h4">Activities</Typography>
-      </Stack>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
-        Everything logged across every grant, newest first. Activities are
-        recorded as they happen — this is a record, not a schedule.
-      </Typography>
+    <div className="csrx csrx-page">
+      <div className="ph">
+        <div>
+          <h2>Activities</h2>
+          <p>
+            Everything logged across every grant, newest first. Activities are
+            recorded as they happen — this is a record, not a schedule.
+          </p>
+        </div>
+      </div>
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mb: 2 }}>
-        <TextField
-          size="small"
-          placeholder="Search title, location or grant"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          sx={{ flex: 1, minWidth: 220 }}
-          slotProps={{
-            input: {
-              startAdornment: (
-                <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>
-              ),
-            },
-          }}
-        />
-        <TextField
-          select
-          size="small"
-          label="Grant"
+      <div className="toolbar">
+        <label className="sb">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4-4" /></svg>
+          <input
+            placeholder="Search title, location or grant"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </label>
+        <select
+          className="sel"
+          aria-label="Grant"
           value={projectFilter}
           onChange={(e) => setProjectFilter(e.target.value)}
-          sx={{ minWidth: 220 }}
         >
-          <MenuItem value="All">All grants</MenuItem>
+          <option value="All">All grants</option>
           {projects.map((p) => (
-            <MenuItem key={p.id} value={String(p.id)}>{p.name}</MenuItem>
+            <option key={p.id} value={String(p.id)}>{p.name}</option>
           ))}
-        </TextField>
-      </Stack>
+        </select>
+      </div>
 
       {loading ? (
-        <Stack spacing={1}>
-          {[0, 1, 2, 3, 4, 5].map((i) => <Skeleton key={i} variant="rounded" height={52} />)}
-        </Stack>
+        <div className="loading"><div className="spin" /></div>
       ) : (
-        <Box sx={{
-          bgcolor: surfaces.surface,
-          borderRadius: 2,
-          border: '1px solid',
-          borderColor: 'divider',
-          overflow: 'hidden',
-        }}>
-          {/* Column header. Sits on the sunken tier so the rows read as the
-              record and the header reads as chrome. */}
-          <Box sx={{
-            display: { xs: 'none', md: 'grid' },
-            gridTemplateColumns: '132px 1fr 200px 180px 108px',
-            gap: 2,
-            px: 2,
-            py: 1.25,
-            bgcolor: surfaces.sunken,
-            borderBottom: '1px solid',
-            borderColor: 'divider',
-          }}>
-            {['Date', 'Activity', 'Location', 'Grant', 'Status'].map((h) => (
-              <Typography key={h} variant="caption" component="div">{h}</Typography>
-            ))}
-          </Box>
+        <div className="twrap">
+          <div className="lgrid lgrid-head">
+            {['Date', 'Activity', 'Location', 'Grant', 'Status'].map((h) => <span key={h}>{h}</span>)}
+          </div>
 
           {rows.length === 0 ? (
-            <Typography color="text.secondary" sx={{ p: 3 }}>
+            <div className="empty">
+              <h3>{activities.length === 0 ? 'Nothing logged yet' : 'No activities match'}</h3>
               {activities.length === 0
-                ? 'Nothing logged yet.'
-                : 'No activities match this filter.'}
-            </Typography>
+                ? 'An activity is a thing that happened against a grant — a trial, a workshop, a camp.'
+                : 'Clear the search or change the filter.'}
+            </div>
           ) : rows.map((a) => (
-            <Box
+            <button
               key={a.id}
-              component="button"
               type="button"
+              className="lgrid lrow"
               aria-label={`Open ${a.title}, logged under ${projectName(a.projectId)}`}
               onClick={() => navigate(`/csr/${a.projectId}`, { state: { tab: ACTIVITIES_TAB } })}
-              sx={{
-                width: '100%',
-                font: 'inherit',
-                textAlign: 'left',
-                border: 0,
-                cursor: 'pointer',
-                bgcolor: 'transparent',
-                display: 'grid',
-                gridTemplateColumns: { xs: '1fr', md: '132px 1fr 200px 180px 108px' },
-                gap: { xs: 0.5, md: 2 },
-                alignItems: { md: 'center' },
-                px: 2,
-                py: 1.5,
-                borderBottom: '1px solid',
-                borderColor: surfaces.hairlineSoft,
-                '&:last-of-type': { borderBottom: 0 },
-                transition: 'background-color 120ms cubic-bezier(0, 0, 0.2, 1)',
-                '&:hover': { bgcolor: surfaces.sunken },
-                // globals.css owns the ring's colour; a full-width row just needs it
-                // pulled inside its own bounds so it does not sit over the row above.
-                '&:focus-visible': { outlineOffset: -2 },
-              }}
             >
-              <Box sx={{ ...figure.unit, ...tabular, whiteSpace: 'nowrap' }}>
-                {whenLabel(a)}
-              </Box>
-              <Box sx={{ fontFamily: fonts.sans, fontSize: '0.875rem', minWidth: 0 }}>
-                {a.title}
-              </Box>
-              <Box sx={{ fontFamily: fonts.sans, fontSize: '0.8125rem', color: 'text.secondary', minWidth: 0 }}>
-                {a.location || '—'}
-              </Box>
-              <Box sx={{ fontFamily: fonts.sans, fontSize: '0.8125rem', color: 'text.secondary', minWidth: 0 }}>
-                {projectName(a.projectId)}
-              </Box>
-              <Box><StatusChip status={a.status} /></Box>
-            </Box>
+              <span className="fig nowrap">{whenLabel(a)}</span>
+              <span className="t1">{a.title}</span>
+              <span className="t2">{a.location || '—'}</span>
+              <span className="t2">{projectName(a.projectId)}</span>
+              <span><StatusChip status={a.status} /></span>
+            </button>
           ))}
-        </Box>
-      )}
 
-      {!loading && rows.length > 0 && (
-        <Typography variant="caption" component="div" sx={{ mt: 1.5 }}>
-          Showing {rows.length} of {activities.length} {activities.length === 1 ? 'activity' : 'activities'} logged in total
-        </Typography>
+          {rows.length > 0 && (
+            <div className="tfoot">
+              Showing {rows.length} of {activities.length}
+              {' '}{activities.length === 1 ? 'activity' : 'activities'} logged in total
+            </div>
+          )}
+        </div>
       )}
-    </Container>
+    </div>
   );
 }
