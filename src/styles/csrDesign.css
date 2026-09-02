@@ -1747,3 +1747,54 @@
 }
 .csrx .key-sw.solid{background:#4A5750}
 .csrx .key-sw.pale{background:#C7D1CB}
+
+/* =========================================================================
+   THE LOG PAGES — Activities, Reports. Column widths, header ground, scale.
+
+   WHAT WAS WRONG WITH THE ALIGNMENT. The grid was
+   `150px 1fr 168px 190px 112px`, so ACTIVITY took every spare pixel — about
+   600px for a 200px title — and opened a void in the middle of the row, while
+   GRANT, the longest text on the page, was pinned at 190px and truncating with
+   an ellipsis. The widest column held the shortest content and the narrowest
+   held the longest.
+
+   The slack now goes to the two columns whose content actually varies, and
+   STATUS goes hard right where a state marker belongs — a chip floating in
+   the middle of a row reads as another column of data rather than as the
+   row's verdict.
+   ========================================================================= */
+.csrx .lgrid{
+  grid-template-columns:
+    148px                      /* date — fixed, tabular, never wraps */
+    minmax(220px, 1.1fr)       /* the record's own name */
+    132px                      /* location / activity */
+    minmax(200px, 1.3fr)       /* grant — the longest string on the page */
+    124px;                     /* status */
+  gap:20px;
+}
+.csrx .lgrid > *:last-child{justify-self:end}
+
+/* The header row had lost its ground when these pages came off MUI — it was
+   `bgcolor: surfaces.sunken` there and nothing here. A column heading with no
+   ground is just small grey text sitting above data. */
+.csrx .lgrid-head{
+  background:linear-gradient(180deg,#F1F5F3 0%,#F7FAF8 100%);
+  border-bottom:1px solid var(--line);
+  padding:14px 20px;
+  font-size:11.5px;letter-spacing:.055em;color:#5C6A63;font-weight:600;
+}
+
+/* Scale. These were set a size below the nav beside them, which put the record
+   under the chrome in the hierarchy. */
+.csrx .lrow{padding:16px 20px}
+.csrx .lrow .t1{font-size:14px}
+.csrx .lrow .t2{font-size:12.5px}
+.csrx .lrow .fig{font-size:12.5px}
+.csrx .tfoot{padding:14px 20px;font-size:12.5px}
+.csrx .lrow .pill{font-size:11.5px;padding:4px 11px}
+
+/* The gate figure and the page heading move with them. */
+.csrx .ph h2{font-size:30px}
+.csrx .ph p{font-size:13.5px}
+.csrx .sb input,.csrx .sel{font-size:13.5px}
+.csrx .sb,.csrx .sel{height:42px}
