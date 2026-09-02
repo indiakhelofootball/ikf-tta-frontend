@@ -102,7 +102,10 @@ export default function CSRUtilisationPage() {
     <div className="csrx csrx-page">
       <div className="ph">
         <div>
-          <h2>Utilisation Certificate</h2>
+          {/* "Work Utilisation", the client's own words on 26 Aug (19:53:
+              "इसको work utilization लिख दो"). The certificate is what this
+              screen PRODUCES; the utilisation of work is what it shows. */}
+          <h2>Work Utilisation</h2>
           <p>
             Every grant, with what has actually been spent against it. Only
             expenses whose payment has completed are counted &mdash; anything

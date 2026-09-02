@@ -39,7 +39,7 @@ const pageTitles = {
   "/csr/projects": "Projects",
   "/csr/activities": "Activities",
   "/csr/reports": "Reports",
-  "/csr/utilisation": "Utilisation",
+  "/csr/utilisation": "Work Utilisation",
   "/csr/clients": "Funders",
   "/csr/activity-types": "Activity Types",
   "/csr/branding": "Branding",
