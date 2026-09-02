@@ -1,16 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Box, Container, Typography, Button, Stack, Snackbar, Alert,
-  CircularProgress, Card, CardContent, Chip,
+  Typography, Button, Stack, Snackbar, Alert,
   Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, MenuItem,
 } from '@mui/material';
-import {
-  Add as AddIcon,
-  GroupAdd as GroupAddIcon,
-} from '@mui/icons-material';
 
 import { csrAPI } from '../../services/api';
+import '../../styles/csrDesign.css';
 import ConfirmDialog from '../common/ConfirmDialog';
 
 const EMPTY = { projectId: '', firstName: '', lastName: '', email: '', password: '' };
@@ -165,47 +161,48 @@ export default function CSRClientsPage() {
   };
 
   return (
-    <Container maxWidth="md" sx={{ py: 3 }}>
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        spacing={2}
-        sx={{ mb: 3, alignItems: { sm: 'center' }, justifyContent: 'space-between' }}
-      >
-        <Stack direction="row" spacing={1} alignItems="center">
-          <GroupAddIcon color="primary" />
-          <Typography variant="h5">CSR Clients</Typography>
-        </Stack>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setModalOpen(true)}>
+    <div className="csrx csrx-page csrx-narrow">
+      <div className="ph">
+        <div>
+          <h2>Funders</h2>
+          <p>
+            Each funder gets a read-only login onto one grant. They set their own
+            password after the first sign-in.
+          </p>
+        </div>
+        <button type="button" className="newbtn" onClick={() => setModalOpen(true)}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14" /></svg>
           Onboard Funder
-        </Button>
-      </Stack>
+        </button>
+      </div>
 
       {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-          <CircularProgress />
-        </Box>
+        <div className="loading"><div className="spin" /></div>
       ) : clients.length === 0 ? (
-        <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
-          No funders onboarded yet.
-        </Typography>
+        <div className="panel">
+          <div className="empty">
+            <h3>No funders onboarded yet</h3>
+            Onboarding a funder creates their portal login and ties it to one
+            grant — they see that grant and nothing else.
+          </div>
+        </div>
       ) : (
-        clients.map((c) => (
-          <Card key={c.id} variant="outlined" sx={{ mb: 1.5 }}>
-            <CardContent sx={{ pb: 1, '&:last-child': { pb: 1 } }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                  <Typography variant="subtitle1" noWrap>{c.name}</Typography>
-                  <Typography variant="body2" color="text.secondary" noWrap>{c.email}</Typography>
-                </Box>
-                <Chip size="small" label={c.projectName} />
-                {!c.isActive && <Chip size="small" color="warning" label="Revoked" />}
-                <Button size="small" onClick={() => toggleAccess(c)}>
-                  {c.isActive ? 'Revoke' : 'Restore'}
-                </Button>
-              </Box>
-            </CardContent>
-          </Card>
-        ))
+        <div className="twrap">
+          {clients.map((c) => (
+            <div className="setrow" key={c.id}>
+              <span className="av a1" aria-hidden="true">{(c.name || '?').slice(0, 1).toUpperCase()}</span>
+              <span className="setrow-c">
+                <span className="setrow-n">{c.name}</span>
+                <span className="setrow-s">{c.email}</span>
+              </span>
+              <span className="chip plain k2">{c.projectName}</span>
+              {!c.isActive && <span className="pill wait">Revoked</span>}
+              <button type="button" className="ghostbtn tight" onClick={() => toggleAccess(c)}>
+                {c.isActive ? 'Revoke' : 'Restore'}
+              </button>
+            </div>
+          ))}
+        </div>
       )}
 
       <OnboardModal
@@ -237,6 +234,6 @@ export default function CSRClientsPage() {
           {toast.message}
         </Alert>
       </Snackbar>
-    </Container>
+    </div>
   );
 }

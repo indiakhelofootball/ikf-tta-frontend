@@ -1,15 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Box, Container, Typography, Button, Stack, Snackbar, Alert, CircularProgress,
-  TextField, FormControlLabel, Checkbox, List, ListItem, ListItemText, IconButton, Chip,
-} from '@mui/material';
-import {
-  Add as AddIcon, ArrowBack as BackIcon, Delete as DeleteIcon,
-} from '@mui/icons-material';
+import { Snackbar, Alert } from '@mui/material';
 
 import { csrAPI } from '../../services/api';
 import ConfirmDialog from '../common/ConfirmDialog';
+import '../../styles/csrDesign.css';
 
 export default function CSRActivityTypesPage() {
   const navigate = useNavigate();
@@ -77,66 +72,71 @@ export default function CSRActivityTypesPage() {
   });
 
   return (
-    <Container maxWidth="sm" sx={{ py: 3 }}>
-      <Button startIcon={<BackIcon />} onClick={() => navigate('/admin')} sx={{ mb: 2 }}>
-        Admin Settings
-      </Button>
-      <Typography variant="h5" sx={{ mb: 0.5 }}>CSR Activity Types</Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        The admin-managed catalog of activity types (trials, workshops, trainings) that CSR staff
-        pick from when adding a project activity. Mark a type as a reusable master template if it
-        applies across projects.
-      </Typography>
+    <div className="csrx csrx-page csrx-narrow">
+      <div className="ph">
+        <div>
+          <h2>CSR Activity Types</h2>
+          <p>
+            The admin-managed catalog of activity types — trials, workshops,
+            trainings — that CSR staff pick from when adding an activity. Mark a
+            type as a master template if it applies across grants.
+          </p>
+        </div>
+        <button type="button" className="ghostbtn" onClick={() => navigate('/admin')}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6" /></svg>
+          Admin Settings
+        </button>
+      </div>
 
       {editable && (
-        <Stack
-          direction={{ xs: 'column', sm: 'row' }}
-          spacing={2}
-          sx={{ mb: 3, alignItems: { sm: 'center' } }}
-        >
-          <TextField
-            label="New activity type" value={name}
-            onChange={(e) => setName(e.target.value)} size="small" fullWidth
-            onKeyDown={(e) => { if (e.key === 'Enter') add(); }}
-          />
-          <FormControlLabel
-            control={<Checkbox checked={isMaster} onChange={(e) => setIsMaster(e.target.checked)} />}
-            label="Master"
-          />
-          <Button
-            variant="contained" startIcon={<AddIcon />}
-            onClick={add} disabled={saving || !name.trim()}
-          >
+        <div className="panel addrow">
+          <label className="sb">
+            <input
+              placeholder="New activity type"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') add(); }}
+            />
+          </label>
+          <label className="chk">
+            <input
+              type="checkbox"
+              checked={isMaster}
+              onChange={(e) => setIsMaster(e.target.checked)}
+            />
+            Master
+          </label>
+          <button type="button" className="newbtn" onClick={add} disabled={saving || !name.trim()}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14" /></svg>
             Add
-          </Button>
-        </Stack>
+          </button>
+        </div>
       )}
 
       {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-          <CircularProgress />
-        </Box>
+        <div className="loading"><div className="spin" /></div>
       ) : types.length === 0 ? (
-        <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
-          No activity types yet. Add the first one above.
-        </Typography>
+        <div className="panel">
+          <div className="empty">
+            <h3>No activity types yet</h3>
+            An activity type is what a CSR activity IS — a trial, a workshop, a
+            training. Add the first one above.
+          </div>
+        </div>
       ) : (
-        <List>
+        <div className="twrap">
           {types.map((t) => (
-            <ListItem
-              key={t.id}
-              divider
-              secondaryAction={editable && (
-                <IconButton size="small" onClick={() => remove(t)} aria-label="Delete">
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
+            <div className="setrow" key={t.id}>
+              <span className="setrow-n">{t.name}</span>
+              {t.isMaster && <span className="pill plain">Master</span>}
+              {editable && (
+                <button type="button" className="ico r" aria-label={`Delete ${t.name}`} onClick={() => remove(t)}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" /></svg>
+                </button>
               )}
-            >
-              <ListItemText primary={t.name} />
-              {t.isMaster && <Chip size="small" label="Master" sx={{ mr: 1 }} />}
-            </ListItem>
+            </div>
           ))}
-        </List>
+        </div>
       )}
 
       <ConfirmDialog
@@ -159,6 +159,6 @@ export default function CSRActivityTypesPage() {
           {toast.message}
         </Alert>
       </Snackbar>
-    </Container>
+    </div>
   );
 }

@@ -1,15 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Box, Container, Typography, Button, Stack, Snackbar, Alert, CircularProgress,
-  List, ListItem, ListItemText, IconButton, Chip, Tooltip,
+  Button, Stack, Snackbar, Alert,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem,
 } from '@mui/material';
-import {
-  Add as AddIcon, ArrowBack as BackIcon, Edit as EditIcon, Delete as DeleteIcon,
-} from '@mui/icons-material';
 
 import { csrAPI } from '../../services/api';
+import '../../styles/csrDesign.css';
 import ConfirmDialog from '../common/ConfirmDialog';
 
 const EMPTY = {
@@ -103,49 +100,59 @@ export default function CSRBrandingPage() {
   });
 
   return (
-    <Container maxWidth="sm" sx={{ py: 3 }}>
-      <Button startIcon={<BackIcon />} onClick={() => navigate('/admin')} sx={{ mb: 2 }}>
-        Admin Settings
-      </Button>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-        <Typography variant="h5">Client Portal Branding</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>New</Button>
-      </Stack>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        White-label a funder's portal: logo, colours, and login image per project. The funder
-        reaches their branded login at <code>/client/&lt;slug&gt;/login</code>.
-      </Typography>
+    <div className="csrx csrx-page csrx-narrow">
+      <div className="ph">
+        <div>
+          <h2>Client Portal Branding</h2>
+          <p>
+            White-label a funder&rsquo;s portal — logo, colours and login image,
+            per grant. The funder reaches their branded login at{' '}
+            <code>/client/&lt;slug&gt;/login</code>.
+          </p>
+        </div>
+        <button type="button" className="ghostbtn" onClick={() => navigate('/admin')}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6" /></svg>
+          Admin Settings
+        </button>
+        <button type="button" className="newbtn" onClick={openCreate}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14" /></svg>
+          New
+        </button>
+      </div>
 
       {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>
+        <div className="loading"><div className="spin" /></div>
       ) : rows.length === 0 ? (
-        <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>No branding yet.</Typography>
+        <div className="panel">
+          <div className="empty">
+            <h3>No branding yet</h3>
+            Without a branding row a funder has no door of their own — this is
+            what turns <code>/client/&lt;slug&gt;/login</code> into a real page.
+          </div>
+        </div>
       ) : (
-        <List>
+        <div className="twrap">
           {rows.map((r) => (
-            <ListItem
-              key={r.id}
-              divider
-              secondaryAction={(
-                <>
-                  <Tooltip title="Edit">
-                    <IconButton size="small" onClick={() => openEdit(r)} aria-label={`Edit branding ${r.displayName}`}>
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Delete">
-                    <IconButton size="small" onClick={() => remove(r)} aria-label={`Delete branding ${r.displayName}`}>
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                </>
-              )}
-            >
-              <ListItemText primary={`${r.displayName} (/${r.slug})`} />
-              {!r.isActive && <Chip size="small" label="Inactive" sx={{ mr: 1 }} />}
-            </ListItem>
+            <div className="setrow" key={r.id}>
+              <span
+                className="swatch"
+                style={{ background: r.primaryColor || '#2C6A4F' }}
+                aria-hidden="true"
+              />
+              <span className="setrow-c">
+                <span className="setrow-n">{r.displayName}</span>
+                <span className="setrow-s">/client/{r.slug}/login</span>
+              </span>
+              {!r.isActive && <span className="pill closed">Inactive</span>}
+              <button type="button" className="ico g" aria-label={`Edit branding ${r.displayName}`} onClick={() => openEdit(r)}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+              </button>
+              <button type="button" className="ico r" aria-label={`Delete branding ${r.displayName}`} onClick={() => remove(r)}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" /></svg>
+              </button>
+            </div>
           ))}
-        </List>
+        </div>
       )}
 
       <Dialog open={modal.open} onClose={() => setModal({ open: false, editing: null })} fullWidth maxWidth="sm">
@@ -195,6 +202,6 @@ export default function CSRBrandingPage() {
       >
         <Alert severity={toast.severity} onClose={() => setToast((s) => ({ ...s, open: false }))}>{toast.message}</Alert>
       </Snackbar>
-    </Container>
+    </div>
   );
 }
