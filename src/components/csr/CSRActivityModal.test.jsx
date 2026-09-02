@@ -178,6 +178,22 @@ describe('CSRActivityModal', () => {
       expect(body.trainingProgrammeId).toBeNull();
       expect(body.linkedVendorId).toBeNull();
     });
+
+    // 26 Aug, 15:39-15:47: a training programme is delivered by someone too --
+    // "after that, who is its partner? Is it self or who?" The first cut of the
+    // cascade gave Self/Partner to workshop alone, which left a
+    // partner-delivered training impossible to record at all.
+    test('a training programme also asks who delivered it', () => {
+      renderModal();
+      fireEvent.mouseDown(screen.getByLabelText(/activity type/i));
+      fireEvent.click(screen.getByRole('option', { name: /Skill Training/i }));
+
+      expect(screen.getByLabelText(/training programme/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/delivered by/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/^partner$/i)).toBeInTheDocument();
+      // and still not the workshop catalogue, which belongs to another kind
+      expect(screen.queryByLabelText(/^workshop$/i)).toBeNull();
+    });
   });
 
   // Self vs Partner. The point of the field is that an empty partner stops

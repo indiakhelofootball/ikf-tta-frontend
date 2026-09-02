@@ -41,7 +41,12 @@ function kindOfTypeName(name) {
 const KIND_FIELDS = {
   trial: ['linkedTrialId'],
   workshop: ['workshopId', 'deliveryMode', 'linkedVendorId'],
-  training: ['trainingProgrammeId'],
+  // Training carries Self/Partner too. 26 Aug, 15:39-15:47, immediately after
+  // listing a training programme's own fields: «उसके बाद जो होगा partner कौन है
+  // इसका? self है या कौन है?» — "after that, who is its partner? Is it self or
+  // who?" The first cut of this cascade gave the pair to workshop only, which
+  // made a partner-delivered training impossible to record at all.
+  training: ['trainingProgrammeId', 'deliveryMode', 'linkedVendorId'],
   generic: ['deliveryMode', 'linkedVendorId'],
 };
 const ALL_KIND_FIELDS = [
