@@ -18,6 +18,10 @@ jest.mock('../../services/api', () => ({
   csrAPI: {
     activities: { getAll: jest.fn() },
     projects: { getAll: jest.fn() },
+    // The page joins the activity-type catalog to turn activityTypeId into a
+    // name in the expanded row. Mocked here so the mock keeps mirroring what
+    // the component actually fetches.
+    activityTypes: { getAll: jest.fn() },
   },
 }));
 
@@ -42,6 +46,7 @@ beforeEach(() => {
   mockNavigate.mockClear();
   csrAPI.activities.getAll.mockResolvedValue([ACTIVITY]);
   csrAPI.projects.getAll.mockResolvedValue([PROJECT]);
+  csrAPI.activityTypes.getAll.mockResolvedValue([]);
 });
 
 test('clicking a logged activity opens its grant on the Activities tab', async () => {
