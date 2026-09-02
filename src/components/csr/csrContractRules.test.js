@@ -109,3 +109,42 @@ describe('labels', () => {
     expect(formatAmount(0)).toBe('₹0');
   });
 });
+
+// A failed deliverable has to surface on the COLLAPSED card, not only inside
+// the expanded list. Before this, one cancelled deliverable among four in
+// flight rolled up to "In Progress" and the failure was invisible until you
+// opened the contract — which is the thing the 26 Aug review objected to
+// ("Where will it be shown?").
+describe('deliverableRollup surfaces a failure', () => {
+  test('one cancelled deliverable outranks the rest', () => {
+    expect(deliverableRollup([
+      { status: 'Completed' },
+      { status: 'In Progress' },
+      { status: 'Cancelled' },
+    ])).toBe('Attention');
+  });
+
+  test('one not-delivered deliverable outranks the rest', () => {
+    expect(deliverableRollup([
+      { status: 'Completed' },
+      { status: 'Not Delivered' },
+    ])).toBe('Attention');
+  });
+
+  test('a failure beats an otherwise fully completed contract', () => {
+    expect(deliverableRollup([
+      { status: 'Completed' },
+      { status: 'Completed' },
+      { status: 'Cancelled' },
+    ])).toBe('Attention');
+  });
+
+  test('the existing rollups are unchanged when nothing has failed', () => {
+    expect(deliverableRollup([])).toBe('No deliverables');
+    expect(deliverableRollup([{ status: 'Completed' }])).toBe('Completed');
+    expect(deliverableRollup([{ status: 'Pending' }])).toBe('Pending');
+    expect(deliverableRollup([
+      { status: 'Pending' }, { status: 'Completed' },
+    ])).toBe('In Progress');
+  });
+});

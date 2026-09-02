@@ -5,7 +5,19 @@
 // reaches react-router-dom v7, whose exports map CRA's Jest resolver cannot
 // read. Same reason as src/components/bank/tdsDueDate.js.
 
-export const DELIVERABLE_STATUSES = ['Pending', 'In Progress', 'Completed'];
+// 'Not Delivered' is deliberately distinct from 'Pending': pending is work that
+// has not happened YET, not-delivered is work that was promised and did not
+// happen. Collapsing the two hides a broken promise inside a normal backlog,
+// which is exactly what the 26 Aug review objected to (1051s: "If it is not
+// delivered, then it will be a particular row"). Matches migration 0011.
+export const DELIVERABLE_STATUSES = [
+  'Pending', 'In Progress', 'Completed', 'Not Delivered', 'Cancelled',
+];
+
+// The two that mean something went wrong. A row in either state is rendered as
+// an error rather than as one more status chip — 1067s: "if it is cancelled,
+// then it will be an error".
+export const FAILED_STATUSES = ['Not Delivered', 'Cancelled'];
 
 export const CONTRACT_PROGRESS_FILTERS = [
   'All',
@@ -21,6 +33,12 @@ export const CONTRACT_PROGRESS_FILTERS = [
 export const deliverableRollup = (deliverables = []) => {
   const list = Array.isArray(deliverables) ? deliverables : [];
   if (list.length === 0) return 'No deliverables';
+  // A failure outranks everything else. Checked FIRST, before the every()
+  // clauses, because a contract with one cancelled deliverable and four in
+  // flight is not "In Progress" — that label is how a broken promise stayed
+  // invisible on the collapsed card while the expanded list showed it in red.
+  // 26 Aug review, 1064s: "Where will it be shown?"
+  if (list.some((d) => FAILED_STATUSES.includes(d.status))) return 'Attention';
   if (list.every((d) => d.status === 'Completed')) return 'Completed';
   if (list.every((d) => d.status === 'Pending')) return 'Pending';
   return 'In Progress';

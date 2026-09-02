@@ -72,7 +72,12 @@ export default function CSRContractModal({ open, contract, onClose, onSave, savi
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle>{contract ? 'Edit Grant Contract' : 'New Grant Contract'}</DialogTitle>
+      {/* "Record", not "New". By the time a CSR grant exists the contract has
+          already been signed — 26 Aug review, 1105s: "The new contract will not
+          come here, because you are going in the future. You have already taken
+          the contract, you have already asked for the amount." This form
+          captures a contract that exists; it does not draft one. */}
+      <DialogTitle>{contract ? 'Edit grant contract' : 'Record the grant contract'}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
           <TextField

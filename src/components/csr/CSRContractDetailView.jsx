@@ -9,7 +9,7 @@ import {
   Delete as DeleteIcon,
 } from '@mui/icons-material';
 
-import { deliverableProgress, formatAmount } from './csrContractRules';
+import { deliverableProgress, formatAmount, FAILED_STATUSES } from './csrContractRules';
 
 function Field({ label, value, children }) {
   return (
@@ -99,45 +99,62 @@ export default function CSRContractDetailView({
           </Typography>
         ) : (
           <List dense disablePadding>
-            {deliverables.map((d) => (
-              <ListItem
-                key={d.id}
-                disableGutters
-                secondaryAction={canEdit && (
-                  <>
-                    <IconButton
-                      size="small"
-                      aria-label={`Edit deliverable ${d.title}`}
-                      onClick={() => onEditDeliverable(contract, d)}
-                    >
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      aria-label={`Delete deliverable ${d.title}`}
-                      onClick={() => onDeleteDeliverable(d)}
-                    >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </>
-                )}
-              >
-                <ListItemText
-                  primary={d.title}
-                  secondary={[
-                    d.targetCount != null ? `${d.completedCount ?? 0} / ${d.targetCount}` : null,
-                    d.dueDate ? `Due ${d.dueDate}` : null,
-                    d.description || null,
-                  ].filter(Boolean).join(' · ') || null}
-                />
-                <Chip
-                  size="small"
-                  label={d.status}
-                  color={STATUS_COLOR[d.status] || 'default'}
-                  sx={{ mr: 1 }}
-                />
-              </ListItem>
-            ))}
+            {deliverables.map((d) => {
+              const failed = FAILED_STATUSES.includes(d.status);
+              return (
+                <ListItem
+                  key={d.id}
+                  disableGutters
+                  // A failed deliverable has to stand out while scrolling the
+                  // list, not just once its chip is read -- same complaint as
+                  // the activities error row (1067s).
+                  sx={failed ? {
+                    bgcolor: '#FBEBE9',
+                    borderLeft: '3px solid #B3352A',
+                    pl: 1,
+                  } : undefined}
+                  secondaryAction={canEdit && (
+                    <>
+                      <IconButton
+                        size="small"
+                        aria-label={`Edit deliverable ${d.title}`}
+                        onClick={() => onEditDeliverable(contract, d)}
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        aria-label={`Delete deliverable ${d.title}`}
+                        onClick={() => onDeleteDeliverable(d)}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </>
+                  )}
+                >
+                  <ListItemText
+                    primary={d.title}
+                    primaryTypographyProps={failed ? { sx: { color: '#8F2A21' } } : undefined}
+                    secondary={[
+                      d.targetCount != null ? `${d.completedCount ?? 0} / ${d.targetCount}` : null,
+                      d.dueDate ? `Due ${d.dueDate}` : null,
+                      d.description || null,
+                    ].filter(Boolean).join(' · ') || null}
+                  />
+                  <Chip
+                    size="small"
+                    label={d.status}
+                    color={STATUS_COLOR[d.status] || 'default'}
+                    sx={failed ? {
+                      mr: 1,
+                      bgcolor: '#FBEBE9',
+                      color: '#8F2A21',
+                      border: '1px solid #B3352A',
+                    } : { mr: 1 }}
+                  />
+                </ListItem>
+              );
+            })}
           </List>
         )}
       </Box>
