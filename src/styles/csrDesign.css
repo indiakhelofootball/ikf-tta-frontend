@@ -1533,3 +1533,41 @@
 .csrx .stat-top{margin-bottom:12px}
 .csrx .stat-v{font-size:18px;margin-top:4px}
 .csrx .stat-k{font-size:12px}
+
+/* =========================================================================
+   THE TWO ROWS, AS THE REFERENCE LAYS THEM OUT — final, keep last.
+
+     row 1   four stat cards across  |  Statistic panel, tall, spanning both
+     row 2   quick block (2x2 + bar) |  chart, wide
+
+   Two faults this corrects. The action grid had been widened to a single row
+   of four by an earlier breakpoint — the reference draws 2x2 and it stays 2x2
+   at every width, because four verbs in a line read as a toolbar and 2x2 reads
+   as a pad. And the top four were collapsing to 2x2 at 1280, which is well
+   inside the width people actually use; they now hold one row down to 900.
+   ========================================================================= */
+.csrx .quick .quick-grid{grid-template-columns:1fr 1fr}
+
+@media (min-width:1201px){
+  .csrx .dash{grid-template-columns:288px 1fr 300px}
+  .csrx .dash > .stats    {grid-column:1 / span 2;grid-row:1;grid-template-columns:repeat(4,1fr)}
+  .csrx .dash > .statistic{grid-column:3;grid-row:1 / span 2;align-self:stretch}
+  .csrx .dash > .quick    {grid-column:1;grid-row:2;align-self:start}
+  .csrx .dash > .flow     {grid-column:2;grid-row:2;align-self:start}
+}
+
+/* Below 1200 a 288px action block and a 300px statistic panel leave the chart
+   about 130px — narrower than one of its own bar groups. The statistic drops
+   under the rest rather than starving what sits beside it. */
+@media (max-width:1200px){
+  .csrx .dash{grid-template-columns:288px 1fr}
+  .csrx .dash > .stats    {grid-column:1 / span 2;grid-row:1;grid-template-columns:repeat(2,1fr)}
+  .csrx .dash > .quick    {grid-column:1;grid-row:2}
+  .csrx .dash > .flow     {grid-column:2;grid-row:2}
+  .csrx .dash > .statistic{grid-column:1 / span 2;grid-row:3}
+}
+@media (max-width:640px){
+  .csrx .dash{grid-template-columns:1fr}
+  .csrx .dash > *{grid-column:1;grid-row:auto}
+  .csrx .dash > .stats{grid-template-columns:1fr}
+}
