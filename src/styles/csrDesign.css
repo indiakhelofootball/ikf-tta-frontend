@@ -931,7 +931,11 @@
    ========================================================================= */
 .csrx .dash{
   display:grid;
-  grid-template-columns:220px 1fr 300px;
+  /* Measured off the reference: the action block is wider than a stat tile
+     and the chart panel is correspondingly narrower. Declared HERE, on the
+     base rule, so the media queries below are the only thing that can
+     change it. */
+  grid-template-columns:288px 1fr 300px;
   grid-template-rows:auto auto;
   gap:14px;
   align-items:start;
@@ -954,19 +958,6 @@
 .csrx .qa-ic{width:24px;height:24px}
 .csrx .quick-grid{gap:8px}
 
-@media (max-width:1280px){
-  .csrx .dash{grid-template-columns:1fr 300px}
-  .csrx .dash > .feature  {grid-column:1;grid-row:1}
-  .csrx .dash > .stats    {grid-column:1;grid-row:2}
-  .csrx .dash > .statistic{grid-column:2;grid-row:1 / span 3}
-  .csrx .dash > .quick    {grid-column:1;grid-row:3}
-  .csrx .dash > .flow     {grid-column:1;grid-row:4}
-}
-@media (max-width:900px){
-  .csrx .dash{grid-template-columns:1fr}
-  .csrx .dash > *{grid-column:1 !important;grid-row:auto !important}
-  .csrx .stats{grid-template-columns:1fr}
-}
 
 /* =========================================================================
    Corrections from a proper read of the reference screenshot.
@@ -1039,9 +1030,6 @@
 .csrx .limit,
 .csrx .dash .panel{border:1px solid #EDF0EF;box-shadow:0 1px 2px rgba(28,44,38,.04)}
 
-/* Column proportions, measured off the reference: the action block is wider
-   than a stat tile and the chart panel is correspondingly narrower. */
-.csrx .dash{grid-template-columns:288px 1fr 300px}
 
 /* ---- the paired bar chart ---------------------------------------------- */
 .csrx .pairs{margin-top:12px}
@@ -1276,3 +1264,43 @@
 .csrx .ghostbtn,.csrx .newbtn{white-space:nowrap}
 .csrx .ph{gap:10px}
 .csrx .ph > div:first-child{min-width:0}
+
+/* =========================================================================
+   RESPONSIVE — THIS BLOCK MUST STAY LAST IN THE FILE.
+   This file is appended to, and a later un-media'd declaration beats an
+   earlier media query at the same specificity. That is exactly what happened:
+   the column COUNT was re-declared after these queries while the item
+   PLACEMENTS were not, so below 1280px the grid kept three columns and placed
+   everything in the first two — one narrow stack of cards and a dead 300px
+   column beside it. Anything added after this block must re-state its own
+   responsive rules.
+   ========================================================================= */
+@media (max-width:1280px){
+  .csrx .dash{grid-template-columns:1fr 300px}
+  .csrx .dash > .feature  {grid-column:1;grid-row:1}
+  .csrx .dash > .stats    {grid-column:1;grid-row:2}
+  .csrx .dash > .statistic{grid-column:2;grid-row:1 / span 4}
+  .csrx .dash > .quick    {grid-column:1;grid-row:3}
+  .csrx .dash > .flow     {grid-column:1;grid-row:4}
+  .csrx .feature{min-height:150px}
+}
+@media (max-width:1040px){
+  /* Below this the 300px statistic column starves whatever is beside it. */
+  .csrx .dash{grid-template-columns:1fr}
+  /* `> *` is 0,2,0 and loses to the `> .statistic` rule above at 0,3,0, so the
+     panel stayed in column 2 and grid invented an implicit column for it —
+     one explicit 1fr column plus a starved auto one beside it. Each placed
+     child has to be named back, at its own specificity. */
+  .csrx .dash > *{grid-column:1;grid-row:auto}
+  .csrx .dash > .feature  {grid-column:1;grid-row:auto}
+  .csrx .dash > .stats    {grid-column:1;grid-row:auto}
+  .csrx .dash > .statistic{grid-column:1;grid-row:auto}
+  .csrx .dash > .quick    {grid-column:1;grid-row:auto}
+  .csrx .dash > .flow     {grid-column:1;grid-row:auto}
+  .csrx .quick-grid{grid-template-columns:repeat(4,1fr)}
+}
+@media (max-width:720px){
+  .csrx .stats{grid-template-columns:1fr}
+  .csrx .quick-grid{grid-template-columns:1fr 1fr}
+  .csrx .ufigs{grid-template-columns:1fr 1fr}
+}
