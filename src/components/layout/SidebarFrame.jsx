@@ -75,7 +75,8 @@ export function NavSection({ label, collapsed }) {
 }
 
 export default function SidebarFrame({
-  collapsed, onToggle, title, subtitle, mark, children, variant, brandIcon, footer,
+  collapsed, onToggle, title, subtitle, mark, children, variant, brandIcon,
+  footer, footerCollapsed,
 }) {
   return (
     <aside className={`sidebar ${collapsed ? 'sidebar-collapsed' : ''} ${variant === 'csr' ? 'sidebar--csr' : ''}`}>
@@ -100,6 +101,13 @@ export default function SidebarFrame({
       <nav className="sidebar-nav">{children}</nav>
 
       {footer && !collapsed && <div className="sidebar-footer">{footer}</div>}
+
+      {/* Collapsed, the footer card has nowhere to go — but whatever was
+          inside it may still be the only way to reach something. A shell
+          can hand over a narrow stand-in rather than lose the control. */}
+      {footerCollapsed && collapsed && (
+        <div className="sidebar-footer sidebar-footer--mini">{footerCollapsed}</div>
+      )}
 
       {/* Build stamp — lets a bug report be tied to an exact bundle. Without it,
           "it went blank again" cannot be distinguished from a Cloudflare-cached

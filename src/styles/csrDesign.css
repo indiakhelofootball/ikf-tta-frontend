@@ -1304,3 +1304,49 @@
   .csrx .quick-grid{grid-template-columns:1fr 1fr}
   .csrx .ufigs{grid-template-columns:1fr 1fr}
 }
+
+/* =========================================================================
+   THE COLLAPSED RAIL.
+   At 64px there is no room for the promo card, so the frame withholds it —
+   which also took the account control away with it, leaving no way to sign
+   out without expanding the rail first. The avatar stands in for the card:
+   same button, same menu, just the disc.
+   ========================================================================= */
+.sidebar.sidebar--csr.sidebar-collapsed .sidebar-footer{
+  margin-top:auto;padding:10px 0 14px;display:flex;justify-content:center;
+  border-top:1px solid var(--line2);
+}
+.sidebar.sidebar--csr .sidebar-who--mini{
+  width:auto;margin:0;padding:0;border:0;border-top:0;background:transparent;
+}
+.sidebar.sidebar--csr .sidebar-who--mini .sidebar-who-av{
+  width:32px;height:32px;font-size:11px;
+  background:var(--g-wash);color:var(--g-deep);
+  transition:background .15s,color .15s;
+}
+.sidebar.sidebar--csr .sidebar-who--mini:hover{opacity:1}
+.sidebar.sidebar--csr .sidebar-who--mini:hover .sidebar-who-av{
+  background:var(--g);color:#fff;
+}
+
+/* The mark at the top of a collapsed rail. Expanded it is a leaf beside the
+   wordmark; collapsed there is only room for one thing, so it becomes the
+   filled green disc — the app's identity at a glance, and the anchor the eye
+   returns to. */
+.sidebar.sidebar--csr.sidebar-collapsed .sidebar-brand{
+  justify-content:center;padding:14px 0 12px;
+}
+.sidebar.sidebar--csr.sidebar-collapsed .sidebar-brand-icon{
+  width:34px;height:34px;border-radius:50%;
+  display:grid;place-items:center;
+  background:var(--g) !important;color:#fff !important;
+  font-family:"Switzer",system-ui,sans-serif;
+  font-size:10.5px;font-weight:700;letter-spacing:.04em;
+  box-shadow:0 1px 2px rgba(28,71,54,.18);
+}
+
+/* Collapsed, the toggle returns to a full-width bar under the mark — centre
+   its glyph, or it sits hard against the left edge under a centred disc. */
+.sidebar.sidebar--csr.sidebar-collapsed .sidebar-toggle{
+  display:flex;align-items:center;justify-content:center;height:32px;
+}
