@@ -267,7 +267,7 @@ export default function CSRDashboard() {
         <>
           {/* ---- row 1: the lead grant, the three figures, the split ---- */}
           <div className="dash">
-            <div className="stats">
+            <div className="panel stats">
               {STATS(sanctioned, utilised, remaining, excluded.amount, excluded.count, utilPct, openP.length).map((t) => (
                 <div className="stat" key={t.k}>
                   <div className="stat-top">
@@ -305,7 +305,7 @@ export default function CSRDashboard() {
             </div>
 
             {/* ---- row 2: what you can do, and the shape of the money ---- */}
-            <div className="quick">
+            <div className="panel quick">
               <div className="quick-grid">
                 {ACTIONS.map((a) => (
                   <button type="button" className="qa" key={a.label} onClick={() => navigate(a.to)}>
@@ -314,7 +314,7 @@ export default function CSRDashboard() {
                   </button>
                 ))}
               </div>
-              <div className="panel limit">
+              <div className="limit">
                 <div className="limit-top">
                   <span className="limit-k">Utilisation</span>
                   <span className="limit-pc fig">{Math.round(utilPct)}%</span>

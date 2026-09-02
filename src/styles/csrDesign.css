@@ -1440,3 +1440,61 @@
   border-bottom:1px solid var(--line);
 }
 .sidebar.sidebar--csr{border-right:1px solid var(--line) !important}
+
+/* =========================================================================
+   GROUPED CELLS, DIVIDED BY LINES — the pattern the reference actually uses.
+   Its three figures are not three cards. They are ONE panel split by vertical
+   hairlines: a single border, a single radius, corners rounded only at the
+   outer ends. Same for its action block, where four buttons and the limit bar
+   share one panel divided by rules. Cards are reserved for things that are
+   genuinely separate — the chart and the statistic panel.
+   Detached boxes said "these are four unrelated numbers". They are four
+   readings of one figure, which is what a divided strip says instead.
+   ========================================================================= */
+.csrx .dash > .stats{
+  background:var(--card);border:1px solid #EDF0EF;border-radius:var(--r-card);
+  box-shadow:0 1px 2px rgba(28,44,38,.04);overflow:hidden;gap:0;
+}
+.csrx .stats > .stat{
+  border:0;border-radius:0;box-shadow:none;background:transparent;
+  border-left:1px solid var(--line2);
+}
+.csrx .stats > .stat:first-child{border-left:0}
+
+/* The action block: one panel, four cells, and the utilisation bar joined
+   beneath them by a rule rather than floating as its own card. */
+.csrx .dash > .quick{
+  display:block;
+  background:var(--card);border:1px solid #EDF0EF;border-radius:var(--r-card);
+  box-shadow:0 1px 2px rgba(28,44,38,.04);overflow:hidden;
+}
+.csrx .quick .quick-grid{gap:0}
+.csrx .quick .qa{
+  background:transparent;border:0;border-radius:0;box-shadow:none;
+  border-left:1px solid var(--line2);border-top:1px solid var(--line2);
+}
+.csrx .quick .qa:nth-child(odd){border-left:0}
+.csrx .quick .qa:nth-child(-n+2){border-top:0}
+.csrx .quick .qa:hover{background:#F7FBF8}
+.csrx .quick .limit{
+  border:0;border-top:1px solid var(--line);border-radius:0;
+  box-shadow:none;background:transparent;
+}
+
+/* The dividers have to run the full height of the strip, or they read as four
+   short marks floating inside a box rather than as one divided surface. The
+   cells stretch; the panel takes its height from the tallest of them. */
+.csrx .dash > .stats{align-items:stretch}
+.csrx .stats > .stat{height:auto;min-height:0}
+
+/* Neither group should stretch to match the tall panel beside it — that is
+   what left a band of empty white under the utilisation bar. */
+.csrx .dash > .stats,
+.csrx .dash > .quick{align-self:start}
+
+/* .csrx .panel carries 24px 26px from an older block. A grouped panel must not
+   take it: its cells own their padding, and the inherited ring pushed the
+   dividers 25px clear of every edge so the strip read as four marks floating
+   inside a box. */
+.csrx .dash > .stats,
+.csrx .dash > .quick{padding:0}
