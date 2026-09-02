@@ -177,8 +177,12 @@ export default function CSRUtilisationPage() {
               >
                 <span className="ucard-head">
                   <span className="ucard-id">
-                    <span className="ucard-n">{project.name}</span>
-                    <span className="ucard-f">{project.clientName || "Funder not recorded"}</span>
+                    {/* 26 Aug review, 04:35: "BDSA तुम्हारा prime रहेगा" — the
+                        funder is prime, so it takes .ucard-n's bold ink
+                        treatment; the project name moves to .ucard-f's small
+                        muted one. Classes unchanged, strings swapped. */}
+                    <span className="ucard-n">{project.clientName || "Funder not recorded"}</span>
+                    <span className="ucard-f">{project.name}</span>
                     {/* Which TTA project this grant funds. Neutral, not inked:
                         an identity is not money, a promise or a decision. */}
                     {ttaProjectIdentity(project) && (

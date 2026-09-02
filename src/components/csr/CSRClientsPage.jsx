@@ -57,8 +57,9 @@ function OnboardModal({ open, projects, onClose, onSave, saving }) {
             helperText={noProjects ? 'No CSR projects yet — create one first.' : errors.projectId}
             disabled={noProjects}
           >
+            {/* 26 Aug review, 04:35: funder prime, project name secondary. */}
             {(projects || []).map((p) => (
-              <MenuItem key={p.id} value={p.id}>{p.name} — {p.clientName}</MenuItem>
+              <MenuItem key={p.id} value={p.id}>{p.clientName} — {p.name}</MenuItem>
             ))}
           </TextField>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>

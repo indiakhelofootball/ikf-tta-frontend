@@ -241,13 +241,19 @@ export default function CSRProjectManagementPage() {
                   type="button"
                   className={`lr${p.id === selected?.id ? ' on' : ''}`}
                   aria-current={p.id === selected?.id ? 'true' : undefined}
-                  aria-label={`Show ${p.name}, ${p.clientName || 'no funder'}`}
+                  aria-label={`Show ${p.clientName || 'no funder'}, ${p.name}`}
                   onClick={() => setSelectedId(p.id)}
                 >
+                  {/* 26 Aug review, 04:35: "उल्टा" — the funder was showing small
+                      and the project name large, and it should be reversed: the
+                      funder is prime. .nm carries the bold/ink treatment, .fn
+                      the small/muted one — the classes stay put, the strings
+                      that fill them swap. The avatar still hashes off p.name,
+                      untouched (constraint: palette index is keyed off it). */}
                   <span className={`av a${paletteIdx(p.id)}`}>{initials(p.name)}</span>
                   <span className="lc">
-                    <span className="nm">{p.name}</span>
-                    <span className="fn">{p.clientName || '—'}</span>
+                    <span className="nm">{p.clientName || '—'}</span>
+                    <span className="fn">{p.name}</span>
                   </span>
                   <span className="rt">
                     <span className="am fig">{fmtMoney(p.sanctionedAmount)}</span>
@@ -286,9 +292,12 @@ export default function CSRProjectManagementPage() {
               <div className="dtl">
                 <div className="dh">
                   <div>
-                    <h3>{selected.name}</h3>
+                    {/* 26 Aug review, 04:35: "BDSA तुम्हारा prime रहेगा" — the
+                        funder is the prime line (serif h3), the project name
+                        drops to .sub beside the sanctioned amount. */}
+                    <h3>{selected.clientName || '—'}</h3>
                     <div className="sub">
-                      {selected.clientName || '—'} · <b className="fig">{fmtMoney(selected.sanctionedAmount)}</b>
+                      {selected.name} · <b className="fig">{fmtMoney(selected.sanctionedAmount)}</b>
                     </div>
                   </div>
                   <div className="acts">
