@@ -72,7 +72,7 @@
 .csrx .sb input::placeholder{color:var(--muted)}
 .csrx .sb:focus-within{border-color:var(--g);box-shadow:0 0 0 3px var(--g-wash)}.csrx .sb:focus-within svg{color:var(--g)}
 .csrx .segbar{display:flex;background:rgba(255,255,255,.6);border:1px solid rgba(60,80,70,.16);border-radius:var(--r-ctl);padding:3px;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
-.csrx .segbar .s{font-size:13px;font-weight:500;color:var(--muted);padding:7px 14px;border-radius:var(--r-ctl);cursor:pointer;transition:.14s;border:0;background:transparent;font-family:var(--ui)}
+.csrx .segbar .s{font-size:14px;font-weight:500;color:var(--muted);padding:7px 14px;border-radius:var(--r-ctl);cursor:pointer;transition:.14s;border:0;background:transparent;font-family:var(--ui)}
 .csrx .segbar .s.on{background:var(--g-wash);color:var(--g-deep)}
 
 /* glass table */
@@ -81,7 +81,7 @@
   border:1px solid rgba(255,255,255,.6);border-radius:var(--r-ctl);overflow:hidden;
   box-shadow:0 1px 2px rgba(30,54,42,.04),0 8px 22px rgba(30,54,42,.06)}
 .csrx table.dt{width:100%;border-collapse:collapse}
-.csrx table.dt thead th{text-align:left;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);
+.csrx table.dt thead th{text-align:left;font-size:12.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);
   font-weight:500;padding:15px 22px;border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;user-select:none}
 .csrx table.dt thead th.r{text-align:right}
 .csrx table.dt thead th .car{color:var(--faint);margin-left:5px;font-size:9px}
@@ -100,11 +100,11 @@
 .csrx table.dt tbody tr.sel .rowchev{color:#fff;opacity:1}
 .csrx td.r{text-align:right;font-variant-numeric:tabular-nums}
 .csrx .pcell{display:flex;align-items:center;gap:13px}
-.csrx .pcell .av{width:38px;height:38px;border-radius:var(--r-ctl);display:grid;place-items:center;flex:none;font-family:var(--disp);font-weight:500;font-size:13px;color:#fff}
+.csrx .pcell .av{width:38px;height:38px;border-radius:var(--r-ctl);display:grid;place-items:center;flex:none;font-family:var(--disp);font-weight:500;font-size:14px;color:#fff}
 .csrx .pcell .nm{color:var(--ink);font-weight:500;line-height:1.35}
-.csrx .pcell .loc{font-size:13px;color:var(--muted);margin-top:2px}
+.csrx .pcell .loc{font-size:14px;color:var(--muted);margin-top:2px}
 .csrx .amt{color:var(--ink);font-weight:500}
-.csrx .chip{font-size:13px;font-weight:500;padding:4px 11px;border-radius:var(--r-pill);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.csrx .chip{font-size:14px;font-weight:500;padding:4px 11px;border-radius:var(--r-pill);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 .csrx .chip::before{content:"";width:6px;height:6px;border-radius:50%}
 .csrx .chip.plain::before{display:none}
 .csrx .chip.k1{color:var(--c1);background:var(--c1w)}.csrx .chip.k1::before{background:var(--c1)}
@@ -115,7 +115,7 @@
 .csrx .chip.k6{color:var(--c6);background:var(--c6w)}.csrx .chip.k6::before{background:var(--c6)}
 .csrx .chip.k7{color:var(--c7);background:var(--c7w)}.csrx .chip.k7::before{background:var(--c7)}
 .csrx .chip.k8{color:var(--c8);background:var(--c8w)}.csrx .chip.k8::before{background:var(--c8)}
-.csrx .pill{font-size:13px;font-weight:500;padding:4px 12px;border-radius:var(--r-pill);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.csrx .pill{font-size:14px;font-weight:500;padding:4px 12px;border-radius:var(--r-pill);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 .csrx .pill::before{content:"";width:6px;height:6px;border-radius:50%}
 .csrx .pill.act{color:var(--g-deep);background:var(--g-wash)}.csrx .pill.act::before{background:var(--g-bright)}
 .csrx .pill.wait{color:var(--o-deep);background:var(--o-wash)}.csrx .pill.wait::before{background:var(--o)}
@@ -124,10 +124,10 @@
 .csrx .rowchev{color:var(--faint);opacity:0;transition:.16s}
 .csrx tr:hover .rowchev{opacity:1}.csrx .rowchev svg{width:16px;height:16px;display:block}
 .csrx .tfoot{display:flex;align-items:center;padding:16px 22px;border-top:1px solid var(--line)}
-.csrx .tfoot .cnt{font-size:13px;color:var(--muted)}
+.csrx .tfoot .cnt{font-size:14px;color:var(--muted)}
 .csrx .pgr{margin-left:auto;display:flex;gap:5px}
 .csrx .pgr .b{min-width:30px;height:30px;padding:0 6px;border-radius:var(--r-ctl);border:1px solid var(--line);background:rgba(255,255,255,.5);
-  display:grid;place-items:center;font-size:13px;font-weight:500;color:var(--soft);cursor:pointer;font-family:var(--ui)}
+  display:grid;place-items:center;font-size:14px;font-weight:500;color:var(--soft);cursor:pointer;font-family:var(--ui)}
 .csrx .pgr .b.on{background:var(--g);color:#fff;border-color:var(--g)}
 .csrx .empty{padding:64px 22px;text-align:center;color:var(--muted)}
 .csrx .empty h3{font-family:var(--serif);font-size:20px;color:var(--ink);font-weight:500;margin:0 0 6px}
@@ -141,7 +141,7 @@
 .csrx .ubar .track{width:88px;height:7px;border-radius:var(--r-pill);background:#DCE3DD;overflow:hidden;flex:none}
 .csrx .ubar .track i{display:block;height:100%;border-radius:var(--r-pill);background:var(--g)}
 .csrx .ubar .track i.warn{background:var(--o)}.csrx .ubar .track i.over{background:var(--red)}
-.csrx .ubar .pc{font-size:13px;color:var(--soft);font-weight:500;width:38px;text-align:right;font-variant-numeric:tabular-nums}
+.csrx .ubar .pc{font-size:14px;color:var(--soft);font-weight:500;width:38px;text-align:right;font-variant-numeric:tabular-nums}
 .csrx .ubar .pc.over{color:var(--red)}
 /* loading */
 .csrx .loading{display:flex;justify-content:center;padding:80px 0}
@@ -161,19 +161,19 @@
 .csrx .kpi .ic svg{width:17px;height:17px}
 .csrx .kpi .ic.g{background:var(--c1w);color:var(--c1)}.csrx .kpi .ic.b{background:var(--c2w);color:var(--c2)}
 .csrx .kpi .ic.o{background:var(--c9w);color:var(--c9)}.csrx .kpi .ic.p{background:var(--c3w);color:var(--c3)}
-.csrx .kpi .k{font-size:13px;color:var(--muted);font-weight:500}
+.csrx .kpi .k{font-size:14px;color:var(--muted);font-weight:500}
 .csrx .kpi .v{font-family:var(--disp);font-size:30px;font-weight:600;letter-spacing:-.03em;line-height:1;color:var(--ink)}
 .csrx .kpi .v small{font-size:16px;color:var(--muted);font-weight:500}
-.csrx .kpi .sub{font-size:13px;color:var(--muted);margin-top:10px}
+.csrx .kpi .sub{font-size:14px;color:var(--muted);margin-top:10px}
 .csrx .dgrid{display:grid;grid-template-columns:1.5fr 1fr;gap:16px;margin-bottom:16px}
 @media(max-width:1000px){.csrx .dgrid{grid-template-columns:1fr}}
 .csrx .panel{padding:22px 24px}
 .csrx .panel .ph3{display:flex;align-items:center;margin-bottom:18px}
 .csrx .panel .ph3 h3{font-family:var(--disp);font-size:16px;font-weight:700;color:var(--ink);letter-spacing:-.02em;margin:0}
-.csrx .panel .ph3 .more{margin-left:auto;font-size:13px;color:var(--g-deep);font-weight:500;cursor:pointer}
+.csrx .panel .ph3 .more{margin-left:auto;font-size:14px;color:var(--g-deep);font-weight:500;cursor:pointer}
 .csrx .gaugebig{display:flex;align-items:center;gap:22px}
 .csrx .gaugebig .lbl .big{font-family:var(--disp);font-size:26px;font-weight:600;color:var(--ink);letter-spacing:-.02em;line-height:1}
-.csrx .gaugebig .lbl .sm{font-size:13px;color:var(--muted);margin-top:5px}
+.csrx .gaugebig .lbl .sm{font-size:14px;color:var(--muted);margin-top:5px}
 .csrx .rg{position:relative;flex:none}
 .csrx .rg .ctr{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--disp);font-weight:600;font-size:18px;color:var(--g-deep)}
 .csrx .dleg .r{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line-soft)}
@@ -183,7 +183,7 @@
 .csrx .dleg .r .vl{margin-left:auto;font-size:14px;color:var(--ink);font-weight:500;font-variant-numeric:tabular-nums}
 .csrx .tw-head{display:flex;align-items:center;padding:18px 22px;border-bottom:1px solid var(--line)}
 .csrx .tw-head h3{font-family:var(--disp);font-size:16px;font-weight:700;color:var(--ink);letter-spacing:-.02em;margin:0}
-.csrx .tw-head .more{margin-left:auto;font-size:13px;color:var(--g-deep);font-weight:500;cursor:pointer}
+.csrx .tw-head .more{margin-left:auto;font-size:14px;color:var(--g-deep);font-weight:500;cursor:pointer}
 
 /* =========================================================================
    CSR shell — sidebar + content frame. Scoped to .sidebar--csr so the TTA
@@ -210,7 +210,7 @@
 .sidebar--csr .sidebar-brand h2{font-family:"Zodiak",Georgia,serif;font-weight:500;letter-spacing:-.018em;color:var(--ink);line-height:1}
 .sidebar--csr .sidebar-brand-words > span{font-size:9.5px;letter-spacing:.17em;text-transform:uppercase;color:var(--muted);font-weight:500;margin-top:3px}
 .sidebar--csr .sidebar-brand-icon{background:var(--g);color:#fff;font-family:"Cabinet Grotesk","Switzer",sans-serif;font-weight:700;border-radius:var(--r-ctl)}
-.sidebar--csr .sidebar-section{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);font-weight:500}
+.sidebar--csr .sidebar-section{font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);font-weight:500}
 .sidebar--csr .sidebar-section-rule{background:var(--line)}
 .sidebar--csr .sidebar-link{
   color:var(--soft);border-radius:var(--r-ctl);font-weight:500;font-size:14px;letter-spacing:-.006em;
@@ -222,7 +222,7 @@
 .sidebar--csr .sidebar-link.active{background:var(--g-wash) !important;color:var(--g-deep) !important}
 .sidebar--csr .sidebar-link.active .sidebar-icon{color:var(--g) !important}
 .sidebar--csr .sidebar-toggle{border:1px solid var(--line);background:var(--card);color:var(--soft)}
-.sidebar--csr .sidebar-build{color:var(--faint);font-size:11px}
+.sidebar--csr .sidebar-build{color:var(--faint);font-size:12.5px}
 
 /* CSR content frame: the gradient ground the glass panels sit on */
 .dashboard-layout:has(.sidebar--csr) .dashboard-content{
@@ -268,18 +268,18 @@
 .csrx .barrow{display:grid;grid-template-columns:1fr auto;grid-template-areas:"top top" "track pc";gap:6px 12px;align-items:center}
 .csrx .barrow-top{grid-area:top;display:flex;justify-content:space-between;align-items:baseline}
 .csrx .barrow-nm{font-size:14px;color:#1A2620;font-weight:500}
-.csrx .barrow-amt{font-size:13px;color:#4A5750}
+.csrx .barrow-amt{font-size:14px;color:#4A5750}
 .csrx .bartrack{grid-area:track;height:10px;border-radius:var(--r-ctl);background:#EDF1ED;overflow:hidden}
 .csrx .barfill{height:100%;border-radius:var(--r-ctl);transition:width .6s cubic-bezier(.2,.7,.2,1)}
-.csrx .barrow-pc{grid-area:pc;font-size:13px;color:#4A5750;font-weight:500;font-variant-numeric:tabular-nums;min-width:36px;text-align:right}
+.csrx .barrow-pc{grid-area:pc;font-size:14px;color:#4A5750;font-weight:500;font-variant-numeric:tabular-nums;min-width:36px;text-align:right}
 
 /* --- multicolor histogram (vertical bars) --- */
 .csrx .histo{display:flex;align-items:flex-end;gap:14px;height:200px;padding-top:24px}
 .csrx .histbar{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;height:100%;justify-content:flex-end;min-width:0}
-.csrx .histamt{font-size:12px;color:#4A5750;white-space:nowrap}
+.csrx .histamt{font-size:13px;color:#4A5750;white-space:nowrap}
 .csrx .histcol{width:100%;max-width:54px;border-radius:var(--r-ctl) var(--r-ctl) 0 0;min-height:6px;transition:height .7s cubic-bezier(.2,.7,.2,1);position:relative}
 .csrx .histcol::after{content:"";position:absolute;inset:0;border-radius:var(--r-ctl) var(--r-ctl) 0 0;background:linear-gradient(180deg,rgba(255,255,255,.28),transparent 45%)}
-.csrx .histlbl{font-size:12px;color:#7A857E;text-align:center;line-height:1.25;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%}
+.csrx .histlbl{font-size:13px;color:#7A857E;text-align:center;line-height:1.25;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%}
 
 /* =========================================================================
    THE RAIL'S FOOT — the promo card from the approved reference.
@@ -298,7 +298,7 @@
 }
 .sidebar--csr .sidebar-promo-icon svg{width:12px;height:12px;display:block}
 .sidebar--csr .sidebar-promo p{
-  position:relative;z-index:1;font-size:11px;line-height:1.55;color:var(--muted);margin:0;
+  position:relative;z-index:1;font-size:12.5px;line-height:1.55;color:var(--muted);margin:0;
 }
 .sidebar--csr .sidebar-promo-wave{
   position:absolute;left:0;right:0;bottom:0;height:44px;width:100%;display:block;color:var(--g);
@@ -321,7 +321,7 @@
 /* ---- list side ---- */
 .csrx .lh{
   display:flex;align-items:center;gap:8px;padding:11px 14px;
-  border-bottom:1px solid var(--line);font-size:11px;color:var(--muted);
+  border-bottom:1px solid var(--line);font-size:12.5px;color:var(--muted);
 }
 .csrx .lh .sort{
   margin-left:auto;display:flex;align-items:center;gap:5px;cursor:pointer;
@@ -338,12 +338,12 @@
 .csrx .lr.on{background:var(--g-wash);box-shadow:inset 3px 0 0 var(--g-spine)}
 .csrx .lr:focus-visible{outline-offset:-2px}
 .csrx .lr .lc{min-width:0;flex:1;display:block}
-.csrx .lr .nm{display:block;font-size:12.5px;font-weight:600;color:var(--ink);line-height:1.32;letter-spacing:-.01em}
-.csrx .lr .fn{display:block;font-size:11px;color:var(--muted);margin-top:3px}
+.csrx .lr .nm{display:block;font-size:13.5px;font-weight:600;color:var(--ink);line-height:1.32;letter-spacing:-.01em}
+.csrx .lr .fn{display:block;font-size:12.5px;color:var(--muted);margin-top:3px}
 .csrx .lr .rt{text-align:right;flex:none;display:block}
-.csrx .lr .am{display:block;font-size:12px;font-weight:600;color:var(--ink);letter-spacing:-.015em}
+.csrx .lr .am{display:block;font-size:13px;font-weight:600;color:var(--ink);letter-spacing:-.015em}
 .csrx .lr .stt{
-  font-size:10.5px;color:var(--g);margin-top:4px;
+  font-size:12px;color:var(--g);margin-top:4px;
   display:flex;align-items:center;gap:4px;justify-content:flex-end;
 }
 .csrx .lr .stt::before{content:"";width:5px;height:5px;border-radius:50%;background:#22A55F}
@@ -355,7 +355,7 @@
 .csrx .pager{display:flex;align-items:center;justify-content:center;gap:5px;padding:12px;border-top:1px solid var(--line)}
 .csrx .pg{
   min-width:24px;height:24px;padding:0 6px;border-radius:var(--r-chip);border:1px solid var(--line);
-  background:var(--card);display:grid;place-items:center;font:inherit;font-size:11px;font-weight:500;
+  background:var(--card);display:grid;place-items:center;font:inherit;font-size:12.5px;font-weight:500;
   color:var(--soft);cursor:pointer;font-variant-numeric:tabular-nums;
 }
 .csrx .pg:hover{border-color:var(--g);color:var(--g)}
@@ -368,7 +368,7 @@
   font-family:"Zodiak",Georgia,serif;font-size:19px;font-weight:500;color:var(--ink);
   letter-spacing:-.02em;line-height:1.25;margin:0;
 }
-.csrx .dh .sub{font-size:12px;color:var(--muted);margin-top:5px}
+.csrx .dh .sub{font-size:13px;color:var(--muted);margin-top:5px}
 .csrx .dh .sub b{color:var(--soft);font-weight:600}
 .csrx .dh .acts{margin-left:auto;display:flex;align-items:center;gap:7px;flex:none}
 .csrx .ico{
@@ -391,24 +391,24 @@
 .csrx .facts.nb{border-bottom:0}
 .csrx .fc{padding:12px 14px;border-left:1px solid var(--line2)}
 .csrx .fc:first-child{border-left:0;padding-left:0}
-.csrx .fc .fl{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--muted);margin-bottom:5px}
+.csrx .fc .fl{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-bottom:5px}
 .csrx .fc .fl svg{width:12px;height:12px;color:var(--faint);flex:none}
-.csrx .fc .fv{font-size:12.5px;color:var(--ink);font-weight:500;letter-spacing:-.008em}
+.csrx .fc .fv{font-size:13.5px;color:var(--ink);font-weight:500;letter-spacing:-.008em}
 .csrx .fc .fv.em{color:var(--faint);font-weight:400}
 .csrx .fc .fv.gr{color:var(--g);font-weight:600}
 
 .csrx .blocks{display:grid;grid-template-columns:1fr 300px;gap:14px;margin-top:16px}
 .csrx .blk{background:var(--ground2);border:1px solid var(--line2);border-radius:var(--r-card);padding:14px}
-.csrx .blk h4{font-size:12px;font-weight:600;color:var(--ink);margin:0 0 8px}
-.csrx .blk p{font-size:12px;line-height:1.65;color:var(--soft);margin:0}
+.csrx .blk h4{font-size:13px;font-weight:600;color:var(--ink);margin:0 0 8px}
+.csrx .blk p{font-size:13px;line-height:1.65;color:var(--soft);margin:0}
 .csrx .sr{display:flex;align-items:flex-start;gap:10px;padding:7px 0;border-top:1px solid var(--line2)}
 .csrx .sr:first-of-type{border-top:0;padding-top:0}
 .csrx .sr svg{width:15px;height:15px;color:var(--muted);flex:none;margin-top:2px}
-.csrx .sr .sl{font-size:10.5px;color:var(--muted)}
-.csrx .sr .sv{font-size:12.5px;color:var(--ink);font-weight:500;margin-top:2px}
-.csrx .stamp{font-size:11px;color:var(--faint);margin-top:14px;padding-top:12px;border-top:1px solid var(--line2)}
+.csrx .sr .sl{font-size:12px;color:var(--muted)}
+.csrx .sr .sv{font-size:13.5px;color:var(--ink);font-weight:500;margin-top:2px}
+.csrx .stamp{font-size:12.5px;color:var(--faint);margin-top:14px;padding-top:12px;border-top:1px solid var(--line2)}
 
-.csrx .dempty{padding:64px 20px;text-align:center;color:var(--muted);font-size:12.5px}
+.csrx .dempty{padding:64px 20px;text-align:center;color:var(--muted);font-size:13.5px}
 
 @media (max-width: 1100px){
   .csrx .md{grid-template-columns:1fr;gap:14px}
@@ -462,7 +462,7 @@
    shared rail, which left a tall empty band above the first nav item. The
    reference's lockup sits close to the top and the nav starts under it. */
 .sidebar.sidebar--csr .sidebar-brand{min-height:0;padding:13px 14px 11px;gap:8px}
-.sidebar.sidebar--csr .sidebar-brand h2{font-size:13.5px}
+.sidebar.sidebar--csr .sidebar-brand h2{font-size:14px}
 .sidebar.sidebar--csr .sidebar-nav{padding:8px}
 
 /* SEPARATION. Every nav item is now divided from the next by a hairline, the
@@ -541,7 +541,7 @@
 }
 .sidebar.sidebar--csr .sidebar-who-txt{display:flex;flex-direction:column;min-width:0}
 .sidebar.sidebar--csr .sidebar-who-name{
-  font-size:10.5px;font-weight:600;color:var(--ink);line-height:1.2;
+  font-size:12px;font-weight:600;color:var(--ink);line-height:1.2;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
 .sidebar.sidebar--csr .sidebar-who-role{
@@ -563,7 +563,7 @@
 .dashboard-layout:has(.sidebar--csr) .dashboard-breadcrumb{display:none}
 .dashboard-layout:has(.sidebar--csr) .dashboard-header h1{
   font-family:"Switzer",system-ui,sans-serif !important;
-  font-size:12.5px !important;font-weight:600 !important;
+  font-size:13.5px !important;font-weight:600 !important;
   letter-spacing:.02em;color:#414A46 !important;margin:0;background:transparent !important;
 }
 
@@ -613,7 +613,7 @@
   background:var(--g-wash);color:var(--g);box-shadow:none;
 }
 .sidebar.sidebar--csr .sidebar-promo-icon svg{width:11px;height:11px}
-.sidebar.sidebar--csr .sidebar-promo p{font-size:10.5px;line-height:1.62;color:var(--muted)}
+.sidebar.sidebar--csr .sidebar-promo p{font-size:12px;line-height:1.62;color:var(--muted)}
 
 /* The identity row sits on its own translucent plate so it stays legible
    wherever the wave happens to crest behind it. It is a button — the account
@@ -637,7 +637,7 @@
 }
 .sidebar.sidebar--csr .sidebar-who-txt{display:flex;flex-direction:column;min-width:0;flex:1}
 .sidebar.sidebar--csr .sidebar-who-name{
-  font-size:10.5px;font-weight:600;color:var(--ink);line-height:1.2;
+  font-size:12px;font-weight:600;color:var(--ink);line-height:1.2;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
 .sidebar.sidebar--csr .sidebar-who-role{
@@ -687,19 +687,19 @@
   font-family:"Zodiak",Georgia,serif;font-size:19px;font-weight:500;color:var(--ink);
   letter-spacing:-.02em;margin:0;line-height:1.2;
 }
-.csrx .acct-id .sub{font-size:12px;color:var(--muted);margin-top:4px}
+.csrx .acct-id .sub{font-size:13px;color:var(--muted);margin-top:4px}
 .csrx .acct-actions{margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
 .csrx .newbtn.danger{background:#B3352A;box-shadow:0 2px 6px rgba(179,53,42,.18)}
 .csrx .newbtn.danger:hover{background:#8F2A21}
-.csrx .acct-h{font-size:12.5px;font-weight:600;color:var(--ink);margin:0 0 4px}
-.csrx .acct-note{font-size:11.5px;color:var(--muted);margin:0 0 12px;line-height:1.55}
+.csrx .acct-h{font-size:13.5px;font-weight:600;color:var(--ink);margin:0 0 4px}
+.csrx .acct-note{font-size:13px;color:var(--muted);margin:0 0 12px;line-height:1.55}
 .csrx .acct-row{
   display:flex;align-items:center;gap:12px;
   padding:11px 0;border-top:1px solid var(--line2);
 }
 .csrx .acct-row > div{flex:1;min-width:0}
-.csrx .acct-row-name{font-size:12.5px;font-weight:600;color:var(--ink)}
-.csrx .acct-row-why{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.5}
+.csrx .acct-row-name{font-size:13.5px;font-weight:600;color:var(--ink)}
+.csrx .acct-row-why{font-size:12.5px;color:var(--muted);margin-top:2px;line-height:1.5}
 @media (max-width:1100px){.csrx .acct{grid-template-columns:1fr;gap:14px}}
 
 /* =========================================================================
@@ -716,8 +716,8 @@
 /* The name is the thing you actually read down here — it was set smaller than
    the nav labels above it, which made the person signed in the quietest item
    on the rail. */
-.sidebar.sidebar--csr .sidebar-who-av{width:28px;height:28px;font-size:10px}
-.sidebar.sidebar--csr .sidebar-who-name{font-size:13px;letter-spacing:-.008em}
+.sidebar.sidebar--csr .sidebar-who-av{width:28px;height:28px;font-size:11.5px}
+.sidebar.sidebar--csr .sidebar-who-name{font-size:14px;letter-spacing:-.008em}
 .sidebar.sidebar--csr .sidebar-who-role{font-size:8.5px;margin-top:2px}
 .sidebar.sidebar--csr .sidebar-who-cv svg{width:13px;height:13px}
 
@@ -740,12 +740,12 @@
   background:rgba(255,255,255,.18);color:#fff;
 }
 .csrx .feature-ic svg{width:13px;height:13px}
-.csrx .feature-pct{margin-left:auto;font-size:11px;font-weight:600;color:rgba(255,255,255,.9)}
+.csrx .feature-pct{margin-left:auto;font-size:12.5px;font-weight:600;color:rgba(255,255,255,.9)}
 .csrx .feature-name{
-  font-size:13.5px;font-weight:600;line-height:1.35;letter-spacing:-.012em;
+  font-size:14px;font-weight:600;line-height:1.35;letter-spacing:-.012em;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
 }
-.csrx .feature-funder{font-size:11px;color:rgba(255,255,255,.72);margin-top:4px}
+.csrx .feature-funder{font-size:12.5px;color:rgba(255,255,255,.72);margin-top:4px}
 .csrx .feature-foot{
   margin-top:auto;padding-top:16px;display:flex;align-items:flex-end;gap:10px;
 }
@@ -770,20 +770,20 @@
 .csrx .stat-ic svg{width:13px;height:13px}
 .csrx .stat-dots{margin-left:auto;color:var(--faint);font-size:14px;line-height:1}
 .csrx .trend{
-  align-self:flex-start;font-size:10px;font-weight:600;padding:3px 8px;
+  align-self:flex-start;font-size:11.5px;font-weight:600;padding:3px 8px;
   border-radius:var(--r-pill);margin-bottom:10px;white-space:nowrap;
 }
 .csrx .trend.good{background:#E7F1EB;color:#1B7A4B}
 .csrx .trend.bad{background:#FBEBE9;color:#B3352A}
 .csrx .trend.neutral{background:var(--ground2);color:var(--soft)}
-.csrx .stat-k{font-size:11.5px;color:var(--muted);margin-top:auto}
+.csrx .stat-k{font-size:13px;color:var(--muted);margin-top:auto}
 .csrx .stat-v{font-size:19px;font-weight:600;color:var(--ink);letter-spacing:-.022em;margin-top:3px}
 
 /* The statistic panel: donut over a legend, as the reference has it. */
 .csrx .statistic{padding:14px;display:flex;flex-direction:column}
 .csrx .stat-head{display:flex;align-items:baseline;margin-bottom:14px}
-.csrx .stat-head h3{font-size:12.5px;font-weight:600;color:var(--ink);margin:0}
-.csrx .stat-when{margin-left:auto;font-size:10.5px;color:var(--muted)}
+.csrx .stat-head h3{font-size:13.5px;font-weight:600;color:var(--ink);margin:0}
+.csrx .stat-when{margin-left:auto;font-size:12px;color:var(--muted)}
 .csrx .donut{position:relative;margin:2px auto 14px}
 .csrx .donut svg{display:block}
 .csrx .donut-ctr{
@@ -799,10 +799,10 @@
 .csrx .legend-row:first-child{border-top:0}
 .csrx .legend-dot{width:7px;height:7px;border-radius:50%;flex:none}
 .csrx .legend-nm{
-  font-size:11.5px;color:var(--soft);flex:1;min-width:0;
+  font-size:13px;color:var(--soft);flex:1;min-width:0;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
-.csrx .legend-amt{font-size:11.5px;font-weight:600;color:var(--ink)}
+.csrx .legend-amt{font-size:13px;font-weight:600;color:var(--ink)}
 
 /* ---- row 2 ---- */
 .csrx .dash-bot{display:grid;grid-template-columns:300px 1fr;gap:14px;margin-top:14px;align-items:start}
@@ -811,7 +811,7 @@
 .csrx .qa{
   display:flex;flex-direction:column;align-items:center;gap:7px;
   background:var(--card);border:1px solid var(--line);border-radius:var(--r-card);
-  padding:14px 8px;font:inherit;font-size:11.5px;font-weight:500;color:var(--soft);
+  padding:14px 8px;font:inherit;font-size:13px;font-weight:500;color:var(--soft);
   cursor:pointer;transition:border-color .15s,background .15s,color .15s;
 }
 .csrx .qa:hover{border-color:#BFD7C9;background:#F7FBF8;color:var(--g-deep)}
@@ -824,17 +824,17 @@
 
 .csrx .limit{padding:14px}
 .csrx .limit-top{display:flex;align-items:baseline;margin-bottom:9px}
-.csrx .limit-k{font-size:12px;font-weight:600;color:var(--ink)}
-.csrx .limit-pc{margin-left:auto;font-size:11.5px;font-weight:600;color:var(--soft)}
+.csrx .limit-k{font-size:13px;font-weight:600;color:var(--ink)}
+.csrx .limit-pc{margin-left:auto;font-size:13px;font-weight:600;color:var(--soft)}
 .csrx .limit-track{height:6px;border-radius:var(--r-pill);background:var(--ground2);overflow:hidden}
 .csrx .limit-fill{height:100%;border-radius:var(--r-pill);background:#2C6A4F;transition:width .4s cubic-bezier(.2,.7,.2,1)}
 .csrx .limit-fill.over{background:#B3352A}
-.csrx .limit-sub{font-size:11px;color:var(--muted);margin-top:9px}
-.csrx .limit-warn{font-size:11px;color:#B3352A;margin-top:5px}
+.csrx .limit-sub{font-size:12.5px;color:var(--muted);margin-top:9px}
+.csrx .limit-warn{font-size:12.5px;color:#B3352A;margin-top:5px}
 
 .csrx .flow{padding:14px}
 .csrx .flow-total{font-size:22px;font-weight:600;color:var(--ink);letter-spacing:-.025em}
-.csrx .flow-key{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--muted);margin:5px 0 6px}
+.csrx .flow-key{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin:5px 0 6px}
 
 @media (max-width:1280px){
   .csrx .dash-top{grid-template-columns:1fr 300px}
@@ -894,36 +894,36 @@
 .csrx .stat-ic{width:24px;height:24px}
 .csrx .stat-ic svg{width:12px;height:12px}
 .csrx .trend{font-size:9.5px;padding:2px 7px;margin-bottom:8px}
-.csrx .stat-k{font-size:10.5px}
+.csrx .stat-k{font-size:12px}
 .csrx .stat-v{font-size:16px;margin-top:2px}
 
 .csrx .feature{min-height:170px;padding:14px}
 .csrx .feature-top{margin-bottom:14px}
 .csrx .feature-ic{width:24px;height:24px}
 .csrx .feature-ic svg{width:12px;height:12px}
-.csrx .feature-pct{font-size:10px}
-.csrx .feature-k{font-size:12.5px;font-weight:600;letter-spacing:-.01em}
-.csrx .feature-sub{font-size:10px;color:rgba(255,255,255,.7);margin-top:3px}
+.csrx .feature-pct{font-size:11.5px}
+.csrx .feature-k{font-size:13.5px;font-weight:600;letter-spacing:-.01em}
+.csrx .feature-sub{font-size:11.5px;color:rgba(255,255,255,.7);margin-top:3px}
 .csrx .feature-foot{padding-top:14px;gap:14px;align-items:flex-end}
 .csrx .feature-foot .fl{font-size:9px}
 .csrx .feature-foot .fv{font-size:17px}
-.csrx .feature-foot .fv.sm{font-size:12.5px;font-weight:600}
+.csrx .feature-foot .fv.sm{font-size:13.5px;font-weight:600}
 
 .csrx .statistic{padding:12px}
 .csrx .stat-head{margin-bottom:10px}
-.csrx .stat-head h3{font-size:11.5px}
+.csrx .stat-head h3{font-size:13px}
 .csrx .stat-when{font-size:9.5px}
-.csrx .donut-v{font-size:13.5px}
+.csrx .donut-v{font-size:14px}
 .csrx .donut-k{font-size:9px}
 .csrx .legend-row{padding:6px 0}
-.csrx .legend-nm,.csrx .legend-amt{font-size:10.5px}
+.csrx .legend-nm,.csrx .legend-amt{font-size:12px}
 
-.csrx .qa{padding:12px 8px;font-size:10.5px;gap:6px}
+.csrx .qa{padding:12px 8px;font-size:12px;gap:6px}
 .csrx .qa-ic{width:26px;height:26px}
 .csrx .qa-ic svg{width:13px;height:13px}
 .csrx .limit{padding:12px}
-.csrx .limit-k{font-size:11px}
-.csrx .limit-pc,.csrx .limit-sub,.csrx .limit-warn{font-size:10px}
+.csrx .limit-k{font-size:12.5px}
+.csrx .limit-pc,.csrx .limit-sub,.csrx .limit-warn{font-size:11.5px}
 .csrx .flow{padding:12px}
 .csrx .flow-total{font-size:19px}
 .csrx .flow-key{font-size:9.5px}
@@ -994,13 +994,13 @@
 /* The figure pair above the donut. */
 .csrx .stat-pair{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
 .csrx .stat-pair > div{display:flex;align-items:baseline;justify-content:space-between}
-.csrx .stat-pair span:first-child{font-size:10.5px;color:var(--muted)}
-.csrx .stat-pair span:last-child{font-size:10.5px;font-weight:600;color:var(--ink)}
+.csrx .stat-pair span:first-child{font-size:12px;color:var(--muted)}
+.csrx .stat-pair span:last-child{font-size:12px;font-weight:600;color:var(--ink)}
 
 .csrx .donut{margin:0 auto 12px}
 .csrx .donut-v{font-size:14px}
 
-.csrx .flow-k{font-size:10px;color:var(--muted)}
+.csrx .flow-k{font-size:11.5px;color:var(--muted)}
 .csrx .flow-total{margin-top:2px}
 
 /* =========================================================================
@@ -1070,12 +1070,12 @@
   box-shadow:0 6px 18px rgba(28,44,38,.14);
 }
 .csrx .tip-t{
-  font-size:10px;font-weight:600;color:var(--ink);margin-bottom:5px;
+  font-size:11.5px;font-weight:600;color:var(--ink);margin-bottom:5px;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px;
 }
 .csrx .tip-r{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
 .csrx .tip-r span{font-size:9.5px;color:var(--muted)}
-.csrx .tip-r b{font-size:10px;font-weight:600;color:var(--ink)}
+.csrx .tip-r b{font-size:11.5px;font-weight:600;color:var(--ink)}
 .csrx .flow-key{display:flex;gap:12px}
 .csrx .flow-key > span{display:flex;align-items:center;gap:5px}
 
@@ -1098,7 +1098,7 @@
 }
 .csrx .lgrid-head{
   padding:11px 16px;border-bottom:1px solid var(--line);
-  font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:500;
+  font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:500;
 }
 .csrx .lrow{
   width:100%;text-align:left;font:inherit;background:transparent;
@@ -1110,14 +1110,14 @@
 .csrx .lrow:hover{background:#F7FAF8}
 .csrx .lrow:focus-visible{outline-offset:-2px}
 .csrx .lrow .t1{
-  font-size:12.5px;font-weight:600;color:var(--ink);letter-spacing:-.008em;
+  font-size:13.5px;font-weight:600;color:var(--ink);letter-spacing:-.008em;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
 .csrx .lrow .t2{
-  font-size:11.5px;color:var(--muted);
+  font-size:13px;color:var(--muted);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
-.csrx .lrow .fig{font-size:11.5px;color:var(--soft)}
+.csrx .lrow .fig{font-size:13px;color:var(--soft)}
 .csrx .nowrap{white-space:nowrap}
 
 /* The grant/document cell on Reports holds a link beside the name, so it is a
@@ -1129,7 +1129,7 @@
 
 /* Native select styled to match the search field beside it. */
 .csrx .sel{
-  font:inherit;font-size:13px;color:var(--ink);
+  font:inherit;font-size:14px;color:var(--ink);
   background:var(--card);border:1px solid var(--line);border-radius:var(--r-ctl);
   padding:0 32px 0 13px;height:38px;min-width:200px;cursor:pointer;
   appearance:none;-webkit-appearance:none;
@@ -1152,7 +1152,7 @@
 .csrx .gate.hot{background:#FBF1DF}
 .csrx .gate-n{font-size:24px;font-weight:600;color:var(--ink);letter-spacing:-.025em}
 .csrx .gate.hot .gate-n{color:#8C5A11}
-.csrx .gate-t{font-size:12px;color:var(--muted);line-height:1.5}
+.csrx .gate-t{font-size:13px;color:var(--muted);line-height:1.5}
 
 /* =========================================================================
    SETUP SCREENS — activity types, funders, branding.
@@ -1165,7 +1165,7 @@
 .csrx .ghostbtn{
   margin-left:auto;display:inline-flex;align-items:center;gap:7px;
   background:var(--card);border:1px solid var(--line);border-radius:var(--r-ctl);
-  font:inherit;font-size:12.5px;font-weight:500;color:var(--soft);
+  font:inherit;font-size:13.5px;font-weight:500;color:var(--soft);
   padding:9px 14px;cursor:pointer;transition:background .15s,border-color .15s,color .15s;
 }
 .csrx .ghostbtn:hover{background:var(--ground2);border-color:var(--line2);color:var(--ink)}
@@ -1175,7 +1175,7 @@
 .csrx .addrow .sb{flex:1;max-width:none}
 .csrx .chk{
   display:inline-flex;align-items:center;gap:7px;flex:none;
-  font-size:12.5px;color:var(--soft);cursor:pointer;user-select:none;
+  font-size:13.5px;color:var(--soft);cursor:pointer;user-select:none;
 }
 .csrx .chk input{width:15px;height:15px;accent-color:var(--g);cursor:pointer;margin:0}
 .csrx .newbtn:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
@@ -1188,10 +1188,10 @@
 .csrx .setrow:last-of-type{border-bottom:0}
 .csrx .setrow:hover{background:#F9FBFA}
 .csrx .setrow-n{
-  flex:1;min-width:0;font-size:12.5px;font-weight:500;color:var(--ink);
+  flex:1;min-width:0;font-size:13.5px;font-weight:500;color:var(--ink);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
-.csrx .setrow-s{font-size:11.5px;color:var(--muted)}
+.csrx .setrow-s{font-size:13px;color:var(--muted)}
 .csrx .pill.plain{background:var(--ground2);color:var(--soft)}
 .csrx .pill.plain::before{display:none}
 
@@ -1200,8 +1200,8 @@
    need only a name. */
 .csrx .setrow-c{display:flex;flex-direction:column;min-width:0;flex:1}
 .csrx .setrow-c .setrow-n{flex:none}
-.csrx .setrow .av{width:30px;height:30px;font-size:11px;background:var(--g);flex:none}
-.csrx .ghostbtn.tight{margin-left:0;padding:6px 12px;font-size:11.5px}
+.csrx .setrow .av{width:30px;height:30px;font-size:12.5px;background:var(--g);flex:none}
+.csrx .ghostbtn.tight{margin-left:0;padding:6px 12px;font-size:13px}
 
 /* A branding row leads on the colour it sets, because that is the thing being
    configured — a name alone gives no way to tell two funders' portals apart. */
@@ -1210,7 +1210,7 @@
   border:1px solid rgba(0,0,0,.08);
 }
 .csrx .ph code{
-  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;
   background:var(--ground2);border-radius:4px;padding:1px 5px;
 }
 
@@ -1221,10 +1221,10 @@
    ========================================================================= */
 .csrx .utot{padding:20px 22px;margin-bottom:16px}
 .csrx .utot-v{font-size:32px;font-weight:600;color:var(--g-deep);letter-spacing:-.03em;line-height:1}
-.csrx .utot-k{font-size:12px;color:var(--muted);margin-top:7px;line-height:1.5}
+.csrx .utot-k{font-size:13px;color:var(--muted);margin-top:7px;line-height:1.5}
 .csrx .utot-warn{
   margin-top:12px;padding:9px 12px;border-radius:var(--r-ctl);
-  background:#FBEBE9;color:#8F2A21;font-size:11.5px;line-height:1.5;
+  background:#FBEBE9;color:#8F2A21;font-size:13px;line-height:1.5;
 }
 
 .csrx .ucards{display:flex;flex-direction:column;gap:12px}
@@ -1238,9 +1238,9 @@
 .csrx .ucard-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:16px}
 .csrx .ucard-id{display:flex;flex-direction:column;min-width:0;flex:1}
 .csrx .ucard-n{font-size:14px;font-weight:600;color:var(--ink);letter-spacing:-.014em;line-height:1.3}
-.csrx .ucard-f{font-size:11.5px;color:#1B678D;margin-top:3px}
-.csrx .ucard-t{font-size:11px;color:var(--muted);margin-top:2px}
-.csrx .ucard-na{font-size:12px;color:var(--muted)}
+.csrx .ucard-f{font-size:13px;color:#1B678D;margin-top:3px}
+.csrx .ucard-t{font-size:12.5px;color:var(--muted);margin-top:2px}
+.csrx .ucard-na{font-size:13px;color:var(--muted)}
 .csrx .pill.frozen{background:#F1E9F4;color:#7A3E8F}
 
 .csrx .ufigs{
@@ -1250,7 +1250,7 @@
 .csrx .uv{font-size:17px;font-weight:600;color:var(--ink);letter-spacing:-.022em;white-space:nowrap}
 .csrx .uv.good{color:var(--g-deep)}
 .csrx .uv.over{color:#B3352A}
-.csrx .uk{font-size:10.5px;color:var(--muted);margin-top:3px;line-height:1.4}
+.csrx .uk{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.4}
 
 .csrx .utrack{
   display:block;height:6px;border-radius:var(--r-pill);
@@ -1258,8 +1258,8 @@
 }
 .csrx .ufill{display:block;height:100%;border-radius:var(--r-pill);background:#2C6A4F}
 .csrx .ufill.over{background:#B3352A}
-.csrx .ucard-pc{display:block;font-size:11px;color:var(--muted);margin-top:7px}
-.csrx .ucard-oop{display:block;font-size:11px;color:var(--muted);margin-top:5px;line-height:1.5}
+.csrx .ucard-pc{display:block;font-size:12.5px;color:var(--muted);margin-top:7px}
+.csrx .ucard-oop{display:block;font-size:12.5px;color:var(--muted);margin-top:5px;line-height:1.5}
 
 @media (max-width:900px){
   .csrx .ufigs{grid-template-columns:1fr 1fr}
@@ -1326,7 +1326,7 @@
   width:auto;margin:0;padding:0;border:0;border-top:0;background:transparent;
 }
 .sidebar.sidebar--csr .sidebar-who--mini .sidebar-who-av{
-  width:32px;height:32px;font-size:11px;
+  width:32px;height:32px;font-size:12.5px;
   background:var(--g-wash);color:var(--g-deep);
   transition:background .15s,color .15s;
 }
@@ -1347,7 +1347,7 @@
   display:grid;place-items:center;
   background:var(--g) !important;color:#fff !important;
   font-family:"Switzer",system-ui,sans-serif;
-  font-size:10.5px;font-weight:700;letter-spacing:.04em;
+  font-size:12px;font-weight:700;letter-spacing:.04em;
   box-shadow:0 1px 2px rgba(28,71,54,.18);
 }
 
@@ -1402,33 +1402,33 @@
 .csrx .stat{min-height:130px;padding:14px}
 .csrx .stat-ic{width:28px;height:28px}
 .csrx .stat-ic svg{width:14px;height:14px}
-.csrx .trend{font-size:11px;padding:3px 9px;margin-bottom:10px}
-.csrx .stat-k{font-size:12.5px}
+.csrx .trend{font-size:12.5px;padding:3px 9px;margin-bottom:10px}
+.csrx .stat-k{font-size:13.5px}
 .csrx .stat-v{font-size:21px;margin-top:4px}
 
 .csrx .statistic{padding:16px}
-.csrx .stat-head h3{font-size:13.5px}
-.csrx .stat-when{font-size:11px}
+.csrx .stat-head h3{font-size:14px}
+.csrx .stat-when{font-size:12.5px}
 .csrx .stat-pair span:first-child,
-.csrx .stat-pair span:last-child{font-size:12px}
+.csrx .stat-pair span:last-child{font-size:13px}
 .csrx .donut-v{font-size:15.5px}
 .csrx .legend-row{padding:8px 0}
-.csrx .legend-nm,.csrx .legend-amt{font-size:12px}
+.csrx .legend-nm,.csrx .legend-amt{font-size:13px}
 
-.csrx .qa{padding:14px 8px;font-size:12.5px;gap:7px}
+.csrx .qa{padding:14px 8px;font-size:13.5px;gap:7px}
 .csrx .qa-ic{width:30px;height:30px}
 .csrx .qa-ic svg{width:15px;height:15px}
 .csrx .limit{padding:16px}
-.csrx .limit-k{font-size:12.5px}
-.csrx .limit-pc{font-size:12.5px}
-.csrx .limit-sub,.csrx .limit-warn{font-size:11.5px}
+.csrx .limit-k{font-size:13.5px}
+.csrx .limit-pc{font-size:13.5px}
+.csrx .limit-sub,.csrx .limit-warn{font-size:13px}
 .csrx .flow{padding:16px}
-.csrx .flow-k{font-size:11.5px}
+.csrx .flow-k{font-size:13px}
 .csrx .flow-total{font-size:22px}
-.csrx .flow-key{font-size:11.5px}
-.csrx .flow .histlbl,.csrx .pairlbl{font-size:10.5px}
-.csrx .tip-t{font-size:11.5px}
-.csrx .tip-r span,.csrx .tip-r b{font-size:11px}
+.csrx .flow-key{font-size:13px}
+.csrx .flow .histlbl,.csrx .pairlbl{font-size:12px}
+.csrx .tip-t{font-size:13px}
+.csrx .tip-r span,.csrx .tip-r b{font-size:12.5px}
 
 /* =========================================================================
    THE LINES AT THE TOP. The reference divides the shell with rules, not with
@@ -1533,7 +1533,7 @@
 .csrx .stats > .stat{padding:18px}
 .csrx .stat-top{margin-bottom:12px}
 .csrx .stat-v{font-size:18px;margin-top:4px}
-.csrx .stat-k{font-size:12px}
+.csrx .stat-k{font-size:13px}
 
 /* =========================================================================
    THE TWO ROWS, AS THE REFERENCE LAYS THEM OUT — final, keep last.
@@ -1645,22 +1645,22 @@
 /* ---- type, up a step across the block ---- */
 .csrx .stats > .stat{padding:20px}
 .csrx .stat-v{font-size:22px;line-height:1.15}
-.csrx .stat-k{font-size:13px}
-.csrx .trend{font-size:11.5px;padding:4px 10px}
+.csrx .stat-k{font-size:14px}
+.csrx .trend{font-size:13px;padding:4px 10px}
 .csrx .stat-ic{width:30px;height:30px}
 .csrx .stat-ic svg{width:15px;height:15px}
 
 .csrx .stat-head h3{font-size:14.5px}
-.csrx .legend-nm,.csrx .legend-amt{font-size:12.5px}
-.csrx .stat-pair span{font-size:12.5px !important}
+.csrx .legend-nm,.csrx .legend-amt{font-size:13.5px}
+.csrx .stat-pair span{font-size:13.5px !important}
 .csrx .donut-v{font-size:16.5px}
-.csrx .qa{font-size:13px}
-.csrx .limit-k{font-size:13.5px}
-.csrx .limit-pc{font-size:13px}
-.csrx .limit-sub,.csrx .limit-warn{font-size:12px}
+.csrx .qa{font-size:14px}
+.csrx .limit-k{font-size:14px}
+.csrx .limit-pc{font-size:14px}
+.csrx .limit-sub,.csrx .limit-warn{font-size:13px}
 .csrx .flow-total{font-size:24px}
-.csrx .flow-k,.csrx .flow-key{font-size:12px}
-.csrx .pairlbl{font-size:11px}
+.csrx .flow-k,.csrx .flow-key{font-size:13px}
+.csrx .pairlbl{font-size:12.5px}
 
 /* ---- the chart: one colour per grant, and a gradient in the bar ---- */
 .csrx .pairbars .bar{border-radius:5px 5px 0 0}
@@ -1688,7 +1688,7 @@
 }
 .csrx .donut svg circle{transition:stroke .2s}
 .csrx .donut-v{font-size:18px;font-weight:600}
-.csrx .donut-k{font-size:10.5px}
+.csrx .donut-k{font-size:12px}
 
 /* The pair above the ring names what the ring is made of, so it is inked:
    utilised in moss, remaining in the neutral it is measured against. */
@@ -1782,22 +1782,22 @@
   background:linear-gradient(180deg,#F1F5F3 0%,#F7FAF8 100%);
   border-bottom:1px solid var(--line);
   padding:14px 20px;
-  font-size:11.5px;letter-spacing:.055em;color:#5C6A63;font-weight:600;
+  font-size:13px;letter-spacing:.055em;color:#5C6A63;font-weight:600;
 }
 
 /* Scale. These were set a size below the nav beside them, which put the record
    under the chrome in the hierarchy. */
 .csrx .lrow{padding:16px 20px}
 .csrx .lrow .t1{font-size:14px}
-.csrx .lrow .t2{font-size:12.5px}
-.csrx .lrow .fig{font-size:12.5px}
-.csrx .tfoot{padding:14px 20px;font-size:12.5px}
-.csrx .lrow .pill{font-size:11.5px;padding:4px 11px}
+.csrx .lrow .t2{font-size:13.5px}
+.csrx .lrow .fig{font-size:13.5px}
+.csrx .tfoot{padding:14px 20px;font-size:13.5px}
+.csrx .lrow .pill{font-size:13px;padding:4px 11px}
 
 /* The gate figure and the page heading move with them. */
 .csrx .ph h2{font-size:30px}
-.csrx .ph p{font-size:13.5px}
-.csrx .sb input,.csrx .sel{font-size:13.5px}
+.csrx .ph p{font-size:14px}
+.csrx .sb input,.csrx .sel{font-size:14px}
 .csrx .sb,.csrx .sel{height:42px}
 
 /* =========================================================================
@@ -1859,8 +1859,8 @@
 }
 .csrx .ldetail > div{display:flex;flex-direction:column;min-width:0;padding-top:16px}
 .csrx .ldetail .dfull{grid-column:1 / -1}
-.csrx .dk{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:600}
-.csrx .dv{font-size:13.5px;color:var(--ink);margin-top:4px}
+.csrx .dk{font-size:12.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.csrx .dv{font-size:14px;color:var(--ink);margin-top:4px}
 
 @media (max-width:900px){
   .csrx .ldetail{grid-template-columns:1fr 1fr}
@@ -1982,14 +1982,14 @@
   font-family:var(--serif);font-size:30px;font-weight:500;letter-spacing:-.018em;
   color:var(--ink);line-height:1.2;margin:0;
 }
-.csrx .pform-sub{font-size:13.5px;color:var(--muted);margin:6px 0 0;line-height:1.7}
+.csrx .pform-sub{font-size:14px;color:var(--muted);margin:6px 0 0;line-height:1.7}
 
 /* The back link is a button, not an anchor: it navigates through the router,
    and an <a href> that does not survive a middle-click is a lie. */
 .csrx .pform-back{
   display:inline-flex;align-items:center;gap:6px;
   background:none;border:0;padding:0;margin:0 0 12px;
-  font:inherit;font-size:12.5px;font-weight:500;color:var(--muted);
+  font:inherit;font-size:13.5px;font-weight:500;color:var(--muted);
   cursor:pointer;transition:color .15s;
 }
 .csrx .pform-back:hover{color:var(--g-deep)}
@@ -2004,8 +2004,8 @@
   padding:14px 18px;margin-bottom:24px;
 }
 .csrx .pform-prog-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:9px}
-.csrx .pform-prog-label{font-size:12.5px;color:var(--soft);font-weight:500;line-height:1.7}
-.csrx .pform-prog-pc{font-size:12.5px;color:var(--muted)}
+.csrx .pform-prog-label{font-size:13.5px;color:var(--soft);font-weight:500;line-height:1.7}
+.csrx .pform-prog-pc{font-size:13.5px;color:var(--muted)}
 .csrx .pform-prog-track{height:8px;border-radius:var(--r-pill);background:var(--ground2);overflow:hidden}
 .csrx .pform-prog-fill{
   height:100%;border-radius:var(--r-pill);background:var(--g);
@@ -2032,17 +2032,17 @@
   display:flex;flex-direction:column;gap:16px;
 }
 .csrx .pform-legend{
-  font-family:var(--disp);font-size:12px;font-weight:700;letter-spacing:.05em;
+  font-family:var(--disp);font-size:13px;font-weight:700;letter-spacing:.05em;
   text-transform:uppercase;color:var(--muted);padding:0 6px;margin-left:-6px;
 }
 .csrx .pform-row{display:flex;flex-direction:column;gap:16px}
 
 /* ---- fields ---- */
 .csrx .pform-field{display:flex;flex-direction:column;gap:6px;min-width:0}
-.csrx .pform-field > label{font-size:12.5px;font-weight:600;color:var(--ink);line-height:1.7}
+.csrx .pform-field > label{font-size:13.5px;font-weight:600;color:var(--ink);line-height:1.7}
 .csrx .pform-field input,
 .csrx .pform-field textarea{
-  font:inherit;font-size:13.5px;line-height:1.7;color:var(--ink);
+  font:inherit;font-size:14px;line-height:1.7;color:var(--ink);
   background:var(--card);border:1px solid var(--line);border-radius:var(--r-ctl);
   padding:9px 12px;width:100%;
   transition:border-color .15s,box-shadow .15s;
@@ -2053,7 +2053,7 @@
 .csrx .pform-field input[aria-invalid="true"]{border-color:var(--red)}
 .csrx .pform-field input[aria-invalid="true"]:focus{box-shadow:0 0 0 3px var(--red-wash)}
 .csrx .pform-field .sel{width:100%;min-width:0;height:auto;padding:9px 34px 9px 12px}
-.csrx .pform-help{font-size:12px;color:var(--muted);margin:0;line-height:1.7}
+.csrx .pform-help{font-size:13px;color:var(--muted);margin:0;line-height:1.7}
 .csrx .pform-help.bad{color:var(--red)}
 .csrx .pform-wide{
   background:var(--card);border:1px solid var(--line);border-radius:var(--r-card);
@@ -2065,7 +2065,7 @@
    looks up. */
 .csrx .pform-error{
   background:var(--red-wash);border:1px solid #EBC9C4;border-radius:var(--r-ctl);
-  padding:11px 14px;margin:0;font-size:13px;color:var(--red);line-height:1.7;
+  padding:11px 14px;margin:0;font-size:14px;color:var(--red);line-height:1.7;
 }
 
 .csrx .pform-actions{display:flex;align-items:center;gap:10px;padding-top:4px}
@@ -2084,7 +2084,7 @@
   font-family:var(--serif);font-size:22px;font-weight:500;color:var(--ink);
   line-height:1.2;margin:0 0 8px;
 }
-.csrx .pform-state-bad p{font-size:13.5px;color:var(--soft);margin:0 0 16px}
+.csrx .pform-state-bad p{font-size:14px;color:var(--soft);margin:0 0 16px}
 .csrx .pform-state-bad .ghostbtn{margin-left:0}
 
 @media (min-width:640px){
@@ -2124,3 +2124,231 @@
   .csrx .pform-row,
   .csrx .pform-row3{grid-template-columns:1fr}
 }
+
+
+/* =========================================================================
+   READABLE DETAIL TYPE.
+
+   The record surfaces were set between 10.5px and 12.5px. That is caption size
+   being asked to carry the actual record -- a funder's name, a sanctioned
+   figure, a contract reference -- and reading a grant off it strains the eye.
+   These are the values people read, not annotations on something else, so they
+   are sized as content.
+
+   Labels move up too, but stay clearly subordinate: the gap between label and
+   value is what makes a fact strip scannable, so both rise and the ratio holds.
+   ========================================================================= */
+.csrx .fc .fl{font-size:13px}
+.csrx .fc .fv{font-size:15px}
+.csrx .sr .sl{font-size:13px}
+.csrx .sr .sv{font-size:14.5px}
+.csrx .dk{font-size:13px}
+.csrx .dv{font-size:14.5px}
+.csrx .lr .nm{font-size:14px}
+.csrx .lr .fn{font-size:13.5px}
+.csrx .lr .am{font-size:14px}
+
+
+/* =========================================================================
+   TABLE COLUMNS AND PAGE HEADINGS, after the type scale moved.
+
+   Raising the small end of the scale pushed two cells past their tracks: the
+   date column was cut at 148px, which clipped a range ("04 Jul 2026 -> 02 Oct
+   2026") mid-string, and the record name lost room to the grant beside it. A
+   date that reads as a fragment is worse than a narrow one.
+
+   The grant column also carried the most width on the screen while repeating
+   the same funder down every row. It keeps its band -- it is the identity
+   column and the tint means that -- but it stops being the widest thing on the
+   page and truncates instead of pushing the record name out.
+   ========================================================================= */
+.csrx .lgrid{
+  grid-template-columns:
+    182px                      /* date -- fits a start->end range unclipped */
+    minmax(240px, 1.4fr)       /* the record's own name, now the widest track */
+    120px                      /* location */
+    minmax(150px, 0.9fr)       /* grant -- repeats down the column, so it yields */
+    124px;                     /* status */
+}
+.csrx .lgrid > *{min-width:0}
+.csrx .lrow .t1,
+.csrx .lrow .t2{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* The page never scrolls sideways; the table does, inside its own box. Five
+   columns of grant data do not fit 1024px however they are sized, and a body
+   that scrolls horizontally takes the rail and the header with it. */
+.csrx .twrap{overflow-x:auto}
+
+/* Page headings were 30px against 14px body -- a display size on a working
+   screen, where the record is what should carry weight. */
+.csrx .ph h2{font-size:24px}
+
+
+/* =========================================================================
+   ONE TOP EDGE -- the same bug as ONE LEFT EDGE above, on the other axis.
+
+   72px sat between the header strip and the page title on every CSR screen,
+   because two wrappers each paid for the gap: .dashboard-page's 40px and
+   .csrx-page's 32px, stacked. Horizontally that was already fixed by giving
+   the content wrapper no padding and letting .csrx-page own the inset; this
+   does the same vertically, so there is again exactly one value to change.
+
+   Applies to every CSR screen, not only Projects -- they all render through
+   .csrx-page.
+   ========================================================================= */
+.dashboard-layout:has(.sidebar--csr) .dashboard-page{padding-top:0}
+.csrx.csrx-page{padding-top:24px}
+
+
+/* =========================================================================
+   THE GRANT FORM -- two columns: the form, and a rail that reports on it.
+
+   The form used to run the full width, which made the one full-width field
+   (the project name) look enormous beside the paired ones below it. Narrowing
+   the form fixes that on its own: fields sit at a width their content actually
+   wants, and the space that frees goes to a rail that says what has landed so
+   far.
+
+   The rail is not decoration. Each step reports its own value back -- the
+   figure and the funder, the term -- so the amount can be checked against what
+   was typed without scrolling up to the field. A tick alone would not do that.
+   ========================================================================= */
+.csrx .pform-shell{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 268px;
+  gap:44px;
+  align-items:start;
+  max-width:1040px;
+}
+.csrx .pform{display:flex;flex-direction:column;gap:26px;max-width:none}
+
+.csrx .pform-crumb{
+  display:flex;align-items:center;gap:8px;
+  font-size:13px;color:var(--muted);margin-bottom:18px;
+}
+.csrx .pform-crumb-now{color:var(--ink);font-weight:600}
+.csrx .pform-back{
+  background:none;border:0;padding:0;font:inherit;color:var(--muted);cursor:pointer;
+}
+.csrx .pform-back:hover{color:var(--g);text-decoration:underline}
+
+/* Sections are headings on the page, not boxes on it. The reference has no
+   panel edges here -- the type and the spacing carry the grouping, and a form
+   in four bordered cards reads as four forms. */
+.csrx .pform-sec{border:0;padding:0;margin:0;background:none}
+.csrx .pform-legend{
+  /* text-transform is reset explicitly. The earlier .pform-legend rule styled a
+     <legend> as an uppercase eyebrow; these are section headings now, and
+     without the reset they inherit the caps and read as labels rather than as
+     the four passes the form is entered in. */
+  font-family:var(--serif);font-size:20px;font-weight:500;color:var(--ink);
+  text-transform:none;letter-spacing:-.012em;margin:0;padding:0;line-height:1.25;
+}
+.csrx .pform-sub{font-size:13.5px;color:var(--muted);margin:4px 0 16px;line-height:1.5}
+.csrx .pform-req{color:var(--clay-ink,#B4523F);font-weight:600}
+
+.csrx .pform-field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.csrx .pform-field + .pform-field{margin-top:16px}
+.csrx .pform-row .pform-field + .pform-field,
+.csrx .pform-row .pform-field{margin-top:0}
+.csrx .pform-field > label{font-size:13.5px;font-weight:600;color:var(--ink)}
+
+/* The tick lives on a wrapper so it can sit inside the field's box without a
+   positioned element inside the input itself. Only the wrapper moves; the
+   input keeps the module's own control styling. */
+.csrx .pform-input{position:relative;display:block}
+.csrx .pform-input > input{width:100%}
+.csrx .pform-input.ok::after{
+  content:"";position:absolute;right:13px;top:50%;width:11px;height:6px;
+  margin-top:-5px;border-left:2px solid var(--g);border-bottom:2px solid var(--g);
+  transform:rotate(-45deg);pointer-events:none;
+}
+.csrx .pform-input.ok > input{padding-right:36px}
+
+.csrx .pform-help{font-size:12.5px;color:var(--muted);margin:0;line-height:1.5}
+.csrx .pform-help.bad{color:#B4523F}
+.csrx .pform-error{
+  font-size:13.5px;color:#B4523F;background:#F8E9E5;border:1px solid #EBCFC8;
+  border-radius:var(--r-ctl);padding:10px 13px;margin:0;
+}
+.csrx .pform-actions{display:flex;gap:12px;align-items:center;padding-top:4px}
+
+/* ---- the rail ---- */
+.csrx .pform-rail{position:sticky;top:24px;display:flex;flex-direction:column;gap:22px}
+.csrx .pform-rail-h{
+  font-size:12px;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--muted);font-weight:600;margin:0;
+}
+.csrx .pform-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.csrx .pform-step{display:flex;gap:12px;align-items:flex-start;padding-bottom:20px;position:relative}
+.csrx .pform-step:last-child{padding-bottom:0}
+/* The connector is drawn from the mark downward, so it tracks the marks rather
+   than the text beside them, which varies in height with the summary. */
+.csrx .pform-step:not(:last-child)::before{
+  content:"";position:absolute;left:12px;top:26px;bottom:0;
+  width:2px;background:var(--line);
+}
+.csrx .pform-step.done:not(:last-child)::before{background:var(--g)}
+.csrx .pform-step-mark{
+  flex:none;width:26px;height:26px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  border:2px solid var(--line);background:var(--card);
+  font-size:12px;font-weight:600;color:var(--muted);
+  position:relative;z-index:1;
+}
+.csrx .pform-step.done .pform-step-mark{
+  background:var(--g);border-color:var(--g);color:var(--card);
+}
+.csrx .pform-step.done .pform-step-mark svg{width:14px;height:14px;display:block}
+.csrx .pform-step-body{display:flex;flex-direction:column;gap:2px;min-width:0}
+.csrx .pform-step-label{font-size:13.5px;font-weight:600;color:var(--ink)}
+.csrx .pform-step-hint{
+  font-size:12.5px;color:var(--muted);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+
+.csrx .pform-ring-card{
+  background:var(--g-wash);border:1px solid #CFE3D7;border-radius:var(--r-card);
+  padding:18px 18px 20px;display:flex;flex-direction:column;gap:6px;
+}
+.csrx .pform-ring{width:46px;height:46px;margin-bottom:6px}
+.csrx .pform-ring-track{fill:none;stroke:#CFE3D7;stroke-width:6}
+.csrx .pform-ring-fill{
+  fill:none;stroke:var(--g);stroke-width:6;stroke-linecap:round;
+  transform:rotate(-90deg);transform-origin:50% 50%;
+  transition:stroke-dasharray .3s ease;
+}
+.csrx .pform-ring-pc{font-size:15px;font-weight:600;color:var(--g-deep);margin:0}
+.csrx .pform-ring-note{font-size:12.5px;color:var(--soft);margin:0;line-height:1.5}
+
+@media (prefers-reduced-motion:reduce){
+  .csrx .pform-ring-fill{transition:none}
+}
+
+/* The rail is a report on the form, so below this width it goes above it
+   rather than squeezing into a column too narrow to read a funder name in. */
+@media (max-width:1080px){
+  .csrx .pform-shell{grid-template-columns:1fr;gap:28px}
+  .csrx .pform-rail{position:static;order:-1}
+  .csrx .pform-steps{
+    flex-direction:row;flex-wrap:wrap;gap:18px;
+  }
+  .csrx .pform-step{padding-bottom:0}
+  .csrx .pform-step:not(:last-child)::before{display:none}
+}
+
+
+/* =========================================================================
+   LET THE CSR PAGE SCROLL WITH THE DOCUMENT.
+
+   .dashboard-page carries overflow:auto, but its scrollHeight equals its
+   clientHeight -- it never actually scrolls, the document does. An ancestor
+   with a non-visible overflow still becomes the containing block for
+   position:sticky, so the setup rail was sticky against an element that never
+   moves, which is the same as not being sticky at all.
+
+   Clearing it for CSR only. The horizontal case that overflow was covering is
+   already handled closer to the problem: .twrap scrolls the table inside its
+   own box, so nothing here needs the page to scroll sideways.
+   ========================================================================= */
+.dashboard-layout:has(.sidebar--csr) .dashboard-page{overflow:visible}
