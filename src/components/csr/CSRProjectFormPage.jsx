@@ -205,165 +205,222 @@ export default function CSRProjectFormPage() {
     );
   }
 
+  // The four passes a grant is entered in. Each names what it is for, and the
+  // rail reports back what actually landed in it -- a step reading
+  // "Rs 12,00,000 - Bharat Forge" beats a tick, because it lets someone confirm
+  // the figure without scrolling back up to the field it came from.
+  const money = form.sanctionedAmount === '' || Number.isNaN(Number(form.sanctionedAmount))
+    ? '' : `\u20b9${Number(form.sanctionedAmount).toLocaleString('en-IN')}`;
+  const steps = [
+    {
+      n: 1, label: 'Project details', hint: 'Name & description',
+      done: progress.name, summary: form.name.trim(),
+    },
+    {
+      n: 2, label: 'Funder & grant', hint: 'Who pays, and how much',
+      done: progress.clientName && progress.sanctionedAmount,
+      summary: [money, form.clientName.trim()].filter(Boolean).join(' \u00b7 '),
+    },
+    {
+      n: 3, label: 'Term & status', hint: 'When it runs',
+      done: progress.startDate && progress.endDate,
+      summary: form.startDate && form.endDate ? `${form.startDate} \u2192 ${form.endDate}` : '',
+    },
+    {
+      n: 4, label: 'TTA link', hint: 'Optional',
+      done: form.projectRefId !== '',
+      summary: selectedTTAProject ? selectedTTAProject.name : '',
+    },
+  ];
+  // The ring is drawn from the same count the steps read, so the number and the
+  // ticks can never disagree. 2*pi*r, r=26.
+  const RING = 163.4;
+
   return (
     <div className="csrx csrx-page">
-      <header className="pform-head">
-        <button type="button" className="pform-back" onClick={() => leave()}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
-          CSR Projects
-        </button>
-        <h2>{isEdit ? 'Edit CSR Project' : 'New CSR Project'}</h2>
-        {isEdit && project?.name ? <p className="pform-sub">{project.name}</p> : null}
-      </header>
+      <nav className="pform-crumb" aria-label="Breadcrumb">
+        <button type="button" className="pform-back" onClick={() => leave()}>Projects</button>
+        <span aria-hidden="true">/</span>
+        <span className="pform-crumb-now">{isEdit ? 'Edit Project' : 'New Project'}</span>
+      </nav>
 
-      {/* Driven by the field state itself, not by a step counter or a timer:
-          the bar is only worth anything if it answers "what is still missing"
-          truthfully at every keystroke. */}
-      <section className="pform-prog" aria-label="Required fields completed">
-        <div className="pform-prog-row">
-          <span className="pform-prog-label">{`${done} of ${TRACKED_COUNT} complete`}</span>
-          <span className="pform-prog-pc fig">{`${pct}%`}</span>
-        </div>
-        <div
-          className="pform-prog-track"
-          role="progressbar"
-          aria-label="Required fields completed"
-          aria-valuenow={done}
-          aria-valuemin={0}
-          aria-valuemax={TRACKED_COUNT}
-          aria-valuetext={`${done} of ${TRACKED_COUNT} fields complete`}
-        >
-          {/* The width is a class, not a style attribute: there are exactly six
-              states, and a step class keeps the rule that nothing in this
-              module sets geometry from JSX. */}
-          <div className={`pform-prog-fill s${done}`} />
-        </div>
-      </section>
+      <div className="pform-shell">
+        <form className="pform" onSubmit={handleSubmit} noValidate>
 
-      <form className="pform" onSubmit={handleSubmit} noValidate>
-        <fieldset className="pform-sec pform-sec--grant">
-          <legend className="pform-legend">The grant</legend>
+          <section className="pform-sec pform-sec--grant">
+            <h2 className="pform-legend">Project details</h2>
+            <p className="pform-sub">Name the initiative and describe what it sets out to do.</p>
 
-          <div className="pform-field">
-            <label htmlFor="csr-name">Project Name</label>
-            <input
-              id="csr-name"
-              type="text"
-              value={form.name}
-              onChange={setField('name')}
-              aria-invalid={Boolean(errors.name)}
-              aria-describedby="csr-name-help"
-            />
-            <p id="csr-name-help" className={`pform-help${errors.name ? ' bad' : ''}`}>
-              {errors.name || "This grant's own label, e.g. Khelo Girls Initiative — Chhattisgarh."}
-            </p>
-          </div>
-
-          <div className="pform-row">
             <div className="pform-field">
-            <label htmlFor="csr-client">Client / Funder</label>
-            <input
-              id="csr-client"
-              type="text"
-              value={form.clientName}
-              onChange={setField('clientName')}
-              aria-invalid={Boolean(errors.clientName)}
-              aria-describedby={errors.clientName ? 'csr-client-help' : undefined}
-            />
-            {errors.clientName ? (
-              <p id="csr-client-help" className="pform-help bad">{errors.clientName}</p>
-            ) : null}
-          </div>
-
-          <div className="pform-field">
-            <label htmlFor="csr-amount">Sanctioned Amount (₹)</label>
-            <input
-              id="csr-amount"
-              type="number"
-              value={form.sanctionedAmount}
-              onChange={setField('sanctionedAmount')}
-              aria-invalid={Boolean(errors.sanctionedAmount)}
-              aria-describedby={errors.sanctionedAmount ? 'csr-amount-help' : undefined}
-            />
-            {errors.sanctionedAmount ? (
-              <p id="csr-amount-help" className="pform-help bad">{errors.sanctionedAmount}</p>
-            ) : null}
-          </div>
-          </div>
-        </fieldset>
-
-        <fieldset className="pform-sec pform-sec--dates">
-          <legend className="pform-legend">Dates &amp; status</legend>
-
-          {/* Two dates, and only ever two. A grant has a term; anything else a
-              date could describe here belongs to a report or an activity. */}
-          <div className="pform-row pform-row3">
-            <div className="pform-field">
-              <label htmlFor="csr-start">Start Date</label>
-              <input id="csr-start" type="date" value={form.startDate} onChange={setField('startDate')} />
+              <label htmlFor="csr-name">Project name <span className="pform-req" aria-hidden="true">*</span></label>
+              <div className={`pform-input${progress.name ? ' ok' : ''}`}>
+                <input
+                  id="csr-name" type="text" value={form.name} onChange={setField('name')}
+                  aria-invalid={Boolean(errors.name)} aria-describedby="csr-name-help"
+                />
+              </div>
+              <p id="csr-name-help" className={`pform-help${errors.name ? ' bad' : ''}`}>
+                {errors.name || 'Appears on the project card and every funder report.'}
+              </p>
             </div>
+
             <div className="pform-field">
-              <label htmlFor="csr-end">End Date</label>
-              <input id="csr-end" type="date" value={form.endDate} onChange={setField('endDate')} />
+              <label htmlFor="csr-desc">Description</label>
+              <textarea
+                id="csr-desc" rows={4} value={form.description} onChange={setField('description')}
+                placeholder="What the initiative does, where, and for whom."
+              />
             </div>
+          </section>
+
+          <section className="pform-sec pform-sec--funder">
+            <h2 className="pform-legend">Funder &amp; grant</h2>
+            <p className="pform-sub">Who is funding this, and how much is sanctioned.</p>
+
+            <div className="pform-row">
+              <div className="pform-field">
+                <label htmlFor="csr-client">Client / Funder <span className="pform-req" aria-hidden="true">*</span></label>
+                <div className={`pform-input${progress.clientName ? ' ok' : ''}`}>
+                  <input
+                    id="csr-client" type="text" value={form.clientName} onChange={setField('clientName')}
+                    aria-invalid={Boolean(errors.clientName)}
+                    aria-describedby={errors.clientName ? 'csr-client-help' : undefined}
+                  />
+                </div>
+                {errors.clientName ? (
+                  <p id="csr-client-help" className="pform-help bad">{errors.clientName}</p>
+                ) : null}
+              </div>
+
+              <div className="pform-field">
+                <label htmlFor="csr-amount">Sanctioned amount (₹) <span className="pform-req" aria-hidden="true">*</span></label>
+                <div className={`pform-input${progress.sanctionedAmount ? ' ok' : ''}`}>
+                  <input
+                    id="csr-amount" type="number" value={form.sanctionedAmount}
+                    onChange={setField('sanctionedAmount')}
+                    aria-invalid={Boolean(errors.sanctionedAmount)}
+                    aria-describedby={errors.sanctionedAmount ? 'csr-amount-help' : undefined}
+                  />
+                </div>
+                {errors.sanctionedAmount ? (
+                  <p id="csr-amount-help" className="pform-help bad">{errors.sanctionedAmount}</p>
+                ) : null}
+              </div>
+            </div>
+          </section>
+
+          <section className="pform-sec pform-sec--dates">
+            <h2 className="pform-legend">Term &amp; status</h2>
+            <p className="pform-sub">The period the grant covers, and where it stands today.</p>
+
+            {/* Two dates, and only ever two. A grant has a term; anything else a
+                date could describe here belongs to a report or an activity. */}
+            <div className="pform-row pform-row3">
+              <div className="pform-field">
+                <label htmlFor="csr-start">Start date</label>
+                <div className={`pform-input${progress.startDate ? ' ok' : ''}`}>
+                  <input id="csr-start" type="date" value={form.startDate} onChange={setField('startDate')} />
+                </div>
+              </div>
+              <div className="pform-field">
+                <label htmlFor="csr-end">End date</label>
+                <div className={`pform-input${progress.endDate ? ' ok' : ''}`}>
+                  <input id="csr-end" type="date" value={form.endDate} onChange={setField('endDate')} />
+                </div>
+              </div>
+              <div className="pform-field">
+                <label htmlFor="csr-status">Status</label>
+                <select id="csr-status" className="sel" value={form.status} onChange={setField('status')}>
+                  {STATUS_OPTIONS.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </section>
+
+          <section className="pform-sec pform-sec--detail">
+            <h2 className="pform-legend">TTA link</h2>
+            <p className="pform-sub">Optional. Connects this grant to an existing TTA project.</p>
+
             <div className="pform-field">
-              <label htmlFor="csr-status">Status</label>
-              <select id="csr-status" className="sel" value={form.status} onChange={setField('status')}>
-                {STATUS_OPTIONS.map((s) => (
-                  <option key={s} value={s}>{s}</option>
+              <label htmlFor="csr-tta">TTA project</label>
+              <select
+                id="csr-tta" className="sel"
+                value={form.projectRefId === '' ? '' : String(form.projectRefId)}
+                onChange={(e) => setForm((f) => ({ ...f, projectRefId: e.target.value }))}
+                aria-describedby="csr-tta-help"
+              >
+                <option value="">None</option>
+                {options.map((p) => (
+                  <option key={p.id} value={String(p.id)}>{p.name}</option>
                 ))}
               </select>
+              {/* Not "Runs Under" -- the 26 Aug review (03:27-04:17) called out
+                  exactly this phrasing on the CSR project screen: a grant does
+                  not run under a trial catalogue entry, the relationship reads
+                  backwards. This is a link to the catalogue row, not a container. */}
+              <p id="csr-tta-help" className="pform-help">Which existing TTA project this grant funds.</p>
             </div>
+          </section>
+
+          {saveError ? <p className="pform-error" role="alert">{saveError}</p> : null}
+
+          <div className="pform-actions">
+            <button type="button" className="ghostbtn" onClick={() => leave()} disabled={saving}>
+              Cancel
+            </button>
+            <button type="submit" className="newbtn" disabled={saving}>
+              {saving ? 'Saving\u2026' : 'Save'}
+            </button>
           </div>
-        </fieldset>
+        </form>
 
-        <fieldset className="pform-sec pform-sec--detail">
-          <legend className="pform-legend">Detail</legend>
+        <aside className="pform-rail" aria-label="Setup progress">
+          <h2 className="pform-rail-h">Setup progress</h2>
 
-          <div className="pform-row">
-        <div className="pform-field">
-          <label htmlFor="csr-desc">Description</label>
-          <textarea id="csr-desc" rows={4} value={form.description} onChange={setField('description')} />
-        </div>
-
-        <div className="pform-field">
-          <label htmlFor="csr-tta">TTA Project (optional)</label>
-          <select
-            id="csr-tta"
-            className="sel"
-            value={form.projectRefId === '' ? '' : String(form.projectRefId)}
-            onChange={(e) => setForm((f) => ({ ...f, projectRefId: e.target.value }))}
-            aria-describedby="csr-tta-help"
-          >
-            <option value="">None</option>
-            {options.map((p) => (
-              <option key={p.id} value={String(p.id)}>{p.name}</option>
+          <ol className="pform-steps">
+            {steps.map((s) => (
+              <li key={s.n} className={`pform-step${s.done ? ' done' : ''}`}>
+                <span className="pform-step-mark" aria-hidden="true">
+                  {s.done ? (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"
+                         strokeLinecap="round" strokeLinejoin="round"><path d="M4 12l5 5L20 6" /></svg>
+                  ) : s.n}
+                </span>
+                <span className="pform-step-body">
+                  <span className="pform-step-label">{s.label}</span>
+                  <span className="pform-step-hint">{s.summary || s.hint}</span>
+                </span>
+              </li>
             ))}
-          </select>
-          {/* Not "Runs Under" — the 26 Aug review (03:27-04:17) called out
-              exactly this phrasing on the CSR project screen: a grant does not
-              run under a trial catalogue entry, the relationship reads
-              backwards. This is a link to the catalogue row, not a container. */}
-          <p id="csr-tta-help" className="pform-help">Which existing TTA project this grant funds.</p>
-        </div>
+          </ol>
+
+          <div
+            className="pform-ring-card"
+            role="progressbar"
+            aria-label="Required fields completed"
+            aria-valuenow={done}
+            aria-valuemin={0}
+            aria-valuemax={TRACKED_COUNT}
+            aria-valuetext={`${done} of ${TRACKED_COUNT} fields complete`}
+          >
+            <svg className="pform-ring" viewBox="0 0 60 60" aria-hidden="true">
+              <circle cx="30" cy="30" r="26" className="pform-ring-track" />
+              <circle
+                cx="30" cy="30" r="26" className="pform-ring-fill"
+                strokeDasharray={`${(pct / 100) * RING} ${RING}`}
+              />
+            </svg>
+            <p className="pform-ring-pc">{pct}% complete</p>
+            <p className="pform-ring-note">
+              {done === TRACKED_COUNT
+                ? 'Everything a funder report needs is recorded.'
+                : 'A complete grant links faster to funders and reports.'}
+            </p>
           </div>
-        </fieldset>
-
-        {saveError ? (
-          <p className="pform-error" role="alert">{saveError}</p>
-        ) : null}
-
-        <div className="pform-actions">
-          <button type="button" className="ghostbtn" onClick={() => leave()} disabled={saving}>
-            Cancel
-          </button>
-          <button type="submit" className="newbtn" disabled={saving}>
-            {saving ? 'Saving…' : 'Save'}
-          </button>
-        </div>
-      </form>
+        </aside>
+      </div>
     </div>
   );
 }
