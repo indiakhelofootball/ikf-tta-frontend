@@ -5,7 +5,7 @@
 // has to refuse to render a blank form when that load fails, and it leaves by
 // navigating rather than by calling a prop.
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import CSRProjectFormPage from './CSRProjectFormPage';
@@ -31,6 +31,7 @@ jest.mock('../../services/api', () => ({
 
 jest.mock('../../utils/adminStorage', () => ({
   getProjectNames: () => [{ id: 7, name: 'Khelo Girls — Chhattisgarh' }],
+  getSeasons: () => [{ id: 10, name: 'Season 1' }, { id: 11, name: 'Season 5' }],
 }));
 
 jest.mock('../../hooks/useConfigVersion', () => ({ __esModule: true, default: () => 0 }));
@@ -65,7 +66,20 @@ describe('creating a grant', () => {
     expect(await screen.findAllByText(/required|enter an amount/i)).not.toHaveLength(0);
   });
 
+test('the season is asked beside the project, because together they are one identity', async () => {
+    render(<CSRProjectFormPage />);
+
+    // In TTA a project IS the pair (name, season) — TrialWizard refuses to
+    // submit without both, and rejects a duplicate on the pair. A CSR grant
+    // naming only "IKF Trials" names two different projects, so the pair is
+    // collected together here too.
+    const season = screen.getByLabelText(/season/i);
+    const options = within(season).getAllByRole('option').map((o) => o.textContent);
+    expect(options).toEqual(['None', 'Season 1', 'Season 5']);
+  });
+
   test('sends the trimmed payload and leaves for the list', async () => {
+
     csrAPI.projects.create.mockResolvedValue({});
     render(<CSRProjectFormPage />);
 
@@ -116,10 +130,18 @@ describe('editing a grant', () => {
     expect(mockNavigate).toHaveBeenCalledWith(
       '/csr/projects', { state: { saved: 'Project updated.' } },
     );
-    // The form has no season input at all — the value can only have survived by
-    // being carried, which is the whole point.
-    expect(screen.queryByLabelText(/season/i)).toBeNull();
   });
+
+  test('a stored season absent from the catalogue still renders as itself', async () => {
+    csrAPI.projects.getById.mockResolvedValue(GRANT);
+    render(<CSRProjectFormPage />);
+
+    // GRANT carries 'Season 6'; the mocked catalogue offers only Season 1 and 5.
+    // Without the fallback the select falls through to '' and an unrelated edit
+    // silently blanks a real value.
+    await waitFor(() => expect(screen.getByLabelText(/season/i)).toHaveValue('Season 6'));
+  });
+
 
   test('a record that will not load stops, rather than offering an empty form', async () => {
     csrAPI.projects.getById.mockRejectedValue(new Error('404'));
