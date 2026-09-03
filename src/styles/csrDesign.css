@@ -1727,7 +1727,23 @@
    was never the one in the reference. It narrows instead of moving, and only
    goes full-width under 1000, where a donut plus a legend genuinely will not
    fit in a column. */
-@media (min-width:1000px){
+/* 1201, not 1000. This block and the @media (max-width:1200px) block above it
+   both matched between 1000 and 1200, and this one is later, so it won — it put
+   the Statistic panel back beside the rest at grid-column:3 after the earlier
+   block had deliberately dropped it below.
+
+   The cost landed on the KPI strip. At 1024 the row became 270px + 1fr + 264px,
+   .stats spanned only the first two tracks (456px), and four cards needing
+   ~168px each were crushed into 114px. The fourth card was auto-placed past its
+   own container at x=722 against a parent ending at 704, and the Statistic panel
+   painted over it: "Not counted" was in the DOM, computed visible, and invisible
+   on screen. Silent loss of the figure that flags money not counted.
+
+   The four cards stay FOUR ACROSS -- that is a standing instruction, and the
+   fix is emphatically NOT a 2x2 breakpoint. What gives way instead is the
+   Statistic panel, which drops below between 1000 and 1200 exactly as the
+   max-width:1200px block already intended, handing the strip the full width. */
+@media (min-width:1201px){
   .csrx .dash{grid-template-columns:270px 1fr 264px}
   .csrx .dash > .stats    {grid-column:1 / span 2;grid-row:1;grid-template-columns:repeat(4,1fr)}
   .csrx .dash > .statistic{grid-column:3;grid-row:1 / span 2;align-self:stretch}
