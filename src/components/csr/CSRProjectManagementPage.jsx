@@ -210,6 +210,7 @@ export default function CSRProjectManagementPage() {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4-4" /></svg>
           <input
             placeholder="Search by project, funder or TTA project…"
+            aria-label="Search projects"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
