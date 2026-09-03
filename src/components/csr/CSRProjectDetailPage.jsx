@@ -60,6 +60,14 @@ const whenLabel = (a) => {
 // interactive row is therefore a div that answers to Enter and Space, exactly
 // as CSRUtilisationPage does. Rows with no action at all get no role, so a
 // screen reader is not told about a control that does nothing.
+// Short forms for the table column. The stored values are unchanged -- only
+// what the column shows. "Vendor" reads as Partner because that is the client's
+// own word for the relationship (26 Aug review: "vendor is the partner"), and a
+// column heading has no room for the full "Partner representative" the form
+// offers.
+const CONTACT_TYPE_LABELS = { Client: 'Client', IKF: 'IKF', Vendor: 'Partner' };
+const contactTypeLabel = (v) => (v ? CONTACT_TYPE_LABELS[v] || v : '\u2014');
+
 const rowActivation = (label, onActivate) => (onActivate ? {
   role: 'button',
   tabIndex: 0,
@@ -419,8 +427,8 @@ export default function CSRProjectDetailPage() {
                 collapsed panel used to hold — name, role, email, phone — are
                 the four columns, so the panel is gone rather than repeating
                 the row back to the reader. */}
-            <div className="lgrid lgrid-head">
-              {['Email', 'Contact', 'Phone', 'Role', 'Manage'].map((h) => <span key={h}>{h}</span>)}
+            <div className="lgrid lgrid--6 lgrid-head">
+              {['Phone', 'Contact', 'Role', 'Type', 'Email', 'Manage'].map((h) => <span key={h}>{h}</span>)}
             </div>
 
             {contacts.length === 0 ? (
@@ -432,19 +440,23 @@ export default function CSRProjectDetailPage() {
                     Read-only: there is nothing to edit into and nothing left to
                     disclose, so the row stays a row. */}
                 <div
-                  className="lgrid lrow"
+                  className="lgrid lgrid--6 lrow"
                   {...rowActivation(
                     editable ? `Edit contact ${c.name}` : null,
                     editable ? () => setContactModal({ open: true, editing: c }) : null,
                   )}
                 >
-                  {/* The email leads because the leading track is the wider of
-                      the two fixed ones and an address is the longer string;
-                      the phone fits the narrow one without truncating. */}
-                  <span className="t2">{c.email || '—'}</span>
-                  <span className="t1">{c.name}</span>
+                  {/* Type carries the identity band, not the role. A role is
+                      something a person HAS; the type is what they are here as
+                      -- the funder's side, IKF's side, or a delivery partner --
+                      which is the "belongs to" the tinted column means on every
+                      other table. Role keeps its own column; nothing was
+                      dropped to make room. */}
                   <span className="fig nowrap">{c.phone || '—'}</span>
+                  <span className="t1">{c.name}</span>
                   <span className="t2">{c.designation || '—'}</span>
+                  <span className="t2">{contactTypeLabel(c.contactType)}</span>
+                  <span className="t2">{c.email || '—'}</span>
                   <span className="lend">
                     {editable && (
                       <>
@@ -505,7 +517,7 @@ export default function CSRProjectDetailPage() {
                 yielded its column for the status and moved into the row's
                 detail; it is the least load-bearing of the four. */}
             <div className="lgrid lgrid-head">
-              {['When', 'Activity', 'Status', 'Type', 'Manage'].map((h) => <span key={h}>{h}</span>)}
+              {['When', 'Activity', 'Location', 'Type', 'Status'].map((h) => <span key={h}>{h}</span>)}
             </div>
 
             {activities.length === 0 ? (
@@ -527,13 +539,17 @@ export default function CSRProjectDetailPage() {
                   >
                     <span className="fig nowrap">{whenLabel(a)}</span>
                     <span className="t1">{a.title}</span>
-                    <span>
+                    {/* Location is back in its own column. It had been given up
+                        to make room for the status, which put the status in the
+                        middle of this table while it sits on the right of every
+                        other one. The status moved to where it belongs and the
+                        location got its column back. */}
+                    <span className="t2">{a.location || '—'}</span>
+                    <span className="t2">{activityType?.name || '—'}</span>
+                    <span className="lend">
                       <span className={`pill ${a.status === 'Planned' ? 'wait' : 'closed'}`}>
                         {a.status || 'Unknown'}
                       </span>
-                    </span>
-                    <span className="t2">{activityType?.name || '—'}</span>
-                    <span className="lend">
                       {editable && (
                         <>
                           <button
@@ -626,7 +642,7 @@ export default function CSRProjectDetailPage() {
                 Both fields the collapsed panel held, the linked activity and the
                 gate, are now on the row, so there is nothing left to disclose. */}
             <div className="lgrid lgrid-head">
-              {['Added', 'Report', 'Gate', 'Activity', 'Manage'].map((h) => <span key={h}>{h}</span>)}
+              {['Added', 'Report', 'Type', 'Activity', 'Gate'].map((h) => <span key={h}>{h}</span>)}
             </div>
 
             {reports.length === 0 ? (
@@ -662,13 +678,16 @@ export default function CSRProjectDetailPage() {
                         </a>
                       )}
                     </span>
-                    <span>
+                    {/* The report's own kind, where the gate used to sit. The
+                        gate is state, and state belongs in the last column with
+                        the controls that change it -- which is where the
+                        Reports screen has always had it. */}
+                    <span className="t2">{r.reportType || '—'}</span>
+                    <span className="t2">{linkedActivity?.title || '—'}</span>
+                    <span className="lend">
                       <span className={`pill ${r.visibleToClient ? 'act' : 'wait'}`}>
                         {r.visibleToClient ? 'Client-visible' : 'Internal'}
                       </span>
-                    </span>
-                    <span className="t2">{linkedActivity?.title || '—'}</span>
-                    <span className="lend">
                       {editable && (
                         <>
                           <button
