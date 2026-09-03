@@ -1331,20 +1331,26 @@
    the row rather than rendering an empty full-width bar. Colour follows the
    roles the rest of the module already uses: green ink for the headline
    total, sand for money, clay for the thing that needs attention. */
+/* Separate cards, not a seamed strip. The seamed version used
+   minmax(190px,1fr): the 1fr made every track share out whatever width the
+   page had, so on a normal monitor each card stretched to ~450px with the
+   number and two lines of text lost in the left third of it. Capping the
+   track (190-236px) and setting the grid's own justify-content to flex-start,
+   not stretch, is what actually stops the stretch -- auto-fit alone only
+   decides the COUNT of columns, not whether they fill the row. Matches
+   .stats/.stat, the card-per-figure pattern the dashboard already uses. */
 .csrx .utot-strip{
   display:grid;
-  grid-template-columns:repeat(auto-fit, minmax(190px, 1fr));
-  gap:1px;
-  background:var(--line2);
-  border:1px solid var(--line);
-  border-radius:var(--r-card,8px);
+  grid-template-columns:repeat(auto-fit, minmax(190px, 236px));
+  justify-content:flex-start;
+  gap:var(--sp-4);
   margin-bottom:var(--sp-4);
-  overflow:hidden;
-  padding:0;
 }
 .csrx .utot-stat{
   background:var(--card);
-  padding:var(--sp-4) var(--sp-5);
+  border:1px solid var(--line);
+  border-radius:var(--r-card,8px);
+  padding:var(--sp-4);
   display:flex;flex-direction:column;gap:2px;min-width:0;
 }
 .csrx .utot-k{
@@ -1352,13 +1358,13 @@
   color:var(--muted);margin:0;
 }
 .csrx .utot-v{
-  font-size:26px;font-weight:600;color:var(--g-deep);letter-spacing:-.02em;
+  font-size:22px;font-weight:600;color:var(--g-deep);letter-spacing:-.02em;
   line-height:1.2;margin:2px 0 0;font-variant-numeric:tabular-nums;
 }
 .csrx .utot-v--money{color:#7A5618}
 .csrx .utot-v--warn{color:#8F2A21}
 .csrx .utot-note{font-size:12.5px;color:var(--muted);margin:2px 0 0;line-height:1.5}
-.csrx .utot-stat--warn{background:#FBEEEC}
+.csrx .utot-stat--warn{background:#FBEEEC;border-color:#EFD3CE}
 
 .csrx .ucards{display:flex;flex-direction:column;gap:12px}
 .csrx .ucard{
