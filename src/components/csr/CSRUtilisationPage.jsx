@@ -188,11 +188,18 @@ export default function CSRUtilisationPage() {
         <div className="loading"><div className="spin" /></div>
       ) : (
         <div className="twrap">
-          {/* Column order is set by the table's identity band, which lands on
-              the 4th cell: the grant is what a row is about, so the grant name
-              sits there. The funder still leads the row in .t1 — 26 Aug review,
-              04:35, "BDSA तुम्हारा prime रहेगा" — and the grant name stays the
-              secondary string, exactly as it was on the card. */}
+          {/* The two figures are ADJACENT, and that is the point of this order.
+              They were columns 1 and 3 with the funder's name between them, so
+              the row zig-zagged right-aligned / left / right-aligned and the
+              one comparison this screen exists to support — what was counted
+              against what was not — had a name sitting in the middle of it.
+              Money that gets checked against money has to be side by side.
+
+              The funder leads instead, in .t1: it is the record's own name, and
+              the 26 Aug review (04:35, «उल्टा») put the funder prime and the
+              grant secondary. The grant keeps the 4th cell, so the identity band
+              still lands on what the row is about, and the certificate state
+              stays last with its control, as on every other table. */}
           <div className="lgrid lgrid-head">
             {/* .lnum is the numeric-cell role: right-aligned, tabular figures.
                 It goes on the heading as well as the cell, or the label floats
@@ -201,8 +208,8 @@ export default function CSRUtilisationPage() {
                 column -- these figures end up in a funder's utilisation
                 certificate and get checked against each other. */}
             {[
-              { h: 'Utilised', num: true },
               { h: 'Funder' },
+              { h: 'Utilised', num: true },
               { h: 'Not counted', num: true },
               { h: 'Grant' },
               { h: 'Certificate' },
@@ -245,14 +252,15 @@ export default function CSRUtilisationPage() {
                     }
                   }}
                 >
-                  <span className="fig nowrap lnum">
-                    {cert === null ? "Unavailable" : rupees(utilised)}
-                  </span>
                   <span className="t1">{funder}</span>
                   {/* Both figures are on every row, per the defect note at the
                       top of this file: a total shown alone reports a correct
-                      number and an invisible shortfall. This one is a column,
-                      never a disclosure. */}
+                      number and an invisible shortfall. Neither is a disclosure,
+                      and they sit next to each other so the shortfall is read in
+                      the same glance as the total it belongs to. */}
+                  <span className="fig nowrap lnum">
+                    {cert === null ? "Unavailable" : rupees(utilised)}
+                  </span>
                   <span className="fig nowrap lnum">
                     {cert === null ? "—" : rupees(excluded)}
                   </span>
