@@ -10,7 +10,11 @@
      button, active pill, status dot, selected spine, active tab), never an
      atmosphere. The green gradient that used to be here is what made the app
      read as a different product from the reference. */
-  --ground:#F7F8FB; --card:#FFFFFF; --ground2:#F4F6F5;
+  /* Ground, card and sunk carry a slight blue bias and the card is not pure
+     white. The old pair was #F7F8FB over #FFFFFF -- 4 points of separation,
+     which is why cards kept dissolving into the page and every surface had
+     to be fenced with a border to be seen at all. */
+  --ground:#F2F4F7; --card:#FCFCFD; --ground2:#EDF0F4;
   --ink:#1C2320; --soft:#414A46; --muted:#7C8783; --faint:#A9B2AE;
   /* "well divided" — a hairline has to be visible to divide anything. --line
      is the structural rule (panel edges, header underlines, fact-strip
@@ -189,11 +193,11 @@
    ========================================================================= */
 .sidebar--csr{
   --g:#1B7A4B;--g-deep:#15603B;--g-wash:#E7F3EB;--g-spine:#17693F;
-  --ink:#1C2320;--soft:#414A46;--muted:#7C8783;--faint:#A9B2AE;--line:#DDE2E1;--line2:#E8ECEB;--line-soft:#EFF2F1;--sunk:#F4F6F5;
+  --ink:#1C2320;--soft:#414A46;--muted:#7C8783;--faint:#A9B2AE;--line:#DDE2E1;--line2:#E8ECEB;--line-soft:#EFF2F1;--sunk:#EDF0F4;
   /* Solid white, flush to the viewport edge, with a drawn right edge — the
      reference rail is a full-height column, not a floating glass card. The
      backdrop-filter is gone with the gradient it was blurring. */
-  background:#FFFFFF !important;
+  background:var(--card) !important;
   -webkit-backdrop-filter:none;backdrop-filter:none;
   border-right:1px solid var(--line) !important;
   font-family:"Switzer",system-ui,-apple-system,sans-serif;
@@ -217,7 +221,7 @@
 .sidebar--csr .sidebar-link:hover .sidebar-icon{color:var(--soft)}
 .sidebar--csr .sidebar-link.active{background:var(--g-wash) !important;color:var(--g-deep) !important}
 .sidebar--csr .sidebar-link.active .sidebar-icon{color:var(--g) !important}
-.sidebar--csr .sidebar-toggle{border:1px solid var(--line);background:#fff;color:var(--soft)}
+.sidebar--csr .sidebar-toggle{border:1px solid var(--line);background:var(--card);color:var(--soft)}
 .sidebar--csr .sidebar-build{color:var(--faint);font-size:11px}
 
 /* CSR content frame: the gradient ground the glass panels sit on */
@@ -229,7 +233,7 @@
    it is reduced to a thin identity strip: no title competing with the page's
    own, just the signed-in user. */
 .dashboard-layout:has(.sidebar--csr) .dashboard-header{
-  background:#FFFFFF;-webkit-backdrop-filter:none;backdrop-filter:none;
+  background:var(--card);-webkit-backdrop-filter:none;backdrop-filter:none;
   border-bottom:1px solid #DDE2E1;
 }
 .dashboard-layout:has(.sidebar--csr) .dashboard-header h1,
@@ -430,7 +434,7 @@
      row; a percentage would put it halfway down the nav list. */
   position:absolute;top:26px;right:12px;z-index:2;
   width:24px;height:24px;padding:0;border-radius:var(--r-chip);
-  border:1px solid var(--line2) !important;background:#fff !important;color:var(--faint);
+  border:1px solid var(--line2) !important;background:var(--card) !important;color:var(--faint);
 }
 .sidebar--csr .sidebar-toggle:hover{background:var(--sunk) !important;color:var(--soft)}
 .sidebar--csr .sidebar-toggle svg{width:14px;height:14px}
@@ -628,7 +632,7 @@
 .sidebar.sidebar--csr .sidebar-who:focus-visible{outline-offset:2px}
 .sidebar.sidebar--csr .sidebar-who-av{
   flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;
-  background:#fff;color:var(--g-deep);
+  background:var(--card);color:var(--g-deep);
   font-size:8.5px;font-weight:700;letter-spacing:.02em;
 }
 .sidebar.sidebar--csr .sidebar-who-txt{display:flex;flex-direction:column;min-width:0;flex:1}
@@ -864,7 +868,7 @@
 }
 .dashboard-layout:has(.sidebar--csr) .header-back{
   display:grid;place-items:center;width:24px;height:24px;flex:none;padding:0;
-  border:1px solid #DDE2E1;border-radius:6px;background:#fff;color:#7C8783;
+  border:1px solid #DDE2E1;border-radius:6px;background:var(--card);color:#7C8783;
   cursor:pointer;transition:background .15s,color .15s,border-color .15s;
 }
 .dashboard-layout:has(.sidebar--csr) .header-back:hover{
@@ -985,7 +989,7 @@
 }
 .csrx .qa:hover{background:#E4EEE8;color:var(--g-deep)}
 .csrx .qa-ic{background:rgba(255,255,255,.75);color:var(--g)}
-.csrx .qa:hover .qa-ic{background:#fff;color:var(--g-deep)}
+.csrx .qa:hover .qa-ic{background:var(--card);color:var(--g-deep)}
 
 /* The figure pair above the donut. */
 .csrx .stat-pair{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
@@ -1009,7 +1013,7 @@
    frame is gone.
    ========================================================================= */
 .dashboard-layout:has(.sidebar--csr){
-  background:#fff;
+  background:var(--card);
   min-height:100vh;
   --rail-w:212px;
   --rail-w-collapsed:64px;
@@ -1021,7 +1025,7 @@
 }
 .dashboard-layout:has(.sidebar--csr) .dashboard-content{
   margin-top:0;margin-right:0;margin-bottom:0;
-  background:#fff !important;border-radius:0;
+  background:var(--card) !important;border-radius:0;
   min-height:100vh;box-shadow:none;
 }
 /* The ground behind the cards is white, so a shadow alone will not separate
@@ -1061,7 +1065,7 @@
 }
 .csrx .tip{
   position:absolute;bottom:calc(100% - 6px);transform:translateX(-50%);
-  background:#fff;border:1px solid var(--line);border-radius:var(--r-ctl);
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r-ctl);
   padding:8px 10px;min-width:132px;pointer-events:none;z-index:3;
   box-shadow:0 6px 18px rgba(28,44,38,.14);
 }
