@@ -4,17 +4,123 @@
    .csrx so it never leaks into other TTA screens.
    ========================================================================= */
 
+/* =========================================================================
+   MD3 SPACING SCALE — a 4dp base grid.
+
+   These live on :root, not on .csrx, because three parts of the module render
+   OUTSIDE .csrx and still have to keep the same rhythm: the CSR sidebar
+   (.sidebar--csr), the shell header (.dashboard-layout .dashboard-header) and
+   the page frame. A scale that half the module cannot read is not a scale.
+
+   Steps follow Material Design 3: every value is a multiple of 4, and the
+   module uses 4/8/12/16/20/24/28/32 for layout. Pick by ROLE:
+     --sp-1   4px   hairline offsets, the gap inside a chip
+     --sp-2   8px   icon-to-label, tight inline pairs
+     --sp-3  12px   control padding, dense stack gaps
+     --sp-4  16px   the default: card padding, grid gaps, row padding
+     --sp-5  20px   row padding on the log tables, panel insets
+     --sp-6  24px   card padding on the roomy panels, section separation
+     --sp-7  28px   page inset
+     --sp-8  32px   page inset, largest layout step in use
+     --sp-10 40px / --sp-12 48px  reserved for page-level blocks
+
+   Scope note: this pass converted page- and component-level layout only —
+   page padding, section gaps, card padding, row padding and stack gaps.
+   Borders, radii and sub-4px optical nudges are deliberately untouched;
+   snapping a 1px rule to 4px is not spacing, it is damage.
+   ========================================================================= */
+:root{
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px;
+  --sp-6:24px; --sp-7:28px; --sp-8:32px; --sp-10:40px; --sp-12:48px;
+}
+
+/* =========================================================================
+   THE GROUND IS A NEAR-WHITE INDIGO -- asked for 3 Sep 2026, then corrected
+   the same day: the first pass landed on a real indigo (#E3E6F7, Material's
+   indigo-50 neighbourhood) and the answer was "not a right indigo I wanted,
+   keep completely light". So the tint is a whisper, not a colour. The test:
+   if someone asks "is that blue?" it is right; if they can name it as indigo
+   it is too strong.
+
+   The reference family is the near-white app ground -- Linear, Stripe, Notion.
+   Those grounds do not separate a card by contrast; the card is separated by
+   its 1px --line border, its radius and the space around it, all of which this
+   sheet already has. #F8FAFC is the commonly cited ceiling for that family and
+   is treated here as the STRONGEST acceptable tint, not the target.
+
+   Values, and why these and not others:
+
+   --ground  #F4F5FB  rgb(244,245,251). Hue 231deg -- indigo, because R and G
+                      sit together and only B is lifted; a blue-grey would put
+                      G above R and land near 210deg. Chroma is 7 points
+                      channel-to-channel, which is a hair MORE than #F8FAFC's 4
+                      but a fraction of the 20 the rejected version carried.
+                      L* 96.4: it reads as white until real white is beside it.
+   --card    #FCFCFD  UNCHANGED. Not pure white (standing rule). 8 points above
+                      the ground on R. That is deliberately NOT the whole
+                      separation: at this lightness no ground can carry a card,
+                      and reaching for a greyer ground to make one float is the
+                      trap this correction exists to close. The border does it.
+                      For the record it is still double the 4-point
+                      #F7F8FB-over-#FFFFFF pair that dissolved cards, so the
+                      bug that comment records has not come back.
+   --ground2 #EFF1FB  Zebra stripe on table rows, and sunken panels. It sits a
+   --sunk    (same)   step BELOW the ground, not between ground and card. That
+                      was the original brief and it is wrong at this lightness:
+                      ground and card are only 8 points apart, so anything
+                      "between" them lands within 4 points of the card and the
+                      stripe stops existing. Contrast against the card is
+                      1.099:1, matching the 1.115:1 the shipped grey stripe had,
+                      so striping reads exactly as hard as it did before.
+
+   COLLISION CHECK against --role-id (#EAF0F7), the identity column tint
+   declared in TABLE COLOUR ROLES below. If the page ground read as that tint,
+   the Grant column would stop reading as a band and the approved table
+   treatment would quietly die.
+     ground  #F4F5FB = rgb(244,245,251), chroma 7,  hue 231deg, L* 96.4
+     role-id #EAF0F7 = rgb(234,240,247), chroma 13, hue 213deg, L* 94.3
+   Difference: 10/5/4 in RGB, 2.1 points of L*, 1.054:1 in luminance contrast,
+   and 18deg of hue -- the ground is the violet one, role-id the blue one.
+   Going LIGHTER moved the ground away from role-id, not towards it: the
+   rejected #E3E6F7 was only 7/10/0 off it. That is the direction to keep if
+   this is ever revisited -- lighten the ground, never darken it back up, and
+   never move --role-id.
+
+   Layer order, darkest to lightest: role-id -> sunk/ground2 -> ground -> card.
+   The ground and the identity tint never actually touch: a row surface sits
+   between them, so the 1.054:1 above is a same-screen comparison, not an edge.
+
+   These sit on :root as well as on .csrx for the same reason the spacing scale
+   does: the shell that paints the field is an ancestor of .csrx, so it cannot
+   read a token declared on .csrx. .cportal declares its own --card and wins by
+   scope, so nothing outside CSR changes.
+   ========================================================================= */
+:root{
+  --ground:#F4F5FB; --card:#FCFCFD; --ground2:#EFF1FB; --sunk:#EFF1FB;
+}
+
+/* The ground had never actually been painted: --ground was declared and never
+   read, so the field was still .dashboard-layout's #F9FAFB from the TTA shell
+   and every "change the ground" edit here was a no-op. Both the shell frame
+   and the page get it, scoped to the CSR shell so no other TTA screen moves. */
+.dashboard-layout:has(.sidebar--csr),
+.dashboard-layout:has(.sidebar--csr) .dashboard-page{background:var(--ground)}
+.csrx.csrx-page{background:var(--ground)}
+
 .csrx{
-  /* GROUNDS ARE NEUTRAL. The approved reference is white cards on a flat pale
-     grey-blue field — no green wash anywhere. Green is a signal (mark, primary
-     button, active pill, status dot, selected spine, active tab), never an
+  /* GROUNDS CARRY NO GREEN. The field is now a very light indigo (see the
+     block above) rather than the flat pale grey-blue the reference was drawn
+     on -- but the rule that mattered is unchanged: no green wash anywhere.
+     Green is a signal (mark, primary button, active pill, status dot,
+     selected spine, active tab), never an
      atmosphere. The green gradient that used to be here is what made the app
      read as a different product from the reference. */
-  /* Ground, card and sunk carry a slight blue bias and the card is not pure
-     white. The old pair was #F7F8FB over #FFFFFF -- 4 points of separation,
-     which is why cards kept dissolving into the page and every surface had
-     to be fenced with a border to be seen at all. */
-  --ground:#F2F4F7; --card:#FCFCFD; --ground2:#EDF0F4;
+  /* Repeated from :root above so .csrx is readable on its own. The card is
+     not pure white. The old pair was #F7F8FB over #FFFFFF -- 4 points of
+     separation, which is why cards kept dissolving into the page and every
+     surface had to be fenced with a border to be seen at all; the indigo
+     ground puts 25 points between them. */
+  --ground:#F4F5FB; --card:#FCFCFD; --ground2:#EFF1FB; --sunk:#EFF1FB;
   --ink:#1C2320; --soft:#414A46; --muted:#7C8783; --faint:#A9B2AE;
   /* "well divided" — a hairline has to be visible to divide anything. --line
      is the structural rule (panel edges, header underlines, fact-strip
@@ -55,24 +161,24 @@
 .csrx .fig{font-family:var(--disp);font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1;letter-spacing:-.02em;font-weight:500}
 
 /* header */
-.csrx .ph{display:flex;align-items:flex-end;gap:16px;margin-bottom:22px}
+.csrx .ph{display:flex;align-items:flex-end;gap:16px;margin-bottom:var(--sp-6)}
 .csrx .ph h2{font-family:var(--serif);font-size:28px;font-weight:500;letter-spacing:-.018em;color:var(--ink);line-height:1.1;margin:0}
 .csrx .ph p{font-size:14px;color:var(--muted);margin:6px 0 0;line-height:1.5}
 .csrx .newbtn{margin-left:auto;background:var(--g);color:#fff;border:0;font-family:var(--ui);font-weight:500;font-size:14px;
-  padding:11px 18px;border-radius:var(--r-ctl);cursor:pointer;display:inline-flex;gap:8px;align-items:center;box-shadow:0 2px 6px var(--g-glow);transition:.16s}
+  padding:var(--sp-3) var(--sp-5);border-radius:var(--r-ctl);cursor:pointer;display:inline-flex;gap:8px;align-items:center;box-shadow:0 2px 6px var(--g-glow);transition:.16s}
 .csrx .newbtn:hover{background:var(--g-deep);transform:translateY(-1px)}
 .csrx .newbtn svg{width:15px;height:15px}
 
 /* toolbar */
 .csrx .toolbar{display:flex;gap:12px;align-items:center;margin-bottom:20px}
-.csrx .sb{flex:1;display:flex;align-items:center;gap:11px;background:rgba(255,255,255,.6);border:1px solid rgba(60,80,70,.16);
-  border-radius:var(--r-ctl);padding:12px 16px;max-width:420px;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);transition:.16s}
+.csrx .sb{flex:1;display:flex;align-items:center;gap:var(--sp-3);background:rgba(255,255,255,.6);border:1px solid rgba(60,80,70,.16);
+  border-radius:var(--r-ctl);padding:var(--sp-3) var(--sp-4);max-width:420px;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);transition:.16s}
 .csrx .sb svg{width:16px;height:16px;color:var(--faint)}
 .csrx .sb input{border:0;background:transparent;font-family:var(--ui);font-size:14px;color:var(--ink);flex:1;outline:none;letter-spacing:-.006em}
 .csrx .sb input::placeholder{color:var(--muted)}
 .csrx .sb:focus-within{border-color:var(--g);box-shadow:0 0 0 3px var(--g-wash)}.csrx .sb:focus-within svg{color:var(--g)}
 .csrx .segbar{display:flex;background:rgba(255,255,255,.6);border:1px solid rgba(60,80,70,.16);border-radius:var(--r-ctl);padding:3px;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
-.csrx .segbar .s{font-size:14px;font-weight:500;color:var(--muted);padding:7px 14px;border-radius:var(--r-ctl);cursor:pointer;transition:.14s;border:0;background:transparent;font-family:var(--ui)}
+.csrx .segbar .s{font-size:14px;font-weight:500;color:var(--muted);padding:var(--sp-2) var(--sp-4);border-radius:var(--r-ctl);cursor:pointer;transition:.14s;border:0;background:transparent;font-family:var(--ui)}
 .csrx .segbar .s.on{background:var(--g-wash);color:var(--g-deep)}
 
 /* glass table */
@@ -82,11 +188,11 @@
   box-shadow:0 1px 2px rgba(30,54,42,.04),0 8px 22px rgba(30,54,42,.06)}
 .csrx table.dt{width:100%;border-collapse:collapse}
 .csrx table.dt thead th{text-align:left;font-size:12.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);
-  font-weight:500;padding:15px 22px;border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;user-select:none}
+  font-weight:500;padding:var(--sp-4) var(--sp-6);border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;user-select:none}
 .csrx table.dt thead th.r{text-align:right}
 .csrx table.dt thead th .car{color:var(--faint);margin-left:5px;font-size:9px}
 .csrx table.dt thead th.on{color:var(--g-deep)}.csrx table.dt thead th.on .car{color:var(--g)}
-.csrx table.dt tbody td{padding:16px 22px;border-bottom:1px solid var(--line-soft);font-size:14px;vertical-align:middle}
+.csrx table.dt tbody td{padding:var(--sp-4) var(--sp-6);border-bottom:1px solid var(--line-soft);font-size:14px;vertical-align:middle}
 .csrx table.dt tbody tr{cursor:pointer;transition:background .12s}
 .csrx table.dt tbody tr:last-child td{border-bottom:0}
 .csrx table.dt tbody tr:hover{background:rgba(255,255,255,.55)}
@@ -99,7 +205,7 @@
 .csrx table.dt tbody tr.sel .chip::before,.csrx table.dt tbody tr.sel .pill::before{background:rgba(255,255,255,.85)}
 .csrx table.dt tbody tr.sel .rowchev{color:#fff;opacity:1}
 .csrx td.r{text-align:right;font-variant-numeric:tabular-nums}
-.csrx .pcell{display:flex;align-items:center;gap:13px}
+.csrx .pcell{display:flex;align-items:center;gap:var(--sp-3)}
 .csrx .pcell .av{width:38px;height:38px;border-radius:var(--r-ctl);display:grid;place-items:center;flex:none;font-family:var(--disp);font-weight:500;font-size:14px;color:#fff}
 .csrx .pcell .nm{color:var(--ink);font-weight:500;line-height:1.35}
 .csrx .pcell .loc{font-size:14px;color:var(--muted);margin-top:2px}
@@ -123,13 +229,13 @@
 .csrx .pill.closed{color:var(--muted);background:var(--ground2)}.csrx .pill.closed::before{background:var(--faint)}
 .csrx .rowchev{color:var(--faint);opacity:0;transition:.16s}
 .csrx tr:hover .rowchev{opacity:1}.csrx .rowchev svg{width:16px;height:16px;display:block}
-.csrx .tfoot{display:flex;align-items:center;padding:16px 22px;border-top:1px solid var(--line)}
+.csrx .tfoot{display:flex;align-items:center;padding:var(--sp-4) var(--sp-6);border-top:1px solid var(--line)}
 .csrx .tfoot .cnt{font-size:14px;color:var(--muted)}
 .csrx .pgr{margin-left:auto;display:flex;gap:5px}
 .csrx .pgr .b{min-width:30px;height:30px;padding:0 6px;border-radius:var(--r-ctl);border:1px solid var(--line);background:rgba(255,255,255,.5);
   display:grid;place-items:center;font-size:14px;font-weight:500;color:var(--soft);cursor:pointer;font-family:var(--ui)}
 .csrx .pgr .b.on{background:var(--g);color:#fff;border-color:var(--g)}
-.csrx .empty{padding:64px 22px;text-align:center;color:var(--muted)}
+.csrx .empty{padding:64px var(--sp-6);text-align:center;color:var(--muted)}
 .csrx .empty h3{font-family:var(--serif);font-size:20px;color:var(--ink);font-weight:500;margin:0 0 6px}
 /* avatar tint classes (no inline styles) */
 .csrx .pcell .av.a1{background:var(--c1)}.csrx .pcell .av.a2{background:var(--c2)}
@@ -147,16 +253,16 @@
 .csrx .loading{display:flex;justify-content:center;padding:80px 0}
 .csrx .spin{width:28px;height:28px;border:3px solid var(--line);border-top-color:var(--g);border-radius:50%;animation:csrspin .7s linear infinite}
 @keyframes csrspin{to{transform:rotate(360deg)}}
-.csrx.csrx-page{padding:28px 32px 60px}
+.csrx.csrx-page{padding:var(--sp-7) var(--sp-8) 60px}
 /* ---- dashboard ---- */
-.csrx .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:16px}
+.csrx .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--sp-4);margin-bottom:var(--sp-4)}
 @media(max-width:1000px){.csrx .kpis{grid-template-columns:repeat(2,1fr)}}
 .csrx .glasscard{background:linear-gradient(160deg,rgba(255,255,255,.75),rgba(255,255,255,.55));
   -webkit-backdrop-filter:blur(28px) saturate(1.5);backdrop-filter:blur(28px) saturate(1.5);
   border:1px solid rgba(255,255,255,.6);border-radius:var(--r-ctl);
   box-shadow:0 1px 2px rgba(30,54,42,.04),0 8px 22px rgba(30,54,42,.06)}
-.csrx .kpi{padding:20px 22px}
-.csrx .kpi .top{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.csrx .kpi{padding:var(--sp-5) var(--sp-6)}
+.csrx .kpi .top{display:flex;align-items:center;gap:10px;margin-bottom:var(--sp-4)}
 .csrx .kpi .ic{width:34px;height:34px;border-radius:var(--r-ctl);display:grid;place-items:center;flex:none}
 .csrx .kpi .ic svg{width:17px;height:17px}
 .csrx .kpi .ic.g{background:var(--c1w);color:var(--c1)}.csrx .kpi .ic.b{background:var(--c2w);color:var(--c2)}
@@ -165,13 +271,13 @@
 .csrx .kpi .v{font-family:var(--disp);font-size:30px;font-weight:600;letter-spacing:-.03em;line-height:1;color:var(--ink)}
 .csrx .kpi .v small{font-size:16px;color:var(--muted);font-weight:500}
 .csrx .kpi .sub{font-size:14px;color:var(--muted);margin-top:10px}
-.csrx .dgrid{display:grid;grid-template-columns:1.5fr 1fr;gap:16px;margin-bottom:16px}
+.csrx .dgrid{display:grid;grid-template-columns:1.5fr 1fr;gap:var(--sp-4);margin-bottom:var(--sp-4)}
 @media(max-width:1000px){.csrx .dgrid{grid-template-columns:1fr}}
-.csrx .panel{padding:22px 24px}
-.csrx .panel .ph3{display:flex;align-items:center;margin-bottom:18px}
+.csrx .panel{padding:var(--sp-6) var(--sp-6)}
+.csrx .panel .ph3{display:flex;align-items:center;margin-bottom:var(--sp-5)}
 .csrx .panel .ph3 h3{font-family:var(--disp);font-size:16px;font-weight:700;color:var(--ink);letter-spacing:-.02em;margin:0}
 .csrx .panel .ph3 .more{margin-left:auto;font-size:14px;color:var(--g-deep);font-weight:500;cursor:pointer}
-.csrx .gaugebig{display:flex;align-items:center;gap:22px}
+.csrx .gaugebig{display:flex;align-items:center;gap:var(--sp-6)}
 .csrx .gaugebig .lbl .big{font-family:var(--disp);font-size:26px;font-weight:600;color:var(--ink);letter-spacing:-.02em;line-height:1}
 .csrx .gaugebig .lbl .sm{font-size:14px;color:var(--muted);margin-top:5px}
 .csrx .rg{position:relative;flex:none}
@@ -181,7 +287,7 @@
 .csrx .dleg .r i{width:10px;height:10px;border-radius:var(--r-ctl);flex:none}
 .csrx .dleg .r .nm{font-size:14px;color:var(--soft)}
 .csrx .dleg .r .vl{margin-left:auto;font-size:14px;color:var(--ink);font-weight:500;font-variant-numeric:tabular-nums}
-.csrx .tw-head{display:flex;align-items:center;padding:18px 22px;border-bottom:1px solid var(--line)}
+.csrx .tw-head{display:flex;align-items:center;padding:var(--sp-5) var(--sp-6);border-bottom:1px solid var(--line)}
 .csrx .tw-head h3{font-family:var(--disp);font-size:16px;font-weight:700;color:var(--ink);letter-spacing:-.02em;margin:0}
 .csrx .tw-head .more{margin-left:auto;font-size:14px;color:var(--g-deep);font-weight:500;cursor:pointer}
 
@@ -193,7 +299,7 @@
    ========================================================================= */
 .sidebar--csr{
   --g:#1B7A4B;--g-deep:#15603B;--g-wash:#E7F3EB;--g-spine:#17693F;
-  --ink:#1C2320;--soft:#414A46;--muted:#7C8783;--faint:#A9B2AE;--line:#DDE2E1;--line2:#E8ECEB;--line-soft:#EFF2F1;--sunk:#EDF0F4;
+  --ink:#1C2320;--soft:#414A46;--muted:#7C8783;--faint:#A9B2AE;--line:#DDE2E1;--line2:#E8ECEB;--line-soft:#EFF2F1;--sunk:#EFF1FB;
   /* Solid white, flush to the viewport edge, with a drawn right edge — the
      reference rail is a full-height column, not a floating glass card. The
      backdrop-filter is gone with the gradient it was blurring. */
@@ -245,12 +351,12 @@
 /* --- seam fixes: sidebar brand band + header alignment --- */
 .sidebar--csr .sidebar-brand{background:transparent !important;border-bottom:1px solid #EAEFEA}
 .sidebar--csr{padding-top:0}
-.dashboard-layout:has(.sidebar--csr) .dashboard-header{padding-top:18px;padding-bottom:18px;align-items:center}
+.dashboard-layout:has(.sidebar--csr) .dashboard-header{padding-top:var(--sp-5);padding-bottom:var(--sp-5);align-items:center}
 .dashboard-layout:has(.sidebar--csr) .dashboard-header h1,
 .dashboard-layout:has(.sidebar--csr) .dashboard-header-title{background:transparent !important;line-height:1.2}
 
 /* --- KPI cards: real blurred imagery, soft rounding, gentle shadow --- */
-.csrx .kpis .kpi{position:relative;overflow:hidden;border-radius:var(--r-ctl);padding:22px 24px;background-color:#fff;background-repeat:no-repeat;background-position:right -20px top -20px;background-size:60% auto;box-shadow:0 1px 2px rgba(30,54,42,.04),0 6px 16px rgba(30,54,42,.05);border:1px solid rgba(255,255,255,.7)}
+.csrx .kpis .kpi{position:relative;overflow:hidden;border-radius:var(--r-ctl);padding:var(--sp-6) var(--sp-6);background-color:#fff;background-repeat:no-repeat;background-position:right -20px top -20px;background-size:60% auto;box-shadow:0 1px 2px rgba(30,54,42,.04),0 6px 16px rgba(30,54,42,.05);border:1px solid rgba(255,255,255,.7)}
 .csrx .kpis .kpi::before{content:"";position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.4),rgba(255,255,255,.85) 60%);pointer-events:none}
 .csrx .kpis .kpi:nth-child(1){background-image:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iMjQwIiB2aWV3Qm94PSIwIDAgNDAwIDI0MCI+CjxkZWZzPjxmaWx0ZXIgaWQ9ImIiIHg9Ii0zMCUiIHk9Ii0zMCUiIHdpZHRoPSIxNjAlIiBoZWlnaHQ9IjE2MCUiPjxmZUdhdXNzaWFuQmx1ciBzdGREZXZpYXRpb249IjM0Ii8+PC9maWx0ZXI+PC9kZWZzPgo8ZyBmaWx0ZXI9InVybCgjYikiIG9wYWNpdHk9IjAuNTUiPgo8Y2lyY2xlIGN4PSIzMzAiIGN5PSI2MCIgcj0iOTAiIGZpbGw9IiMzRTlBNkUiLz4KPGNpcmNsZSBjeD0iMjUwIiBjeT0iMjAwIiByPSI4MCIgZmlsbD0iIzJDNkE0RiIvPgo8Y2lyY2xlIGN4PSIzODAiIGN5PSIxODAiIHI9IjcwIiBmaWxsPSIjOEZEM0I0Ii8+CjwvZz48L3N2Zz4=")}
 .csrx .kpis .kpi:nth-child(2){background-image:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iMjQwIiB2aWV3Qm94PSIwIDAgNDAwIDI0MCI+CjxkZWZzPjxmaWx0ZXIgaWQ9ImIiIHg9Ii0zMCUiIHk9Ii0zMCUiIHdpZHRoPSIxNjAlIiBoZWlnaHQ9IjE2MCUiPjxmZUdhdXNzaWFuQmx1ciBzdGREZXZpYXRpb249IjM0Ii8+PC9maWx0ZXI+PC9kZWZzPgo8ZyBmaWx0ZXI9InVybCgjYikiIG9wYWNpdHk9IjAuNTUiPgo8Y2lyY2xlIGN4PSIzMzAiIGN5PSI2MCIgcj0iOTAiIGZpbGw9IiM1QTdGRDYiLz4KPGNpcmNsZSBjeD0iMjUwIiBjeT0iMjAwIiByPSI4MCIgZmlsbD0iIzM4NURCMiIvPgo8Y2lyY2xlIGN4PSIzODAiIGN5PSIxODAiIHI9IjcwIiBmaWxsPSIjQTlDMEYwIi8+CjwvZz48L3N2Zz4=")}
@@ -261,9 +367,9 @@
 
 /* --- expanded dashboard panels: bigger gauge + funder bar chart --- */
 .csrx .dgrid{grid-template-columns:1fr 1fr;gap:16px}
-.csrx .panel{padding:24px 26px}
-.csrx .gaugebig{gap:26px;padding:8px 0}
-.csrx .panel-empty{color:#7A857E;font-size:14px;padding:22px 0}
+.csrx .panel{padding:var(--sp-6) var(--sp-6)}
+.csrx .gaugebig{gap:var(--sp-6);padding:8px 0}
+.csrx .panel-empty{color:#7A857E;font-size:14px;padding:var(--sp-6) 0}
 .csrx .barchart{display:flex;flex-direction:column;gap:16px;margin-top:6px}
 .csrx .barrow{display:grid;grid-template-columns:1fr auto;grid-template-areas:"top top" "track pc";gap:6px 12px;align-items:center}
 .csrx .barrow-top{grid-area:top;display:flex;justify-content:space-between;align-items:baseline}
@@ -274,7 +380,7 @@
 .csrx .barrow-pc{grid-area:pc;font-size:14px;color:#4A5750;font-weight:500;font-variant-numeric:tabular-nums;min-width:36px;text-align:right}
 
 /* --- multicolor histogram (vertical bars) --- */
-.csrx .histo{display:flex;align-items:flex-end;gap:14px;height:200px;padding-top:24px}
+.csrx .histo{display:flex;align-items:flex-end;gap:var(--sp-4);height:200px;padding-top:24px}
 .csrx .histbar{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;height:100%;justify-content:flex-end;min-width:0}
 .csrx .histamt{font-size:13px;color:#4A5750;white-space:nowrap}
 .csrx .histcol{width:100%;max-width:54px;border-radius:var(--r-ctl) var(--r-ctl) 0 0;min-height:6px;transition:height .7s cubic-bezier(.2,.7,.2,1);position:relative}
@@ -320,7 +426,7 @@
 
 /* ---- list side ---- */
 .csrx .lh{
-  display:flex;align-items:center;gap:8px;padding:11px 14px;
+  display:flex;align-items:center;gap:8px;padding:var(--sp-3) var(--sp-4);
   border-bottom:1px solid var(--line);font-size:12.5px;color:var(--muted);
 }
 .csrx .lh .sort{
@@ -330,7 +436,7 @@
 .csrx .lh .sort .cv{color:var(--faint);font-size:8px}
 .csrx .lr{
   display:flex;align-items:flex-start;gap:10px;width:100%;text-align:left;
-  padding:11px 14px;border:0;border-bottom:1px solid var(--line2);
+  padding:var(--sp-3) var(--sp-4);border:0;border-bottom:1px solid var(--line2);
   background:transparent;font:inherit;cursor:pointer;transition:background .13s;
 }
 .csrx .lr:last-of-type{border-bottom:0}
@@ -362,7 +468,7 @@
 .csrx .pg.on{background:var(--g);border-color:var(--g);color:#fff}
 
 /* ---- detail side ---- */
-.csrx .dtl{padding:16px 18px 18px}
+.csrx .dtl{padding:var(--sp-4) var(--sp-5) var(--sp-5)}
 .csrx .dh{display:flex;align-items:flex-start;gap:10px;margin-bottom:16px}
 .csrx .dh h3{
   font-family:"Zodiak",Georgia,serif;font-size:19px;font-weight:500;color:var(--ink);
@@ -389,7 +495,7 @@
   border-top:1px solid var(--line);border-bottom:1px solid var(--line);
 }
 .csrx .facts.nb{border-bottom:0}
-.csrx .fc{padding:12px 14px;border-left:1px solid var(--line2)}
+.csrx .fc{padding:var(--sp-3) var(--sp-4);border-left:1px solid var(--line2)}
 .csrx .fc:first-child{border-left:0;padding-left:0}
 .csrx .fc .fl{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-bottom:5px}
 .csrx .fc .fl svg{width:12px;height:12px;color:var(--faint);flex:none}
@@ -397,8 +503,8 @@
 .csrx .fc .fv.em{color:var(--faint);font-weight:400}
 .csrx .fc .fv.gr{color:var(--g);font-weight:600}
 
-.csrx .blocks{display:grid;grid-template-columns:1fr 300px;gap:14px;margin-top:16px}
-.csrx .blk{background:var(--ground2);border:1px solid var(--line2);border-radius:var(--r-card);padding:14px}
+.csrx .blocks{display:grid;grid-template-columns:1fr 300px;gap:var(--sp-4);margin-top:var(--sp-4)}
+.csrx .blk{background:var(--ground2);border:1px solid var(--line2);border-radius:var(--r-card);padding:var(--sp-4)}
 .csrx .blk h4{font-size:13px;font-weight:600;color:var(--ink);margin:0 0 8px}
 .csrx .blk p{font-size:13px;line-height:1.65;color:var(--soft);margin:0}
 .csrx .sr{display:flex;align-items:flex-start;gap:10px;padding:7px 0;border-top:1px solid var(--line2)}
@@ -406,12 +512,12 @@
 .csrx .sr svg{width:15px;height:15px;color:var(--muted);flex:none;margin-top:2px}
 .csrx .sr .sl{font-size:12px;color:var(--muted)}
 .csrx .sr .sv{font-size:13.5px;color:var(--ink);font-weight:500;margin-top:2px}
-.csrx .stamp{font-size:12.5px;color:var(--faint);margin-top:14px;padding-top:12px;border-top:1px solid var(--line2)}
+.csrx .stamp{font-size:12.5px;color:var(--faint);margin-top:var(--sp-4);padding-top:var(--sp-3);border-top:1px solid var(--line2)}
 
 .csrx .dempty{padding:64px 20px;text-align:center;color:var(--muted);font-size:13.5px}
 
 @media (max-width: 1100px){
-  .csrx .md{grid-template-columns:1fr;gap:14px}
+  .csrx .md{grid-template-columns:1fr;gap:var(--sp-4)}
   .csrx .blocks{grid-template-columns:1fr}
   .csrx .facts{grid-template-columns:repeat(2,1fr)}
   .csrx .fc:nth-child(odd){border-left:0;padding-left:0}
@@ -461,7 +567,7 @@
 /* The brand block inherited an 80px floor and 1.5rem of padding from the
    shared rail, which left a tall empty band above the first nav item. The
    reference's lockup sits close to the top and the nav starts under it. */
-.sidebar.sidebar--csr .sidebar-brand{min-height:0;padding:13px 14px 11px;gap:8px}
+.sidebar.sidebar--csr .sidebar-brand{min-height:0;padding:var(--sp-3) var(--sp-4) var(--sp-3);gap:8px}
 .sidebar.sidebar--csr .sidebar-brand h2{font-size:14px}
 .sidebar.sidebar--csr .sidebar-nav{padding:8px}
 
@@ -588,7 +694,7 @@
   border:1px solid var(--line2);border-radius:var(--r-card);
   background:var(--sunk);box-shadow:none;
 }
-.sidebar.sidebar--csr .sidebar-promo-body{position:relative;z-index:1;padding:13px 13px 14px}
+.sidebar.sidebar--csr .sidebar-promo-body{position:relative;z-index:1;padding:var(--sp-3) var(--sp-3) var(--sp-4)}
 
 /* The wave is the card's floor: full width, pinned to the bottom, beneath the
    body. Two stops so it reads as depth rather than a single flat band. */
@@ -677,7 +783,7 @@
 
 /* ---- Account page ------------------------------------------------------ */
 .csrx .acct{display:grid;grid-template-columns:1fr 1fr;gap:1.4%;align-items:start}
-.csrx .acct-id{display:flex;align-items:center;gap:14px;margin-bottom:18px}
+.csrx .acct-id{display:flex;align-items:center;gap:var(--sp-4);margin-bottom:var(--sp-5)}
 .csrx .acct-av{
   flex:none;width:52px;height:52px;border-radius:50%;display:grid;place-items:center;
   background:linear-gradient(140deg,#7C5CE0,#4F46C4);color:#fff;
@@ -688,7 +794,7 @@
   letter-spacing:-.02em;margin:0;line-height:1.2;
 }
 .csrx .acct-id .sub{font-size:13px;color:var(--muted);margin-top:4px}
-.csrx .acct-actions{margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
+.csrx .acct-actions{margin-top:var(--sp-5);padding-top:var(--sp-4);border-top:1px solid var(--line)}
 .csrx .newbtn.danger{background:#B3352A;box-shadow:0 2px 6px rgba(179,53,42,.18)}
 .csrx .newbtn.danger:hover{background:#8F2A21}
 .csrx .acct-h{font-size:13.5px;font-weight:600;color:var(--ink);margin:0 0 4px}
@@ -724,13 +830,13 @@
 /* =========================================================================
    DASHBOARD — featured card, stat tiles, statistic panel, quick actions.
    ========================================================================= */
-.csrx .dash-top{display:grid;grid-template-columns:220px 1fr 300px;gap:14px;align-items:stretch}
+.csrx .dash-top{display:grid;grid-template-columns:220px 1fr 300px;gap:var(--sp-4);align-items:stretch}
 
 /* The one card that carries colour. It leads on a single grant, so it is the
    only surface allowed a fill — everything beside it stays white, which is
    what makes it read as the lead rather than as one tile among four. */
 .csrx .feature{
-  display:flex;flex-direction:column;border-radius:var(--r-card);padding:16px;color:#fff;
+  display:flex;flex-direction:column;border-radius:var(--r-card);padding:var(--sp-4);color:#fff;
   background:linear-gradient(150deg,#2F7355 0%,#245B44 55%,#1C4736 100%);
   box-shadow:0 1px 2px rgba(28,71,54,.14),0 10px 24px rgba(28,71,54,.16);
 }
@@ -757,10 +863,10 @@
 }
 
 /* Three figures, equal weight between them, all subordinate to the feature. */
-.csrx .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.csrx .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-4)}
 .csrx .stat{
   display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);
-  border-radius:var(--r-card);padding:14px;
+  border-radius:var(--r-card);padding:var(--sp-4);
 }
 .csrx .stat-top{display:flex;align-items:flex-start;margin-bottom:14px}
 .csrx .stat-ic{
@@ -780,7 +886,7 @@
 .csrx .stat-v{font-size:19px;font-weight:600;color:var(--ink);letter-spacing:-.022em;margin-top:3px}
 
 /* The statistic panel: donut over a legend, as the reference has it. */
-.csrx .statistic{padding:14px;display:flex;flex-direction:column}
+.csrx .statistic{padding:var(--sp-4);display:flex;flex-direction:column}
 .csrx .stat-head{display:flex;align-items:baseline;margin-bottom:14px}
 .csrx .stat-head h3{font-size:13.5px;font-weight:600;color:var(--ink);margin:0}
 .csrx .stat-when{margin-left:auto;font-size:12px;color:var(--muted)}
@@ -805,8 +911,8 @@
 .csrx .legend-amt{font-size:13px;font-weight:600;color:var(--ink)}
 
 /* ---- row 2 ---- */
-.csrx .dash-bot{display:grid;grid-template-columns:300px 1fr;gap:14px;margin-top:14px;align-items:start}
-.csrx .quick{display:flex;flex-direction:column;gap:14px}
+.csrx .dash-bot{display:grid;grid-template-columns:300px 1fr;gap:var(--sp-4);margin-top:var(--sp-4);align-items:start}
+.csrx .quick{display:flex;flex-direction:column;gap:var(--sp-4)}
 .csrx .quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .csrx .qa{
   display:flex;flex-direction:column;align-items:center;gap:7px;
@@ -822,7 +928,7 @@
 .csrx .qa:hover .qa-ic{background:#E7F1EB;color:var(--g)}
 .csrx .qa-ic svg{width:14px;height:14px}
 
-.csrx .limit{padding:14px}
+.csrx .limit{padding:var(--sp-4)}
 .csrx .limit-top{display:flex;align-items:baseline;margin-bottom:9px}
 .csrx .limit-k{font-size:13px;font-weight:600;color:var(--ink)}
 .csrx .limit-pc{margin-left:auto;font-size:13px;font-weight:600;color:var(--soft)}
@@ -832,7 +938,7 @@
 .csrx .limit-sub{font-size:12.5px;color:var(--muted);margin-top:9px}
 .csrx .limit-warn{font-size:12.5px;color:#B3352A;margin-top:5px}
 
-.csrx .flow{padding:14px}
+.csrx .flow{padding:var(--sp-4)}
 .csrx .flow-total{font-size:22px;font-weight:600;color:var(--ink);letter-spacing:-.025em}
 .csrx .flow-key{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin:5px 0 6px}
 
@@ -897,14 +1003,14 @@
 .csrx .stat-k{font-size:12px}
 .csrx .stat-v{font-size:16px;margin-top:2px}
 
-.csrx .feature{min-height:170px;padding:14px}
+.csrx .feature{min-height:170px;padding:var(--sp-4)}
 .csrx .feature-top{margin-bottom:14px}
 .csrx .feature-ic{width:24px;height:24px}
 .csrx .feature-ic svg{width:12px;height:12px}
 .csrx .feature-pct{font-size:11.5px}
 .csrx .feature-k{font-size:13.5px;font-weight:600;letter-spacing:-.01em}
 .csrx .feature-sub{font-size:11.5px;color:rgba(255,255,255,.7);margin-top:3px}
-.csrx .feature-foot{padding-top:14px;gap:14px;align-items:flex-end}
+.csrx .feature-foot{padding-top:var(--sp-4);gap:var(--sp-4);align-items:flex-end}
 .csrx .feature-foot .fl{font-size:9px}
 .csrx .feature-foot .fv{font-size:17px}
 .csrx .feature-foot .fv.sm{font-size:13.5px;font-weight:600}
@@ -945,7 +1051,7 @@
      change it. */
   grid-template-columns:288px 1fr 300px;
   grid-template-rows:auto auto;
-  gap:14px;
+  gap:var(--sp-4);
   align-items:start;
 }
 .csrx .dash > .feature  {grid-column:1;grid-row:1}
@@ -1041,7 +1147,7 @@
 .csrx .pairs{margin-top:12px}
 .csrx .pairs-plot{
   position:relative;display:flex;align-items:flex-end;gap:2px;
-  height:150px;padding-bottom:22px;
+  height:150px;padding-bottom:var(--sp-6);
 }
 .csrx .pairgrp{
   position:relative;flex:1;min-width:0;height:100%;
@@ -1147,7 +1253,7 @@
 .csrx .gate{
   display:flex;align-items:baseline;gap:12px;
   background:var(--ground2);border-radius:var(--r-card);
-  padding:15px 18px;margin-bottom:16px;
+  padding:var(--sp-4) var(--sp-5);margin-bottom:var(--sp-4);
 }
 .csrx .gate.hot{background:#FBF1DF}
 .csrx .gate-n{font-size:24px;font-weight:600;color:var(--ink);letter-spacing:-.025em}
@@ -1219,7 +1325,7 @@
    figures, a bar and up to two caveats, and a table row cannot hold a caveat
    without either truncating it or wrecking the column rhythm.
    ========================================================================= */
-.csrx .utot{padding:20px 22px;margin-bottom:16px}
+.csrx .utot{padding:var(--sp-5) var(--sp-6);margin-bottom:var(--sp-4)}
 .csrx .utot-v{font-size:32px;font-weight:600;color:var(--g-deep);letter-spacing:-.03em;line-height:1}
 .csrx .utot-k{font-size:13px;color:var(--muted);margin-top:7px;line-height:1.5}
 .csrx .utot-warn{
@@ -1230,7 +1336,7 @@
 .csrx .ucards{display:flex;flex-direction:column;gap:12px}
 .csrx .ucard{
   display:block;width:100%;text-align:left;font:inherit;cursor:pointer;
-  padding:18px 20px;transition:border-color .16s,box-shadow .16s;
+  padding:var(--sp-5) var(--sp-5);transition:border-color .16s,box-shadow .16s;
 }
 .csrx .ucard:hover{border-color:#C6D4CC;box-shadow:0 2px 10px rgba(28,44,38,.07)}
 .csrx .ucard:focus-visible{outline-offset:2px}
@@ -1244,7 +1350,7 @@
 .csrx .pill.frozen{background:#F1E9F4;color:#7A3E8F}
 
 .csrx .ufigs{
-  display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:14px;
+  display:grid;grid-template-columns:repeat(4,1fr);gap:var(--sp-4);margin-bottom:var(--sp-4);
 }
 .csrx .ufig{display:flex;flex-direction:column;min-width:0}
 .csrx .uv{font-size:17px;font-weight:600;color:var(--ink);letter-spacing:-.022em;white-space:nowrap}
@@ -1399,7 +1505,7 @@
    the nav beside them, which put the numbers this page exists for below the
    chrome around them.
    ========================================================================= */
-.csrx .stat{min-height:130px;padding:14px}
+.csrx .stat{min-height:130px;padding:var(--sp-4)}
 .csrx .stat-ic{width:28px;height:28px}
 .csrx .stat-ic svg{width:14px;height:14px}
 .csrx .trend{font-size:12.5px;padding:3px 9px;margin-bottom:10px}
@@ -1713,27 +1819,27 @@
    cards touching, panels with no breathing room, rows stacked on each other.
    One step out, everywhere.
    ========================================================================= */
-.csrx.csrx-page{padding:32px 36px 72px}
-.csrx .dash{gap:18px}
-.csrx .stats{gap:18px}
-.csrx .stats > .stat{padding:22px}
+.csrx.csrx-page{padding:var(--sp-8) 36px 72px}
+.csrx .dash{gap:var(--sp-5)}
+.csrx .stats{gap:var(--sp-5)}
+.csrx .stats > .stat{padding:var(--sp-6)}
 .csrx .stat-top{margin-bottom:16px}
-.csrx .trend{margin-bottom:14px}
+.csrx .trend{margin-bottom:var(--sp-4)}
 
-.csrx .statistic{padding:20px}
+.csrx .statistic{padding:var(--sp-5)}
 .csrx .stat-head{margin-bottom:16px}
-.csrx .donut{margin:4px auto 18px}
+.csrx .donut{margin:var(--sp-1) auto var(--sp-5)}
 .csrx .legend-row{padding:10px 0}
 
-.csrx .quick .qa{padding:18px 10px;gap:9px}
-.csrx .quick .limit{padding:18px 20px}
+.csrx .quick .qa{padding:var(--sp-5) var(--sp-3);gap:var(--sp-2)}
+.csrx .quick .limit{padding:var(--sp-5) var(--sp-5)}
 .csrx .limit-top{margin-bottom:12px}
-.csrx .limit-sub{margin-top:11px}
+.csrx .limit-sub{margin-top:var(--sp-3)}
 
 .csrx .flow{padding:20px}
-.csrx .flow-key{margin:8px 0 14px}
+.csrx .flow-key{margin:var(--sp-2) 0 var(--sp-4)}
 .csrx .pairs{margin-top:16px}
-.csrx .pairs-plot{height:170px;padding-bottom:26px}
+.csrx .pairs-plot{height:170px;padding-bottom:var(--sp-7)}
 .csrx .pairlbl{bottom:-24px}
 
 /* The section strip needs the same air as the content under it. */
@@ -1771,7 +1877,7 @@
     132px                      /* location / activity */
     minmax(200px, 1.3fr)       /* grant — the longest string on the page */
     124px;                     /* status */
-  gap:20px;
+  gap:var(--sp-5);
 }
 .csrx .lgrid > *:last-child{justify-self:end}
 
@@ -1781,17 +1887,17 @@
 .csrx .lgrid-head{
   background:linear-gradient(180deg,#F1F5F3 0%,#F7FAF8 100%);
   border-bottom:1px solid var(--line);
-  padding:14px 20px;
+  padding:var(--sp-4) var(--sp-5);
   font-size:13px;letter-spacing:.055em;color:#5C6A63;font-weight:600;
 }
 
 /* Scale. These were set a size below the nav beside them, which put the record
    under the chrome in the hierarchy. */
-.csrx .lrow{padding:16px 20px}
+.csrx .lrow{padding:var(--sp-4) var(--sp-5)}
 .csrx .lrow .t1{font-size:14px}
 .csrx .lrow .t2{font-size:13.5px}
 .csrx .lrow .fig{font-size:13.5px}
-.csrx .tfoot{padding:14px 20px;font-size:13.5px}
+.csrx .tfoot{padding:var(--sp-4) var(--sp-5);font-size:13.5px}
 .csrx .lrow .pill{font-size:13px;padding:4px 11px}
 
 /* The gate figure and the page heading move with them. */
@@ -1832,9 +1938,9 @@
 .csrx .pill,.csrx .trend,.csrx .chip{line-height:1.4}
 
 /* Rows get the height that leading needs. */
-.csrx .lrow{padding:18px 20px}
-.csrx .setrow{padding:16px 20px}
-.csrx .lgrid-head{padding:15px 20px}
+.csrx .lrow{padding:var(--sp-5) var(--sp-5)}
+.csrx .setrow{padding:var(--sp-4) var(--sp-5)}
+.csrx .lgrid-head{padding:var(--sp-4) var(--sp-5)}
 
 /* ---- the expand control ---- */
 .csrx .lwrap{border-bottom:1px solid var(--line2)}
@@ -1853,11 +1959,11 @@
 
 /* ---- what the chevron opens ---- */
 .csrx .ldetail{
-  display:grid;grid-template-columns:repeat(4,1fr);gap:18px 24px;
-  padding:4px 20px 22px;background:#FAFCFB;
+  display:grid;grid-template-columns:repeat(4,1fr);gap:var(--sp-5) var(--sp-6);
+  padding:var(--sp-1) var(--sp-5) var(--sp-6);background:#FAFCFB;
   border-top:1px solid var(--line2);
 }
-.csrx .ldetail > div{display:flex;flex-direction:column;min-width:0;padding-top:16px}
+.csrx .ldetail > div{display:flex;flex-direction:column;min-width:0;padding-top:var(--sp-4)}
 .csrx .ldetail .dfull{grid-column:1 / -1}
 .csrx .dk{font-size:12.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:600}
 .csrx .dv{font-size:14px;color:var(--ink);margin-top:4px}
@@ -1905,13 +2011,13 @@
    (align-self, plus a negative margin cancelling the row's vertical padding)
    so the column reads as one continuous band rather than a stack of loose
    blocks. Both sides read --lrow-pad-y, because the padding is set twice in
-   this file already (16px at one point, 18px later) and a hardcoded offset
+   this file already (var(--sp-4) at one point, var(--sp-5) later) and a hardcoded offset
    here would silently go ragged the next time either moves. */
 .csrx .lrow{
-  --lrow-pad-y:18px;
+  --lrow-pad-y:var(--sp-5);
   padding-top:var(--lrow-pad-y);padding-bottom:var(--lrow-pad-y);
 }
-.csrx .lrow > *:nth-child(4){
+.csrx .lrow:not(.lgrid--3):not(.lgrid--4) > *:nth-child(4){
   align-self:stretch;
   display:flex;align-items:center;
   margin-block:calc(-1 * var(--lrow-pad-y));padding:0 12px;
@@ -1951,7 +2057,7 @@
 @media (max-width:900px){
   /* The grid collapses to a single column here, so a "column" tint would be
      a random tinted strip across the middle of every card. */
-  .csrx .lrow > *:nth-child(4){
+  .csrx .lrow:not(.lgrid--3):not(.lgrid--4) > *:nth-child(4){
     display:block;margin-block:0;padding:0;
     background:none;border:0;
     color:var(--muted);font-weight:400;
@@ -1977,7 +2083,7 @@
    chrome would spend a hue that a reader has just been taught to read as
    something else.
    ========================================================================= */
-.csrx .pform-head{margin-bottom:20px}
+.csrx .pform-head{margin-bottom:var(--sp-5)}
 .csrx .pform-head h2{
   font-family:var(--serif);font-size:30px;font-weight:500;letter-spacing:-.018em;
   color:var(--ink);line-height:1.2;margin:0;
@@ -2001,9 +2107,9 @@
    tracked fields, so a bar can never show a fraction the form does not mean. */
 .csrx .pform-prog{
   background:var(--card);border:1px solid var(--line);border-radius:var(--r-card);
-  padding:14px 18px;margin-bottom:24px;
+  padding:var(--sp-4) var(--sp-5);margin-bottom:var(--sp-6);
 }
-.csrx .pform-prog-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:9px}
+.csrx .pform-prog-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:var(--sp-2)}
 .csrx .pform-prog-label{font-size:13.5px;color:var(--soft);font-weight:500;line-height:1.7}
 .csrx .pform-prog-pc{font-size:13.5px;color:var(--muted)}
 .csrx .pform-prog-track{height:8px;border-radius:var(--r-pill);background:var(--ground2);overflow:hidden}
@@ -2028,14 +2134,14 @@
 .csrx .pform-prog{max-width:1040px}
 .csrx .pform-sec{
   background:var(--card);border:1px solid var(--line);border-radius:var(--r-card);
-  padding:18px 20px 20px;margin:0;
-  display:flex;flex-direction:column;gap:16px;
+  padding:var(--sp-5) var(--sp-5) var(--sp-5);margin:0;
+  display:flex;flex-direction:column;gap:var(--sp-4);
 }
 .csrx .pform-legend{
   font-family:var(--disp);font-size:13px;font-weight:700;letter-spacing:.05em;
   text-transform:uppercase;color:var(--muted);padding:0 6px;margin-left:-6px;
 }
-.csrx .pform-row{display:flex;flex-direction:column;gap:16px}
+.csrx .pform-row{display:flex;flex-direction:column;gap:var(--sp-4)}
 
 /* ---- fields ---- */
 .csrx .pform-field{display:flex;flex-direction:column;gap:6px;min-width:0}
@@ -2197,7 +2303,7 @@
    .csrx-page.
    ========================================================================= */
 .dashboard-layout:has(.sidebar--csr) .dashboard-page{padding-top:0}
-.csrx.csrx-page{padding-top:24px}
+.csrx.csrx-page{padding-top:var(--sp-6)}
 
 
 /* =========================================================================
@@ -2352,3 +2458,97 @@
    own box, so nothing here needs the page to scroll sideways.
    ========================================================================= */
 .dashboard-layout:has(.sidebar--csr) .dashboard-page{overflow:visible}
+
+
+/* =========================================================================
+   LOG TABLE COLUMN VARIANTS -- .lgrid--3 and .lgrid--4
+
+   .lgrid is a five-track grid because that is the shape of the two tables it
+   was measured against (Activities and Reports: date, record, location, grant,
+   status). Screens converting off cards do not all hold five values, and a
+   three-value table laid on a five-track grid leaves two dead tracks and
+   pushes the trailing cell into the middle of the row.
+
+   These modifiers go on the SAME element as .lgrid -- on the head and on every
+   row -- e.g. `class="lgrid lgrid--3 lrow"`. They override only
+   grid-template-columns; gap, padding, the header band, the zebra stripe,
+   `> *:last-child{justify-self:end}` and the ellipsis rules all still apply,
+   so a variant table keeps the five-column table's rhythm.
+
+   --3 is name-led, not date-led. The three-value tables in this module are a
+   catalog shape (what the thing is / an attribute of it / an action), so the
+   widest track has to come first or every name ellipsises at the fixed width.
+   The 124px trailing track is the same one .lgrid ends on, which is what keeps
+   the action or status column landing on the same right edge across screens.
+
+   --4 keeps the five-track rhythm minus the location column: the fixed 182px
+   date track, the record's own name, one flexible secondary string, and the
+   same 124px trailing track.
+
+   IDENTITY TINT. The --role-id band is bound to `> *:nth-child(4)`, which on
+   the five-track grid is the grant. On a three-track row there is no fourth
+   child, so it cannot match; on a four-track row the fourth child is the
+   TRAILING status/action cell, and tinting that as identity would teach the
+   reader the wrong thing. Both variants are therefore excluded from the tint
+   rule by :not(), rather than left to depend on child counting. A variant
+   table with a genuine identity column should keep it as the 4th of five, or
+   the tint needs its own class -- do not re-point nth-child.
+   ========================================================================= */
+.csrx .lgrid--3{
+  grid-template-columns:
+    minmax(240px, 1.6fr)       /* the thing's own name -- leads, so it breathes */
+    minmax(150px, 0.9fr)       /* one attribute: a scope pill, a count, a state */
+    124px;                     /* action or status, hard right */
+}
+.csrx .lgrid--4{
+  grid-template-columns:
+    182px                      /* date -- fits a start->end range unclipped */
+    minmax(240px, 1.4fr)       /* the record's own name */
+    minmax(150px, 0.9fr)       /* the secondary string */
+    124px;                     /* status, hard right */
+}
+
+/* At 1100px .lgrid already collapses to a single column and drops its head;
+   the variants inherit that, but their grid-template-columns is set with a
+   higher-specificity selector than the collapse rule, so it has to be undone
+   explicitly or a variant table stays multi-column on a phone. */
+@media (max-width:1100px){
+  .csrx .lgrid--3,
+  .csrx .lgrid--4{grid-template-columns:1fr}
+}
+
+
+/* =========================================================================
+   NUMERIC CELLS IN A LOG TABLE -- .lnum
+
+   A money or count column that is left-aligned makes the reader compare digit
+   strings that do not line up: 9,80,000 and 1,20,00,000 start at the same x
+   and end nowhere near each other, so the eye cannot rank them without reading
+   both. Right alignment plus tabular figures puts the units column under the
+   units column, which is the entire reason a figure goes in a table.
+
+   Put .lnum on the cell in BOTH the head and the row so the heading sits over
+   its own column:
+     <div className="lgrid lgrid--4 lgrid-head"><span className="lnum">Utilised</span>...
+     <div className="lgrid lgrid--4 lrow"><span className="fig lnum">...</span>
+
+   This is a cell modifier, deliberately not a change to .fig. .fig is the
+   figure TYPEFACE role -- it is on KPI numbers, gauge totals and inline
+   amounts outside any table, where forcing text-align:right would shove a
+   standalone number to the far side of its card.
+
+   No justify-self here: a grid item stretches to its track by default, so the
+   cell already spans the column and text-align does the work. The one
+   exception is the last cell, which .lgrid > *:last-child shrinks to its
+   content -- .lnum:last-child therefore gets justify-self:end so a trailing
+   figure still lands on the row's right edge.
+   ========================================================================= */
+.csrx .lgrid > .lnum{text-align:right;font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1}
+.csrx .lgrid > .lnum:last-child{justify-self:end}
+
+/* Below 1100px the grid is one column per value and every cell is full width,
+   so a right-aligned figure would sit alone against the far edge of a card
+   with its label at the other end. Figures go back to the flow there. */
+@media (max-width:1100px){
+  .csrx .lgrid > .lnum{text-align:left}
+}
