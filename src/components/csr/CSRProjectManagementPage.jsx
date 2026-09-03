@@ -98,14 +98,28 @@ export default function CSRProjectManagementPage() {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
   const [confirmState, setConfirmState] = useState(null);
+  // The real inbound grant contract (CSRWorkOrder), keyed by project id. The
+  // selection changes on every row click, so one fetch of all contracts here
+  // beats refetching on each click — see the 09-02 correction: the record used
+  // to show CSRProject.work_order, TTA's outbound vendor payable, in this slot.
+  const [contractsByProject, setContractsByProject] = useState({});
 
   const notify = (message, severity = 'success') => setToast({ open: true, message, severity });
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const data = await csrAPI.projects.getAll();
+      const [data, contracts] = await Promise.all([
+        csrAPI.projects.getAll(),
+        csrAPI.workOrders.getAll(),
+      ]);
       setProjects(Array.isArray(data) ? data : data?.results || []);
+      const contractList = Array.isArray(contracts) ? contracts : contracts?.results || [];
+      const byProject = {};
+      contractList.forEach((c) => {
+        if (!(c.projectId in byProject)) byProject[c.projectId] = c;
+      });
+      setContractsByProject(byProject);
     } catch (e) {
       notify(e.message || 'Failed to load projects.', 'error');
     } finally {
@@ -170,6 +184,7 @@ export default function CSRProjectManagementPage() {
     () => paged.find((p) => p.id === selectedId) || paged[0] || null,
     [paged, selectedId],
   );
+  const selectedContract = selected ? contractsByProject[selected.id] : null;
 
   return (
     <div className="csrx csrx-page">
@@ -324,7 +339,11 @@ export default function CSRProjectManagementPage() {
                 <div className="facts nb">
                   <Fact label="Start Date" value={fmtDay(selected.startDate)} />
                   <Fact label="End Date" value={fmtDay(selected.endDate)} />
-                  <Fact label="Work Order" value={selected.workOrderNumber} />
+                  {/* Renamed from "Work Order": this names the funder's grant
+                      contract now, not the old TTA vendor payable, and
+                      "contract" is what CSRContractManagementPage/Modal
+                      already call it. */}
+                  <Fact label="Contract" value={selectedContract ? (selectedContract.reference || selectedContract.title) : null} />
                   <Fact label="Certificate" value={selected.certificateFrozenAt ? 'Frozen' : 'Live'} />
                 </div>
 
@@ -344,8 +363,8 @@ export default function CSRProjectManagementPage() {
                       <div>
                         <div className="sl">Contract</div>
                         <div className="sv">
-                          {selected.workOrderContractLink ? (
-                            <a href={selected.workOrderContractLink} target="_blank" rel="noopener noreferrer">
+                          {selectedContract?.contractDriveLink ? (
+                            <a href={selectedContract.contractDriveLink} target="_blank" rel="noopener noreferrer">
                               Open contract
                             </a>
                           ) : '—'}
