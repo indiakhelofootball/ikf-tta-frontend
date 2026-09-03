@@ -6,7 +6,9 @@ import {
 
 // The kinds the 26 Aug review asked to distinguish: "what is the report of the
 // trial, what is the report of the workshop... what will be the type of report".
-const REPORT_TYPES = ['Trial', 'Workshop', 'Training Programme', 'Other'];
+// 'Overall' added per 26 Aug review, 16:21: a grant-wide report is distinct
+// from 'Other' (uncategorised) -- every other value here is an activity kind.
+const REPORT_TYPES = ['Trial', 'Workshop', 'Training Programme', 'Overall', 'Other'];
 
 const EMPTY = {
   title: '', reportType: '', fileName: '', fileUrl: '', activityId: '',
