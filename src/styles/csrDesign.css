@@ -1862,3 +1862,94 @@
   .csrx .ldetail{grid-template-columns:1fr 1fr}
 }
 
+
+
+/* =========================================================================
+   TABLE COLOUR ROLES  --  approved 3 Sep 2026.
+
+   The rule: a hue means the same thing on every screen, so a reader learns it
+   once. Indigo is identity (the funder or grant a record belongs to). Sand is
+   money. State keeps its semantic pills.
+
+   Green is deliberately NOT spent here. It stays the module's own colour --
+   buttons, the active rail item, anything important -- which is why the table
+   chrome had to be a different hue: green on the header AND on every button
+   makes neither of them mean anything. Sand is a cell wash only and never
+   becomes a control.
+
+   This does replace the Ledger's "grounds stay neutral" rule, for tables
+   specifically. Grounds carry tint now, on purpose.
+   ========================================================================= */
+:root{
+  --role-id:#EAF0F7; --role-id-edge:#D3E0EF; --role-id-ink:#33455C;
+  --role-money:#FBF3E4; --role-money-edge:#EFDFC2; --role-money-ink:#7A5618;
+  --head-bg:#284A73; --head-ink:#EEF3F9;
+}
+
+/* The band. This was a near-white gradient, which is the whole reason the
+   column headings kept disappearing into the page. */
+.csrx .lgrid-head{
+  background:var(--head-bg);
+  border-bottom:0;
+  color:var(--head-ink);
+  font-weight:600;
+  letter-spacing:.06em;
+}
+
+/* Identity -- the grant a record belongs to. It is the 4th cell in both the
+   activities and the reports table. The tint runs the full row height
+   (align-self, plus a negative margin cancelling the row's vertical padding)
+   so the column reads as one continuous band rather than a stack of loose
+   blocks. Both sides read --lrow-pad-y, because the padding is set twice in
+   this file already (16px at one point, 18px later) and a hardcoded offset
+   here would silently go ragged the next time either moves. */
+.csrx .lrow{
+  --lrow-pad-y:18px;
+  padding-top:var(--lrow-pad-y);padding-bottom:var(--lrow-pad-y);
+}
+.csrx .lrow > *:nth-child(4){
+  align-self:stretch;
+  display:flex;align-items:center;
+  margin-block:calc(-1 * var(--lrow-pad-y));padding:0 12px;
+  background:var(--role-id);
+  border-left:1px solid var(--role-id-edge);
+  border-right:1px solid var(--role-id-edge);
+  color:var(--role-id-ink);font-weight:500;
+}
+
+/* Rows. A hair of ground on every second row -- enough to track one row
+   across five columns, not enough to draw stripes over the data.
+
+   nth-CHILD, not nth-of-type. Activities wraps each row in a .lwrap div (the
+   chevron opens inside it) and reports does not, so type-counting stripes the
+   two tables in opposite phase: the header is a div sibling in one case and
+   not the row's tag in the other. Counting all children puts the header at 1
+   in both, so :nth-child(odd) is the 2nd, 4th... row on every screen.
+
+   The unwrapped case is scoped with :not(.lwrap) because inside a .lwrap the
+   row is the FIRST child -- so a bare .lrow:nth-child(odd) matches every
+   wrapped row and tints the whole table. */
+.csrx .lwrap:nth-child(odd) > .lrow,
+.csrx *:not(.lwrap) > .lrow:nth-child(odd){background:var(--ground2)}
+.csrx .lrow:hover,
+.csrx .lwrap:nth-child(odd) > .lrow:hover{background:var(--g-wash)}
+
+/* Money. Sand, never green -- a figure must not read as identity. */
+.csrx .lr .am{
+  display:inline-block;
+  background:var(--role-money);
+  border:1px solid var(--role-money-edge);
+  border-radius:6px;
+  padding:1px 8px;
+  color:var(--role-money-ink);
+}
+
+@media (max-width:900px){
+  /* The grid collapses to a single column here, so a "column" tint would be
+     a random tinted strip across the middle of every card. */
+  .csrx .lrow > *:nth-child(4){
+    display:block;margin-block:0;padding:0;
+    background:none;border:0;
+    color:var(--muted);font-weight:400;
+  }
+}
