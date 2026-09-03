@@ -46,6 +46,11 @@ const pageTitles = {
   // Without this, /csr/account falls through to the /csr/:id pattern below
   // and the strip reads "Project" on the account page.
   "/csr/account": "Account",
+  // The grant form is a page now, not a dialog. Without these the strip read
+  // "Dashboard" while you were editing a grant: /csr/projects/new is three
+  // segments, so it misses the /csr/:id pattern below and falls through to the
+  // default.
+  "/csr/projects/new": "New Project",
 };
 
 // Dynamic routes (App.js path params) can't live in the exact-match map above
@@ -57,6 +62,7 @@ const pageTitles = {
 const dynamicRoutePatterns = [
   { pattern: /^\/trials\/[^/]+$/, title: "Project" },
   { pattern: /^\/csr\/[^/]+$/, title: "Project" },
+  { pattern: /^\/csr\/projects\/[^/]+\/edit$/, title: "Edit Project" },
 ];
 
 function resolveTitle(pathname) {

@@ -49,6 +49,8 @@ import '../../styles/csrDesign.css';
 const CSR_ROUTES = [
   { path: '/csr' },
   { path: '/csr/projects' },
+  { path: '/csr/projects/new' },
+  { path: '/csr/projects/:id/edit' },
   { path: '/csr/activities' },
   { path: '/csr/reports' },
   { path: '/csr/utilisation' },
