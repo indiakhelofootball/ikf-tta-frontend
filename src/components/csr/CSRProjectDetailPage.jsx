@@ -11,8 +11,6 @@ import {
 } from '@mui/icons-material';
 
 import CSRProjectDetailView, { ttaProjectIdentity } from './CSRProjectDetailView';
-import CSRActivityModal from './CSRActivityModal';
-import CSRReportModal from './CSRReportModal';
 import CSRContactModal from './CSRContactModal';
 import CSRExpenseTagModal from './CSRExpenseTagModal';
 import CSRContractManagementPage from './CSRContractManagementPage';
@@ -141,8 +139,6 @@ export default function CSRProjectDetailPage() {
     return next;
   });
 
-  const [activityModal, setActivityModal] = useState({ open: false, editing: null });
-  const [reportModal, setReportModal] = useState({ open: false, editing: null });
   const [contactModal, setContactModal] = useState({ open: false, editing: null });
   const [expenseModalOpen, setExpenseModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -151,6 +147,19 @@ export default function CSRProjectDetailPage() {
   const [confirmState, setConfirmState] = useState(null);
 
   const notify = (message, severity = 'success') => setToast({ open: true, message, severity });
+
+  // Activity and report editing moved to their own pages (App.js), so the
+  // save confirmation that used to come from the modal's own onSave callback
+  // now arrives here the way CSRProjectManagementPage reads its own: in
+  // navigation state, cleared with replace:true so it cannot resurface on a
+  // Back or a refresh long after the fact.
+  const savedMsg = location.state?.saved;
+  useEffect(() => {
+    if (!savedMsg) return;
+    notify(savedMsg);
+    navigate(location.pathname, { replace: true, state: { tab: location.state?.tab } });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedMsg]);
 
   const asList = (data) => (Array.isArray(data) ? data : data?.results || []);
 
@@ -187,26 +196,6 @@ export default function CSRProjectDetailPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const saveActivity = async (payload) => {
-    setSaving(true);
-    try {
-      const body = { ...payload, projectId: Number(id) };
-      if (activityModal.editing) {
-        await csrAPI.activities.update(activityModal.editing.id, body);
-        notify('Activity updated.');
-      } else {
-        await csrAPI.activities.create(body);
-        notify('Activity added.');
-      }
-      setActivityModal({ open: false, editing: null });
-      load();
-    } catch (e) {
-      notify(e.message || 'Save failed.', 'error');
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const deleteActivity = (a) => setConfirmState({
     title: 'Delete activity',
     message: `Delete activity "${a.title}"?`,
@@ -221,26 +210,6 @@ export default function CSRProjectDetailPage() {
       }
     },
   });
-
-  const saveReport = async (payload) => {
-    setSaving(true);
-    try {
-      const body = { ...payload, projectId: Number(id) };
-      if (reportModal.editing) {
-        await csrAPI.reports.update(reportModal.editing.id, body);
-        notify('Report updated.');
-      } else {
-        await csrAPI.reports.create(body);
-        notify('Report added.');
-      }
-      setReportModal({ open: false, editing: null });
-      load();
-    } catch (e) {
-      notify(e.message || 'Save failed.', 'error');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const deleteReport = (r) => setConfirmState({
     title: 'Delete report',
@@ -498,7 +467,7 @@ export default function CSRProjectDetailPage() {
           {editable && (
             <Button
               size="small" startIcon={<AddIcon />} sx={{ mb: 1 }}
-              onClick={() => setActivityModal({ open: true, editing: null })}
+              onClick={() => navigate(`/csr/activities/new?project=${id}`)}
             >
               Add Activity
             </Button>
@@ -533,7 +502,7 @@ export default function CSRProjectDetailPage() {
                     {...rowActivation(
                       editable ? `Edit activity ${a.title}` : `Show details for activity ${a.title}`,
                       editable
-                        ? () => setActivityModal({ open: true, editing: a })
+                        ? () => navigate(`/csr/activities/${a.id}/edit`)
                         : () => toggleExpanded(key),
                     )}
                   >
@@ -555,7 +524,7 @@ export default function CSRProjectDetailPage() {
                           <button
                             type="button" className="ico g"
                             aria-label={`Edit activity ${a.title}`}
-                            onClick={(e) => { e.stopPropagation(); setActivityModal({ open: true, editing: a }); }}
+                            onClick={(e) => { e.stopPropagation(); navigate(`/csr/activities/${a.id}/edit`); }}
                           >
                             <EditGlyph />
                           </button>
@@ -624,7 +593,7 @@ export default function CSRProjectDetailPage() {
           {editable && (
             <Button
               size="small" startIcon={<AddIcon />} sx={{ mb: 1 }}
-              onClick={() => setReportModal({ open: true, editing: null })}
+              onClick={() => navigate(`/csr/reports/new?project=${id}`)}
             >
               Add Report
             </Button>
@@ -655,7 +624,7 @@ export default function CSRProjectDetailPage() {
                     className="lgrid lrow"
                     {...rowActivation(
                       editable ? `Edit report ${r.fileName}` : null,
-                      editable ? () => setReportModal({ open: true, editing: r }) : null,
+                      editable ? () => navigate(`/csr/reports/${r.id}/edit`) : null,
                     )}
                   >
                     <span className="fig nowrap">{fmtDay(r.createdAt)}</span>
@@ -693,7 +662,7 @@ export default function CSRProjectDetailPage() {
                           <button
                             type="button" className="ico g"
                             aria-label={`Edit report ${r.fileName}`}
-                            onClick={(e) => { e.stopPropagation(); setReportModal({ open: true, editing: r }); }}
+                            onClick={(e) => { e.stopPropagation(); navigate(`/csr/reports/${r.id}/edit`); }}
                           >
                             <EditGlyph />
                           </button>
@@ -726,22 +695,6 @@ export default function CSRProjectDetailPage() {
 
       {tab === 4 && <CSRContractManagementPage projectId={id} />}
 
-      <CSRActivityModal
-        open={activityModal.open}
-        activity={activityModal.editing}
-        activityTypes={activityTypes}
-        onClose={() => setActivityModal({ open: false, editing: null })}
-        onSave={saveActivity}
-        saving={saving}
-      />
-      <CSRReportModal
-        open={reportModal.open}
-        report={reportModal.editing}
-        activities={activities}
-        onClose={() => setReportModal({ open: false, editing: null })}
-        onSave={saveReport}
-        saving={saving}
-      />
       {tab === 5 && canViewCert && (
         <Box>
           <Alert

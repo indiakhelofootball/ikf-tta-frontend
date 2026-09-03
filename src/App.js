@@ -33,7 +33,7 @@ import VendorAuditReport from "./components/reports/VendorAuditReport";
 import TrialSpendReport from "./components/reports/TrialSpendReport";
 import TrialsReport from "./components/reports/TrialsReport";
 import CourierManagementPage from "./components/courier/CourierManagementPage";
-import { CSRLogin, CSRDashboard, CSRProjectManagementPage, CSRProjectFormPage, CSRProjectDetailPage, CSRActivitiesPage, CSRReportsPage, CSRUtilisationPage, CSRActivityTypesPage, CSRClientsPage, CSRBrandingPage, CSRAccountPage } from "./components/csr";
+import { CSRLogin, CSRDashboard, CSRProjectManagementPage, CSRProjectFormPage, CSRActivityFormPage, CSRReportFormPage, CSRProjectDetailPage, CSRActivitiesPage, CSRReportsPage, CSRUtilisationPage, CSRActivityTypesPage, CSRClientsPage, CSRBrandingPage, CSRAccountPage } from "./components/csr";
 import ClientPortalPage from "./components/client/ClientPortalPage";
 import ClientLogin from "./components/client/ClientLogin";
 import PermissionsManagementPage from "./components/permissions/PermissionsManagementPage";
@@ -229,6 +229,33 @@ function App() {
           <Route path="/csr/projects/:id/edit" element={
             <GrantedRoute module="csr">
               <CSRProjectFormPage />
+            </GrantedRoute>
+          } />
+          {/* Activity and report editing follow the same page-not-modal move as
+              the grant form above. Both are always entered from a grant's own
+              tabs, which is the only place that knows which grant a NEW
+              record belongs to — that id travels as ?project=<id> rather than
+              a path segment, since the record does not exist yet to have its
+              own id, and edit does not need it: a loaded record already
+              carries its own projectId. */}
+          <Route path="/csr/activities/new" element={
+            <GrantedRoute module="csr">
+              <CSRActivityFormPage />
+            </GrantedRoute>
+          } />
+          <Route path="/csr/activities/:id/edit" element={
+            <GrantedRoute module="csr">
+              <CSRActivityFormPage />
+            </GrantedRoute>
+          } />
+          <Route path="/csr/reports/new" element={
+            <GrantedRoute module="csr">
+              <CSRReportFormPage />
+            </GrantedRoute>
+          } />
+          <Route path="/csr/reports/:id/edit" element={
+            <GrantedRoute module="csr">
+              <CSRReportFormPage />
             </GrantedRoute>
           } />
           {/* Activities and Reports are cross-project destinations, not just
