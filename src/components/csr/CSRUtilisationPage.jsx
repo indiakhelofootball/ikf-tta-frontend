@@ -48,6 +48,11 @@ const asList = (data) => (Array.isArray(data) ? data : data?.results || []);
 const num = (v) => Number(v) || 0;
 const rupees = (v) => `₹${num(v).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
 
+// Five rows a page, fixed. The portfolio totals above the table are summed
+// over the whole filtered set regardless — a ledger total that changed as you
+// paged would be worse than useless.
+const PAGE_SIZE = 5;
+
 
 export default function CSRUtilisationPage() {
   const navigate = useNavigate();
@@ -61,6 +66,7 @@ export default function CSRUtilisationPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
   // Which rows have their second-order figures open. A Set so several grants
   // can be compared at once without reopening the first.
   const [open, setOpen] = useState(() => new Set());
@@ -111,6 +117,21 @@ export default function CSRUtilisationPage() {
       excludedCount: acc.excludedCount + (cert?.excludedItems || []).length,
     };
   }, { sanctioned: 0, utilised: 0, excluded: 0, excludedCount: 0 }), [visible]);
+
+  const pageCount = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
+  // safePage, not page: a refetch can return fewer grants than the page being
+  // read, and page 4 of a two-page ledger must never render as an empty table.
+  const safePage = Math.min(page, pageCount);
+  const pageRows = visible.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const rangeFrom = visible.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
+  const rangeTo = Math.min(safePage * PAGE_SIZE, visible.length);
+  // A single row reads "Showing 1 of 1", not "Showing 1-1 of 1".
+  const rangeLabel = rangeFrom === rangeTo ? `${rangeFrom}` : `${rangeFrom}-${rangeTo}`;
+
+  useEffect(() => { if (page !== safePage) setPage(safePage); }, [page, safePage]);
+  // Searching starts the reader at the top of the new result set, rather than
+  // on a page that set does not have.
+  useEffect(() => { setPage(1); }, [search]);
 
   if (!allowed) {
     return <Alert severity="warning">You do not have access to the utilisation certificate.</Alert>;
@@ -197,7 +218,7 @@ export default function CSRUtilisationPage() {
                 ? "A utilisation certificate is drawn from the payments tagged to a grant."
                 : "Clear the search."}
             </div>
-          ) : visible.map(({ project, cert }) => {
+          ) : pageRows.map(({ project, cert }) => {
             const freeze = certificateFreezeState(project);
             const sanctioned = num(project.sanctionedAmount);
             const utilised = num(cert?.totalUtilised);
@@ -322,10 +343,38 @@ export default function CSRUtilisationPage() {
 
           {visible.length > 0 && (
             <div className="tfoot">
+              {/* The count states what is on screen, then what it is a slice
+                  of. The portfolio totals above stay over the whole filtered
+                  set — only this line follows the page. */}
               <span className="cnt">
-                Showing {visible.length} of {rows.length}
-                {' '}{rows.length === 1 ? 'grant' : 'grants'}
+                Showing {rangeLabel} of {visible.length}
+                {visible.length === rows.length
+                  ? ` ${rows.length === 1 ? 'grant' : 'grants'}`
+                  : ` matching, of ${rows.length} grants`}
               </span>
+              {pageCount > 1 && (
+                <nav className="tfoot-pager" aria-label="Pagination">
+                  <button
+                    type="button"
+                    className="ghostbtn tight"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={safePage <= 1}
+                  >
+                    Previous
+                  </button>
+                  <span className="pgr-status" aria-live="polite">
+                    Page {safePage} of {pageCount}
+                  </span>
+                  <button
+                    type="button"
+                    className="ghostbtn tight"
+                    onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                    disabled={safePage >= pageCount}
+                  >
+                    Next
+                  </button>
+                </nav>
+              )}
             </div>
           )}
         </div>

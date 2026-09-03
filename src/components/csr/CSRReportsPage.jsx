@@ -30,6 +30,10 @@ const asList = (data) => (Array.isArray(data) ? data : data?.results || []);
 // you on Overview to hunt for the record you just clicked.
 const REPORTS_TAB = 3;
 
+// Five rows a page, fixed. The gate figure and the toolbar above the table
+// should stay where they are however many reports are filed.
+const PAGE_SIZE = 5;
+
 // The three views of the gate. 'Internal' is deliberately first in the list and
 // is what the count in the header points at — it is the only one of the three
 // that is somebody's outstanding work.
@@ -71,6 +75,7 @@ export default function CSRReportsPage() {
   // Opens on the queue, not on everything. The complete list is one click away;
   // the outstanding work should not be.
   const [view, setView] = useState('Internal');
+  const [page, setPage] = useState(1);
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -125,6 +130,23 @@ export default function CSRReportsPage() {
       })
       .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
   }, [reports, view, projectFilter, search, projectName, activityTitle]);
+
+  const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  // safePage, not page: releasing a report moves it out of the Internal view
+  // under the reader, so the list can shrink below the page being read. Page 4
+  // of a two-page list must never render as an empty table.
+  const safePage = Math.min(page, pageCount);
+  const pageRows = rows.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const rangeFrom = rows.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
+  const rangeTo = Math.min(safePage * PAGE_SIZE, rows.length);
+  // A single row reads "Showing 1 of 1", not "Showing 1-1 of 1".
+  const rangeLabel = rangeFrom === rangeTo ? `${rangeFrom}` : `${rangeFrom}-${rangeTo}`;
+
+  useEffect(() => { if (page !== safePage) setPage(safePage); }, [page, safePage]);
+  // Any change to the filtered set — the gate, the grant, the search — starts
+  // the reader at the top of it again, rather than on a page the new result
+  // set does not have.
+  useEffect(() => { setPage(1); }, [search, projectFilter, view]);
 
   if (!canView('csr')) {
     return <Alert severity="warning">You do not have access to CSR.</Alert>;
@@ -194,7 +216,7 @@ export default function CSRReportsPage() {
                 ? 'A report is a document filed against a grant or one of its activities.'
                 : 'Clear the search or change the filter.'}
             </div>
-          ) : rows.map((r) => (
+          ) : pageRows.map((r) => (
             <div
               key={r.id}
               role="button"
@@ -232,8 +254,38 @@ export default function CSRReportsPage() {
 
           {rows.length > 0 && (
             <div className="tfoot">
-              Showing {rows.length} of {reports.length}
-              {' '}{reports.length === 1 ? 'report' : 'reports'} filed in total
+              {/* The count states what is on screen, then what it is a slice
+                  of — the page opens on a filtered view, so both numbers
+                  matter. */}
+              <span className="cnt">
+                Showing {rangeLabel} of {rows.length}
+                {rows.length === reports.length
+                  ? ` ${reports.length === 1 ? 'report' : 'reports'} filed in total`
+                  : ` matching, of ${reports.length} filed in total`}
+              </span>
+              {pageCount > 1 && (
+                <nav className="tfoot-pager" aria-label="Pagination">
+                  <button
+                    type="button"
+                    className="ghostbtn tight"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={safePage <= 1}
+                  >
+                    Previous
+                  </button>
+                  <span className="pgr-status" aria-live="polite">
+                    Page {safePage} of {pageCount}
+                  </span>
+                  <button
+                    type="button"
+                    className="ghostbtn tight"
+                    onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                    disabled={safePage >= pageCount}
+                  >
+                    Next
+                  </button>
+                </nav>
+              )}
             </div>
           )}
         </div>
