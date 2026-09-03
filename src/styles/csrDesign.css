@@ -1957,3 +1957,170 @@
     color:var(--muted);font-weight:400;
   }
 }
+
+
+/* =========================================================================
+   THE GRANT FORM PAGE  --  .pform-*
+
+   This block exists because the project form used to be an MUI <Dialog>. A
+   dialog never enters .csrx, so it inherited none of the tokens above and
+   arrived looking like a different application; it was also the wrong shape
+   for the record, which is the largest one the module holds. Everything here
+   is the page that replaced it.
+
+   Green is spent on ONE thing: the Save button (.newbtn, already defined) and
+   the completion bar's fill, which is the same action read as progress. It is
+   deliberately not used as a ground anywhere below.
+
+   Indigo is absent on purpose. Per TABLE COLOUR ROLES above, --head-bg and
+   --role-id now mean "identity column in a table"; borrowing either for form
+   chrome would spend a hue that a reader has just been taught to read as
+   something else.
+   ========================================================================= */
+.csrx .pform-head{margin-bottom:20px}
+.csrx .pform-head h2{
+  font-family:var(--serif);font-size:30px;font-weight:500;letter-spacing:-.018em;
+  color:var(--ink);line-height:1.2;margin:0;
+}
+.csrx .pform-sub{font-size:13.5px;color:var(--muted);margin:6px 0 0;line-height:1.7}
+
+/* The back link is a button, not an anchor: it navigates through the router,
+   and an <a href> that does not survive a middle-click is a lie. */
+.csrx .pform-back{
+  display:inline-flex;align-items:center;gap:6px;
+  background:none;border:0;padding:0;margin:0 0 12px;
+  font:inherit;font-size:12.5px;font-weight:500;color:var(--muted);
+  cursor:pointer;transition:color .15s;
+}
+.csrx .pform-back:hover{color:var(--g-deep)}
+.csrx .pform-back svg{width:14px;height:14px}
+
+/* ---- completion bar ----
+   Driven entirely by field state; the step classes below are the only place a
+   width is written, and there are exactly as many of them as there are
+   tracked fields, so a bar can never show a fraction the form does not mean. */
+.csrx .pform-prog{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r-card);
+  padding:14px 18px;margin-bottom:24px;
+}
+.csrx .pform-prog-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:9px}
+.csrx .pform-prog-label{font-size:12.5px;color:var(--soft);font-weight:500;line-height:1.7}
+.csrx .pform-prog-pc{font-size:12.5px;color:var(--muted)}
+.csrx .pform-prog-track{height:8px;border-radius:var(--r-pill);background:var(--ground2);overflow:hidden}
+.csrx .pform-prog-fill{
+  height:100%;border-radius:var(--r-pill);background:var(--g);
+  transition:width .35s cubic-bezier(.2,.7,.2,1),background .2s;
+}
+.csrx .pform-prog-fill.s0{width:0}
+.csrx .pform-prog-fill.s1{width:20%}
+.csrx .pform-prog-fill.s2{width:40%}
+.csrx .pform-prog-fill.s3{width:60%}
+.csrx .pform-prog-fill.s4{width:80%}
+.csrx .pform-prog-fill.s5{width:100%;background:var(--g-bright)}
+
+/* ---- sections ----
+   Mobile-first: one column, and the paired date row only splits when there is
+   width for two date controls side by side without either wrapping. */
+.csrx .pform{display:flex;flex-direction:column;gap:20px;max-width:1040px}
+/* The bar sits above the form and has to measure the same thing it describes.
+   Left full-bleed it ran 330px past the last field, which read as a page-level
+   loading bar rather than as this form's own completion. */
+.csrx .pform-prog{max-width:1040px}
+.csrx .pform-sec{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r-card);
+  padding:18px 20px 20px;margin:0;
+  display:flex;flex-direction:column;gap:16px;
+}
+.csrx .pform-legend{
+  font-family:var(--disp);font-size:12px;font-weight:700;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--muted);padding:0 6px;margin-left:-6px;
+}
+.csrx .pform-row{display:flex;flex-direction:column;gap:16px}
+
+/* ---- fields ---- */
+.csrx .pform-field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.csrx .pform-field > label{font-size:12.5px;font-weight:600;color:var(--ink);line-height:1.7}
+.csrx .pform-field input,
+.csrx .pform-field textarea{
+  font:inherit;font-size:13.5px;line-height:1.7;color:var(--ink);
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r-ctl);
+  padding:9px 12px;width:100%;
+  transition:border-color .15s,box-shadow .15s;
+}
+.csrx .pform-field textarea{resize:vertical;min-height:96px}
+.csrx .pform-field input:focus,
+.csrx .pform-field textarea:focus{outline:none;border-color:var(--g);box-shadow:0 0 0 3px var(--g-wash)}
+.csrx .pform-field input[aria-invalid="true"]{border-color:var(--red)}
+.csrx .pform-field input[aria-invalid="true"]:focus{box-shadow:0 0 0 3px var(--red-wash)}
+.csrx .pform-field .sel{width:100%;min-width:0;height:auto;padding:9px 34px 9px 12px}
+.csrx .pform-help{font-size:12px;color:var(--muted);margin:0;line-height:1.7}
+.csrx .pform-help.bad{color:var(--red)}
+.csrx .pform-wide{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r-card);
+  padding:18px 20px;
+}
+
+/* A failed save keeps the page and says so where the eye already is -- next to
+   the button that failed, not in a toast that has gone by the time the person
+   looks up. */
+.csrx .pform-error{
+  background:var(--red-wash);border:1px solid #EBC9C4;border-radius:var(--r-ctl);
+  padding:11px 14px;margin:0;font-size:13px;color:var(--red);line-height:1.7;
+}
+
+.csrx .pform-actions{display:flex;align-items:center;gap:10px;padding-top:4px}
+.csrx .pform-actions .ghostbtn{margin-left:0}
+.csrx .pform-actions .newbtn{margin-left:0}
+
+/* ---- load and dead-end states ----
+   The not-found state is a stop, not a blank form: rendering empty inputs for
+   a record that failed to load invites a save that creates a second grant. */
+.csrx .pform-state{font-size:14px;color:var(--muted);line-height:1.7}
+.csrx .pform-state-bad{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r-card);
+  padding:26px 24px;max-width:520px;
+}
+.csrx .pform-state-bad h2{
+  font-family:var(--serif);font-size:22px;font-weight:500;color:var(--ink);
+  line-height:1.2;margin:0 0 8px;
+}
+.csrx .pform-state-bad p{font-size:13.5px;color:var(--soft);margin:0 0 16px}
+.csrx .pform-state-bad .ghostbtn{margin-left:0}
+
+@media (min-width:640px){
+  .csrx .pform-row{flex-direction:row}
+  .csrx .pform-row > .pform-field{flex:1 1 0}
+}
+
+
+/* =========================================================================
+   FORM SECTIONS -- paired fields, and a colour per section.
+
+   The form reads in three passes: what the grant IS, when it runs, and the
+   prose around it. Each section carries its own accent on the rule and the
+   legend so those three passes are separable at a glance rather than by
+   reading every label.
+
+   The accents are NOT the table roles. Indigo is deliberately absent: it means
+   "identity column" in a table and must not start meaning "form chrome" as
+   well. Green appears on the first section because that section is the grant's
+   identity, and green is this module's own colour -- it is still the only hue
+   on the Save button, which is the only control that writes anything.
+   ========================================================================= */
+.csrx .pform-sec--grant{--sec:var(--g)}
+.csrx .pform-sec--dates{--sec:#2F7D82}
+.csrx .pform-sec--detail{--sec:#7A5A86}
+
+.csrx .pform-sec{border-left:3px solid var(--sec,var(--line))}
+.csrx .pform-sec > .pform-legend{color:var(--sec,var(--muted))}
+
+/* Two fields across; three where the fields are short enough to stay legible
+   (the dates and the status are all fixed-width values). Single column below
+   720px -- a date input and a select side by side stop being tappable well
+   before the layout itself breaks. */
+.csrx .pform-row{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+.csrx .pform-row3{grid-template-columns:1fr 1fr 1fr}
+@media (max-width:720px){
+  .csrx .pform-row,
+  .csrx .pform-row3{grid-template-columns:1fr}
+}

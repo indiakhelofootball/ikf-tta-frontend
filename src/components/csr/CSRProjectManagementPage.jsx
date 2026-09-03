@@ -11,11 +11,10 @@
 // Data/state logic is unchanged. The render is pure markup styled entirely by
 // src/styles/csrDesign.css (scope: .csrx). No MUI sx, no inline styles.
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Snackbar, Alert } from '@mui/material';
 
 import ConfirmDialog from '../common/ConfirmDialog';
-import CSRProjectModal from './CSRProjectModal';
 import { csrAPI } from '../../services/api';
 import useGrants from '../../auth/useGrants';
 import useRefetchOnFocus from '../../hooks/useRefetchOnFocus';
@@ -85,6 +84,7 @@ export default function CSRProjectManagementPage() {
   const { canEdit } = useGrants();
   const editable = canEdit('csr');
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -93,9 +93,6 @@ export default function CSRProjectManagementPage() {
   const [sortKey, setSortKey] = useState('latest');
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
   const [confirmState, setConfirmState] = useState(null);
   // The real inbound grant contract (CSRWorkOrder), keyed by project id. The
@@ -105,6 +102,18 @@ export default function CSRProjectManagementPage() {
   const [contractsByProject, setContractsByProject] = useState({});
 
   const notify = (message, severity = 'success') => setToast({ open: true, message, severity });
+
+  // The grant form is its own route now, so the save that used to raise this
+  // toast happens on a page that has since unmounted. It hands the message over
+  // in navigation state instead. Cleared with replace:true so the confirmation
+  // does not come back on a browser Back or a refresh, long after the fact.
+  const saved = location.state?.saved;
+  useEffect(() => {
+    if (!saved) return;
+    notify(saved);
+    navigate(location.pathname, { replace: true, state: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [saved]);
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -130,30 +139,13 @@ export default function CSRProjectManagementPage() {
   useEffect(() => { load(); }, [load]);
   useRefetchOnFocus(() => load(true));
 
-  const openCreate = () => { setEditing(null); setModalOpen(true); };
-  const openEdit = (p) => { setEditing(p); setModalOpen(true); };
+  // Create and edit are their own pages now. CSRProjectFormPage reads the id
+  // from the route and navigates back here itself, so this screen owns no
+  // form state and no save handler.
+  const openCreate = () => navigate('/csr/projects/new');
+  const openEdit = (p) => navigate(`/csr/projects/${p.id}/edit`);
   const cycleSort = () =>
     setSortKey((k) => SORT_KEYS[(SORT_KEYS.indexOf(k) + 1) % SORT_KEYS.length]);
-
-  const handleSave = async (payload) => {
-    setSaving(true);
-    try {
-      if (editing) {
-        await csrAPI.projects.update(editing.id, payload);
-        notify('Project updated.');
-      } else {
-        await csrAPI.projects.create(payload);
-        notify('Project created.');
-      }
-      setModalOpen(false);
-      setEditing(null);
-      load();
-    } catch (e) {
-      notify(e.message || 'Save failed.', 'error');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -396,20 +388,12 @@ export default function CSRProjectManagementPage() {
         </div>
       )}
 
-      <CSRProjectModal
-        open={modalOpen}
-        project={editing}
-        onClose={() => { setModalOpen(false); setEditing(null); }}
-        onSave={handleSave}
-        saving={saving}
-      />
-
       <ConfirmDialog
         open={Boolean(confirmState)}
         title={confirmState?.title}
         message={confirmState?.message}
         confirmLabel={confirmState?.confirmLabel}
-        busy={saving}
+        busy={false}
         onConfirm={() => confirmState?.onConfirm()}
         onClose={() => setConfirmState(null)}
       />

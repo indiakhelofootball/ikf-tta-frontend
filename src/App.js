@@ -33,7 +33,7 @@ import VendorAuditReport from "./components/reports/VendorAuditReport";
 import TrialSpendReport from "./components/reports/TrialSpendReport";
 import TrialsReport from "./components/reports/TrialsReport";
 import CourierManagementPage from "./components/courier/CourierManagementPage";
-import { CSRLogin, CSRDashboard, CSRProjectManagementPage, CSRProjectDetailPage, CSRActivitiesPage, CSRReportsPage, CSRUtilisationPage, CSRActivityTypesPage, CSRClientsPage, CSRBrandingPage, CSRAccountPage } from "./components/csr";
+import { CSRLogin, CSRDashboard, CSRProjectManagementPage, CSRProjectFormPage, CSRProjectDetailPage, CSRActivitiesPage, CSRReportsPage, CSRUtilisationPage, CSRActivityTypesPage, CSRClientsPage, CSRBrandingPage, CSRAccountPage } from "./components/csr";
 import ClientPortalPage from "./components/client/ClientPortalPage";
 import ClientLogin from "./components/client/ClientLogin";
 import PermissionsManagementPage from "./components/permissions/PermissionsManagementPage";
@@ -215,6 +215,20 @@ function App() {
           <Route path="/csr/projects" element={
             <GrantedRoute module="csr">
               <CSRProjectManagementPage />
+            </GrantedRoute>
+          } />
+          {/* Creating and editing a grant is a full page, not a modal — the
+              form is long enough that a dialog hid most of it. Both paths are
+              two segments under /csr/projects, so neither can be swallowed by
+              the dynamic /csr/:id route below. */}
+          <Route path="/csr/projects/new" element={
+            <GrantedRoute module="csr">
+              <CSRProjectFormPage />
+            </GrantedRoute>
+          } />
+          <Route path="/csr/projects/:id/edit" element={
+            <GrantedRoute module="csr">
+              <CSRProjectFormPage />
             </GrantedRoute>
           } />
           {/* Activities and Reports are cross-project destinations, not just
