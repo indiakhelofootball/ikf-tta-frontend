@@ -334,7 +334,7 @@ export default function CSRProjectManagementPage() {
                   <Fact label="TTA Project" value={selected.ttaProjectName} empty="Not linked yet" />
                   <Fact label="Client / Funder" value={selected.clientName} />
                   <Fact label="Sanctioned" value={fmtMoney(selected.sanctionedAmount)} />
-                  <Fact label="Season" value={selected.season} empty="Not set" />
+                  <Fact label="Certificate" value={selected.certificateFrozenAt ? 'Frozen' : 'Live'} />
                 </div>
                 <div className="facts nb">
                   <Fact label="Start Date" value={fmtDay(selected.startDate)} />
@@ -344,7 +344,11 @@ export default function CSRProjectManagementPage() {
                       "contract" is what CSRContractManagementPage/Modal
                       already call it. */}
                   <Fact label="Contract" value={selectedContract ? (selectedContract.reference || selectedContract.title) : null} />
-                  <Fact label="Certificate" value={selected.certificateFrozenAt ? 'Frozen' : 'Live'} />
+                  {/* Season is no longer asked for (26 Aug, 04:35), so on any
+                      grant created since it can only ever be blank. Rendered
+                      only where a legacy value survives, and placed last so its
+                      absence leaves trailing space, not a hole mid-strip. */}
+                  {selected.season ? <Fact label="Season" value={selected.season} /> : null}
                 </div>
 
                 <div className="blocks">
