@@ -2,15 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box, Container, Typography, Button, Stack, Tabs, Tab, Snackbar, Alert,
-  CircularProgress, List, ListItem, ListItemButton, ListItemText, IconButton, Chip,
-  Link, Tooltip, Collapse,
+  CircularProgress, Chip,
 } from '@mui/material';
 import {
   Add as AddIcon,
   ArrowBack as BackIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  OpenInNew as OpenIcon,
   Lock as LockIcon,
 } from '@mui/icons-material';
 
@@ -27,17 +23,76 @@ import '../../styles/csrDesign.css';
 import useGrants from '../../auth/useGrants';
 import { downloadCertificatePdf } from '../../utils/certificatePdf';
 
-// The same label/value idiom CSRContractDetailView uses for its expanded
-// panel — a caption above a value — kept local here since that file exports
-// no reusable piece and this page owns its own rows.
-function DetailField({ label, value }) {
-  return (
-    <Box sx={{ minWidth: 140 }}>
-      <Typography variant="caption" color="text.secondary" component="div">{label}</Typography>
-      <Typography variant="body2">{value || '—'}</Typography>
-    </Box>
-  );
-}
+// The record lists on this page are the module's coloured table (.twrap /
+// .lgrid / .lrow), the same one every other CSR screen uses — the owner's
+// "when we enter inside you have not properly tabulated". The label/value
+// idiom the collapsed panels used to carry survives as .dk / .dv inside
+// .ldetail, so the caption-above-value reading is unchanged; what moved is
+// that a field which used to hide behind a disclosure is now a column, and a
+// disclosure that would only repeat its own row is gone rather than kept for
+// symmetry.
+//
+// COLUMN ORDER is set by the identity band, which the stylesheet binds to the
+// 4th cell of a five-track .lgrid. Inside one grant every row shares the same
+// funder and the same grant name, so neither can be that column — a band
+// repeating one string down the page says nothing. Each tab picks the field
+// that actually identifies its own record instead, and a tab with no such
+// field uses .lgrid--4 rather than inventing one.
+
+const rupees = (v) => `₹${(Number(v) || 0).toLocaleString('en-IN')}`;
+
+const fmtDay = (value) => {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
+  return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
+// Start and end, never a third date. A span reads as a range; anything else
+// the record carries is a single day.
+const whenLabel = (a) => {
+  if (a.startDate && a.endDate) return `${fmtDay(a.startDate)} → ${fmtDay(a.endDate)}`;
+  return fmtDay(a.date || a.startDate || a.endDate);
+};
+
+// A row that carries its own buttons — a pencil, a bin, a chevron — cannot
+// itself be a <button>, because nested buttons are invalid HTML. An
+// interactive row is therefore a div that answers to Enter and Space, exactly
+// as CSRUtilisationPage does. Rows with no action at all get no role, so a
+// screen reader is not told about a control that does nothing.
+const rowActivation = (label, onActivate) => (onActivate ? {
+  role: 'button',
+  tabIndex: 0,
+  'aria-label': label,
+  onClick: onActivate,
+  onKeyDown: (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onActivate();
+    }
+  },
+} : {});
+
+const EditGlyph = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+       strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z" />
+  </svg>
+);
+
+const DeleteGlyph = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+       strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" />
+  </svg>
+);
+
+const ChevronGlyph = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+       strokeLinecap="round" strokeLinejoin="round">
+    <path d="M6 9l6 6 6-6" />
+  </svg>
+);
 
 export default function CSRProjectDetailPage() {
   const { id } = useParams();
@@ -358,61 +413,71 @@ export default function CSRProjectDetailPage() {
               Add Contact
             </Button>
           )}
-          {contacts.length === 0 ? (
-            <Typography color="text.secondary" sx={{ py: 2 }}>No contacts yet.</Typography>
-          ) : (
-            <List dense>
-              {contacts.map((c) => {
-                const key = `contact-${c.id}`;
-                const open = expandedRows.has(key);
-                return (
-                  <ListItem
-                    key={c.id}
-                    disablePadding
-                    sx={{ display: 'block' }}
-                    secondaryAction={editable && (
-                      <Stack direction="row" sx={{ position: 'absolute', right: 8, top: 8 }}>
-                        <Tooltip title="Edit">
-                          <IconButton size="small" onClick={() => setContactModal({ open: true, editing: c })} aria-label={`Edit contact ${c.name}`}>
-                            <EditIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Delete">
-                          <IconButton size="small" onClick={() => deleteContact(c)} aria-label={`Delete contact ${c.name}`}>
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      </Stack>
+          <div className="twrap">
+            {/* Role takes the 4th cell and its identity band: a contact's role
+                is what identifies them on this grant. The four fields the
+                collapsed panel used to hold — name, role, email, phone — are
+                the four columns, so the panel is gone rather than repeating
+                the row back to the reader. */}
+            <div className="lgrid lgrid-head">
+              {['Email', 'Contact', 'Phone', 'Role', 'Manage'].map((h) => <span key={h}>{h}</span>)}
+            </div>
+
+            {contacts.length === 0 ? (
+              <div className="empty"><h3>No contacts yet</h3></div>
+            ) : contacts.map((c) => (
+              <div className="lwrap" key={c.id}>
+                {/* Editable: the row opens the same edit form the pencil does —
+                    the row itself is the affordance, not just the small icon.
+                    Read-only: there is nothing to edit into and nothing left to
+                    disclose, so the row stays a row. */}
+                <div
+                  className="lgrid lrow"
+                  {...rowActivation(
+                    editable ? `Edit contact ${c.name}` : null,
+                    editable ? () => setContactModal({ open: true, editing: c }) : null,
+                  )}
+                >
+                  {/* The email leads because the leading track is the wider of
+                      the two fixed ones and an address is the longer string;
+                      the phone fits the narrow one without truncating. */}
+                  <span className="t2">{c.email || '—'}</span>
+                  <span className="t1">{c.name}</span>
+                  <span className="fig nowrap">{c.phone || '—'}</span>
+                  <span className="t2">{c.designation || '—'}</span>
+                  <span className="lend">
+                    {editable && (
+                      <>
+                        <button
+                          type="button" className="ico g"
+                          aria-label={`Edit contact ${c.name}`}
+                          onClick={(e) => { e.stopPropagation(); setContactModal({ open: true, editing: c }); }}
+                        >
+                          <EditGlyph />
+                        </button>
+                        <button
+                          type="button" className="ico r"
+                          aria-label={`Delete contact ${c.name}`}
+                          onClick={(e) => { e.stopPropagation(); deleteContact(c); }}
+                        >
+                          <DeleteGlyph />
+                        </button>
+                      </>
                     )}
-                  >
-                    {/* Editable: opens the same edit form the pencil icon does — the
-                        row itself is now the affordance, not just the small icon.
-                        Read-only: nothing to edit into, so the row opens in place. */}
-                    <ListItemButton
-                      onClick={() => (editable
-                        ? setContactModal({ open: true, editing: c })
-                        : toggleExpanded(key))}
-                      aria-label={editable ? `Edit contact ${c.name}` : `Show details for contact ${c.name}`}
-                      sx={{ pr: editable ? 9 : 2 }}
-                    >
-                      <ListItemText
-                        primary={[c.name, c.designation].filter(Boolean).join(' · ')}
-                        secondary={[c.email, c.phone].filter(Boolean).join(' · ') || null}
-                      />
-                    </ListItemButton>
-                    <Collapse in={open} unmountOnExit>
-                      <Stack direction="row" spacing={3} flexWrap="wrap" useFlexGap sx={{ px: 2, pb: 1.5 }}>
-                        <DetailField label="Name" value={c.name} />
-                        <DetailField label="Designation" value={c.designation} />
-                        <DetailField label="Email" value={c.email} />
-                        <DetailField label="Phone" value={c.phone} />
-                      </Stack>
-                    </Collapse>
-                  </ListItem>
-                );
-              })}
-            </List>
-          )}
+                  </span>
+                </div>
+              </div>
+            ))}
+
+            {contacts.length > 0 && (
+              <div className="tfoot">
+                <span className="cnt">
+                  Showing {contacts.length} of {contacts.length}
+                  {' '}{contacts.length === 1 ? 'contact' : 'contacts'} on this grant
+                </span>
+              </div>
+            )}
+          </div>
         </Box>
       )}
 
@@ -426,69 +491,115 @@ export default function CSRProjectDetailPage() {
               Add Activity
             </Button>
           )}
-          {activities.length === 0 ? (
-            <Typography color="text.secondary" sx={{ py: 2 }}>No activities yet.</Typography>
-          ) : (
-            <List dense>
-              {activities.map((a) => {
-                const key = `activity-${a.id}`;
-                const open = expandedRows.has(key);
-                const activityType = activityTypes.find((t) => t.id === a.activityTypeId);
-                return (
-                  <ListItem
-                    key={a.id}
-                    disablePadding
-                    sx={{ display: 'block' }}
-                    secondaryAction={editable && (
-                      <Stack direction="row" sx={{ position: 'absolute', right: 8, top: 8 }}>
-                        <Tooltip title="Edit">
-                          <IconButton size="small" onClick={() => setActivityModal({ open: true, editing: a })} aria-label={`Edit activity ${a.title}`}>
-                            <EditIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Delete">
-                          <IconButton size="small" onClick={() => deleteActivity(a)} aria-label={`Delete activity ${a.title}`}>
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      </Stack>
+          <div className="twrap">
+            {/* Type takes the 4th cell and its identity band — the catalogue row
+                an activity points at is what the activity IS, which is the only
+                thing on this tab that identifies a record without repeating the
+                grant every row already belongs to. Ochre on 'Planned' is the one
+                ink that applies: logged but not yet done is "waiting on you".
+
+                Status is a column rather than the trailing cell because the
+                trailing cell has to hold this tab's row controls, and a pill
+                plus three of them does not fit the 124px the table ends on —
+                they printed over the identity band. Location is the field that
+                yielded its column for the status and moved into the row's
+                detail; it is the least load-bearing of the four. */}
+            <div className="lgrid lgrid-head">
+              {['When', 'Activity', 'Status', 'Type', 'Manage'].map((h) => <span key={h}>{h}</span>)}
+            </div>
+
+            {activities.length === 0 ? (
+              <div className="empty"><h3>No activities yet</h3></div>
+            ) : activities.map((a) => {
+              const key = `activity-${a.id}`;
+              const open = expandedRows.has(key);
+              const activityType = activityTypes.find((t) => t.id === a.activityTypeId);
+              return (
+                <div className="lwrap" key={a.id}>
+                  <div
+                    className="lgrid lrow"
+                    {...rowActivation(
+                      editable ? `Edit activity ${a.title}` : `Show details for activity ${a.title}`,
+                      editable
+                        ? () => setActivityModal({ open: true, editing: a })
+                        : () => toggleExpanded(key),
                     )}
                   >
-                    <ListItemButton
-                      onClick={() => (editable
-                        ? setActivityModal({ open: true, editing: a })
-                        : toggleExpanded(key))}
-                      aria-label={editable ? `Edit activity ${a.title}` : `Show details for activity ${a.title}`}
-                      sx={{ pr: editable ? 9 : 2 }}
-                    >
-                      <ListItemText
-                        primary={a.title}
-                        secondary={[
-                          (a.startDate && a.endDate) ? `${a.startDate} → ${a.endDate}` : a.date,
-                          a.location,
-                        ].filter(Boolean).join(' · ') || null}
-                      />
-                      <Chip size="small" label={a.status} sx={{ mr: 1 }} />
-                    </ListItemButton>
-                    <Collapse in={open} unmountOnExit>
-                      <Stack direction="row" spacing={3} flexWrap="wrap" useFlexGap sx={{ px: 2, pb: 1.5 }}>
-                        <DetailField label="Activity type" value={activityType?.name} />
-                        <DetailField label="Status" value={a.status} />
-                        <DetailField
-                          label="Linked to"
-                          value={[
+                    <span className="fig nowrap">{whenLabel(a)}</span>
+                    <span className="t1">{a.title}</span>
+                    <span>
+                      <span className={`pill ${a.status === 'Planned' ? 'wait' : 'closed'}`}>
+                        {a.status || 'Unknown'}
+                      </span>
+                    </span>
+                    <span className="t2">{activityType?.name || '—'}</span>
+                    <span className="lend">
+                      {editable && (
+                        <>
+                          <button
+                            type="button" className="ico g"
+                            aria-label={`Edit activity ${a.title}`}
+                            onClick={(e) => { e.stopPropagation(); setActivityModal({ open: true, editing: a }); }}
+                          >
+                            <EditGlyph />
+                          </button>
+                          <button
+                            type="button" className="ico r"
+                            aria-label={`Delete activity ${a.title}`}
+                            onClick={(e) => { e.stopPropagation(); deleteActivity(a); }}
+                          >
+                            <DeleteGlyph />
+                          </button>
+                        </>
+                      )}
+                      {/* Where the activity happened, and what else it is
+                          linked to. The second is a sentence rather than a
+                          value and never had a column; the first gave its
+                          column up to the status. So the disclosure survives on
+                          this tab where it did not on the others. */}
+                      <button
+                        type="button"
+                        className={`xpand${open ? ' on' : ''}`}
+                        aria-expanded={open}
+                        aria-label={`${open ? 'Hide' : 'Show'} details for activity ${a.title}`}
+                        onClick={(e) => { e.stopPropagation(); toggleExpanded(key); }}
+                      >
+                        <ChevronGlyph />
+                      </button>
+                    </span>
+                  </div>
+
+                  {open && (
+                    <div className="ldetail">
+                      <div>
+                        <span className="dk">Location</span>
+                        <span className="dv">{a.location || '—'}</span>
+                      </div>
+                      <div>
+                        <span className="dk">Linked to</span>
+                        <span className="dv">
+                          {[
                             a.linkedTrialId && 'a trial',
                             a.workshopId && 'a workshop',
                             a.trainingProgrammeId && 'a training programme',
                           ].filter(Boolean).join(', ') || 'nothing else'}
-                        />
-                      </Stack>
-                    </Collapse>
-                  </ListItem>
-                );
-              })}
-            </List>
-          )}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {activities.length > 0 && (
+              <div className="tfoot">
+                <span className="cnt">
+                  Showing {activities.length} of {activities.length}
+                  {' '}{activities.length === 1 ? 'activity' : 'activities'} logged on this grant
+                </span>
+              </div>
+            )}
+          </div>
         </Box>
       )}
 
@@ -502,79 +613,95 @@ export default function CSRProjectDetailPage() {
               Add Report
             </Button>
           )}
-          {reports.length === 0 ? (
-            <Typography color="text.secondary" sx={{ py: 2 }}>No reports yet.</Typography>
-          ) : (
-            <List dense>
-              {reports.map((r) => {
-                const key = `report-${r.id}`;
-                const open = expandedRows.has(key);
-                const linkedActivity = activities.find((a) => a.id === r.activityId);
-                return (
-                  <ListItem
-                    key={r.id}
-                    disablePadding
-                    sx={{ display: 'block' }}
-                    secondaryAction={editable && (
-                      <Stack direction="row" sx={{ position: 'absolute', right: 8, top: 8 }}>
-                        <Tooltip title="Edit">
-                          <IconButton size="small" onClick={() => setReportModal({ open: true, editing: r })} aria-label={`Edit report ${r.fileName}`}>
-                            <EditIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Delete">
-                          <IconButton size="small" onClick={() => deleteReport(r)} aria-label={`Delete report ${r.fileName}`}>
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      </Stack>
+          <div className="twrap">
+            {/* The activity takes the 4th cell and its identity band: inside one
+                grant, what a report is a report OF is what identifies it — the
+                grant itself would be the same string on every row.
+
+                The gate is a state, not an identity, so it stays a pill; it sits
+                in the third column rather than the trailing one because the
+                trailing cell holds this tab's row controls and a pill plus two
+                of them overruns the 124px the table ends on.
+
+                Both fields the collapsed panel held, the linked activity and the
+                gate, are now on the row, so there is nothing left to disclose. */}
+            <div className="lgrid lgrid-head">
+              {['Added', 'Report', 'Gate', 'Activity', 'Manage'].map((h) => <span key={h}>{h}</span>)}
+            </div>
+
+            {reports.length === 0 ? (
+              <div className="empty"><h3>No reports yet</h3></div>
+            ) : reports.map((r) => {
+              const linkedActivity = activities.find((a) => a.id === r.activityId);
+              return (
+                <div className="lwrap" key={r.id}>
+                  <div
+                    className="lgrid lrow"
+                    {...rowActivation(
+                      editable ? `Edit report ${r.fileName}` : null,
+                      editable ? () => setReportModal({ open: true, editing: r }) : null,
                     )}
                   >
-                    <ListItemButton
-                      onClick={() => (editable
-                        ? setReportModal({ open: true, editing: r })
-                        : toggleExpanded(key))}
-                      aria-label={editable ? `Edit report ${r.fileName}` : `Show details for report ${r.fileName}`}
-                      sx={{ pr: editable ? 9 : 2 }}
-                    >
-                      <ListItemText
-                        primary={
-                          <Stack direction="row" spacing={1} alignItems="center">
-                            {r.fileName}
-                            {r.fileUrl && (
-                              <Tooltip title="Open document">
-                                <Link
-                                  href={r.fileUrl}
-                                  target="_blank"
-                                  rel="noopener"
-                                  onClick={(e) => e.stopPropagation()}
-                                  sx={{ display: 'inline-flex' }}
-                                >
-                                  <OpenIcon fontSize="inherit" />
-                                </Link>
-                              </Tooltip>
-                            )}
-                          </Stack>
-                        }
-                      />
-                      <Chip
-                        size="small"
-                        label={r.visibleToClient ? 'Client-visible' : 'Internal'}
-                        color={r.visibleToClient ? 'success' : 'default'}
-                        sx={{ mr: 1 }}
-                      />
-                    </ListItemButton>
-                    <Collapse in={open} unmountOnExit>
-                      <Stack direction="row" spacing={3} flexWrap="wrap" useFlexGap sx={{ px: 2, pb: 1.5 }}>
-                        <DetailField label="Activity" value={linkedActivity?.title} />
-                        <DetailField label="Gate" value={r.visibleToClient ? 'Client-visible' : 'Internal'} />
-                      </Stack>
-                    </Collapse>
-                  </ListItem>
-                );
-              })}
-            </List>
-          )}
+                    <span className="fig nowrap">{fmtDay(r.createdAt)}</span>
+                    <span className="t1wrap">
+                      <span className="t1">{r.fileName}</span>
+                      {r.fileUrl && (
+                        <a
+                          href={r.fileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Open document"
+                          aria-label={`Open document ${r.fileName}`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                               strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" />
+                            <path d="M15 3h6v6M10 14L21 3" />
+                          </svg>
+                        </a>
+                      )}
+                    </span>
+                    <span>
+                      <span className={`pill ${r.visibleToClient ? 'act' : 'wait'}`}>
+                        {r.visibleToClient ? 'Client-visible' : 'Internal'}
+                      </span>
+                    </span>
+                    <span className="t2">{linkedActivity?.title || '—'}</span>
+                    <span className="lend">
+                      {editable && (
+                        <>
+                          <button
+                            type="button" className="ico g"
+                            aria-label={`Edit report ${r.fileName}`}
+                            onClick={(e) => { e.stopPropagation(); setReportModal({ open: true, editing: r }); }}
+                          >
+                            <EditGlyph />
+                          </button>
+                          <button
+                            type="button" className="ico r"
+                            aria-label={`Delete report ${r.fileName}`}
+                            onClick={(e) => { e.stopPropagation(); deleteReport(r); }}
+                          >
+                            <DeleteGlyph />
+                          </button>
+                        </>
+                      )}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+
+            {reports.length > 0 && (
+              <div className="tfoot">
+                <span className="cnt">
+                  Showing {reports.length} of {reports.length}
+                  {' '}{reports.length === 1 ? 'report' : 'reports'} filed on this grant
+                </span>
+              </div>
+            )}
+          </div>
         </Box>
       )}
 
@@ -652,68 +779,70 @@ export default function CSRProjectDetailPage() {
               </Button>
             </Stack>
           </Stack>
-          {expenses.length === 0 ? (
-            <Typography color="text.secondary" sx={{ py: 2 }}>No expenses tagged yet.</Typography>
-          ) : (
-            <List dense>
-              {expenses.map((x) => {
-                const key = `expense-${x.id}`;
-                const open = expandedRows.has(key);
-                return (
-                  <ListItem
-                    key={x.id}
-                    disablePadding
-                    sx={{ display: 'block' }}
-                    // An expense tag is audit-bound: permissions/registry.py sets
-                    // can_delete:false on csr_certificate, and the server refuses
-                    // DELETE for everyone except SUPER_ADMIN, who bypasses the
-                    // permission layer entirely. Rendering this for canEditCert
-                    // gave every real operator a button that only ever returned a
-                    // 403 — and it looked fine in testing precisely because the
-                    // owner tests as super-admin. The server rule is the correct
-                    // one; the button was the bug.
-                    secondaryAction={isSuper && (
-                      <Tooltip title="Remove tag (super-admin only — tags are audit-bound)">
-                        <IconButton
-                          size="small"
-                          onClick={() => deleteExpense(x)}
-                          aria-label={`Remove tag ${x.paymentLabel || 'Manual'}`}
-                          sx={{ position: 'absolute', right: 8, top: 8 }}
-                        >
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
+          <div className="twrap">
+            {/* Four columns, no identity band. A tag has nothing that identifies
+                it apart from the payment it points at, which is already the
+                row's own name in .t1 — and every tag on this tab is against the
+                same grant, so a grant column would be one string repeated.
+
+                The amount leads. The certificate's rule — only money that
+                actually moved is utilised — is the whole reason this list
+                exists, so the figure is a column and the reason a tag is or is
+                not counted is the trailing state, never a footnote. All three
+                fields the collapsed panel carried are on the row now. */}
+            <div className="lgrid lgrid--4 lgrid-head">
+              {['Amount', 'Payment', 'Note', 'Counted'].map((h) => <span key={h}>{h}</span>)}
+            </div>
+
+            {expenses.length === 0 ? (
+              <div className="empty"><h3>No expenses tagged yet</h3></div>
+            ) : expenses.map((x) => (
+              <div className="lwrap" key={x.id}>
+                {/* No edit view exists for a tag — the server keeps these
+                    audit-bound and write-once — so the row opens nothing and is
+                    not offered as a control. */}
+                <div className="lgrid lgrid--4 lrow">
+                  <span className="fig nowrap">{rupees(x.amount)}</span>
+                  <span className="t1">{x.paymentLabel || 'Manual'}</span>
+                  <span className="t2">{x.note || '—'}</span>
+                  <span className="lend">
+                    <span className={`pill ${x.countsTowardCertificate ? 'act' : 'wait'}`}>
+                      {x.countsTowardCertificate
+                        ? 'Counted'
+                        : (x.paymentStatus || 'Not counted')}
+                    </span>
+                    {/* An expense tag is audit-bound: permissions/registry.py
+                        sets can_delete:false on csr_certificate, and the server
+                        refuses DELETE for everyone except SUPER_ADMIN, who
+                        bypasses the permission layer entirely. Rendering this
+                        for canEditCert gave every real operator a button that
+                        only ever returned a 403 — and it looked fine in testing
+                        precisely because the owner tests as super-admin. The
+                        server rule is the correct one; the button was the bug. */}
+                    {isSuper && (
+                      <button
+                        type="button" className="ico r"
+                        title="Remove tag (super-admin only — tags are audit-bound)"
+                        aria-label={`Remove tag ${x.paymentLabel || 'Manual'}`}
+                        onClick={() => deleteExpense(x)}
+                      >
+                        <DeleteGlyph />
+                      </button>
                     )}
-                  >
-                    {/* No edit view exists for a tag — server keeps these
-                        audit-bound and write-once — so the row's only honest
-                        "open" is showing the fields it doesn't have room for. */}
-                    <ListItemButton
-                      onClick={() => toggleExpanded(key)}
-                      aria-label={`Show details for tag ${x.paymentLabel || 'Manual'}`}
-                      sx={{ pr: isSuper ? 6 : 2 }}
-                    >
-                      <ListItemText primary={x.paymentLabel || 'Manual'} secondary={x.note || null} />
-                      {!x.countsTowardCertificate && (
-                        <Chip
-                          size="small" color="warning" variant="outlined" sx={{ mr: 1 }}
-                          label={x.paymentStatus || 'Not counted'}
-                        />
-                      )}
-                      <Chip size="small" label={`₹${(Number(x.amount) || 0).toLocaleString('en-IN')}`} sx={{ mr: 1 }} />
-                    </ListItemButton>
-                    <Collapse in={open} unmountOnExit>
-                      <Stack direction="row" spacing={3} flexWrap="wrap" useFlexGap sx={{ px: 2, pb: 1.5 }}>
-                        <DetailField label="Amount" value={`₹${(Number(x.amount) || 0).toLocaleString('en-IN')}`} />
-                        <DetailField label="Counted toward certificate" value={x.countsTowardCertificate ? 'Yes' : `No — ${x.paymentStatus || 'not counted'}`} />
-                        <DetailField label="Note" value={x.note} />
-                      </Stack>
-                    </Collapse>
-                  </ListItem>
-                );
-              })}
-            </List>
-          )}
+                  </span>
+                </div>
+              </div>
+            ))}
+
+            {expenses.length > 0 && (
+              <div className="tfoot">
+                <span className="cnt">
+                  Showing {expenses.length} of {expenses.length}
+                  {' '}{expenses.length === 1 ? 'expense' : 'expenses'} tagged to this grant
+                </span>
+              </div>
+            )}
+          </div>
         </Box>
       )}
 
