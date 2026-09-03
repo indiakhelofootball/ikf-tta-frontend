@@ -1325,13 +1325,40 @@
    figures, a bar and up to two caveats, and a table row cannot hold a caveat
    without either truncating it or wrecking the column rhythm.
    ========================================================================= */
-.csrx .utot{padding:var(--sp-5) var(--sp-6);margin-bottom:var(--sp-4)}
-.csrx .utot-v{font-size:32px;font-weight:600;color:var(--g-deep);letter-spacing:-.03em;line-height:1}
-.csrx .utot-k{font-size:13px;color:var(--muted);margin-top:7px;line-height:1.5}
-.csrx .utot-warn{
-  margin-top:12px;padding:9px 12px;border-radius:var(--r-ctl);
-  background:#FBEBE9;color:#8F2A21;font-size:13px;line-height:1.5;
+/* The utilisation totals as a strip of stats, not one big number over a
+   stretched banner. Each stat is sized to what it holds; the row uses
+   auto-fit so a stat that has nothing to show (no excluded expenses) leaves
+   the row rather than rendering an empty full-width bar. Colour follows the
+   roles the rest of the module already uses: green ink for the headline
+   total, sand for money, clay for the thing that needs attention. */
+.csrx .utot-strip{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(190px, 1fr));
+  gap:1px;
+  background:var(--line2);
+  border:1px solid var(--line);
+  border-radius:var(--r-card,8px);
+  margin-bottom:var(--sp-4);
+  overflow:hidden;
+  padding:0;
 }
+.csrx .utot-stat{
+  background:var(--card);
+  padding:var(--sp-4) var(--sp-5);
+  display:flex;flex-direction:column;gap:2px;min-width:0;
+}
+.csrx .utot-k{
+  font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;font-weight:600;
+  color:var(--muted);margin:0;
+}
+.csrx .utot-v{
+  font-size:26px;font-weight:600;color:var(--g-deep);letter-spacing:-.02em;
+  line-height:1.2;margin:2px 0 0;font-variant-numeric:tabular-nums;
+}
+.csrx .utot-v--money{color:#7A5618}
+.csrx .utot-v--warn{color:#8F2A21}
+.csrx .utot-note{font-size:12.5px;color:var(--muted);margin:2px 0 0;line-height:1.5}
+.csrx .utot-stat--warn{background:#FBEEEC}
 
 .csrx .ucards{display:flex;flex-direction:column;gap:12px}
 .csrx .ucard{

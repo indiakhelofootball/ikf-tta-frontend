@@ -157,17 +157,34 @@ export default function CSRUtilisationPage() {
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       {!loading && (
-        <div className="panel utot">
-          <div className="utot-v fig">{rupees(totals.utilised)}</div>
-          <div className="utot-k">
-            counted as utilised, of {rupees(totals.sanctioned)} sanctioned across{" "}
-            {visible.length} {visible.length === 1 ? "grant" : "grants"}
+        // A strip, not a stretched banner. The excluded-payment note used to be
+        // a full-width red bar under the total -- a one-line sentence claiming
+        // the whole panel width, with dead space to its right the total never
+        // used either. It is a stat now, the same size as the two it sits next
+        // to, and it disappears from the row entirely rather than rendering
+        // empty when nothing is excluded (auto-fit, not a fixed column count).
+        <div className="panel utot-strip">
+          <div className="utot-stat">
+            <span className="utot-k">Utilised</span>
+            <span className="utot-v">{rupees(totals.utilised)}</span>
+            <p className="utot-note">
+              of {rupees(totals.sanctioned)} sanctioned across{" "}
+              {visible.length} {visible.length === 1 ? "grant" : "grants"}
+            </p>
+          </div>
+          <div className="utot-stat utot-stat--money">
+            <span className="utot-k">Sanctioned</span>
+            <span className="utot-v utot-v--money">{rupees(totals.sanctioned)}</span>
+            <p className="utot-note">across every grant in view</p>
           </div>
           {totals.excludedCount > 0 && (
-            <div className="utot-warn">
-              {rupees(totals.excluded)} tagged across {totals.excludedCount}{" "}
-              {totals.excludedCount === 1 ? "expense" : "expenses"} is not
-              counted &mdash; the payment has not completed.
+            <div className="utot-stat utot-stat--warn">
+              <span className="utot-k">Not counted</span>
+              <span className="utot-v utot-v--warn">{rupees(totals.excluded)}</span>
+              <p className="utot-note">
+                {totals.excludedCount} {totals.excludedCount === 1 ? "expense" : "expenses"}{" "}
+                tagged, payment not yet complete
+              </p>
             </div>
           )}
         </div>
