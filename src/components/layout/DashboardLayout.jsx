@@ -56,6 +56,8 @@ const pageTitles = {
   // pattern below and fall through to the default.
   "/csr/activities/new": "New Activity",
   "/csr/reports/new": "New Report",
+  "/csr/contacts/new": "New Contact",
+  "/csr/expenses/new": "Tag an Expense",
 };
 
 // Dynamic routes (App.js path params) can't live in the exact-match map above
@@ -70,6 +72,7 @@ const dynamicRoutePatterns = [
   { pattern: /^\/csr\/projects\/[^/]+\/edit$/, title: "Edit Project" },
   { pattern: /^\/csr\/activities\/[^/]+\/edit$/, title: "Edit Activity" },
   { pattern: /^\/csr\/reports\/[^/]+\/edit$/, title: "Edit Report" },
+  { pattern: /^\/csr\/contacts\/[^/]+\/edit$/, title: "Edit Contact" },
 ];
 
 function resolveTitle(pathname) {

@@ -33,7 +33,7 @@ import VendorAuditReport from "./components/reports/VendorAuditReport";
 import TrialSpendReport from "./components/reports/TrialSpendReport";
 import TrialsReport from "./components/reports/TrialsReport";
 import CourierManagementPage from "./components/courier/CourierManagementPage";
-import { CSRLogin, CSRDashboard, CSRProjectManagementPage, CSRProjectFormPage, CSRActivityFormPage, CSRReportFormPage, CSRProjectDetailPage, CSRActivitiesPage, CSRReportsPage, CSRUtilisationPage, CSRActivityTypesPage, CSRClientsPage, CSRBrandingPage, CSRAccountPage } from "./components/csr";
+import { CSRLogin, CSRDashboard, CSRProjectManagementPage, CSRProjectFormPage, CSRActivityFormPage, CSRReportFormPage, CSRContactFormPage, CSRExpenseTagFormPage, CSRProjectDetailPage, CSRActivitiesPage, CSRReportsPage, CSRUtilisationPage, CSRActivityTypesPage, CSRClientsPage, CSRBrandingPage, CSRAccountPage } from "./components/csr";
 import ClientPortalPage from "./components/client/ClientPortalPage";
 import ClientLogin from "./components/client/ClientLogin";
 import PermissionsManagementPage from "./components/permissions/PermissionsManagementPage";
@@ -256,6 +256,25 @@ function App() {
           <Route path="/csr/reports/:id/edit" element={
             <GrantedRoute module="csr">
               <CSRReportFormPage />
+            </GrantedRoute>
+          } />
+          {/* Contact is the same page-not-modal move, with the same ?project=
+              id-carrying convention. Expense-tag has no edit route: the server
+              keeps a tag audit-bound and write-once, and the modal it replaces
+              never loaded an existing one either — only create exists. */}
+          <Route path="/csr/contacts/new" element={
+            <GrantedRoute module="csr">
+              <CSRContactFormPage />
+            </GrantedRoute>
+          } />
+          <Route path="/csr/contacts/:id/edit" element={
+            <GrantedRoute module="csr">
+              <CSRContactFormPage />
+            </GrantedRoute>
+          } />
+          <Route path="/csr/expenses/new" element={
+            <GrantedRoute module="csr">
+              <CSRExpenseTagFormPage />
             </GrantedRoute>
           } />
           {/* Activities and Reports are cross-project destinations, not just
