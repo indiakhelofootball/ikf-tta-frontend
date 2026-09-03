@@ -8,6 +8,16 @@
 
 .dashboard-content {
   flex: 1;
+  /* A flex item defaults to min-width:auto -- it refuses to shrink below its
+     widest descendant's intrinsic content width. A wide table further down
+     the tree (fixed-px grid tracks) was therefore holding this element, and
+     everything above it including the header strip, open at that table's
+     full width instead of the space actually available beside the rail --
+     which meant the table's own overflow-x:auto never got a chance to clip
+     anything, because it was never given a narrower box to clip against.
+     min-width:0 is the standard release for this; it does not change sizing
+     anywhere that is not already overflowing its parent. */
+  min-width: 0;
   display: flex;
   flex-direction: column;
 }

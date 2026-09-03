@@ -11,17 +11,18 @@
 // Data/state logic is unchanged. The render is pure markup styled entirely by
 // src/styles/csrDesign.css (scope: .csrx). No MUI sx, no inline styles.
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Snackbar, Alert } from '@mui/material';
 
 import ConfirmDialog from '../common/ConfirmDialog';
-import CSRProjectModal from './CSRProjectModal';
 import { csrAPI } from '../../services/api';
 import useGrants from '../../auth/useGrants';
 import useRefetchOnFocus from '../../hooks/useRefetchOnFocus';
 import '../../styles/csrDesign.css';
 
-const PAGE_SIZE = 8;
+// Five rows, fixed. Three grants fit the panel today and forty will not; the
+// list height stays put and the rest is paged through.
+const PAGE_SIZE = 5;
 
 const SORTS = {
   latest: { label: 'Latest', compare: (a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')) },
@@ -85,6 +86,7 @@ export default function CSRProjectManagementPage() {
   const { canEdit } = useGrants();
   const editable = canEdit('csr');
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -93,9 +95,6 @@ export default function CSRProjectManagementPage() {
   const [sortKey, setSortKey] = useState('latest');
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
   const [confirmState, setConfirmState] = useState(null);
   // The real inbound grant contract (CSRWorkOrder), keyed by project id. The
@@ -105,6 +104,18 @@ export default function CSRProjectManagementPage() {
   const [contractsByProject, setContractsByProject] = useState({});
 
   const notify = (message, severity = 'success') => setToast({ open: true, message, severity });
+
+  // The grant form is its own route now, so the save that used to raise this
+  // toast happens on a page that has since unmounted. It hands the message over
+  // in navigation state instead. Cleared with replace:true so the confirmation
+  // does not come back on a browser Back or a refresh, long after the fact.
+  const saved = location.state?.saved;
+  useEffect(() => {
+    if (!saved) return;
+    notify(saved);
+    navigate(location.pathname, { replace: true, state: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [saved]);
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -130,30 +141,13 @@ export default function CSRProjectManagementPage() {
   useEffect(() => { load(); }, [load]);
   useRefetchOnFocus(() => load(true));
 
-  const openCreate = () => { setEditing(null); setModalOpen(true); };
-  const openEdit = (p) => { setEditing(p); setModalOpen(true); };
+  // Create and edit are their own pages now. CSRProjectFormPage reads the id
+  // from the route and navigates back here itself, so this screen owns no
+  // form state and no save handler.
+  const openCreate = () => navigate('/csr/projects/new');
+  const openEdit = (p) => navigate(`/csr/projects/${p.id}/edit`);
   const cycleSort = () =>
     setSortKey((k) => SORT_KEYS[(SORT_KEYS.indexOf(k) + 1) % SORT_KEYS.length]);
-
-  const handleSave = async (payload) => {
-    setSaving(true);
-    try {
-      if (editing) {
-        await csrAPI.projects.update(editing.id, payload);
-        notify('Project updated.');
-      } else {
-        await csrAPI.projects.create(payload);
-        notify('Project created.');
-      }
-      setModalOpen(false);
-      setEditing(null);
-      load();
-    } catch (e) {
-      notify(e.message || 'Save failed.', 'error');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -171,11 +165,21 @@ export default function CSRProjectManagementPage() {
       .sort(SORTS[sortKey].compare);
   }, [projects, search, statusFilter, sortKey]);
 
-  const pageCount = Math.ceil(filtered.length / PAGE_SIZE);
-  const safePage = Math.min(page, Math.max(pageCount, 1));
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  // safePage, not page: the list can shrink under the reader — a delete, or a
+  // refetch that returns fewer grants — and page 4 of a list that now has two
+  // pages must never render as empty.
+  const safePage = Math.min(page, pageCount);
   const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const rangeFrom = filtered.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
+  const rangeTo = Math.min(safePage * PAGE_SIZE, filtered.length);
+  // A single row reads "Showing 1 of 1", not "Showing 1-1 of 1".
+  const rangeLabel = rangeFrom === rangeTo ? `${rangeFrom}` : `${rangeFrom}-${rangeTo}`;
 
   useEffect(() => { if (page !== safePage) setPage(safePage); }, [page, safePage]);
+  // Any change to the filtered set starts the reader at the top of it again.
+  // Searching from page 3 otherwise lands on a page the new result set does
+  // not have.
   useEffect(() => { setPage(1); }, [search, statusFilter, sortKey]);
 
   // The detail pane must never sit empty while there is a row to show, and the
@@ -206,6 +210,7 @@ export default function CSRProjectManagementPage() {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4-4" /></svg>
           <input
             placeholder="Search by project, funder or TTA project…"
+            aria-label="Search projects"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -242,7 +247,13 @@ export default function CSRProjectManagementPage() {
           {/* ---- the list ---- */}
           <div className="panel">
             <div className="lh">
-              <span>All projects ({filtered.length})</span>
+              {/* The count has to say what is on screen once the list pages,
+                  or it reads as "23 projects" over a panel showing five. */}
+              <span>
+                {pageCount > 1
+                  ? `All projects · showing ${rangeLabel} of ${filtered.length}`
+                  : `All projects (${filtered.length})`}
+              </span>
               <button type="button" className="sort" onClick={cycleSort}>
                 Sort by: {SORTS[sortKey].label} <span className="cv">▾</span>
               </button>
@@ -281,21 +292,30 @@ export default function CSRProjectManagementPage() {
               );
             })}
 
+            {/* Hidden on a single page: a permanently dead Next button under a
+                three-row list is noise. */}
             {pageCount > 1 && (
-              <div className="pager">
-                {Array.from({ length: pageCount }, (_, i) => i + 1).map((n) => (
-                  <button
-                    key={n}
-                    type="button"
-                    className={`pg${n === safePage ? ' on' : ''}`}
-                    aria-label={`Page ${n}`}
-                    aria-current={n === safePage ? 'page' : undefined}
-                    onClick={() => setPage(n)}
-                  >
-                    {n}
-                  </button>
-                ))}
-              </div>
+              <nav className="pager" aria-label="Pagination">
+                <button
+                  type="button"
+                  className="ghostbtn tight"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={safePage <= 1}
+                >
+                  Previous
+                </button>
+                <span className="pgr-status" aria-live="polite">
+                  Page {safePage} of {pageCount}
+                </span>
+                <button
+                  type="button"
+                  className="ghostbtn tight"
+                  onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                  disabled={safePage >= pageCount}
+                >
+                  Next
+                </button>
+              </nav>
             )}
           </div>
 
@@ -334,7 +354,13 @@ export default function CSRProjectManagementPage() {
                   <Fact label="TTA Project" value={selected.ttaProjectName} empty="Not linked yet" />
                   <Fact label="Client / Funder" value={selected.clientName} />
                   <Fact label="Sanctioned" value={fmtMoney(selected.sanctionedAmount)} />
-                  <Fact label="Season" value={selected.season} empty="Not set" />
+                  {/* Season keeps its original slot rather than being moved to
+                      the end. It is no longer asked for (26 Aug, 04:35), so on
+                      any grant created since it can only ever be blank — but
+                      reshuffling the strip to close the gap moves fields the
+                      owner reads by position. The row simply runs three wide
+                      when there is no season. */}
+                  {selected.season ? <Fact label="Season" value={selected.season} /> : null}
                 </div>
                 <div className="facts nb">
                   <Fact label="Start Date" value={fmtDay(selected.startDate)} />
@@ -390,20 +416,12 @@ export default function CSRProjectManagementPage() {
         </div>
       )}
 
-      <CSRProjectModal
-        open={modalOpen}
-        project={editing}
-        onClose={() => { setModalOpen(false); setEditing(null); }}
-        onSave={handleSave}
-        saving={saving}
-      />
-
       <ConfirmDialog
         open={Boolean(confirmState)}
         title={confirmState?.title}
         message={confirmState?.message}
         confirmLabel={confirmState?.confirmLabel}
-        busy={saving}
+        busy={false}
         onConfirm={() => confirmState?.onConfirm()}
         onClose={() => setConfirmState(null)}
       />

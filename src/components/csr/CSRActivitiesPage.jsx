@@ -34,6 +34,10 @@ const asList = (data) => (Array.isArray(data) ? data : data?.results || []);
 // dropping you on Overview to hunt for the record you just clicked.
 const ACTIVITIES_TAB = 2;
 
+// Five rows a page, fixed. A log grows without limit and the page below it —
+// the footer, the count — should not move as it does.
+const PAGE_SIZE = 5;
+
 // The serializer exposes `date` for point-in-time activities and start/end for
 // spans. Sorting needs one comparable value, so fall through in that order and
 // use createdAt as the last resort — an activity logged with no date at all
@@ -74,6 +78,7 @@ export default function CSRActivitiesPage() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [projectFilter, setProjectFilter] = useState('All');
+  const [page, setPage] = useState(1);
   // Which rows are showing their detail. A Set so several can be open at
   // once — an operator comparing two activities should not have to keep
   // reopening the first.
@@ -133,6 +138,23 @@ export default function CSRActivitiesPage() {
       .sort((a, b) => sortKey(b).localeCompare(sortKey(a)));
   }, [activities, projectFilter, search, projectName]);
 
+  const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  // safePage, not page: the log can shrink under the reader — a refetch on
+  // focus, a narrower filter — and page 4 of a two-page log must never render
+  // as an empty table.
+  const safePage = Math.min(page, pageCount);
+  const pageRows = rows.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const rangeFrom = rows.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
+  const rangeTo = Math.min(safePage * PAGE_SIZE, rows.length);
+  // A single row reads "Showing 1 of 1", not "Showing 1-1 of 1".
+  const rangeLabel = rangeFrom === rangeTo ? `${rangeFrom}` : `${rangeFrom}-${rangeTo}`;
+
+  useEffect(() => { if (page !== safePage) setPage(safePage); }, [page, safePage]);
+  // Any change to the filtered set starts the reader at the top of it again.
+  // Searching from page 3 otherwise lands on a page the new result set does
+  // not have.
+  useEffect(() => { setPage(1); }, [search, projectFilter]);
+
   if (!canView('csr')) {
     return <Alert severity="warning">You do not have access to CSR.</Alert>;
   }
@@ -156,6 +178,7 @@ export default function CSRActivitiesPage() {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4-4" /></svg>
           <input
             placeholder="Search title, location or grant"
+            aria-label="Search activities"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -188,7 +211,7 @@ export default function CSRActivitiesPage() {
                 ? 'An activity is a thing that happened against a grant — a trial, a workshop, a camp.'
                 : 'Clear the search or change the filter.'}
             </div>
-          ) : rows.map((a) => (
+          ) : pageRows.map((a) => (
             <div className="lwrap" key={a.id}>
               <div
                 role="button"
@@ -266,8 +289,38 @@ export default function CSRActivitiesPage() {
 
           {rows.length > 0 && (
             <div className="tfoot">
-              Showing {rows.length} of {activities.length}
-              {' '}{activities.length === 1 ? 'activity' : 'activities'} logged in total
+              {/* The count states what is on screen, then what it is a slice
+                  of. "Showing 5 of 40" over five visible rows was true before
+                  paging and would be a lie after it. */}
+              <span className="cnt">
+                Showing {rangeLabel} of {rows.length}
+                {rows.length === activities.length
+                  ? ` ${activities.length === 1 ? 'activity' : 'activities'} logged in total`
+                  : ` matching, of ${activities.length} logged in total`}
+              </span>
+              {pageCount > 1 && (
+                <nav className="tfoot-pager" aria-label="Pagination">
+                  <button
+                    type="button"
+                    className="ghostbtn tight"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={safePage <= 1}
+                  >
+                    Previous
+                  </button>
+                  <span className="pgr-status" aria-live="polite">
+                    Page {safePage} of {pageCount}
+                  </span>
+                  <button
+                    type="button"
+                    className="ghostbtn tight"
+                    onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                    disabled={safePage >= pageCount}
+                  >
+                    Next
+                  </button>
+                </nav>
+              )}
             </div>
           )}
         </div>
