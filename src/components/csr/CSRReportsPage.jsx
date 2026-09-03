@@ -183,6 +183,7 @@ export default function CSRReportsPage() {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4-4" /></svg>
           <input
             placeholder="Search file, grant or activity"
+            aria-label="Search reports"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />

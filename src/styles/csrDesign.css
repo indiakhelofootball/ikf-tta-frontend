@@ -1363,7 +1363,7 @@
 }
 .csrx .utot-v--money{color:#7A5618}
 .csrx .utot-v--warn{color:#8F2A21}
-.csrx .utot-note{font-size:12.5px;color:var(--muted);margin:2px 0 0;line-height:1.5}
+.csrx .utot-note{font-size:12.5px;color:var(--muted);margin:2px 0 0;line-height:1.7}
 .csrx .utot-stat--warn{background:#FBEEEC;border-color:#EFD3CE}
 
 .csrx .ucards{display:flex;flex-direction:column;gap:12px}
@@ -1948,6 +1948,14 @@
    nothing but push its own label away.
    ========================================================================= */
 .csrx{line-height:1.7}
+/* 1.7 is a standing owner requirement, not a default. It has been broken twice
+   by appending a later block that re-declared the same selector with a tighter
+   value -- same specificity, later wins, silently. .pform-sub, .pform-help,
+   .pform-ring-note and .ovf-v were all set to 1.7 above and then re-tightened
+   to 1.5 further down the file. If you add a rule for body copy in this
+   stylesheet, do not set line-height at all: inherit it. Only single-line
+   figures and chips get a tighter value, and those are listed together lower
+   down with that reason stated. */
 .csrx p,
 .csrx .ph p,
 .csrx .lrow .t1,
@@ -2387,7 +2395,7 @@
   font-family:var(--serif);font-size:20px;font-weight:500;color:var(--ink);
   text-transform:none;letter-spacing:-.012em;margin:0;padding:0;line-height:1.25;
 }
-.csrx .pform-sub{font-size:13.5px;color:var(--muted);margin:4px 0 16px;line-height:1.5}
+.csrx .pform-sub{font-size:13.5px;color:var(--muted);margin:4px 0 16px;line-height:1.7}
 .csrx .pform-req{color:var(--clay-ink,#B4523F);font-weight:600}
 
 .csrx .pform-field{display:flex;flex-direction:column;gap:6px;min-width:0}
@@ -2408,7 +2416,7 @@
 }
 .csrx .pform-input.ok > input{padding-right:36px}
 
-.csrx .pform-help{font-size:12.5px;color:var(--muted);margin:0;line-height:1.5}
+.csrx .pform-help{font-size:12.5px;color:var(--muted);margin:0;line-height:1.7}
 .csrx .pform-help.bad{color:#B4523F}
 .csrx .pform-error{
   font-size:13.5px;color:#B4523F;background:#F8E9E5;border:1px solid #EBCFC8;
@@ -2462,7 +2470,7 @@
   transition:stroke-dasharray .3s ease;
 }
 .csrx .pform-ring-pc{font-size:15px;font-weight:600;color:var(--g-deep);margin:0}
-.csrx .pform-ring-note{font-size:12.5px;color:var(--soft);margin:0;line-height:1.5}
+.csrx .pform-ring-note{font-size:12.5px;color:var(--soft);margin:0;line-height:1.7}
 
 @media (prefers-reduced-motion:reduce){
   .csrx .pform-ring-fill{transition:none}
@@ -2675,7 +2683,7 @@
 }
 .csrx .ovf-v{
   margin:0;font-size:14.5px;color:var(--ink);font-weight:500;
-  overflow-wrap:anywhere;line-height:1.5;
+  overflow-wrap:anywhere;line-height:1.7;
 }
 .csrx .ovf-v.em{color:var(--faint);font-weight:400}
 
