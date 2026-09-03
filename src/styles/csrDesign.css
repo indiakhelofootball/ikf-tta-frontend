@@ -2674,3 +2674,54 @@
   margin:0;font-size:14px;color:var(--soft);line-height:1.7;
   white-space:pre-wrap;max-width:80ch;
 }
+
+
+/* =========================================================================
+   THE TRAILING CELL MUST FIT ITS TRACK.
+
+   Measured bug, not a tweak: on the in-grant Activities table the .lend cell
+   was 215px wide inside a 124px track, and its left edge sat 71px INSIDE the
+   type column -- the status pill printed on top of the type name.
+
+   Cause: `.lgrid > *:last-child{justify-self:end}` sizes that cell to its
+   content and anchors the RIGHT edge to the end of the track. Content wider
+   than the track therefore grows leftward, straight over the previous column,
+   with no clipping to say so. It only surfaced when state and actions moved
+   into the same cell and made it wide enough to reach.
+
+   Three parts, because widening alone would only move the failure point:
+     - the track is sized for what now lives there, a pill plus its actions;
+     - max-width:100% means the cell can never exceed its track again, whatever
+       is put in it later;
+     - and it wraps rather than overflows if it ever does run out of room, so
+       the row grows a line instead of printing over its neighbour.
+   ========================================================================= */
+.csrx .lgrid{
+  grid-template-columns:
+    178px                      /* date -- fits a start->end range unclipped */
+    minmax(200px, 1.3fr)       /* the record's own name */
+    116px                      /* location / attribute */
+    minmax(140px, 0.9fr)       /* what it belongs to -- the identity band */
+    200px;                     /* its state, and the actions on it */
+}
+.csrx .lgrid > *:last-child{justify-self:end;max-width:100%}
+.csrx .lend{flex-wrap:wrap;row-gap:6px}
+
+/* The same guard on the variants. Their trailing cells hold fewer controls, so
+   the tracks stay narrower -- but the rule that a cell cannot outgrow its track
+   has to hold everywhere, or this returns the next time a control is added. */
+.csrx .lgrid--3{
+  grid-template-columns:minmax(240px,1.6fr) minmax(150px,0.9fr) 140px;
+}
+.csrx .lgrid--4{
+  grid-template-columns:178px minmax(220px,1.4fr) minmax(150px,0.9fr) 140px;
+}
+.csrx .lgrid--6{
+  grid-template-columns:
+    124px                      /* phone -- a fixed-format value */
+    minmax(160px, 1.1fr)       /* the record's own name */
+    112px                      /* role */
+    minmax(112px, 0.7fr)       /* type -- the identity band */
+    minmax(180px, 1fr)         /* email -- the longest string here */
+    96px;                      /* actions */
+}
