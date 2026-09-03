@@ -4,6 +4,8 @@ export { default as CSRProjectManagementPage } from './CSRProjectManagementPage'
 export { default as CSRProjectFormPage } from './CSRProjectFormPage';
 export { default as CSRActivityFormPage } from './CSRActivityFormPage';
 export { default as CSRReportFormPage } from './CSRReportFormPage';
+export { default as CSRContactFormPage } from './CSRContactFormPage';
+export { default as CSRExpenseTagFormPage } from './CSRExpenseTagFormPage';
 export { default as CSRProjectDetailPage } from './CSRProjectDetailPage';
 export { default as CSRActivitiesPage } from './CSRActivitiesPage';
 export { default as CSRReportsPage } from './CSRReportsPage';
@@ -14,8 +16,6 @@ export { default as CSRBrandingPage } from './CSRBrandingPage';
 export { default as CSRAccountPage } from './CSRAccountPage';
 export { default as CSRProjectCard } from './CSRProjectCard';
 export { default as CSRProjectDetailView } from './CSRProjectDetailView';
-export { default as CSRContactModal } from './CSRContactModal';
-export { default as CSRExpenseTagModal } from './CSRExpenseTagModal';
 export { default as CSRContractManagementPage } from './CSRContractManagementPage';
 export { default as CSRContractCard } from './CSRContractCard';
 export { default as CSRContractDetailView } from './CSRContractDetailView';

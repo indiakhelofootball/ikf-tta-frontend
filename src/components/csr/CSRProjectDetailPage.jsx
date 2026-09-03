@@ -11,8 +11,6 @@ import {
 } from '@mui/icons-material';
 
 import CSRProjectDetailView, { ttaProjectIdentity } from './CSRProjectDetailView';
-import CSRContactModal from './CSRContactModal';
-import CSRExpenseTagModal from './CSRExpenseTagModal';
 import CSRContractManagementPage from './CSRContractManagementPage';
 import ConfirmDialog from '../common/ConfirmDialog';
 import { certificateFreezeState } from './csrContractRules';
@@ -139,8 +137,6 @@ export default function CSRProjectDetailPage() {
     return next;
   });
 
-  const [contactModal, setContactModal] = useState({ open: false, editing: null });
-  const [expenseModalOpen, setExpenseModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   // One dialog, one slot of state: { title, message, confirmLabel, onConfirm }.
   // Each delete asks by filling this in; the dialog is a view of it.
@@ -226,26 +222,6 @@ export default function CSRProjectDetailPage() {
     },
   });
 
-  const saveContact = async (payload) => {
-    setSaving(true);
-    try {
-      const body = { ...payload, projectId: Number(id) };
-      if (contactModal.editing) {
-        await csrAPI.contacts.update(contactModal.editing.id, body);
-        notify('Contact updated.');
-      } else {
-        await csrAPI.contacts.create(body);
-        notify('Contact added.');
-      }
-      setContactModal({ open: false, editing: null });
-      load();
-    } catch (e) {
-      notify(e.message || 'Save failed.', 'error');
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const deleteContact = (c) => setConfirmState({
     title: 'Delete contact',
     message: `Delete contact "${c.name}"?`,
@@ -260,20 +236,6 @@ export default function CSRProjectDetailPage() {
       }
     },
   });
-
-  const saveExpense = async (payload) => {
-    setSaving(true);
-    try {
-      await csrAPI.expenseTags.create({ ...payload, projectId: Number(id) });
-      notify('Expense tagged.');
-      setExpenseModalOpen(false);
-      load();
-    } catch (e) {
-      notify(e.message || 'Tag failed.', 'error');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const deleteExpense = (x) => setConfirmState({
     title: 'Remove expense tag',
@@ -385,7 +347,7 @@ export default function CSRProjectDetailPage() {
           {editable && (
             <Button
               size="small" startIcon={<AddIcon />} sx={{ mb: 1 }}
-              onClick={() => setContactModal({ open: true, editing: null })}
+              onClick={() => navigate(`/csr/contacts/new?project=${id}`)}
             >
               Add Contact
             </Button>
@@ -412,7 +374,7 @@ export default function CSRProjectDetailPage() {
                   className="lgrid lgrid--6 lrow"
                   {...rowActivation(
                     editable ? `Edit contact ${c.name}` : null,
-                    editable ? () => setContactModal({ open: true, editing: c }) : null,
+                    editable ? () => navigate(`/csr/contacts/${c.id}/edit`) : null,
                   )}
                 >
                   {/* Type carries the identity band, not the role. A role is
@@ -432,7 +394,7 @@ export default function CSRProjectDetailPage() {
                         <button
                           type="button" className="ico g"
                           aria-label={`Edit contact ${c.name}`}
-                          onClick={(e) => { e.stopPropagation(); setContactModal({ open: true, editing: c }); }}
+                          onClick={(e) => { e.stopPropagation(); navigate(`/csr/contacts/${c.id}/edit`); }}
                         >
                           <EditGlyph />
                         </button>
@@ -739,7 +701,7 @@ export default function CSRProjectDetailPage() {
             </Box>
             <Stack direction="row" spacing={1}>
               {canEditCert && (
-                <Button size="small" startIcon={<AddIcon />} onClick={() => setExpenseModalOpen(true)}>
+                <Button size="small" startIcon={<AddIcon />} onClick={() => navigate(`/csr/expenses/new?project=${id}`)}>
                   Tag Expense
                 </Button>
               )}
@@ -818,19 +780,6 @@ export default function CSRProjectDetailPage() {
         </Box>
       )}
 
-      <CSRContactModal
-        open={contactModal.open}
-        contact={contactModal.editing}
-        onClose={() => setContactModal({ open: false, editing: null })}
-        onSave={saveContact}
-        saving={saving}
-      />
-      <CSRExpenseTagModal
-        open={expenseModalOpen}
-        onClose={() => setExpenseModalOpen(false)}
-        onSave={saveExpense}
-        saving={saving}
-      />
       <ConfirmDialog
         open={Boolean(confirmState)}
         title={confirmState?.title}
