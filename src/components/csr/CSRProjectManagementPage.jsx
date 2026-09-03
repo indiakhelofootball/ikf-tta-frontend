@@ -20,7 +20,9 @@ import useGrants from '../../auth/useGrants';
 import useRefetchOnFocus from '../../hooks/useRefetchOnFocus';
 import '../../styles/csrDesign.css';
 
-const PAGE_SIZE = 8;
+// Five rows, fixed. Three grants fit the panel today and forty will not; the
+// list height stays put and the rest is paged through.
+const PAGE_SIZE = 5;
 
 const SORTS = {
   latest: { label: 'Latest', compare: (a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')) },
@@ -163,11 +165,21 @@ export default function CSRProjectManagementPage() {
       .sort(SORTS[sortKey].compare);
   }, [projects, search, statusFilter, sortKey]);
 
-  const pageCount = Math.ceil(filtered.length / PAGE_SIZE);
-  const safePage = Math.min(page, Math.max(pageCount, 1));
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  // safePage, not page: the list can shrink under the reader — a delete, or a
+  // refetch that returns fewer grants — and page 4 of a list that now has two
+  // pages must never render as empty.
+  const safePage = Math.min(page, pageCount);
   const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const rangeFrom = filtered.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
+  const rangeTo = Math.min(safePage * PAGE_SIZE, filtered.length);
+  // A single row reads "Showing 1 of 1", not "Showing 1-1 of 1".
+  const rangeLabel = rangeFrom === rangeTo ? `${rangeFrom}` : `${rangeFrom}-${rangeTo}`;
 
   useEffect(() => { if (page !== safePage) setPage(safePage); }, [page, safePage]);
+  // Any change to the filtered set starts the reader at the top of it again.
+  // Searching from page 3 otherwise lands on a page the new result set does
+  // not have.
   useEffect(() => { setPage(1); }, [search, statusFilter, sortKey]);
 
   // The detail pane must never sit empty while there is a row to show, and the
@@ -234,7 +246,13 @@ export default function CSRProjectManagementPage() {
           {/* ---- the list ---- */}
           <div className="panel">
             <div className="lh">
-              <span>All projects ({filtered.length})</span>
+              {/* The count has to say what is on screen once the list pages,
+                  or it reads as "23 projects" over a panel showing five. */}
+              <span>
+                {pageCount > 1
+                  ? `All projects · showing ${rangeLabel} of ${filtered.length}`
+                  : `All projects (${filtered.length})`}
+              </span>
               <button type="button" className="sort" onClick={cycleSort}>
                 Sort by: {SORTS[sortKey].label} <span className="cv">▾</span>
               </button>
@@ -273,21 +291,30 @@ export default function CSRProjectManagementPage() {
               );
             })}
 
+            {/* Hidden on a single page: a permanently dead Next button under a
+                three-row list is noise. */}
             {pageCount > 1 && (
-              <div className="pager">
-                {Array.from({ length: pageCount }, (_, i) => i + 1).map((n) => (
-                  <button
-                    key={n}
-                    type="button"
-                    className={`pg${n === safePage ? ' on' : ''}`}
-                    aria-label={`Page ${n}`}
-                    aria-current={n === safePage ? 'page' : undefined}
-                    onClick={() => setPage(n)}
-                  >
-                    {n}
-                  </button>
-                ))}
-              </div>
+              <nav className="pager" aria-label="Pagination">
+                <button
+                  type="button"
+                  className="ghostbtn tight"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={safePage <= 1}
+                >
+                  Previous
+                </button>
+                <span className="pgr-status" aria-live="polite">
+                  Page {safePage} of {pageCount}
+                </span>
+                <button
+                  type="button"
+                  className="ghostbtn tight"
+                  onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                  disabled={safePage >= pageCount}
+                >
+                  Next
+                </button>
+              </nav>
             )}
           </div>
 

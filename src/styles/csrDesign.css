@@ -2725,3 +2725,138 @@
     minmax(180px, 1fr)         /* email -- the longest string here */
     96px;                      /* actions */
 }
+
+
+/* =========================================================================
+   HAIRLINES BETWEEN ROWS.
+
+   "Put a very thin line in table." The rules were already there -- .lrow and
+   .lwrap carried border-bottom:1px solid var(--line2) -- but --line2 (#E8ECEB)
+   is a hair off the zebra stripe (--ground2 #EFF1FB), so on every second row
+   the separator simply stopped existing and the table read as alternating
+   blocks rather than as a ruled grid. A line that only survives on half the
+   rows is worse than no line: it makes the stripe do work the rule should do.
+
+   The fix is alpha, not thickness. --hair is ink at 10%, so it COMPOSITES with
+   whatever is under it -- it lands around #E5E7E6 on the card and around
+   #DADCE1 on the stripe, which is the same apparent weight on both grounds
+   instead of one strong line and one invisible one. Fractional borders
+   (0.5px) were the other candidate and were rejected: Chrome clamps them to a
+   device pixel at 1x and rounds them unevenly at fractional DPR, so a table
+   gets rows whose rules alternate weight and whose heights differ by a pixel.
+   1px geometry, sub-hairline colour: predictable box model, quiet line.
+
+   Declared twice on purpose -- the rgba is the same --ink value spelled out,
+   so a browser without color-mix() still gets the line rather than dropping
+   the declaration and losing every rule in the table.
+
+   NO VERTICAL COLUMN SEPARATORS, and this is a decision, not an omission.
+   .lgrid is align-items:center, so a cell is only as tall as its content: a
+   border or a seam on a cell draws a short tick floating in the row, not a
+   column rule. Making it full height means align-self:stretch plus negative
+   margins cancelling the row padding on every cell -- exactly the machinery
+   the identity band already runs -- which would (a) double the line at both
+   edges of the 4th cell, where --role-id-edge already draws one, and (b) put
+   an extra 1px of border into cells whose track widths were measured against
+   real content. That second one is how the trailing cell came to print over
+   its neighbour in the first place. The identity band's own two edges are the
+   vertical structure this table gets; the header is a solid band and takes no
+   rule under it either, because the band's bottom edge already is one.
+   ========================================================================= */
+.csrx{
+  --hair:rgba(28,35,32,.10);
+  --hair:color-mix(in srgb, var(--ink) 10%, transparent);
+}
+
+.csrx .lrow,
+.csrx .lwrap,
+.csrx .setrow{border-bottom-color:var(--hair)}
+.csrx table.dt tbody td{border-bottom-color:var(--hair)}
+
+
+/* =========================================================================
+   THE PAGER -- Previous / "Page 2 of 5" / Next.
+
+   Two class names arrived for one control: the four working screens put
+   .tfoot-pager inside the table footer, the grant list on the project screen
+   reuses the older .pager at the foot of its own column. Both get the same
+   treatment here rather than one of them getting a near-miss, because they are
+   the same control and a reader should not be able to tell which screen they
+   are on from how Next looks.
+
+   .pager already existed as a centred numbered strip with its own top border,
+   and the project list still sits it in that position -- so that rule is left
+   alone and only the group's internals are set here. Inside .tfoot both the
+   border and the padding come off: the footer already draws the border-top,
+   and a second rule 1px under it is a seam, not a divider.
+
+   Placement in the footer is margin-left:auto on the pager, not
+   justify-content on .tfoot -- the same footer renders on screens with no
+   pager at all (a single page hides it), where space-between would silently
+   do nothing and the count would look deliberately centred on some screens
+   and left-aligned on others.
+
+   Buttons are .ghostbtn tight, which carries margin-left:auto from .ghostbtn
+   for its usual job of sitting at the end of a settings row. In a flex group
+   of its own that pushes Previous and Next to opposite ends, so it is cleared.
+
+   Spacing is --sp-3 between the three items and the footer keeps --sp-3
+   between the count and the group; the footer wraps rather than growing,
+   because .twrap scrolls horizontally and a footer wide enough to force that
+   would drag the whole table sideways to reach Next.
+   ========================================================================= */
+.csrx .tfoot{flex-wrap:wrap;gap:var(--sp-3)}
+
+.csrx .pager,
+.csrx .tfoot-pager{
+  display:flex;align-items:center;flex-wrap:wrap;
+  gap:var(--sp-3);
+}
+.csrx .tfoot .pager,
+.csrx .tfoot .tfoot-pager{
+  margin-left:auto;justify-content:flex-end;
+  padding:0;border-top:0;
+}
+/* .ghostbtn's margin-left:auto is for a settings row, not for a button group. */
+.csrx .pager .ghostbtn,
+.csrx .tfoot-pager .ghostbtn{margin-left:0}
+
+/* "Page 2 of 5". Tabular figures so the line does not twitch as the number
+   changes width, and nowrap so it never breaks between the two buttons.
+   Colour and rhythm only -- the size is whatever the footer already sets. */
+.csrx .pgr-status{
+  /* Sized explicitly. On Activities/Reports/Utilisation this sits inside .tfoot
+     and inherits its 13.5px, but on Projects the pager is at the foot of the
+     list column with no .tfoot above it, so it inherited 16px and read a size
+     larger than the buttons it sits between. Setting it here is not a change to
+     the module's type scale -- it is giving a new element the size it should
+     have had, matching .tfoot, so the indicator reads the same on all four
+     screens instead of on three. */
+  font-size:13.5px;
+  color:var(--muted);white-space:nowrap;
+  font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1;
+  padding:0 var(--sp-1);
+}
+
+/* Unavailable, not absent. opacity:.45 (what .newbtn:disabled does) is right
+   for a filled button and wrong for a ghost one -- it fades the border away
+   and the control stops reading as a control at all. Dropping the ink to
+   --faint over the sunk ground keeps the shape and removes the affordance,
+   and the hover state is neutralised so a dead button never lights up. */
+.csrx .ghostbtn:disabled,
+.csrx .ghostbtn[aria-disabled="true"]{
+  background:var(--ground2);border-color:var(--line-soft);color:var(--faint);
+  cursor:not-allowed;
+}
+.csrx .ghostbtn:disabled:hover,
+.csrx .ghostbtn[aria-disabled="true"]:hover{
+  background:var(--ground2);border-color:var(--line-soft);color:var(--faint);
+}
+
+@media (max-width:640px){
+  /* Below this the count and the pager stop sharing a line; the pager takes
+     the full width under the count rather than squeezing it, and its two
+     buttons go to the edges where a thumb reaches them. */
+  .csrx .tfoot .pager,
+  .csrx .tfoot .tfoot-pager{margin-left:0;width:100%;justify-content:space-between}
+}
