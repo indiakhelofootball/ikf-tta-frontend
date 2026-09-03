@@ -11,7 +11,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 
 import { csrAPI } from '../../services/api';
-import { getProjectNames } from '../../utils/adminStorage';
+import { getProjectNames, getSeasons } from '../../utils/adminStorage';
 import useConfigVersion from '../../hooks/useConfigVersion';
 import '../../styles/csrDesign.css';
 
@@ -101,6 +101,10 @@ export default function CSRProjectFormPage() {
     () => getProjectNames().filter((p) => typeof p.id === 'number'),
     [cfgVersion],
   );
+  // The same catalogue TrialWizard reads (TrialWizard.jsx:74). Both halves of a
+  // TTA project's identity come from config, so no `trials` grant is needed and
+  // the 403 on /api/trials/ is not in the way.
+  const ttaSeasons = useMemo(() => getSeasons().map((x) => x.name).filter(Boolean), [cfgVersion]);
 
   const setField = (k) => (e) => {
     const { value } = e.target;
@@ -144,12 +148,22 @@ export default function CSRProjectFormPage() {
       startDate: form.startDate || null,
       endDate: form.endDate || null,
       projectRefId: form.projectRefId === '' ? null : Number(form.projectRefId),
-      // Still SENT, never asked. 26 Aug, 04:35: «तुमको season पूछने की जरूरत ही
-      // नहीं रह जाएगा। वो trial तो किसी season का ही आएगा» — you won't need to
-      // ask for season at all, the trial carries one anyway. The form stopped
-      // asking; the value is carried through untouched so that saving a grant
-      // recorded before today does not blank the column, and so the identity
-      // pair the model documents (project + season) survives an edit.
+      // Half of the TTA project's identity, and collected again for now.
+      //
+      // 26 Aug, 04:35 asked for it NOT to be asked: «तुमको season पूछने की जरूरत
+      // ही नहीं रह जाएगा। वो trial तो किसी season का ही आएगा» — the trial carries
+      // a season, so do not ask. That is the right end state and it is not
+      // reachable yet: CSRProject.project is a FK to a config.ConfigOption row
+      // holding only a NAME, and in TTA a project IS the pair
+      // (trial_type, season) -- TrialWizard.jsx:117 refuses to submit without
+      // both, and :124 rejects a duplicate on the pair. So the name alone does
+      // not identify a TTA project: "IKF Trials" is two different projects,
+      // Season 1 and Season 5.
+      //
+      // Until the link points at a trial (see TTA_PROJECT_LINK_PROPOSAL.md),
+      // the season is picked ALONGSIDE the project from the same two catalogues
+      // TTA's own wizard uses, so the stored pair matches what TTA considers a
+      // project instead of naming half of one.
       season: form.season,
     };
     setSaving(true);
@@ -343,24 +357,55 @@ export default function CSRProjectFormPage() {
             <h2 className="pform-legend">TTA link</h2>
             <p className="pform-sub">Optional. Connects this grant to an existing TTA project.</p>
 
-            <div className="pform-field">
-              <label htmlFor="csr-tta">TTA project</label>
-              <select
-                id="csr-tta" className="sel"
-                value={form.projectRefId === '' ? '' : String(form.projectRefId)}
-                onChange={(e) => setForm((f) => ({ ...f, projectRefId: e.target.value }))}
-                aria-describedby="csr-tta-help"
-              >
-                <option value="">None</option>
-                {options.map((p) => (
-                  <option key={p.id} value={String(p.id)}>{p.name}</option>
-                ))}
-              </select>
-              {/* Not "Runs Under" -- the 26 Aug review (03:27-04:17) called out
-                  exactly this phrasing on the CSR project screen: a grant does
-                  not run under a trial catalogue entry, the relationship reads
-                  backwards. This is a link to the catalogue row, not a container. */}
-              <p id="csr-tta-help" className="pform-help">Which existing TTA project this grant funds.</p>
+            {/* Both halves, side by side, because in TTA they are ONE identity:
+                a project is the pair (name, season), and the name on its own
+                names two different projects when a season is missing. Asked
+                together for the same reason TrialWizard asks them together. */}
+            <div className="pform-row">
+              <div className="pform-field">
+                <label htmlFor="csr-tta">TTA project</label>
+                <select
+                  id="csr-tta" className="sel"
+                  value={form.projectRefId === '' ? '' : String(form.projectRefId)}
+                  onChange={(e) => setForm((f) => ({ ...f, projectRefId: e.target.value }))}
+                  aria-describedby="csr-tta-help"
+                >
+                  <option value="">None</option>
+                  {options.map((p) => (
+                    <option key={p.id} value={String(p.id)}>{p.name}</option>
+                  ))}
+                </select>
+                {/* Not "Runs Under" -- the 26 Aug review (03:27-04:17) called out
+                    exactly this phrasing on the CSR project screen: a grant does
+                    not run under a trial catalogue entry, the relationship reads
+                    backwards. This is a link to the catalogue row, not a container. */}
+                <p id="csr-tta-help" className="pform-help">Which existing TTA project this grant funds.</p>
+              </div>
+
+              <div className="pform-field">
+                <label htmlFor="csr-season">Season</label>
+                <select
+                  id="csr-season" className="sel"
+                  value={form.season}
+                  onChange={setField('season')}
+                  aria-describedby="csr-season-help"
+                >
+                  <option value="">None</option>
+                  {/* A season already stored that is no longer in the catalogue
+                      still has to render as itself, or editing an unrelated
+                      field would silently blank it -- the same fallback the
+                      project picker above needs and for the same reason. */}
+                  {(ttaSeasons.includes(form.season) || !form.season
+                    ? ttaSeasons
+                    : [...ttaSeasons, form.season]
+                  ).map((x) => (
+                    <option key={x} value={x}>{x}</option>
+                  ))}
+                </select>
+                <p id="csr-season-help" className="pform-help">
+                  Which season of that project. A project name without a season names two.
+                </p>
+              </div>
             </div>
           </section>
 
