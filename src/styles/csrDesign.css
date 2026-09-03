@@ -2277,8 +2277,12 @@
     124px;                     /* status */
 }
 .csrx .lgrid > *{min-width:0}
+/* Wrap, never truncate. An ellipsis on a funder's name or an email address
+   hides the part that distinguishes one record from another, and the reader
+   cannot tell that anything was cut. A row that grows a line is honest; a row
+   that silently drops half a value is not. */
 .csrx .lrow .t1,
-.csrx .lrow .t2{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.csrx .lrow .t2{overflow-wrap:anywhere;white-space:normal}
 
 /* The page never scrolls sideways; the table does, inside its own box. Five
    columns of grant data do not fit 1024px however they are sized, and a body
@@ -2551,4 +2555,112 @@
    with its label at the other end. Figures go back to the flow there. */
 @media (max-width:1100px){
   .csrx .lgrid > .lnum{text-align:left}
+}
+
+
+/* =========================================================================
+   ONE COLUMN ORDER, EVERYWHERE.
+
+   Every table in the module now reads left to right the same way:
+
+     1  the anchor      when it happened, or how much
+     2  the record      its own name, the prominent cell
+     3  an attribute    where / what kind
+     4  what it belongs to   -- tinted, the identity band
+     5  its state, and the actions on it, in the same cell
+
+   The last point is the one that was breaking. Status sat in column 5 on the
+   Activities and Reports screens but in column 3 inside a grant, because
+   "Manage" had taken column 5 there -- so the same field moved depending on
+   which screen you were on. .lend already holds a pill and a button together
+   (the Activities screen does exactly that with its status chip and chevron),
+   so state and its controls share the cell and state stops moving.
+
+   Inside one grant a "which grant" column would repeat the same string down
+   every row, so column 4 holds what the row is categorised BY instead -- the
+   activity type, the linked activity, the kind of contact. Same rule, nearest
+   honest value.
+   ========================================================================= */
+
+/* Six columns, for a record that genuinely has five values plus its actions.
+   Contacts holds phone, name, role, type and email: dropping one to fit a
+   five-column grid would lose real data, and squeezing all five into five
+   tracks makes the email unreadable. */
+.csrx .lgrid--6{
+  grid-template-columns:
+    128px                      /* phone -- a fixed-format value */
+    minmax(170px, 1.15fr)      /* the record's own name */
+    118px                      /* role */
+    minmax(120px, 0.75fr)      /* type -- the identity band */
+    minmax(190px, 1.1fr)       /* email -- the longest string here */
+    108px;                     /* actions */
+}
+
+
+/* =========================================================================
+   THE GRANT OVERVIEW.
+
+   Was a single flat run of grey label/value pairs rendered by MUI, which is
+   why it read as undifferentiated: outside .csrx it got none of the module's
+   tokens, exactly like the grant form did before it became a page.
+
+   The four groups carry the colours the tables already teach -- identity
+   indigo, money sand, term teal, state its own semantic pill -- so a reader who
+   has learned the columns already knows what each group is. The accent is on
+   the rule and the group heading only; values stay ink, so the colour organises
+   the strip without competing with what it holds.
+   ========================================================================= */
+.csrx .ovw{display:flex;flex-direction:column;gap:var(--sp-5,20px)}
+.csrx .ovw-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(212px,1fr));
+  gap:var(--sp-4,16px);
+  align-items:stretch;
+}
+
+.csrx .ovg{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-left:3px solid var(--ovg,var(--line));
+  border-radius:var(--r-card,8px);
+  padding:var(--sp-4,16px) var(--sp-4,16px) var(--sp-4,16px);
+  display:flex;flex-direction:column;gap:var(--sp-3,12px);
+}
+.csrx .ovg--id{--ovg:#284A73}
+.csrx .ovg--money{--ovg:#B8860B}
+.csrx .ovg--term{--ovg:#2F7D82}
+.csrx .ovg--state{--ovg:var(--g)}
+
+.csrx .ovg-h{
+  font-size:12px;letter-spacing:.09em;text-transform:uppercase;font-weight:600;
+  color:var(--ovg,var(--muted));margin:0;
+}
+.csrx .ovg-l{margin:0;display:flex;flex-direction:column;gap:var(--sp-3,12px)}
+.csrx .ovf{display:flex;flex-direction:column;gap:2px;min-width:0}
+.csrx .ovf-k{font-size:12px;color:var(--muted);font-weight:500}
+.csrx .ovf-v{
+  margin:0;font-size:15px;color:var(--ink);font-weight:500;
+  overflow-wrap:anywhere;line-height:1.5;
+}
+.csrx .ovf-v.em{color:var(--faint);font-weight:400}
+
+/* The one figure on the strip, given the same sand the tables give money. It is
+   the number every other page reconciles against. */
+.csrx .ovf-v.money{
+  font-family:var(--disp,inherit);font-size:19px;font-weight:600;
+  color:#7A5618;letter-spacing:-.01em;
+  font-variant-numeric:tabular-nums;
+}
+.csrx .ovf-lock{width:11px;height:11px;flex:none;margin-right:1px}
+
+.csrx .ovw-desc{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:var(--r-card,8px);
+  padding:var(--sp-4,16px);
+  display:flex;flex-direction:column;gap:var(--sp-2,8px);
+}
+.csrx .ovw-desc p{
+  margin:0;font-size:14px;color:var(--soft);line-height:1.7;
+  white-space:pre-wrap;max-width:78ch;
 }
