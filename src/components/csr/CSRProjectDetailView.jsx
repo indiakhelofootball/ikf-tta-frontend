@@ -22,12 +22,12 @@ const fmtDay = (value) => {
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 };
 
-function Fact({ label, value, tone }) {
+function Fact({ label, value, kind, tone }) {
   const has = value !== null && value !== undefined && value !== '';
   return (
-    <div className="ovf">
+    <div className={`ovf k-${kind}`}>
       <dt className="ovf-k">{label}</dt>
-      <dd className={`ovf-v${tone ? ` ${tone}` : ''}${has ? '' : ' em'}`}>{has ? value : '—'}</dd>
+      <dd className={`ovf-v${tone ? ` ${tone}` : ''}${has ? '' : ' em'}`}>{has ? value : '\u2014'}</dd>
     </div>
   );
 }
@@ -36,7 +36,7 @@ export default function CSRProjectDetailView({ project }) {
   if (!project) return null;
   const amount =
     project.sanctionedAmount != null
-      ? `₹${Number(project.sanctionedAmount).toLocaleString('en-IN')}`
+      ? `\u20b9${Number(project.sanctionedAmount).toLocaleString('en-IN')}`
       : null;
   const freeze = certificateFreezeState(project);
   const identity = ttaProjectIdentity(project);
@@ -44,80 +44,57 @@ export default function CSRProjectDetailView({ project }) {
 
   return (
     <div className="csrx ovw">
-      {/* Four groups, each carrying the colour its kind of value already carries
-          in the tables: identity indigo, money sand, term teal, state its own
-          semantic pill. This was one undifferentiated run of grey label/value
-          pairs, so finding one fact meant reading all seven. Grouping by meaning
-          is what the colour is for, and it is the same lesson the table columns
-          teach — so it only has to be learned once. */}
-      <div className="ovw-grid">
-        <section className="ovg ovg--id">
-          <h3 className="ovg-h">Identity</h3>
-          <dl className="ovg-l">
-            <Fact
-              label="TTA Project"
-              // Not a dash. Every grant raised before this link existed is
-              // unlinked, and a bare em dash would read as a bug on all of
-              // them — this says which state it is, and that a person has to
-              // resolve it.
-              value={identity || 'Not linked yet'}
-              tone={identity ? undefined : 'em'}
-            />
-            <Fact label="Client / Funder" value={project.clientName} />
-          </dl>
-        </section>
-
-        <section className="ovg ovg--money">
-          <h3 className="ovg-h">Grant</h3>
-          <dl className="ovg-l">
-            <Fact label="Sanctioned" value={amount} tone="money" />
-          </dl>
-        </section>
-
-        <section className="ovg ovg--term">
-          <h3 className="ovg-h">Term</h3>
-          <dl className="ovg-l">
-            <Fact label="Start" value={fmtDay(project.startDate)} />
-            <Fact label="End" value={fmtDay(project.endDate)} />
-          </dl>
-        </section>
-
-        <section className="ovg ovg--state">
-          <h3 className="ovg-h">State</h3>
-          <dl className="ovg-l">
-            <div className="ovf">
-              <dt className="ovf-k">Status</dt>
-              <dd className="ovf-v">
-                <span className={`pill ${closed ? 'closed' : 'act'}`}>
-                  {project.status || 'Unknown'}
-                </span>
-              </dd>
-            </div>
-            <div className="ovf">
-              <dt className="ovf-k">Certificate</dt>
-              <dd className="ovf-v">
-                {/* A title attribute, not a tooltip component. The description
-                    explains what freezing means and is worth keeping, but it
-                    does not justify holding MUI in this file for one label. */}
-                <span className={`pill ${freeze.frozen ? 'wait' : 'act'}`} title={freeze.description}>
-                  {freeze.frozen && (
-                    <svg className="ovf-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                         strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <rect x="4" y="11" width="16" height="10" rx="2" />
-                      <path d="M8 11V7a4 4 0 018 0v4" />
-                    </svg>
-                  )}
-                  {freeze.label}
-                </span>
-              </dd>
-            </div>
-          </dl>
-        </section>
-      </div>
+      {/* One strip, seven facts. These are a caption on a single record, so
+          boxing them into groups made four objects to read where there should
+          be one glance -- and the boxes took more room than the values in them.
+          The colour moved onto the labels instead: each wears the hue its kind
+          of value carries in the tables, so identity, money, term and state are
+          separable at a glance without any of them growing a border. */}
+      <dl className="ovw-strip">
+        <Fact
+          kind="id"
+          label="TTA Project"
+          // Not a dash. Every grant raised before this link existed is unlinked,
+          // and a bare em dash would read as a bug on all of them -- this says
+          // which state it is, and that a person has to resolve it.
+          value={identity || 'Not linked yet'}
+          tone={identity ? undefined : 'em'}
+        />
+        <Fact kind="id" label="Client / Funder" value={project.clientName} />
+        <Fact kind="money" label="Sanctioned" value={amount} tone="money" />
+        <div className="ovf k-state">
+          <dt className="ovf-k">Status</dt>
+          <dd className="ovf-v">
+            <span className={`pill ${closed ? 'closed' : 'act'}`}>
+              {project.status || 'Unknown'}
+            </span>
+          </dd>
+        </div>
+        <Fact kind="term" label="Start" value={fmtDay(project.startDate)} />
+        <Fact kind="term" label="End" value={fmtDay(project.endDate)} />
+        <div className="ovf k-state">
+          <dt className="ovf-k">Certificate</dt>
+          <dd className="ovf-v">
+            {/* A title attribute, not a tooltip component. The description
+                explains what freezing means and is worth keeping, but it does
+                not justify holding MUI in this file for one label. */}
+            <span className={`pill ${freeze.frozen ? 'wait' : 'act'}`} title={freeze.description}>
+              {freeze.frozen && (
+                <svg className="ovf-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <rect x="4" y="11" width="16" height="10" rx="2" />
+                  <path d="M8 11V7a4 4 0 018 0v4" />
+                </svg>
+              )}
+              {freeze.label}
+            </span>
+          </dd>
+        </div>
+      </dl>
 
       {project.description && (
         <section className="ovw-desc">
-          <h3 className="ovg-h">Description</h3>
+          <h3>Description</h3>
           <p>{project.description}</p>
         </section>
       )}

@@ -2600,56 +2600,62 @@
 /* =========================================================================
    THE GRANT OVERVIEW.
 
-   Was a single flat run of grey label/value pairs rendered by MUI, which is
-   why it read as undifferentiated: outside .csrx it got none of the module's
-   tokens, exactly like the grant form did before it became a page.
+   A strip, not a set of cards. Seven facts about one record are a caption on
+   that record -- boxing each group turned a glance into four objects to read,
+   and the boxes took more room than the values inside them.
 
-   The four groups carry the colours the tables already teach -- identity
-   indigo, money sand, term teal, state its own semantic pill -- so a reader who
-   has learned the columns already knows what each group is. The accent is on
-   the rule and the group heading only; values stay ink, so the colour organises
-   the strip without competing with what it holds.
+   So the colour goes on the ELEMENTS: each label wears the colour its kind of
+   value carries in the tables (identity indigo, money sand, term teal, state
+   green), the values stay ink, and thin rules do the separating that borders
+   were doing. Same lesson the table columns teach, one line tall.
    ========================================================================= */
-.csrx .ovw{display:flex;flex-direction:column;gap:var(--sp-5,20px)}
-.csrx .ovw-grid{
+.csrx .ovw{display:flex;flex-direction:column;gap:var(--sp-4,16px)}
+
+/* The seams are the grid's own 1px gaps showing the container through, not
+   borders on the cells. A border-left approach draws a stray leading rule on
+   every wrapped row -- there is no CSS selector for "first in row" -- whereas a
+   gap seam lands correctly however the cells reflow, and gives the horizontal
+   seam for free when they do.
+
+   132px, not 148: the strip measures 976px here, and seven facts need a track
+   under 139px to stay on one line. At 148 the certificate wrapped alone onto a
+   second row. */
+.csrx .ovw-strip{
   display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(212px,1fr));
-  gap:var(--sp-4,16px);
-  align-items:stretch;
-}
-
-.csrx .ovg{
-  background:var(--card);
+  grid-template-columns:repeat(auto-fit,minmax(132px,1fr));
+  gap:1px;
+  background:var(--line2);
   border:1px solid var(--line);
-  border-left:3px solid var(--ovg,var(--line));
   border-radius:var(--r-card,8px);
-  padding:var(--sp-4,16px) var(--sp-4,16px) var(--sp-4,16px);
-  display:flex;flex-direction:column;gap:var(--sp-3,12px);
+  margin:0;
+  overflow:hidden;
 }
-.csrx .ovg--id{--ovg:#284A73}
-.csrx .ovg--money{--ovg:#B8860B}
-.csrx .ovg--term{--ovg:#2F7D82}
-.csrx .ovg--state{--ovg:var(--g)}
+.csrx .ovf{
+  display:flex;flex-direction:column;gap:3px;min-width:0;
+  padding:var(--sp-3,12px) var(--sp-4,16px);
+  background:var(--card);
+}
 
-.csrx .ovg-h{
-  font-size:12px;letter-spacing:.09em;text-transform:uppercase;font-weight:600;
-  color:var(--ovg,var(--muted));margin:0;
+.csrx .ovf-k{
+  font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;font-weight:600;
+  color:var(--ovk,var(--muted));
 }
-.csrx .ovg-l{margin:0;display:flex;flex-direction:column;gap:var(--sp-3,12px)}
-.csrx .ovf{display:flex;flex-direction:column;gap:2px;min-width:0}
-.csrx .ovf-k{font-size:12px;color:var(--muted);font-weight:500}
 .csrx .ovf-v{
-  margin:0;font-size:15px;color:var(--ink);font-weight:500;
+  margin:0;font-size:14.5px;color:var(--ink);font-weight:500;
   overflow-wrap:anywhere;line-height:1.5;
 }
 .csrx .ovf-v.em{color:var(--faint);font-weight:400}
 
-/* The one figure on the strip, given the same sand the tables give money. It is
-   the number every other page reconciles against. */
+.csrx .ovf.k-id{--ovk:#3A5C86}
+.csrx .ovf.k-money{--ovk:#8A6212}
+.csrx .ovf.k-term{--ovk:#2F7D82}
+.csrx .ovf.k-state{--ovk:var(--g)}
+
+/* The one figure on the strip, in the sand the tables give money. It is the
+   number every other page reconciles against. */
 .csrx .ovf-v.money{
-  font-family:var(--disp,inherit);font-size:19px;font-weight:600;
-  color:#7A5618;letter-spacing:-.01em;
-  font-variant-numeric:tabular-nums;
+  font-family:var(--disp,inherit);font-size:16.5px;font-weight:600;
+  color:#7A5618;letter-spacing:-.01em;font-variant-numeric:tabular-nums;
 }
 .csrx .ovf-lock{width:11px;height:11px;flex:none;margin-right:1px}
 
@@ -2657,10 +2663,14 @@
   background:var(--card);
   border:1px solid var(--line);
   border-radius:var(--r-card,8px);
-  padding:var(--sp-4,16px);
-  display:flex;flex-direction:column;gap:var(--sp-2,8px);
+  padding:var(--sp-3,12px) var(--sp-4,16px);
+  display:flex;flex-direction:column;gap:4px;
+}
+.csrx .ovw-desc h3{
+  font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;font-weight:600;
+  color:var(--muted);margin:0;
 }
 .csrx .ovw-desc p{
   margin:0;font-size:14px;color:var(--soft);line-height:1.7;
-  white-space:pre-wrap;max-width:78ch;
+  white-space:pre-wrap;max-width:80ch;
 }
