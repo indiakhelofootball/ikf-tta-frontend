@@ -13,6 +13,9 @@ import {
 } from '@mui/icons-material';
 import { reportsAPI } from '../../services/api';
 import { downloadLogo, downloadMOU } from '../../utils/downloadHelpers';
+import {
+  countDocumentGaps, filterByGap, describeSkipped, MISSING_LOGO, MISSING_MOU,
+} from './reportDocumentGaps';
 
 // ── Styles ───────────────────────────────────────────────────────────────────
 
@@ -298,6 +301,8 @@ export default function SocialMediaReport() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(new Set());
   const [search, setSearch] = useState('');
+  // Which paperwork gap the list is narrowed to, if any. Null = show everything.
+  const [gapFilter, setGapFilter] = useState(null);
   const [filterSeason, setFilterSeason] = useState('');
   const [filterProject, setFilterProject] = useState('');
   const [downloading, setDownloading] = useState(false);
@@ -325,6 +330,10 @@ export default function SocialMediaReport() {
   }, [reps]);
 
   // Filtered REPs
+  // Counted over the whole roster, not the filtered view, so the numbers do not
+  // shrink as you narrow the list — they are the size of the job.
+  const gaps = useMemo(() => countDocumentGaps(reps), [reps]);
+
   const filtered = useMemo(() => {
     let result = [...reps];
     if (search.trim()) {
@@ -348,8 +357,11 @@ export default function SocialMediaReport() {
         (r.cityAssignments || []).some(a => a.trialType === filterProject)
       );
     }
+    // Applied last so the gap counts in the header always describe the whole
+    // roster, while the list below narrows to the ones needing attention.
+    result = filterByGap(result, gapFilter);
     return result;
-  }, [reps, search, filterSeason, filterProject]);
+  }, [reps, search, filterSeason, filterProject, gapFilter]);
 
   // Selection handlers
   const toggleSelect = (id) => {
@@ -384,10 +396,18 @@ export default function SocialMediaReport() {
         // Small delay between REPs to avoid browser blocking
         if (selectedReps.length > 1) await new Promise(r => setTimeout(r, 500));
       }
+      // Name what could not be included. The count alone made a gap invisible:
+      // "12 file(s) from 10 REP(s)" needs arithmetic to notice 8 are absent,
+      // and never said which — so missing paperwork read as a broken download.
+      const skipped = describeSkipped(selectedReps);
       if (fileCount > 0) {
-        showToast(`Downloaded ${fileCount} file(s) from ${selectedReps.length} REP(s)`);
+        showToast(
+          `Downloaded ${fileCount} file(s) from ${selectedReps.length} REP(s).`
+          + (skipped ? ` ${skipped}` : ''),
+          skipped ? 'warning' : 'success',
+        );
       } else {
-        showToast('No documents available for selected REPs', 'warning');
+        showToast(`No documents available for selected REPs. ${skipped}`.trim(), 'warning');
       }
     } catch {
       showToast('Some downloads may have failed', 'warning');
@@ -414,6 +434,50 @@ export default function SocialMediaReport() {
         <Typography variant="body2" sx={{ color: '#64748b' }}>
           {reps.length} REPs &middot; {reps.reduce((sum, r) => sum + (r.cityAssignments || []).length, 0)} assignments
         </Typography>
+
+        {/* The paperwork this report exists to hand out, and what is missing.
+            Counts describe the whole roster; clicking one narrows the list to
+            exactly those, so a gap becomes a finite to-do list instead of
+            something you find by scrolling every row. */}
+        {(gaps.missingLogo > 0 || gaps.missingMou > 0) && (
+          <Stack direction="row" spacing={1} sx={{ mt: 1.5, flexWrap: 'wrap', rowGap: 1 }}>
+            {gaps.missingLogo > 0 && (
+              <Chip
+                size="small"
+                label={`${gaps.missingLogo} missing logo`}
+                onClick={() => setGapFilter(g => (g === MISSING_LOGO ? null : MISSING_LOGO))}
+                variant={gapFilter === MISSING_LOGO ? 'filled' : 'outlined'}
+                sx={{
+                  fontWeight: 700, fontSize: '0.78rem',
+                  color: gapFilter === MISSING_LOGO ? '#fff' : '#854d0e',
+                  bgcolor: gapFilter === MISSING_LOGO ? '#a16207' : 'transparent',
+                  borderColor: '#a16207',
+                  '&:hover': { bgcolor: gapFilter === MISSING_LOGO ? '#854d0e' : '#fef9c3' },
+                }}
+              />
+            )}
+            {gaps.missingMou > 0 && (
+              <Chip
+                size="small"
+                label={`${gaps.missingMou} missing MoU`}
+                onClick={() => setGapFilter(g => (g === MISSING_MOU ? null : MISSING_MOU))}
+                variant={gapFilter === MISSING_MOU ? 'filled' : 'outlined'}
+                sx={{
+                  fontWeight: 700, fontSize: '0.78rem',
+                  color: gapFilter === MISSING_MOU ? '#fff' : '#854d0e',
+                  bgcolor: gapFilter === MISSING_MOU ? '#a16207' : 'transparent',
+                  borderColor: '#a16207',
+                  '&:hover': { bgcolor: gapFilter === MISSING_MOU ? '#854d0e' : '#fef9c3' },
+                }}
+              />
+            )}
+            {gapFilter && (
+              <Chip size="small" label="Show all" variant="outlined"
+                onClick={() => setGapFilter(null)}
+                sx={{ fontSize: '0.78rem', color: '#475569', borderColor: '#cbd5e1' }} />
+            )}
+          </Stack>
+        )}
       </Box>
 
       {/* Toolbar */}
@@ -500,7 +564,10 @@ export default function SocialMediaReport() {
       </Stack>
 
       {/* Toast */}
-      <Snackbar open={toast.open} autoHideDuration={3000} onClose={() => setToast(t => ({ ...t, open: false }))}
+      {/* 3s was fine for "Downloaded 12 files". It is not long enough to read a
+          list of organisation names, so a message that names them stays up. */}
+      <Snackbar open={toast.open} autoHideDuration={toast.severity === 'warning' ? 10000 : 3000}
+        onClose={() => setToast(t => ({ ...t, open: false }))}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
         <Alert severity={toast.severity} variant="filled" onClose={() => setToast(t => ({ ...t, open: false }))}>
           {toast.message}
