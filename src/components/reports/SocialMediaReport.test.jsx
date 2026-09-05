@@ -638,7 +638,14 @@ describe('SocialMediaReport', () => {
     fireEvent.click(downloadBtn);
 
     await waitFor(() => {
-      expect(screen.getByText('No documents available for selected REPs')).toBeInTheDocument();
+      // The message now NAMES what was missing. The bare count made a gap
+      // invisible — "no documents available" gave the operator nothing to act
+      // on, so missing paperwork was read as a broken download. Scoped to the
+      // toast, because the org name also appears on its card behind it.
+      const toast = screen.getByRole('alert');
+      expect(toast).toHaveTextContent('No documents available for selected REPs');
+      expect(toast).toHaveTextContent('had no logo: XYZ Foundation');
+      expect(toast).toHaveTextContent('had no MoU: XYZ Foundation');
     });
     // Should not call download functions since URLs are empty
     expect(downloadLogo).not.toHaveBeenCalled();
@@ -743,5 +750,68 @@ describe('downloadHelpers', () => {
     const rep = { mouDocumentUrl: '', mouDocumentName: '', repName: 'ABC' };
     const result = realDownloadMOU(rep, {});
     expect(result).toBeUndefined();
+  });
+});
+
+describe('missing-document counts in the header', () => {
+  // Fixtures: ABC has both documents; XYZ and "No Assignment REP" have neither.
+  // The report exists to hand these files out, so an organisation without them
+  // is the job to do — and before this the only way to find them was to scroll
+  // every row looking for "N/A".
+
+  test('counts the whole roster and offers each gap as a filter', async () => {
+    renderReport();
+    await waitFor(() => {
+      expect(screen.getByText('XYZ Foundation')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('2 missing logo')).toBeInTheDocument();
+    expect(screen.getByText('2 missing MoU')).toBeInTheDocument();
+  });
+
+  test('clicking a count narrows the list to exactly those organisations', async () => {
+    renderReport();
+    await waitFor(() => {
+      expect(screen.getByText('ABC Sports Academy')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('2 missing logo'));
+
+    await waitFor(() => {
+      expect(screen.queryByText('ABC Sports Academy')).not.toBeInTheDocument();
+    });
+    expect(screen.getByText('XYZ Foundation')).toBeInTheDocument();
+  });
+
+  test('the count does not shrink as the list narrows — it is the size of the job', async () => {
+    renderReport();
+    await waitFor(() => {
+      expect(screen.getByText('ABC Sports Academy')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('2 missing logo'));
+
+    await waitFor(() => {
+      expect(screen.queryByText('ABC Sports Academy')).not.toBeInTheDocument();
+    });
+    expect(screen.getByText('2 missing logo')).toBeInTheDocument();
+    expect(screen.getByText('2 missing MoU')).toBeInTheDocument();
+  });
+
+  test('Show all restores the full list', async () => {
+    renderReport();
+    await waitFor(() => {
+      expect(screen.getByText('ABC Sports Academy')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('2 missing logo'));
+    await waitFor(() => {
+      expect(screen.queryByText('ABC Sports Academy')).not.toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Show all'));
+    await waitFor(() => {
+      expect(screen.getByText('ABC Sports Academy')).toBeInTheDocument();
+    });
   });
 });
