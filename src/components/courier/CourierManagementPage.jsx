@@ -33,6 +33,7 @@ import { daysUntil, getShipmentFlag } from './courierShipmentFlag';
 import {
   sanitizeQuantityInput, normalizeQuantity, normalizeItemsForSave, canSaveShipment,
 } from './courierItemQuantity';
+import { findRepIdForShipment, findRepLogoForShipment } from './courierRepLookup';
 import useRefetchOnFocus from '../../hooks/useRefetchOnFocus';
 
 const TSHIRT_ITEM_NAME = 'Volunteer Tshirts';
@@ -501,16 +502,11 @@ export default function CourierManagementPage() {
   useEffect(() => { loadData(); }, [viewingDeleted]); // eslint-disable-line react-hooks/exhaustive-deps
   useRefetchOnFocus(() => loadData({ silent: true }));
 
-  // Resolve the shipment's REP logo (via assignmentId → rep) then render the slip PDF.
+  // Resolve the shipment's REP logo, then render the slip PDF. The lookup falls
+  // back to the snapshot name when the assignment link has been nulled — see
+  // ./courierRepLookup. Without it an orphaned shipment printed with no logo.
   async function handleDownload(s) {
-    let repLogoUrl = '';
-    for (const r of reps) {
-      if ((r.cityAssignments || []).some(a => a.id === s.assignmentId)) {
-        repLogoUrl = r.repLogoUrl || '';
-        break;
-      }
-    }
-    const logoData = await urlToDataURL(repLogoUrl);
+    const logoData = await urlToDataURL(findRepLogoForShipment(reps, s));
     await downloadPDF(s, logoData);
   }
 
@@ -569,13 +565,10 @@ export default function CourierManagementPage() {
   }
 
   function openEdit(s) {
-    let foundRepId = '';
-    for (const r of reps) {
-      if ((r.cityAssignments || []).some(a => a.id === s.assignmentId)) {
-        foundRepId = r.id;
-        break;
-      }
-    }
+    // Falls back to the snapshot name when the assignment link has been nulled,
+    // so the REP field is filled instead of blank. `fAsgId` stays empty in that
+    // case — the assignment really is gone, and the operator picks a new one.
+    const foundRepId = findRepIdForShipment(reps, s);
     setEditingId(s.id); setFRepId(foundRepId); setFAsgId(s.assignmentId || '');
     setFItems((s.items || []).map(i => ({ ...i }))); setFNotes(s.notes || ''); setError('');
     // Remember the version this form was opened against. Saving sends it back
