@@ -62,7 +62,22 @@ class APIService {
         // Retry with new token
         const newToken = localStorage.getItem('tta_token');
         config.headers.Authorization = `Bearer ${newToken}`;
-        const retry = await fetch(`${API_BASE_URL}${endpoint}`, config);
+        // The retry needs the same timeout as the first attempt. Guarding only
+        // the first call would leave a request that hangs forever on the exact
+        // path a user hits after being idle — which is the likeliest moment for
+        // the connection to be dead.
+        const rt = timeoutSignal(REQUEST_TIMEOUT_MS);
+        let retry;
+        try {
+          retry = await fetch(`${API_BASE_URL}${endpoint}`, { ...config, signal: rt.signal });
+        } catch (err) {
+          if (err.name === 'AbortError') {
+            throw new Error('The server took too long to respond. Please try again.');
+          }
+          throw err;
+        } finally {
+          rt.clear();
+        }
         const retryData = await retry.json();
         if (!retry.ok) {
           throw new Error(retryData.message || retryData.detail || 'Request failed');
