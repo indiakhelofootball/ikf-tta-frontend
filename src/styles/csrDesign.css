@@ -4,13 +4,123 @@
    .csrx so it never leaks into other TTA screens.
    ========================================================================= */
 
+/* =========================================================================
+   MD3 SPACING SCALE — a 4dp base grid.
+
+   These live on :root, not on .csrx, because three parts of the module render
+   OUTSIDE .csrx and still have to keep the same rhythm: the CSR sidebar
+   (.sidebar--csr), the shell header (.dashboard-layout .dashboard-header) and
+   the page frame. A scale that half the module cannot read is not a scale.
+
+   Steps follow Material Design 3: every value is a multiple of 4, and the
+   module uses 4/8/12/16/20/24/28/32 for layout. Pick by ROLE:
+     --sp-1   4px   hairline offsets, the gap inside a chip
+     --sp-2   8px   icon-to-label, tight inline pairs
+     --sp-3  12px   control padding, dense stack gaps
+     --sp-4  16px   the default: card padding, grid gaps, row padding
+     --sp-5  20px   row padding on the log tables, panel insets
+     --sp-6  24px   card padding on the roomy panels, section separation
+     --sp-7  28px   page inset
+     --sp-8  32px   page inset, largest layout step in use
+     --sp-10 40px / --sp-12 48px  reserved for page-level blocks
+
+   Scope note: this pass converted page- and component-level layout only —
+   page padding, section gaps, card padding, row padding and stack gaps.
+   Borders, radii and sub-4px optical nudges are deliberately untouched;
+   snapping a 1px rule to 4px is not spacing, it is damage.
+   ========================================================================= */
+:root{
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px;
+  --sp-6:24px; --sp-7:28px; --sp-8:32px; --sp-10:40px; --sp-12:48px;
+}
+
+/* =========================================================================
+   THE GROUND IS A NEAR-WHITE INDIGO -- asked for 3 Sep 2026, then corrected
+   the same day: the first pass landed on a real indigo (#E3E6F7, Material's
+   indigo-50 neighbourhood) and the answer was "not a right indigo I wanted,
+   keep completely light". So the tint is a whisper, not a colour. The test:
+   if someone asks "is that blue?" it is right; if they can name it as indigo
+   it is too strong.
+
+   The reference family is the near-white app ground -- Linear, Stripe, Notion.
+   Those grounds do not separate a card by contrast; the card is separated by
+   its 1px --line border, its radius and the space around it, all of which this
+   sheet already has. #F8FAFC is the commonly cited ceiling for that family and
+   is treated here as the STRONGEST acceptable tint, not the target.
+
+   Values, and why these and not others:
+
+   --ground  #F4F5FB  rgb(244,245,251). Hue 231deg -- indigo, because R and G
+                      sit together and only B is lifted; a blue-grey would put
+                      G above R and land near 210deg. Chroma is 7 points
+                      channel-to-channel, which is a hair MORE than #F8FAFC's 4
+                      but a fraction of the 20 the rejected version carried.
+                      L* 96.4: it reads as white until real white is beside it.
+   --card    #FCFCFD  UNCHANGED. Not pure white (standing rule). 8 points above
+                      the ground on R. That is deliberately NOT the whole
+                      separation: at this lightness no ground can carry a card,
+                      and reaching for a greyer ground to make one float is the
+                      trap this correction exists to close. The border does it.
+                      For the record it is still double the 4-point
+                      #F7F8FB-over-#FFFFFF pair that dissolved cards, so the
+                      bug that comment records has not come back.
+   --ground2 #EFF1FB  Zebra stripe on table rows, and sunken panels. It sits a
+   --sunk    (same)   step BELOW the ground, not between ground and card. That
+                      was the original brief and it is wrong at this lightness:
+                      ground and card are only 8 points apart, so anything
+                      "between" them lands within 4 points of the card and the
+                      stripe stops existing. Contrast against the card is
+                      1.099:1, matching the 1.115:1 the shipped grey stripe had,
+                      so striping reads exactly as hard as it did before.
+
+   COLLISION CHECK against --role-id (#EAF0F7), the identity column tint
+   declared in TABLE COLOUR ROLES below. If the page ground read as that tint,
+   the Grant column would stop reading as a band and the approved table
+   treatment would quietly die.
+     ground  #F4F5FB = rgb(244,245,251), chroma 7,  hue 231deg, L* 96.4
+     role-id #EAF0F7 = rgb(234,240,247), chroma 13, hue 213deg, L* 94.3
+   Difference: 10/5/4 in RGB, 2.1 points of L*, 1.054:1 in luminance contrast,
+   and 18deg of hue -- the ground is the violet one, role-id the blue one.
+   Going LIGHTER moved the ground away from role-id, not towards it: the
+   rejected #E3E6F7 was only 7/10/0 off it. That is the direction to keep if
+   this is ever revisited -- lighten the ground, never darken it back up, and
+   never move --role-id.
+
+   Layer order, darkest to lightest: role-id -> sunk/ground2 -> ground -> card.
+   The ground and the identity tint never actually touch: a row surface sits
+   between them, so the 1.054:1 above is a same-screen comparison, not an edge.
+
+   These sit on :root as well as on .csrx for the same reason the spacing scale
+   does: the shell that paints the field is an ancestor of .csrx, so it cannot
+   read a token declared on .csrx. .cportal declares its own --card and wins by
+   scope, so nothing outside CSR changes.
+   ========================================================================= */
+:root{
+  --ground:#F4F5FB; --card:#FCFCFD; --ground2:#EFF1FB; --sunk:#EFF1FB;
+}
+
+/* The ground had never actually been painted: --ground was declared and never
+   read, so the field was still .dashboard-layout's #F9FAFB from the TTA shell
+   and every "change the ground" edit here was a no-op. Both the shell frame
+   and the page get it, scoped to the CSR shell so no other TTA screen moves. */
+.dashboard-layout:has(.sidebar--csr),
+.dashboard-layout:has(.sidebar--csr) .dashboard-page{background:var(--ground)}
+.csrx.csrx-page{background:var(--ground)}
+
 .csrx{
-  /* GROUNDS ARE NEUTRAL. The approved reference is white cards on a flat pale
-     grey-blue field — no green wash anywhere. Green is a signal (mark, primary
-     button, active pill, status dot, selected spine, active tab), never an
+  /* GROUNDS CARRY NO GREEN. The field is now a very light indigo (see the
+     block above) rather than the flat pale grey-blue the reference was drawn
+     on -- but the rule that mattered is unchanged: no green wash anywhere.
+     Green is a signal (mark, primary button, active pill, status dot,
+     selected spine, active tab), never an
      atmosphere. The green gradient that used to be here is what made the app
      read as a different product from the reference. */
-  --ground:#F7F8FB; --card:#FFFFFF; --ground2:#F4F6F5;
+  /* Repeated from :root above so .csrx is readable on its own. The card is
+     not pure white. The old pair was #F7F8FB over #FFFFFF -- 4 points of
+     separation, which is why cards kept dissolving into the page and every
+     surface had to be fenced with a border to be seen at all; the indigo
+     ground puts 25 points between them. */
+  --ground:#F4F5FB; --card:#FCFCFD; --ground2:#EFF1FB; --sunk:#EFF1FB;
   --ink:#1C2320; --soft:#414A46; --muted:#7C8783; --faint:#A9B2AE;
   /* "well divided" — a hairline has to be visible to divide anything. --line
      is the structural rule (panel edges, header underlines, fact-strip
@@ -51,24 +161,24 @@
 .csrx .fig{font-family:var(--disp);font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1;letter-spacing:-.02em;font-weight:500}
 
 /* header */
-.csrx .ph{display:flex;align-items:flex-end;gap:16px;margin-bottom:22px}
+.csrx .ph{display:flex;align-items:flex-end;gap:16px;margin-bottom:var(--sp-6)}
 .csrx .ph h2{font-family:var(--serif);font-size:28px;font-weight:500;letter-spacing:-.018em;color:var(--ink);line-height:1.1;margin:0}
 .csrx .ph p{font-size:14px;color:var(--muted);margin:6px 0 0;line-height:1.5}
 .csrx .newbtn{margin-left:auto;background:var(--g);color:#fff;border:0;font-family:var(--ui);font-weight:500;font-size:14px;
-  padding:11px 18px;border-radius:var(--r-ctl);cursor:pointer;display:inline-flex;gap:8px;align-items:center;box-shadow:0 2px 6px var(--g-glow);transition:.16s}
+  padding:var(--sp-3) var(--sp-5);border-radius:var(--r-ctl);cursor:pointer;display:inline-flex;gap:8px;align-items:center;box-shadow:0 2px 6px var(--g-glow);transition:.16s}
 .csrx .newbtn:hover{background:var(--g-deep);transform:translateY(-1px)}
 .csrx .newbtn svg{width:15px;height:15px}
 
 /* toolbar */
 .csrx .toolbar{display:flex;gap:12px;align-items:center;margin-bottom:20px}
-.csrx .sb{flex:1;display:flex;align-items:center;gap:11px;background:rgba(255,255,255,.6);border:1px solid rgba(60,80,70,.16);
-  border-radius:var(--r-ctl);padding:12px 16px;max-width:420px;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);transition:.16s}
+.csrx .sb{flex:1;display:flex;align-items:center;gap:var(--sp-3);background:rgba(255,255,255,.6);border:1px solid rgba(60,80,70,.16);
+  border-radius:var(--r-ctl);padding:var(--sp-3) var(--sp-4);max-width:420px;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);transition:.16s}
 .csrx .sb svg{width:16px;height:16px;color:var(--faint)}
 .csrx .sb input{border:0;background:transparent;font-family:var(--ui);font-size:14px;color:var(--ink);flex:1;outline:none;letter-spacing:-.006em}
 .csrx .sb input::placeholder{color:var(--muted)}
 .csrx .sb:focus-within{border-color:var(--g);box-shadow:0 0 0 3px var(--g-wash)}.csrx .sb:focus-within svg{color:var(--g)}
 .csrx .segbar{display:flex;background:rgba(255,255,255,.6);border:1px solid rgba(60,80,70,.16);border-radius:var(--r-ctl);padding:3px;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
-.csrx .segbar .s{font-size:13px;font-weight:500;color:var(--muted);padding:7px 14px;border-radius:var(--r-ctl);cursor:pointer;transition:.14s;border:0;background:transparent;font-family:var(--ui)}
+.csrx .segbar .s{font-size:14px;font-weight:500;color:var(--muted);padding:var(--sp-2) var(--sp-4);border-radius:var(--r-ctl);cursor:pointer;transition:.14s;border:0;background:transparent;font-family:var(--ui)}
 .csrx .segbar .s.on{background:var(--g-wash);color:var(--g-deep)}
 
 /* glass table */
@@ -77,12 +187,12 @@
   border:1px solid rgba(255,255,255,.6);border-radius:var(--r-ctl);overflow:hidden;
   box-shadow:0 1px 2px rgba(30,54,42,.04),0 8px 22px rgba(30,54,42,.06)}
 .csrx table.dt{width:100%;border-collapse:collapse}
-.csrx table.dt thead th{text-align:left;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);
-  font-weight:500;padding:15px 22px;border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;user-select:none}
+.csrx table.dt thead th{text-align:left;font-size:12.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);
+  font-weight:500;padding:var(--sp-4) var(--sp-6);border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;user-select:none}
 .csrx table.dt thead th.r{text-align:right}
 .csrx table.dt thead th .car{color:var(--faint);margin-left:5px;font-size:9px}
 .csrx table.dt thead th.on{color:var(--g-deep)}.csrx table.dt thead th.on .car{color:var(--g)}
-.csrx table.dt tbody td{padding:16px 22px;border-bottom:1px solid var(--line-soft);font-size:14px;vertical-align:middle}
+.csrx table.dt tbody td{padding:var(--sp-4) var(--sp-6);border-bottom:1px solid var(--line-soft);font-size:14px;vertical-align:middle}
 .csrx table.dt tbody tr{cursor:pointer;transition:background .12s}
 .csrx table.dt tbody tr:last-child td{border-bottom:0}
 .csrx table.dt tbody tr:hover{background:rgba(255,255,255,.55)}
@@ -95,12 +205,12 @@
 .csrx table.dt tbody tr.sel .chip::before,.csrx table.dt tbody tr.sel .pill::before{background:rgba(255,255,255,.85)}
 .csrx table.dt tbody tr.sel .rowchev{color:#fff;opacity:1}
 .csrx td.r{text-align:right;font-variant-numeric:tabular-nums}
-.csrx .pcell{display:flex;align-items:center;gap:13px}
-.csrx .pcell .av{width:38px;height:38px;border-radius:var(--r-ctl);display:grid;place-items:center;flex:none;font-family:var(--disp);font-weight:500;font-size:13px;color:#fff}
+.csrx .pcell{display:flex;align-items:center;gap:var(--sp-3)}
+.csrx .pcell .av{width:38px;height:38px;border-radius:var(--r-ctl);display:grid;place-items:center;flex:none;font-family:var(--disp);font-weight:500;font-size:14px;color:#fff}
 .csrx .pcell .nm{color:var(--ink);font-weight:500;line-height:1.35}
-.csrx .pcell .loc{font-size:13px;color:var(--muted);margin-top:2px}
+.csrx .pcell .loc{font-size:14px;color:var(--muted);margin-top:2px}
 .csrx .amt{color:var(--ink);font-weight:500}
-.csrx .chip{font-size:13px;font-weight:500;padding:4px 11px;border-radius:var(--r-pill);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.csrx .chip{font-size:14px;font-weight:500;padding:4px 11px;border-radius:var(--r-pill);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 .csrx .chip::before{content:"";width:6px;height:6px;border-radius:50%}
 .csrx .chip.plain::before{display:none}
 .csrx .chip.k1{color:var(--c1);background:var(--c1w)}.csrx .chip.k1::before{background:var(--c1)}
@@ -111,7 +221,7 @@
 .csrx .chip.k6{color:var(--c6);background:var(--c6w)}.csrx .chip.k6::before{background:var(--c6)}
 .csrx .chip.k7{color:var(--c7);background:var(--c7w)}.csrx .chip.k7::before{background:var(--c7)}
 .csrx .chip.k8{color:var(--c8);background:var(--c8w)}.csrx .chip.k8::before{background:var(--c8)}
-.csrx .pill{font-size:13px;font-weight:500;padding:4px 12px;border-radius:var(--r-pill);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.csrx .pill{font-size:14px;font-weight:500;padding:4px 12px;border-radius:var(--r-pill);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 .csrx .pill::before{content:"";width:6px;height:6px;border-radius:50%}
 .csrx .pill.act{color:var(--g-deep);background:var(--g-wash)}.csrx .pill.act::before{background:var(--g-bright)}
 .csrx .pill.wait{color:var(--o-deep);background:var(--o-wash)}.csrx .pill.wait::before{background:var(--o)}
@@ -119,13 +229,13 @@
 .csrx .pill.closed{color:var(--muted);background:var(--ground2)}.csrx .pill.closed::before{background:var(--faint)}
 .csrx .rowchev{color:var(--faint);opacity:0;transition:.16s}
 .csrx tr:hover .rowchev{opacity:1}.csrx .rowchev svg{width:16px;height:16px;display:block}
-.csrx .tfoot{display:flex;align-items:center;padding:16px 22px;border-top:1px solid var(--line)}
-.csrx .tfoot .cnt{font-size:13px;color:var(--muted)}
+.csrx .tfoot{display:flex;align-items:center;padding:var(--sp-4) var(--sp-6);border-top:1px solid var(--line)}
+.csrx .tfoot .cnt{font-size:14px;color:var(--muted)}
 .csrx .pgr{margin-left:auto;display:flex;gap:5px}
 .csrx .pgr .b{min-width:30px;height:30px;padding:0 6px;border-radius:var(--r-ctl);border:1px solid var(--line);background:rgba(255,255,255,.5);
-  display:grid;place-items:center;font-size:13px;font-weight:500;color:var(--soft);cursor:pointer;font-family:var(--ui)}
+  display:grid;place-items:center;font-size:14px;font-weight:500;color:var(--soft);cursor:pointer;font-family:var(--ui)}
 .csrx .pgr .b.on{background:var(--g);color:#fff;border-color:var(--g)}
-.csrx .empty{padding:64px 22px;text-align:center;color:var(--muted)}
+.csrx .empty{padding:64px var(--sp-6);text-align:center;color:var(--muted)}
 .csrx .empty h3{font-family:var(--serif);font-size:20px;color:var(--ink);font-weight:500;margin:0 0 6px}
 /* avatar tint classes (no inline styles) */
 .csrx .pcell .av.a1{background:var(--c1)}.csrx .pcell .av.a2{background:var(--c2)}
@@ -137,39 +247,39 @@
 .csrx .ubar .track{width:88px;height:7px;border-radius:var(--r-pill);background:#DCE3DD;overflow:hidden;flex:none}
 .csrx .ubar .track i{display:block;height:100%;border-radius:var(--r-pill);background:var(--g)}
 .csrx .ubar .track i.warn{background:var(--o)}.csrx .ubar .track i.over{background:var(--red)}
-.csrx .ubar .pc{font-size:13px;color:var(--soft);font-weight:500;width:38px;text-align:right;font-variant-numeric:tabular-nums}
+.csrx .ubar .pc{font-size:14px;color:var(--soft);font-weight:500;width:38px;text-align:right;font-variant-numeric:tabular-nums}
 .csrx .ubar .pc.over{color:var(--red)}
 /* loading */
 .csrx .loading{display:flex;justify-content:center;padding:80px 0}
 .csrx .spin{width:28px;height:28px;border:3px solid var(--line);border-top-color:var(--g);border-radius:50%;animation:csrspin .7s linear infinite}
 @keyframes csrspin{to{transform:rotate(360deg)}}
-.csrx.csrx-page{padding:28px 32px 60px}
+.csrx.csrx-page{padding:var(--sp-7) var(--sp-8) 60px}
 /* ---- dashboard ---- */
-.csrx .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:16px}
+.csrx .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--sp-4);margin-bottom:var(--sp-4)}
 @media(max-width:1000px){.csrx .kpis{grid-template-columns:repeat(2,1fr)}}
 .csrx .glasscard{background:linear-gradient(160deg,rgba(255,255,255,.75),rgba(255,255,255,.55));
   -webkit-backdrop-filter:blur(28px) saturate(1.5);backdrop-filter:blur(28px) saturate(1.5);
   border:1px solid rgba(255,255,255,.6);border-radius:var(--r-ctl);
   box-shadow:0 1px 2px rgba(30,54,42,.04),0 8px 22px rgba(30,54,42,.06)}
-.csrx .kpi{padding:20px 22px}
-.csrx .kpi .top{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.csrx .kpi{padding:var(--sp-5) var(--sp-6)}
+.csrx .kpi .top{display:flex;align-items:center;gap:10px;margin-bottom:var(--sp-4)}
 .csrx .kpi .ic{width:34px;height:34px;border-radius:var(--r-ctl);display:grid;place-items:center;flex:none}
 .csrx .kpi .ic svg{width:17px;height:17px}
 .csrx .kpi .ic.g{background:var(--c1w);color:var(--c1)}.csrx .kpi .ic.b{background:var(--c2w);color:var(--c2)}
 .csrx .kpi .ic.o{background:var(--c9w);color:var(--c9)}.csrx .kpi .ic.p{background:var(--c3w);color:var(--c3)}
-.csrx .kpi .k{font-size:13px;color:var(--muted);font-weight:500}
+.csrx .kpi .k{font-size:14px;color:var(--muted);font-weight:500}
 .csrx .kpi .v{font-family:var(--disp);font-size:30px;font-weight:600;letter-spacing:-.03em;line-height:1;color:var(--ink)}
 .csrx .kpi .v small{font-size:16px;color:var(--muted);font-weight:500}
-.csrx .kpi .sub{font-size:13px;color:var(--muted);margin-top:10px}
-.csrx .dgrid{display:grid;grid-template-columns:1.5fr 1fr;gap:16px;margin-bottom:16px}
+.csrx .kpi .sub{font-size:14px;color:var(--muted);margin-top:10px}
+.csrx .dgrid{display:grid;grid-template-columns:1.5fr 1fr;gap:var(--sp-4);margin-bottom:var(--sp-4)}
 @media(max-width:1000px){.csrx .dgrid{grid-template-columns:1fr}}
-.csrx .panel{padding:22px 24px}
-.csrx .panel .ph3{display:flex;align-items:center;margin-bottom:18px}
+.csrx .panel{padding:var(--sp-6) var(--sp-6)}
+.csrx .panel .ph3{display:flex;align-items:center;margin-bottom:var(--sp-5)}
 .csrx .panel .ph3 h3{font-family:var(--disp);font-size:16px;font-weight:700;color:var(--ink);letter-spacing:-.02em;margin:0}
-.csrx .panel .ph3 .more{margin-left:auto;font-size:13px;color:var(--g-deep);font-weight:500;cursor:pointer}
-.csrx .gaugebig{display:flex;align-items:center;gap:22px}
+.csrx .panel .ph3 .more{margin-left:auto;font-size:14px;color:var(--g-deep);font-weight:500;cursor:pointer}
+.csrx .gaugebig{display:flex;align-items:center;gap:var(--sp-6)}
 .csrx .gaugebig .lbl .big{font-family:var(--disp);font-size:26px;font-weight:600;color:var(--ink);letter-spacing:-.02em;line-height:1}
-.csrx .gaugebig .lbl .sm{font-size:13px;color:var(--muted);margin-top:5px}
+.csrx .gaugebig .lbl .sm{font-size:14px;color:var(--muted);margin-top:5px}
 .csrx .rg{position:relative;flex:none}
 .csrx .rg .ctr{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--disp);font-weight:600;font-size:18px;color:var(--g-deep)}
 .csrx .dleg .r{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line-soft)}
@@ -177,9 +287,9 @@
 .csrx .dleg .r i{width:10px;height:10px;border-radius:var(--r-ctl);flex:none}
 .csrx .dleg .r .nm{font-size:14px;color:var(--soft)}
 .csrx .dleg .r .vl{margin-left:auto;font-size:14px;color:var(--ink);font-weight:500;font-variant-numeric:tabular-nums}
-.csrx .tw-head{display:flex;align-items:center;padding:18px 22px;border-bottom:1px solid var(--line)}
+.csrx .tw-head{display:flex;align-items:center;padding:var(--sp-5) var(--sp-6);border-bottom:1px solid var(--line)}
 .csrx .tw-head h3{font-family:var(--disp);font-size:16px;font-weight:700;color:var(--ink);letter-spacing:-.02em;margin:0}
-.csrx .tw-head .more{margin-left:auto;font-size:13px;color:var(--g-deep);font-weight:500;cursor:pointer}
+.csrx .tw-head .more{margin-left:auto;font-size:14px;color:var(--g-deep);font-weight:500;cursor:pointer}
 
 /* =========================================================================
    CSR shell — sidebar + content frame. Scoped to .sidebar--csr so the TTA
@@ -189,11 +299,11 @@
    ========================================================================= */
 .sidebar--csr{
   --g:#1B7A4B;--g-deep:#15603B;--g-wash:#E7F3EB;--g-spine:#17693F;
-  --ink:#1C2320;--soft:#414A46;--muted:#7C8783;--faint:#A9B2AE;--line:#DDE2E1;--line2:#E8ECEB;--line-soft:#EFF2F1;--sunk:#F4F6F5;
+  --ink:#1C2320;--soft:#414A46;--muted:#7C8783;--faint:#A9B2AE;--line:#DDE2E1;--line2:#E8ECEB;--line-soft:#EFF2F1;--sunk:#EFF1FB;
   /* Solid white, flush to the viewport edge, with a drawn right edge — the
      reference rail is a full-height column, not a floating glass card. The
      backdrop-filter is gone with the gradient it was blurring. */
-  background:#FFFFFF !important;
+  background:var(--card) !important;
   -webkit-backdrop-filter:none;backdrop-filter:none;
   border-right:1px solid var(--line) !important;
   font-family:"Switzer",system-ui,-apple-system,sans-serif;
@@ -206,7 +316,7 @@
 .sidebar--csr .sidebar-brand h2{font-family:"Zodiak",Georgia,serif;font-weight:500;letter-spacing:-.018em;color:var(--ink);line-height:1}
 .sidebar--csr .sidebar-brand-words > span{font-size:9.5px;letter-spacing:.17em;text-transform:uppercase;color:var(--muted);font-weight:500;margin-top:3px}
 .sidebar--csr .sidebar-brand-icon{background:var(--g);color:#fff;font-family:"Cabinet Grotesk","Switzer",sans-serif;font-weight:700;border-radius:var(--r-ctl)}
-.sidebar--csr .sidebar-section{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);font-weight:500}
+.sidebar--csr .sidebar-section{font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);font-weight:500}
 .sidebar--csr .sidebar-section-rule{background:var(--line)}
 .sidebar--csr .sidebar-link{
   color:var(--soft);border-radius:var(--r-ctl);font-weight:500;font-size:14px;letter-spacing:-.006em;
@@ -217,8 +327,8 @@
 .sidebar--csr .sidebar-link:hover .sidebar-icon{color:var(--soft)}
 .sidebar--csr .sidebar-link.active{background:var(--g-wash) !important;color:var(--g-deep) !important}
 .sidebar--csr .sidebar-link.active .sidebar-icon{color:var(--g) !important}
-.sidebar--csr .sidebar-toggle{border:1px solid var(--line);background:#fff;color:var(--soft)}
-.sidebar--csr .sidebar-build{color:var(--faint);font-size:11px}
+.sidebar--csr .sidebar-toggle{border:1px solid var(--line);background:var(--card);color:var(--soft)}
+.sidebar--csr .sidebar-build{color:var(--faint);font-size:12.5px}
 
 /* CSR content frame: the gradient ground the glass panels sit on */
 .dashboard-layout:has(.sidebar--csr) .dashboard-content{
@@ -229,7 +339,7 @@
    it is reduced to a thin identity strip: no title competing with the page's
    own, just the signed-in user. */
 .dashboard-layout:has(.sidebar--csr) .dashboard-header{
-  background:#FFFFFF;-webkit-backdrop-filter:none;backdrop-filter:none;
+  background:var(--card);-webkit-backdrop-filter:none;backdrop-filter:none;
   border-bottom:1px solid #DDE2E1;
 }
 .dashboard-layout:has(.sidebar--csr) .dashboard-header h1,
@@ -241,12 +351,12 @@
 /* --- seam fixes: sidebar brand band + header alignment --- */
 .sidebar--csr .sidebar-brand{background:transparent !important;border-bottom:1px solid #EAEFEA}
 .sidebar--csr{padding-top:0}
-.dashboard-layout:has(.sidebar--csr) .dashboard-header{padding-top:18px;padding-bottom:18px;align-items:center}
+.dashboard-layout:has(.sidebar--csr) .dashboard-header{padding-top:var(--sp-5);padding-bottom:var(--sp-5);align-items:center}
 .dashboard-layout:has(.sidebar--csr) .dashboard-header h1,
 .dashboard-layout:has(.sidebar--csr) .dashboard-header-title{background:transparent !important;line-height:1.2}
 
 /* --- KPI cards: real blurred imagery, soft rounding, gentle shadow --- */
-.csrx .kpis .kpi{position:relative;overflow:hidden;border-radius:var(--r-ctl);padding:22px 24px;background-color:#fff;background-repeat:no-repeat;background-position:right -20px top -20px;background-size:60% auto;box-shadow:0 1px 2px rgba(30,54,42,.04),0 6px 16px rgba(30,54,42,.05);border:1px solid rgba(255,255,255,.7)}
+.csrx .kpis .kpi{position:relative;overflow:hidden;border-radius:var(--r-ctl);padding:var(--sp-6) var(--sp-6);background-color:#fff;background-repeat:no-repeat;background-position:right -20px top -20px;background-size:60% auto;box-shadow:0 1px 2px rgba(30,54,42,.04),0 6px 16px rgba(30,54,42,.05);border:1px solid rgba(255,255,255,.7)}
 .csrx .kpis .kpi::before{content:"";position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.4),rgba(255,255,255,.85) 60%);pointer-events:none}
 .csrx .kpis .kpi:nth-child(1){background-image:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iMjQwIiB2aWV3Qm94PSIwIDAgNDAwIDI0MCI+CjxkZWZzPjxmaWx0ZXIgaWQ9ImIiIHg9Ii0zMCUiIHk9Ii0zMCUiIHdpZHRoPSIxNjAlIiBoZWlnaHQ9IjE2MCUiPjxmZUdhdXNzaWFuQmx1ciBzdGREZXZpYXRpb249IjM0Ii8+PC9maWx0ZXI+PC9kZWZzPgo8ZyBmaWx0ZXI9InVybCgjYikiIG9wYWNpdHk9IjAuNTUiPgo8Y2lyY2xlIGN4PSIzMzAiIGN5PSI2MCIgcj0iOTAiIGZpbGw9IiMzRTlBNkUiLz4KPGNpcmNsZSBjeD0iMjUwIiBjeT0iMjAwIiByPSI4MCIgZmlsbD0iIzJDNkE0RiIvPgo8Y2lyY2xlIGN4PSIzODAiIGN5PSIxODAiIHI9IjcwIiBmaWxsPSIjOEZEM0I0Ii8+CjwvZz48L3N2Zz4=")}
 .csrx .kpis .kpi:nth-child(2){background-image:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iMjQwIiB2aWV3Qm94PSIwIDAgNDAwIDI0MCI+CjxkZWZzPjxmaWx0ZXIgaWQ9ImIiIHg9Ii0zMCUiIHk9Ii0zMCUiIHdpZHRoPSIxNjAlIiBoZWlnaHQ9IjE2MCUiPjxmZUdhdXNzaWFuQmx1ciBzdGREZXZpYXRpb249IjM0Ii8+PC9maWx0ZXI+PC9kZWZzPgo8ZyBmaWx0ZXI9InVybCgjYikiIG9wYWNpdHk9IjAuNTUiPgo8Y2lyY2xlIGN4PSIzMzAiIGN5PSI2MCIgcj0iOTAiIGZpbGw9IiM1QTdGRDYiLz4KPGNpcmNsZSBjeD0iMjUwIiBjeT0iMjAwIiByPSI4MCIgZmlsbD0iIzM4NURCMiIvPgo8Y2lyY2xlIGN4PSIzODAiIGN5PSIxODAiIHI9IjcwIiBmaWxsPSIjQTlDMEYwIi8+CjwvZz48L3N2Zz4=")}
@@ -257,25 +367,25 @@
 
 /* --- expanded dashboard panels: bigger gauge + funder bar chart --- */
 .csrx .dgrid{grid-template-columns:1fr 1fr;gap:16px}
-.csrx .panel{padding:24px 26px}
-.csrx .gaugebig{gap:26px;padding:8px 0}
-.csrx .panel-empty{color:#7A857E;font-size:14px;padding:22px 0}
+.csrx .panel{padding:var(--sp-6) var(--sp-6)}
+.csrx .gaugebig{gap:var(--sp-6);padding:8px 0}
+.csrx .panel-empty{color:#7A857E;font-size:14px;padding:var(--sp-6) 0}
 .csrx .barchart{display:flex;flex-direction:column;gap:16px;margin-top:6px}
 .csrx .barrow{display:grid;grid-template-columns:1fr auto;grid-template-areas:"top top" "track pc";gap:6px 12px;align-items:center}
 .csrx .barrow-top{grid-area:top;display:flex;justify-content:space-between;align-items:baseline}
 .csrx .barrow-nm{font-size:14px;color:#1A2620;font-weight:500}
-.csrx .barrow-amt{font-size:13px;color:#4A5750}
+.csrx .barrow-amt{font-size:14px;color:#4A5750}
 .csrx .bartrack{grid-area:track;height:10px;border-radius:var(--r-ctl);background:#EDF1ED;overflow:hidden}
 .csrx .barfill{height:100%;border-radius:var(--r-ctl);transition:width .6s cubic-bezier(.2,.7,.2,1)}
-.csrx .barrow-pc{grid-area:pc;font-size:13px;color:#4A5750;font-weight:500;font-variant-numeric:tabular-nums;min-width:36px;text-align:right}
+.csrx .barrow-pc{grid-area:pc;font-size:14px;color:#4A5750;font-weight:500;font-variant-numeric:tabular-nums;min-width:36px;text-align:right}
 
 /* --- multicolor histogram (vertical bars) --- */
-.csrx .histo{display:flex;align-items:flex-end;gap:14px;height:200px;padding-top:24px}
+.csrx .histo{display:flex;align-items:flex-end;gap:var(--sp-4);height:200px;padding-top:24px}
 .csrx .histbar{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;height:100%;justify-content:flex-end;min-width:0}
-.csrx .histamt{font-size:12px;color:#4A5750;white-space:nowrap}
+.csrx .histamt{font-size:13px;color:#4A5750;white-space:nowrap}
 .csrx .histcol{width:100%;max-width:54px;border-radius:var(--r-ctl) var(--r-ctl) 0 0;min-height:6px;transition:height .7s cubic-bezier(.2,.7,.2,1);position:relative}
 .csrx .histcol::after{content:"";position:absolute;inset:0;border-radius:var(--r-ctl) var(--r-ctl) 0 0;background:linear-gradient(180deg,rgba(255,255,255,.28),transparent 45%)}
-.csrx .histlbl{font-size:12px;color:#7A857E;text-align:center;line-height:1.25;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%}
+.csrx .histlbl{font-size:13px;color:#7A857E;text-align:center;line-height:1.25;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%}
 
 /* =========================================================================
    THE RAIL'S FOOT — the promo card from the approved reference.
@@ -294,7 +404,7 @@
 }
 .sidebar--csr .sidebar-promo-icon svg{width:12px;height:12px;display:block}
 .sidebar--csr .sidebar-promo p{
-  position:relative;z-index:1;font-size:11px;line-height:1.55;color:var(--muted);margin:0;
+  position:relative;z-index:1;font-size:12.5px;line-height:1.55;color:var(--muted);margin:0;
 }
 .sidebar--csr .sidebar-promo-wave{
   position:absolute;left:0;right:0;bottom:0;height:44px;width:100%;display:block;color:var(--g);
@@ -316,8 +426,8 @@
 
 /* ---- list side ---- */
 .csrx .lh{
-  display:flex;align-items:center;gap:8px;padding:11px 14px;
-  border-bottom:1px solid var(--line);font-size:11px;color:var(--muted);
+  display:flex;align-items:center;gap:8px;padding:var(--sp-3) var(--sp-4);
+  border-bottom:1px solid var(--line);font-size:12.5px;color:var(--muted);
 }
 .csrx .lh .sort{
   margin-left:auto;display:flex;align-items:center;gap:5px;cursor:pointer;
@@ -326,7 +436,7 @@
 .csrx .lh .sort .cv{color:var(--faint);font-size:8px}
 .csrx .lr{
   display:flex;align-items:flex-start;gap:10px;width:100%;text-align:left;
-  padding:11px 14px;border:0;border-bottom:1px solid var(--line2);
+  padding:var(--sp-3) var(--sp-4);border:0;border-bottom:1px solid var(--line2);
   background:transparent;font:inherit;cursor:pointer;transition:background .13s;
 }
 .csrx .lr:last-of-type{border-bottom:0}
@@ -334,12 +444,12 @@
 .csrx .lr.on{background:var(--g-wash);box-shadow:inset 3px 0 0 var(--g-spine)}
 .csrx .lr:focus-visible{outline-offset:-2px}
 .csrx .lr .lc{min-width:0;flex:1;display:block}
-.csrx .lr .nm{display:block;font-size:12.5px;font-weight:600;color:var(--ink);line-height:1.32;letter-spacing:-.01em}
-.csrx .lr .fn{display:block;font-size:11px;color:var(--muted);margin-top:3px}
+.csrx .lr .nm{display:block;font-size:13.5px;font-weight:600;color:var(--ink);line-height:1.32;letter-spacing:-.01em}
+.csrx .lr .fn{display:block;font-size:12.5px;color:var(--muted);margin-top:3px}
 .csrx .lr .rt{text-align:right;flex:none;display:block}
-.csrx .lr .am{display:block;font-size:12px;font-weight:600;color:var(--ink);letter-spacing:-.015em}
+.csrx .lr .am{display:block;font-size:13px;font-weight:600;color:var(--ink);letter-spacing:-.015em}
 .csrx .lr .stt{
-  font-size:10.5px;color:var(--g);margin-top:4px;
+  font-size:12px;color:var(--g);margin-top:4px;
   display:flex;align-items:center;gap:4px;justify-content:flex-end;
 }
 .csrx .lr .stt::before{content:"";width:5px;height:5px;border-radius:50%;background:#22A55F}
@@ -351,20 +461,20 @@
 .csrx .pager{display:flex;align-items:center;justify-content:center;gap:5px;padding:12px;border-top:1px solid var(--line)}
 .csrx .pg{
   min-width:24px;height:24px;padding:0 6px;border-radius:var(--r-chip);border:1px solid var(--line);
-  background:var(--card);display:grid;place-items:center;font:inherit;font-size:11px;font-weight:500;
+  background:var(--card);display:grid;place-items:center;font:inherit;font-size:12.5px;font-weight:500;
   color:var(--soft);cursor:pointer;font-variant-numeric:tabular-nums;
 }
 .csrx .pg:hover{border-color:var(--g);color:var(--g)}
 .csrx .pg.on{background:var(--g);border-color:var(--g);color:#fff}
 
 /* ---- detail side ---- */
-.csrx .dtl{padding:16px 18px 18px}
+.csrx .dtl{padding:var(--sp-4) var(--sp-5) var(--sp-5)}
 .csrx .dh{display:flex;align-items:flex-start;gap:10px;margin-bottom:16px}
 .csrx .dh h3{
   font-family:"Zodiak",Georgia,serif;font-size:19px;font-weight:500;color:var(--ink);
   letter-spacing:-.02em;line-height:1.25;margin:0;
 }
-.csrx .dh .sub{font-size:12px;color:var(--muted);margin-top:5px}
+.csrx .dh .sub{font-size:13px;color:var(--muted);margin-top:5px}
 .csrx .dh .sub b{color:var(--soft);font-weight:600}
 .csrx .dh .acts{margin-left:auto;display:flex;align-items:center;gap:7px;flex:none}
 .csrx .ico{
@@ -385,29 +495,29 @@
   border-top:1px solid var(--line);border-bottom:1px solid var(--line);
 }
 .csrx .facts.nb{border-bottom:0}
-.csrx .fc{padding:12px 14px;border-left:1px solid var(--line2)}
+.csrx .fc{padding:var(--sp-3) var(--sp-4);border-left:1px solid var(--line2)}
 .csrx .fc:first-child{border-left:0;padding-left:0}
-.csrx .fc .fl{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--muted);margin-bottom:5px}
+.csrx .fc .fl{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-bottom:5px}
 .csrx .fc .fl svg{width:12px;height:12px;color:var(--faint);flex:none}
-.csrx .fc .fv{font-size:12.5px;color:var(--ink);font-weight:500;letter-spacing:-.008em}
+.csrx .fc .fv{font-size:13.5px;color:var(--ink);font-weight:500;letter-spacing:-.008em}
 .csrx .fc .fv.em{color:var(--faint);font-weight:400}
 .csrx .fc .fv.gr{color:var(--g);font-weight:600}
 
-.csrx .blocks{display:grid;grid-template-columns:1fr 300px;gap:14px;margin-top:16px}
-.csrx .blk{background:var(--ground2);border:1px solid var(--line2);border-radius:var(--r-card);padding:14px}
-.csrx .blk h4{font-size:12px;font-weight:600;color:var(--ink);margin:0 0 8px}
-.csrx .blk p{font-size:12px;line-height:1.65;color:var(--soft);margin:0}
+.csrx .blocks{display:grid;grid-template-columns:1fr 300px;gap:var(--sp-4);margin-top:var(--sp-4)}
+.csrx .blk{background:var(--ground2);border:1px solid var(--line2);border-radius:var(--r-card);padding:var(--sp-4)}
+.csrx .blk h4{font-size:13px;font-weight:600;color:var(--ink);margin:0 0 8px}
+.csrx .blk p{font-size:13px;line-height:1.65;color:var(--soft);margin:0}
 .csrx .sr{display:flex;align-items:flex-start;gap:10px;padding:7px 0;border-top:1px solid var(--line2)}
 .csrx .sr:first-of-type{border-top:0;padding-top:0}
 .csrx .sr svg{width:15px;height:15px;color:var(--muted);flex:none;margin-top:2px}
-.csrx .sr .sl{font-size:10.5px;color:var(--muted)}
-.csrx .sr .sv{font-size:12.5px;color:var(--ink);font-weight:500;margin-top:2px}
-.csrx .stamp{font-size:11px;color:var(--faint);margin-top:14px;padding-top:12px;border-top:1px solid var(--line2)}
+.csrx .sr .sl{font-size:12px;color:var(--muted)}
+.csrx .sr .sv{font-size:13.5px;color:var(--ink);font-weight:500;margin-top:2px}
+.csrx .stamp{font-size:12.5px;color:var(--faint);margin-top:var(--sp-4);padding-top:var(--sp-3);border-top:1px solid var(--line2)}
 
-.csrx .dempty{padding:64px 20px;text-align:center;color:var(--muted);font-size:12.5px}
+.csrx .dempty{padding:64px 20px;text-align:center;color:var(--muted);font-size:13.5px}
 
 @media (max-width: 1100px){
-  .csrx .md{grid-template-columns:1fr;gap:14px}
+  .csrx .md{grid-template-columns:1fr;gap:var(--sp-4)}
   .csrx .blocks{grid-template-columns:1fr}
   .csrx .facts{grid-template-columns:repeat(2,1fr)}
   .csrx .fc:nth-child(odd){border-left:0;padding-left:0}
@@ -430,7 +540,7 @@
      row; a percentage would put it halfway down the nav list. */
   position:absolute;top:26px;right:12px;z-index:2;
   width:24px;height:24px;padding:0;border-radius:var(--r-chip);
-  border:1px solid var(--line2) !important;background:#fff !important;color:var(--faint);
+  border:1px solid var(--line2) !important;background:var(--card) !important;color:var(--faint);
 }
 .sidebar--csr .sidebar-toggle:hover{background:var(--sunk) !important;color:var(--soft)}
 .sidebar--csr .sidebar-toggle svg{width:14px;height:14px}
@@ -457,8 +567,8 @@
 /* The brand block inherited an 80px floor and 1.5rem of padding from the
    shared rail, which left a tall empty band above the first nav item. The
    reference's lockup sits close to the top and the nav starts under it. */
-.sidebar.sidebar--csr .sidebar-brand{min-height:0;padding:13px 14px 11px;gap:8px}
-.sidebar.sidebar--csr .sidebar-brand h2{font-size:13.5px}
+.sidebar.sidebar--csr .sidebar-brand{min-height:0;padding:var(--sp-3) var(--sp-4) var(--sp-3);gap:8px}
+.sidebar.sidebar--csr .sidebar-brand h2{font-size:14px}
 .sidebar.sidebar--csr .sidebar-nav{padding:8px}
 
 /* SEPARATION. Every nav item is now divided from the next by a hairline, the
@@ -537,7 +647,7 @@
 }
 .sidebar.sidebar--csr .sidebar-who-txt{display:flex;flex-direction:column;min-width:0}
 .sidebar.sidebar--csr .sidebar-who-name{
-  font-size:10.5px;font-weight:600;color:var(--ink);line-height:1.2;
+  font-size:12px;font-weight:600;color:var(--ink);line-height:1.2;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
 .sidebar.sidebar--csr .sidebar-who-role{
@@ -559,7 +669,7 @@
 .dashboard-layout:has(.sidebar--csr) .dashboard-breadcrumb{display:none}
 .dashboard-layout:has(.sidebar--csr) .dashboard-header h1{
   font-family:"Switzer",system-ui,sans-serif !important;
-  font-size:12.5px !important;font-weight:600 !important;
+  font-size:13.5px !important;font-weight:600 !important;
   letter-spacing:.02em;color:#414A46 !important;margin:0;background:transparent !important;
 }
 
@@ -584,7 +694,7 @@
   border:1px solid var(--line2);border-radius:var(--r-card);
   background:var(--sunk);box-shadow:none;
 }
-.sidebar.sidebar--csr .sidebar-promo-body{position:relative;z-index:1;padding:13px 13px 14px}
+.sidebar.sidebar--csr .sidebar-promo-body{position:relative;z-index:1;padding:var(--sp-3) var(--sp-3) var(--sp-4)}
 
 /* The wave is the card's floor: full width, pinned to the bottom, beneath the
    body. Two stops so it reads as depth rather than a single flat band. */
@@ -609,7 +719,7 @@
   background:var(--g-wash);color:var(--g);box-shadow:none;
 }
 .sidebar.sidebar--csr .sidebar-promo-icon svg{width:11px;height:11px}
-.sidebar.sidebar--csr .sidebar-promo p{font-size:10.5px;line-height:1.62;color:var(--muted)}
+.sidebar.sidebar--csr .sidebar-promo p{font-size:12px;line-height:1.62;color:var(--muted)}
 
 /* The identity row sits on its own translucent plate so it stays legible
    wherever the wave happens to crest behind it. It is a button — the account
@@ -628,12 +738,12 @@
 .sidebar.sidebar--csr .sidebar-who:focus-visible{outline-offset:2px}
 .sidebar.sidebar--csr .sidebar-who-av{
   flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;
-  background:#fff;color:var(--g-deep);
+  background:var(--card);color:var(--g-deep);
   font-size:8.5px;font-weight:700;letter-spacing:.02em;
 }
 .sidebar.sidebar--csr .sidebar-who-txt{display:flex;flex-direction:column;min-width:0;flex:1}
 .sidebar.sidebar--csr .sidebar-who-name{
-  font-size:10.5px;font-weight:600;color:var(--ink);line-height:1.2;
+  font-size:12px;font-weight:600;color:var(--ink);line-height:1.2;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
 .sidebar.sidebar--csr .sidebar-who-role{
@@ -673,7 +783,7 @@
 
 /* ---- Account page ------------------------------------------------------ */
 .csrx .acct{display:grid;grid-template-columns:1fr 1fr;gap:1.4%;align-items:start}
-.csrx .acct-id{display:flex;align-items:center;gap:14px;margin-bottom:18px}
+.csrx .acct-id{display:flex;align-items:center;gap:var(--sp-4);margin-bottom:var(--sp-5)}
 .csrx .acct-av{
   flex:none;width:52px;height:52px;border-radius:50%;display:grid;place-items:center;
   background:linear-gradient(140deg,#7C5CE0,#4F46C4);color:#fff;
@@ -683,19 +793,19 @@
   font-family:"Zodiak",Georgia,serif;font-size:19px;font-weight:500;color:var(--ink);
   letter-spacing:-.02em;margin:0;line-height:1.2;
 }
-.csrx .acct-id .sub{font-size:12px;color:var(--muted);margin-top:4px}
-.csrx .acct-actions{margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
+.csrx .acct-id .sub{font-size:13px;color:var(--muted);margin-top:4px}
+.csrx .acct-actions{margin-top:var(--sp-5);padding-top:var(--sp-4);border-top:1px solid var(--line)}
 .csrx .newbtn.danger{background:#B3352A;box-shadow:0 2px 6px rgba(179,53,42,.18)}
 .csrx .newbtn.danger:hover{background:#8F2A21}
-.csrx .acct-h{font-size:12.5px;font-weight:600;color:var(--ink);margin:0 0 4px}
-.csrx .acct-note{font-size:11.5px;color:var(--muted);margin:0 0 12px;line-height:1.55}
+.csrx .acct-h{font-size:13.5px;font-weight:600;color:var(--ink);margin:0 0 4px}
+.csrx .acct-note{font-size:13px;color:var(--muted);margin:0 0 12px;line-height:1.55}
 .csrx .acct-row{
   display:flex;align-items:center;gap:12px;
   padding:11px 0;border-top:1px solid var(--line2);
 }
 .csrx .acct-row > div{flex:1;min-width:0}
-.csrx .acct-row-name{font-size:12.5px;font-weight:600;color:var(--ink)}
-.csrx .acct-row-why{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.5}
+.csrx .acct-row-name{font-size:13.5px;font-weight:600;color:var(--ink)}
+.csrx .acct-row-why{font-size:12.5px;color:var(--muted);margin-top:2px;line-height:1.5}
 @media (max-width:1100px){.csrx .acct{grid-template-columns:1fr;gap:14px}}
 
 /* =========================================================================
@@ -712,21 +822,21 @@
 /* The name is the thing you actually read down here — it was set smaller than
    the nav labels above it, which made the person signed in the quietest item
    on the rail. */
-.sidebar.sidebar--csr .sidebar-who-av{width:28px;height:28px;font-size:10px}
-.sidebar.sidebar--csr .sidebar-who-name{font-size:13px;letter-spacing:-.008em}
+.sidebar.sidebar--csr .sidebar-who-av{width:28px;height:28px;font-size:11.5px}
+.sidebar.sidebar--csr .sidebar-who-name{font-size:14px;letter-spacing:-.008em}
 .sidebar.sidebar--csr .sidebar-who-role{font-size:8.5px;margin-top:2px}
 .sidebar.sidebar--csr .sidebar-who-cv svg{width:13px;height:13px}
 
 /* =========================================================================
    DASHBOARD — featured card, stat tiles, statistic panel, quick actions.
    ========================================================================= */
-.csrx .dash-top{display:grid;grid-template-columns:220px 1fr 300px;gap:14px;align-items:stretch}
+.csrx .dash-top{display:grid;grid-template-columns:220px 1fr 300px;gap:var(--sp-4);align-items:stretch}
 
 /* The one card that carries colour. It leads on a single grant, so it is the
    only surface allowed a fill — everything beside it stays white, which is
    what makes it read as the lead rather than as one tile among four. */
 .csrx .feature{
-  display:flex;flex-direction:column;border-radius:var(--r-card);padding:16px;color:#fff;
+  display:flex;flex-direction:column;border-radius:var(--r-card);padding:var(--sp-4);color:#fff;
   background:linear-gradient(150deg,#2F7355 0%,#245B44 55%,#1C4736 100%);
   box-shadow:0 1px 2px rgba(28,71,54,.14),0 10px 24px rgba(28,71,54,.16);
 }
@@ -736,12 +846,12 @@
   background:rgba(255,255,255,.18);color:#fff;
 }
 .csrx .feature-ic svg{width:13px;height:13px}
-.csrx .feature-pct{margin-left:auto;font-size:11px;font-weight:600;color:rgba(255,255,255,.9)}
+.csrx .feature-pct{margin-left:auto;font-size:12.5px;font-weight:600;color:rgba(255,255,255,.9)}
 .csrx .feature-name{
-  font-size:13.5px;font-weight:600;line-height:1.35;letter-spacing:-.012em;
+  font-size:14px;font-weight:600;line-height:1.35;letter-spacing:-.012em;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
 }
-.csrx .feature-funder{font-size:11px;color:rgba(255,255,255,.72);margin-top:4px}
+.csrx .feature-funder{font-size:12.5px;color:rgba(255,255,255,.72);margin-top:4px}
 .csrx .feature-foot{
   margin-top:auto;padding-top:16px;display:flex;align-items:flex-end;gap:10px;
 }
@@ -753,10 +863,10 @@
 }
 
 /* Three figures, equal weight between them, all subordinate to the feature. */
-.csrx .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.csrx .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-4)}
 .csrx .stat{
   display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);
-  border-radius:var(--r-card);padding:14px;
+  border-radius:var(--r-card);padding:var(--sp-4);
 }
 .csrx .stat-top{display:flex;align-items:flex-start;margin-bottom:14px}
 .csrx .stat-ic{
@@ -766,20 +876,20 @@
 .csrx .stat-ic svg{width:13px;height:13px}
 .csrx .stat-dots{margin-left:auto;color:var(--faint);font-size:14px;line-height:1}
 .csrx .trend{
-  align-self:flex-start;font-size:10px;font-weight:600;padding:3px 8px;
+  align-self:flex-start;font-size:11.5px;font-weight:600;padding:3px 8px;
   border-radius:var(--r-pill);margin-bottom:10px;white-space:nowrap;
 }
 .csrx .trend.good{background:#E7F1EB;color:#1B7A4B}
 .csrx .trend.bad{background:#FBEBE9;color:#B3352A}
 .csrx .trend.neutral{background:var(--ground2);color:var(--soft)}
-.csrx .stat-k{font-size:11.5px;color:var(--muted);margin-top:auto}
+.csrx .stat-k{font-size:13px;color:var(--muted);margin-top:auto}
 .csrx .stat-v{font-size:19px;font-weight:600;color:var(--ink);letter-spacing:-.022em;margin-top:3px}
 
 /* The statistic panel: donut over a legend, as the reference has it. */
-.csrx .statistic{padding:14px;display:flex;flex-direction:column}
+.csrx .statistic{padding:var(--sp-4);display:flex;flex-direction:column}
 .csrx .stat-head{display:flex;align-items:baseline;margin-bottom:14px}
-.csrx .stat-head h3{font-size:12.5px;font-weight:600;color:var(--ink);margin:0}
-.csrx .stat-when{margin-left:auto;font-size:10.5px;color:var(--muted)}
+.csrx .stat-head h3{font-size:13.5px;font-weight:600;color:var(--ink);margin:0}
+.csrx .stat-when{margin-left:auto;font-size:12px;color:var(--muted)}
 .csrx .donut{position:relative;margin:2px auto 14px}
 .csrx .donut svg{display:block}
 .csrx .donut-ctr{
@@ -795,19 +905,19 @@
 .csrx .legend-row:first-child{border-top:0}
 .csrx .legend-dot{width:7px;height:7px;border-radius:50%;flex:none}
 .csrx .legend-nm{
-  font-size:11.5px;color:var(--soft);flex:1;min-width:0;
+  font-size:13px;color:var(--soft);flex:1;min-width:0;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
-.csrx .legend-amt{font-size:11.5px;font-weight:600;color:var(--ink)}
+.csrx .legend-amt{font-size:13px;font-weight:600;color:var(--ink)}
 
 /* ---- row 2 ---- */
-.csrx .dash-bot{display:grid;grid-template-columns:300px 1fr;gap:14px;margin-top:14px;align-items:start}
-.csrx .quick{display:flex;flex-direction:column;gap:14px}
+.csrx .dash-bot{display:grid;grid-template-columns:300px 1fr;gap:var(--sp-4);margin-top:var(--sp-4);align-items:start}
+.csrx .quick{display:flex;flex-direction:column;gap:var(--sp-4)}
 .csrx .quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .csrx .qa{
   display:flex;flex-direction:column;align-items:center;gap:7px;
   background:var(--card);border:1px solid var(--line);border-radius:var(--r-card);
-  padding:14px 8px;font:inherit;font-size:11.5px;font-weight:500;color:var(--soft);
+  padding:14px 8px;font:inherit;font-size:13px;font-weight:500;color:var(--soft);
   cursor:pointer;transition:border-color .15s,background .15s,color .15s;
 }
 .csrx .qa:hover{border-color:#BFD7C9;background:#F7FBF8;color:var(--g-deep)}
@@ -818,19 +928,19 @@
 .csrx .qa:hover .qa-ic{background:#E7F1EB;color:var(--g)}
 .csrx .qa-ic svg{width:14px;height:14px}
 
-.csrx .limit{padding:14px}
+.csrx .limit{padding:var(--sp-4)}
 .csrx .limit-top{display:flex;align-items:baseline;margin-bottom:9px}
-.csrx .limit-k{font-size:12px;font-weight:600;color:var(--ink)}
-.csrx .limit-pc{margin-left:auto;font-size:11.5px;font-weight:600;color:var(--soft)}
+.csrx .limit-k{font-size:13px;font-weight:600;color:var(--ink)}
+.csrx .limit-pc{margin-left:auto;font-size:13px;font-weight:600;color:var(--soft)}
 .csrx .limit-track{height:6px;border-radius:var(--r-pill);background:var(--ground2);overflow:hidden}
 .csrx .limit-fill{height:100%;border-radius:var(--r-pill);background:#2C6A4F;transition:width .4s cubic-bezier(.2,.7,.2,1)}
 .csrx .limit-fill.over{background:#B3352A}
-.csrx .limit-sub{font-size:11px;color:var(--muted);margin-top:9px}
-.csrx .limit-warn{font-size:11px;color:#B3352A;margin-top:5px}
+.csrx .limit-sub{font-size:12.5px;color:var(--muted);margin-top:9px}
+.csrx .limit-warn{font-size:12.5px;color:#B3352A;margin-top:5px}
 
-.csrx .flow{padding:14px}
+.csrx .flow{padding:var(--sp-4)}
 .csrx .flow-total{font-size:22px;font-weight:600;color:var(--ink);letter-spacing:-.025em}
-.csrx .flow-key{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--muted);margin:5px 0 6px}
+.csrx .flow-key{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin:5px 0 6px}
 
 @media (max-width:1280px){
   .csrx .dash-top{grid-template-columns:1fr 300px}
@@ -864,7 +974,7 @@
 }
 .dashboard-layout:has(.sidebar--csr) .header-back{
   display:grid;place-items:center;width:24px;height:24px;flex:none;padding:0;
-  border:1px solid #DDE2E1;border-radius:6px;background:#fff;color:#7C8783;
+  border:1px solid #DDE2E1;border-radius:6px;background:var(--card);color:#7C8783;
   cursor:pointer;transition:background .15s,color .15s,border-color .15s;
 }
 .dashboard-layout:has(.sidebar--csr) .header-back:hover{
@@ -890,36 +1000,36 @@
 .csrx .stat-ic{width:24px;height:24px}
 .csrx .stat-ic svg{width:12px;height:12px}
 .csrx .trend{font-size:9.5px;padding:2px 7px;margin-bottom:8px}
-.csrx .stat-k{font-size:10.5px}
+.csrx .stat-k{font-size:12px}
 .csrx .stat-v{font-size:16px;margin-top:2px}
 
-.csrx .feature{min-height:170px;padding:14px}
+.csrx .feature{min-height:170px;padding:var(--sp-4)}
 .csrx .feature-top{margin-bottom:14px}
 .csrx .feature-ic{width:24px;height:24px}
 .csrx .feature-ic svg{width:12px;height:12px}
-.csrx .feature-pct{font-size:10px}
-.csrx .feature-k{font-size:12.5px;font-weight:600;letter-spacing:-.01em}
-.csrx .feature-sub{font-size:10px;color:rgba(255,255,255,.7);margin-top:3px}
-.csrx .feature-foot{padding-top:14px;gap:14px;align-items:flex-end}
+.csrx .feature-pct{font-size:11.5px}
+.csrx .feature-k{font-size:13.5px;font-weight:600;letter-spacing:-.01em}
+.csrx .feature-sub{font-size:11.5px;color:rgba(255,255,255,.7);margin-top:3px}
+.csrx .feature-foot{padding-top:var(--sp-4);gap:var(--sp-4);align-items:flex-end}
 .csrx .feature-foot .fl{font-size:9px}
 .csrx .feature-foot .fv{font-size:17px}
-.csrx .feature-foot .fv.sm{font-size:12.5px;font-weight:600}
+.csrx .feature-foot .fv.sm{font-size:13.5px;font-weight:600}
 
 .csrx .statistic{padding:12px}
 .csrx .stat-head{margin-bottom:10px}
-.csrx .stat-head h3{font-size:11.5px}
+.csrx .stat-head h3{font-size:13px}
 .csrx .stat-when{font-size:9.5px}
-.csrx .donut-v{font-size:13.5px}
+.csrx .donut-v{font-size:14px}
 .csrx .donut-k{font-size:9px}
 .csrx .legend-row{padding:6px 0}
-.csrx .legend-nm,.csrx .legend-amt{font-size:10.5px}
+.csrx .legend-nm,.csrx .legend-amt{font-size:12px}
 
-.csrx .qa{padding:12px 8px;font-size:10.5px;gap:6px}
+.csrx .qa{padding:12px 8px;font-size:12px;gap:6px}
 .csrx .qa-ic{width:26px;height:26px}
 .csrx .qa-ic svg{width:13px;height:13px}
 .csrx .limit{padding:12px}
-.csrx .limit-k{font-size:11px}
-.csrx .limit-pc,.csrx .limit-sub,.csrx .limit-warn{font-size:10px}
+.csrx .limit-k{font-size:12.5px}
+.csrx .limit-pc,.csrx .limit-sub,.csrx .limit-warn{font-size:11.5px}
 .csrx .flow{padding:12px}
 .csrx .flow-total{font-size:19px}
 .csrx .flow-key{font-size:9.5px}
@@ -941,7 +1051,7 @@
      change it. */
   grid-template-columns:288px 1fr 300px;
   grid-template-rows:auto auto;
-  gap:14px;
+  gap:var(--sp-4);
   align-items:start;
 }
 .csrx .dash > .feature  {grid-column:1;grid-row:1}
@@ -985,18 +1095,18 @@
 }
 .csrx .qa:hover{background:#E4EEE8;color:var(--g-deep)}
 .csrx .qa-ic{background:rgba(255,255,255,.75);color:var(--g)}
-.csrx .qa:hover .qa-ic{background:#fff;color:var(--g-deep)}
+.csrx .qa:hover .qa-ic{background:var(--card);color:var(--g-deep)}
 
 /* The figure pair above the donut. */
 .csrx .stat-pair{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
 .csrx .stat-pair > div{display:flex;align-items:baseline;justify-content:space-between}
-.csrx .stat-pair span:first-child{font-size:10.5px;color:var(--muted)}
-.csrx .stat-pair span:last-child{font-size:10.5px;font-weight:600;color:var(--ink)}
+.csrx .stat-pair span:first-child{font-size:12px;color:var(--muted)}
+.csrx .stat-pair span:last-child{font-size:12px;font-weight:600;color:var(--ink)}
 
 .csrx .donut{margin:0 auto 12px}
 .csrx .donut-v{font-size:14px}
 
-.csrx .flow-k{font-size:10px;color:var(--muted)}
+.csrx .flow-k{font-size:11.5px;color:var(--muted)}
 .csrx .flow-total{margin-top:2px}
 
 /* =========================================================================
@@ -1009,7 +1119,7 @@
    frame is gone.
    ========================================================================= */
 .dashboard-layout:has(.sidebar--csr){
-  background:#fff;
+  background:var(--card);
   min-height:100vh;
   --rail-w:212px;
   --rail-w-collapsed:64px;
@@ -1021,7 +1131,7 @@
 }
 .dashboard-layout:has(.sidebar--csr) .dashboard-content{
   margin-top:0;margin-right:0;margin-bottom:0;
-  background:#fff !important;border-radius:0;
+  background:var(--card) !important;border-radius:0;
   min-height:100vh;box-shadow:none;
 }
 /* The ground behind the cards is white, so a shadow alone will not separate
@@ -1037,7 +1147,7 @@
 .csrx .pairs{margin-top:12px}
 .csrx .pairs-plot{
   position:relative;display:flex;align-items:flex-end;gap:2px;
-  height:150px;padding-bottom:22px;
+  height:150px;padding-bottom:var(--sp-6);
 }
 .csrx .pairgrp{
   position:relative;flex:1;min-width:0;height:100%;
@@ -1061,17 +1171,17 @@
 }
 .csrx .tip{
   position:absolute;bottom:calc(100% - 6px);transform:translateX(-50%);
-  background:#fff;border:1px solid var(--line);border-radius:var(--r-ctl);
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r-ctl);
   padding:8px 10px;min-width:132px;pointer-events:none;z-index:3;
   box-shadow:0 6px 18px rgba(28,44,38,.14);
 }
 .csrx .tip-t{
-  font-size:10px;font-weight:600;color:var(--ink);margin-bottom:5px;
+  font-size:11.5px;font-weight:600;color:var(--ink);margin-bottom:5px;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px;
 }
 .csrx .tip-r{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
 .csrx .tip-r span{font-size:9.5px;color:var(--muted)}
-.csrx .tip-r b{font-size:10px;font-weight:600;color:var(--ink)}
+.csrx .tip-r b{font-size:11.5px;font-weight:600;color:var(--ink)}
 .csrx .flow-key{display:flex;gap:12px}
 .csrx .flow-key > span{display:flex;align-items:center;gap:5px}
 
@@ -1094,7 +1204,7 @@
 }
 .csrx .lgrid-head{
   padding:11px 16px;border-bottom:1px solid var(--line);
-  font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:500;
+  font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:500;
 }
 .csrx .lrow{
   width:100%;text-align:left;font:inherit;background:transparent;
@@ -1106,14 +1216,14 @@
 .csrx .lrow:hover{background:#F7FAF8}
 .csrx .lrow:focus-visible{outline-offset:-2px}
 .csrx .lrow .t1{
-  font-size:12.5px;font-weight:600;color:var(--ink);letter-spacing:-.008em;
+  font-size:13.5px;font-weight:600;color:var(--ink);letter-spacing:-.008em;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
 .csrx .lrow .t2{
-  font-size:11.5px;color:var(--muted);
+  font-size:13px;color:var(--muted);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
-.csrx .lrow .fig{font-size:11.5px;color:var(--soft)}
+.csrx .lrow .fig{font-size:13px;color:var(--soft)}
 .csrx .nowrap{white-space:nowrap}
 
 /* The grant/document cell on Reports holds a link beside the name, so it is a
@@ -1125,7 +1235,7 @@
 
 /* Native select styled to match the search field beside it. */
 .csrx .sel{
-  font:inherit;font-size:13px;color:var(--ink);
+  font:inherit;font-size:14px;color:var(--ink);
   background:var(--card);border:1px solid var(--line);border-radius:var(--r-ctl);
   padding:0 32px 0 13px;height:38px;min-width:200px;cursor:pointer;
   appearance:none;-webkit-appearance:none;
@@ -1143,12 +1253,12 @@
 .csrx .gate{
   display:flex;align-items:baseline;gap:12px;
   background:var(--ground2);border-radius:var(--r-card);
-  padding:15px 18px;margin-bottom:16px;
+  padding:var(--sp-4) var(--sp-5);margin-bottom:var(--sp-4);
 }
 .csrx .gate.hot{background:#FBF1DF}
 .csrx .gate-n{font-size:24px;font-weight:600;color:var(--ink);letter-spacing:-.025em}
 .csrx .gate.hot .gate-n{color:#8C5A11}
-.csrx .gate-t{font-size:12px;color:var(--muted);line-height:1.5}
+.csrx .gate-t{font-size:13px;color:var(--muted);line-height:1.5}
 
 /* =========================================================================
    SETUP SCREENS — activity types, funders, branding.
@@ -1161,7 +1271,7 @@
 .csrx .ghostbtn{
   margin-left:auto;display:inline-flex;align-items:center;gap:7px;
   background:var(--card);border:1px solid var(--line);border-radius:var(--r-ctl);
-  font:inherit;font-size:12.5px;font-weight:500;color:var(--soft);
+  font:inherit;font-size:13.5px;font-weight:500;color:var(--soft);
   padding:9px 14px;cursor:pointer;transition:background .15s,border-color .15s,color .15s;
 }
 .csrx .ghostbtn:hover{background:var(--ground2);border-color:var(--line2);color:var(--ink)}
@@ -1171,7 +1281,7 @@
 .csrx .addrow .sb{flex:1;max-width:none}
 .csrx .chk{
   display:inline-flex;align-items:center;gap:7px;flex:none;
-  font-size:12.5px;color:var(--soft);cursor:pointer;user-select:none;
+  font-size:13.5px;color:var(--soft);cursor:pointer;user-select:none;
 }
 .csrx .chk input{width:15px;height:15px;accent-color:var(--g);cursor:pointer;margin:0}
 .csrx .newbtn:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
@@ -1184,10 +1294,10 @@
 .csrx .setrow:last-of-type{border-bottom:0}
 .csrx .setrow:hover{background:#F9FBFA}
 .csrx .setrow-n{
-  flex:1;min-width:0;font-size:12.5px;font-weight:500;color:var(--ink);
+  flex:1;min-width:0;font-size:13.5px;font-weight:500;color:var(--ink);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
-.csrx .setrow-s{font-size:11.5px;color:var(--muted)}
+.csrx .setrow-s{font-size:13px;color:var(--muted)}
 .csrx .pill.plain{background:var(--ground2);color:var(--soft)}
 .csrx .pill.plain::before{display:none}
 
@@ -1196,8 +1306,8 @@
    need only a name. */
 .csrx .setrow-c{display:flex;flex-direction:column;min-width:0;flex:1}
 .csrx .setrow-c .setrow-n{flex:none}
-.csrx .setrow .av{width:30px;height:30px;font-size:11px;background:var(--g);flex:none}
-.csrx .ghostbtn.tight{margin-left:0;padding:6px 12px;font-size:11.5px}
+.csrx .setrow .av{width:30px;height:30px;font-size:12.5px;background:var(--g);flex:none}
+.csrx .ghostbtn.tight{margin-left:0;padding:6px 12px;font-size:13px}
 
 /* A branding row leads on the colour it sets, because that is the thing being
    configured — a name alone gives no way to tell two funders' portals apart. */
@@ -1206,7 +1316,7 @@
   border:1px solid rgba(0,0,0,.08);
 }
 .csrx .ph code{
-  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;
   background:var(--ground2);border-radius:4px;padding:1px 5px;
 }
 
@@ -1215,18 +1325,51 @@
    figures, a bar and up to two caveats, and a table row cannot hold a caveat
    without either truncating it or wrecking the column rhythm.
    ========================================================================= */
-.csrx .utot{padding:20px 22px;margin-bottom:16px}
-.csrx .utot-v{font-size:32px;font-weight:600;color:var(--g-deep);letter-spacing:-.03em;line-height:1}
-.csrx .utot-k{font-size:12px;color:var(--muted);margin-top:7px;line-height:1.5}
-.csrx .utot-warn{
-  margin-top:12px;padding:9px 12px;border-radius:var(--r-ctl);
-  background:#FBEBE9;color:#8F2A21;font-size:11.5px;line-height:1.5;
+/* The utilisation totals as a strip of stats, not one big number over a
+   stretched banner. Each stat is sized to what it holds; the row uses
+   auto-fit so a stat that has nothing to show (no excluded expenses) leaves
+   the row rather than rendering an empty full-width bar. Colour follows the
+   roles the rest of the module already uses: green ink for the headline
+   total, sand for money, clay for the thing that needs attention. */
+/* Separate cards, not a seamed strip. The seamed version used
+   minmax(190px,1fr): the 1fr made every track share out whatever width the
+   page had, so on a normal monitor each card stretched to ~450px with the
+   number and two lines of text lost in the left third of it. Capping the
+   track (190-236px) and setting the grid's own justify-content to flex-start,
+   not stretch, is what actually stops the stretch -- auto-fit alone only
+   decides the COUNT of columns, not whether they fill the row. Matches
+   .stats/.stat, the card-per-figure pattern the dashboard already uses. */
+.csrx .utot-strip{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(190px, 236px));
+  justify-content:flex-start;
+  gap:var(--sp-4);
+  margin-bottom:var(--sp-4);
 }
+.csrx .utot-stat{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:var(--r-card,8px);
+  padding:var(--sp-4);
+  display:flex;flex-direction:column;gap:2px;min-width:0;
+}
+.csrx .utot-k{
+  font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;font-weight:600;
+  color:var(--muted);margin:0;
+}
+.csrx .utot-v{
+  font-size:22px;font-weight:600;color:var(--g-deep);letter-spacing:-.02em;
+  line-height:1.2;margin:2px 0 0;font-variant-numeric:tabular-nums;
+}
+.csrx .utot-v--money{color:#7A5618}
+.csrx .utot-v--warn{color:#8F2A21}
+.csrx .utot-note{font-size:12.5px;color:var(--muted);margin:2px 0 0;line-height:1.7}
+.csrx .utot-stat--warn{background:#FBEEEC;border-color:#EFD3CE}
 
 .csrx .ucards{display:flex;flex-direction:column;gap:12px}
 .csrx .ucard{
   display:block;width:100%;text-align:left;font:inherit;cursor:pointer;
-  padding:18px 20px;transition:border-color .16s,box-shadow .16s;
+  padding:var(--sp-5) var(--sp-5);transition:border-color .16s,box-shadow .16s;
 }
 .csrx .ucard:hover{border-color:#C6D4CC;box-shadow:0 2px 10px rgba(28,44,38,.07)}
 .csrx .ucard:focus-visible{outline-offset:2px}
@@ -1234,19 +1377,19 @@
 .csrx .ucard-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:16px}
 .csrx .ucard-id{display:flex;flex-direction:column;min-width:0;flex:1}
 .csrx .ucard-n{font-size:14px;font-weight:600;color:var(--ink);letter-spacing:-.014em;line-height:1.3}
-.csrx .ucard-f{font-size:11.5px;color:#1B678D;margin-top:3px}
-.csrx .ucard-t{font-size:11px;color:var(--muted);margin-top:2px}
-.csrx .ucard-na{font-size:12px;color:var(--muted)}
+.csrx .ucard-f{font-size:13px;color:#1B678D;margin-top:3px}
+.csrx .ucard-t{font-size:12.5px;color:var(--muted);margin-top:2px}
+.csrx .ucard-na{font-size:13px;color:var(--muted)}
 .csrx .pill.frozen{background:#F1E9F4;color:#7A3E8F}
 
 .csrx .ufigs{
-  display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:14px;
+  display:grid;grid-template-columns:repeat(4,1fr);gap:var(--sp-4);margin-bottom:var(--sp-4);
 }
 .csrx .ufig{display:flex;flex-direction:column;min-width:0}
 .csrx .uv{font-size:17px;font-weight:600;color:var(--ink);letter-spacing:-.022em;white-space:nowrap}
 .csrx .uv.good{color:var(--g-deep)}
 .csrx .uv.over{color:#B3352A}
-.csrx .uk{font-size:10.5px;color:var(--muted);margin-top:3px;line-height:1.4}
+.csrx .uk{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.4}
 
 .csrx .utrack{
   display:block;height:6px;border-radius:var(--r-pill);
@@ -1254,8 +1397,8 @@
 }
 .csrx .ufill{display:block;height:100%;border-radius:var(--r-pill);background:#2C6A4F}
 .csrx .ufill.over{background:#B3352A}
-.csrx .ucard-pc{display:block;font-size:11px;color:var(--muted);margin-top:7px}
-.csrx .ucard-oop{display:block;font-size:11px;color:var(--muted);margin-top:5px;line-height:1.5}
+.csrx .ucard-pc{display:block;font-size:12.5px;color:var(--muted);margin-top:7px}
+.csrx .ucard-oop{display:block;font-size:12.5px;color:var(--muted);margin-top:5px;line-height:1.5}
 
 @media (max-width:900px){
   .csrx .ufigs{grid-template-columns:1fr 1fr}
@@ -1322,7 +1465,7 @@
   width:auto;margin:0;padding:0;border:0;border-top:0;background:transparent;
 }
 .sidebar.sidebar--csr .sidebar-who--mini .sidebar-who-av{
-  width:32px;height:32px;font-size:11px;
+  width:32px;height:32px;font-size:12.5px;
   background:var(--g-wash);color:var(--g-deep);
   transition:background .15s,color .15s;
 }
@@ -1343,7 +1486,7 @@
   display:grid;place-items:center;
   background:var(--g) !important;color:#fff !important;
   font-family:"Switzer",system-ui,sans-serif;
-  font-size:10.5px;font-weight:700;letter-spacing:.04em;
+  font-size:12px;font-weight:700;letter-spacing:.04em;
   box-shadow:0 1px 2px rgba(28,71,54,.18);
 }
 
@@ -1395,36 +1538,36 @@
    the nav beside them, which put the numbers this page exists for below the
    chrome around them.
    ========================================================================= */
-.csrx .stat{min-height:130px;padding:14px}
+.csrx .stat{min-height:130px;padding:var(--sp-4)}
 .csrx .stat-ic{width:28px;height:28px}
 .csrx .stat-ic svg{width:14px;height:14px}
-.csrx .trend{font-size:11px;padding:3px 9px;margin-bottom:10px}
-.csrx .stat-k{font-size:12.5px}
+.csrx .trend{font-size:12.5px;padding:3px 9px;margin-bottom:10px}
+.csrx .stat-k{font-size:13.5px}
 .csrx .stat-v{font-size:21px;margin-top:4px}
 
 .csrx .statistic{padding:16px}
-.csrx .stat-head h3{font-size:13.5px}
-.csrx .stat-when{font-size:11px}
+.csrx .stat-head h3{font-size:14px}
+.csrx .stat-when{font-size:12.5px}
 .csrx .stat-pair span:first-child,
-.csrx .stat-pair span:last-child{font-size:12px}
+.csrx .stat-pair span:last-child{font-size:13px}
 .csrx .donut-v{font-size:15.5px}
 .csrx .legend-row{padding:8px 0}
-.csrx .legend-nm,.csrx .legend-amt{font-size:12px}
+.csrx .legend-nm,.csrx .legend-amt{font-size:13px}
 
-.csrx .qa{padding:14px 8px;font-size:12.5px;gap:7px}
+.csrx .qa{padding:14px 8px;font-size:13.5px;gap:7px}
 .csrx .qa-ic{width:30px;height:30px}
 .csrx .qa-ic svg{width:15px;height:15px}
 .csrx .limit{padding:16px}
-.csrx .limit-k{font-size:12.5px}
-.csrx .limit-pc{font-size:12.5px}
-.csrx .limit-sub,.csrx .limit-warn{font-size:11.5px}
+.csrx .limit-k{font-size:13.5px}
+.csrx .limit-pc{font-size:13.5px}
+.csrx .limit-sub,.csrx .limit-warn{font-size:13px}
 .csrx .flow{padding:16px}
-.csrx .flow-k{font-size:11.5px}
+.csrx .flow-k{font-size:13px}
 .csrx .flow-total{font-size:22px}
-.csrx .flow-key{font-size:11.5px}
-.csrx .flow .histlbl,.csrx .pairlbl{font-size:10.5px}
-.csrx .tip-t{font-size:11.5px}
-.csrx .tip-r span,.csrx .tip-r b{font-size:11px}
+.csrx .flow-key{font-size:13px}
+.csrx .flow .histlbl,.csrx .pairlbl{font-size:12px}
+.csrx .tip-t{font-size:13px}
+.csrx .tip-r span,.csrx .tip-r b{font-size:12.5px}
 
 /* =========================================================================
    THE LINES AT THE TOP. The reference divides the shell with rules, not with
@@ -1529,7 +1672,7 @@
 .csrx .stats > .stat{padding:18px}
 .csrx .stat-top{margin-bottom:12px}
 .csrx .stat-v{font-size:18px;margin-top:4px}
-.csrx .stat-k{font-size:12px}
+.csrx .stat-k{font-size:13px}
 
 /* =========================================================================
    THE TWO ROWS, AS THE REFERENCE LAYS THEM OUT — final, keep last.
@@ -1584,7 +1727,23 @@
    was never the one in the reference. It narrows instead of moving, and only
    goes full-width under 1000, where a donut plus a legend genuinely will not
    fit in a column. */
-@media (min-width:1000px){
+/* 1201, not 1000. This block and the @media (max-width:1200px) block above it
+   both matched between 1000 and 1200, and this one is later, so it won — it put
+   the Statistic panel back beside the rest at grid-column:3 after the earlier
+   block had deliberately dropped it below.
+
+   The cost landed on the KPI strip. At 1024 the row became 270px + 1fr + 264px,
+   .stats spanned only the first two tracks (456px), and four cards needing
+   ~168px each were crushed into 114px. The fourth card was auto-placed past its
+   own container at x=722 against a parent ending at 704, and the Statistic panel
+   painted over it: "Not counted" was in the DOM, computed visible, and invisible
+   on screen. Silent loss of the figure that flags money not counted.
+
+   The four cards stay FOUR ACROSS -- that is a standing instruction, and the
+   fix is emphatically NOT a 2x2 breakpoint. What gives way instead is the
+   Statistic panel, which drops below between 1000 and 1200 exactly as the
+   max-width:1200px block already intended, handing the strip the full width. */
+@media (min-width:1201px){
   .csrx .dash{grid-template-columns:270px 1fr 264px}
   .csrx .dash > .stats    {grid-column:1 / span 2;grid-row:1;grid-template-columns:repeat(4,1fr)}
   .csrx .dash > .statistic{grid-column:3;grid-row:1 / span 2;align-self:stretch}
@@ -1641,22 +1800,22 @@
 /* ---- type, up a step across the block ---- */
 .csrx .stats > .stat{padding:20px}
 .csrx .stat-v{font-size:22px;line-height:1.15}
-.csrx .stat-k{font-size:13px}
-.csrx .trend{font-size:11.5px;padding:4px 10px}
+.csrx .stat-k{font-size:14px}
+.csrx .trend{font-size:13px;padding:4px 10px}
 .csrx .stat-ic{width:30px;height:30px}
 .csrx .stat-ic svg{width:15px;height:15px}
 
 .csrx .stat-head h3{font-size:14.5px}
-.csrx .legend-nm,.csrx .legend-amt{font-size:12.5px}
-.csrx .stat-pair span{font-size:12.5px !important}
+.csrx .legend-nm,.csrx .legend-amt{font-size:13.5px}
+.csrx .stat-pair span{font-size:13.5px !important}
 .csrx .donut-v{font-size:16.5px}
-.csrx .qa{font-size:13px}
-.csrx .limit-k{font-size:13.5px}
-.csrx .limit-pc{font-size:13px}
-.csrx .limit-sub,.csrx .limit-warn{font-size:12px}
+.csrx .qa{font-size:14px}
+.csrx .limit-k{font-size:14px}
+.csrx .limit-pc{font-size:14px}
+.csrx .limit-sub,.csrx .limit-warn{font-size:13px}
 .csrx .flow-total{font-size:24px}
-.csrx .flow-k,.csrx .flow-key{font-size:12px}
-.csrx .pairlbl{font-size:11px}
+.csrx .flow-k,.csrx .flow-key{font-size:13px}
+.csrx .pairlbl{font-size:12.5px}
 
 /* ---- the chart: one colour per grant, and a gradient in the bar ---- */
 .csrx .pairbars .bar{border-radius:5px 5px 0 0}
@@ -1684,7 +1843,7 @@
 }
 .csrx .donut svg circle{transition:stroke .2s}
 .csrx .donut-v{font-size:18px;font-weight:600}
-.csrx .donut-k{font-size:10.5px}
+.csrx .donut-k{font-size:12px}
 
 /* The pair above the ring names what the ring is made of, so it is inked:
    utilised in moss, remaining in the neutral it is measured against. */
@@ -1709,27 +1868,27 @@
    cards touching, panels with no breathing room, rows stacked on each other.
    One step out, everywhere.
    ========================================================================= */
-.csrx.csrx-page{padding:32px 36px 72px}
-.csrx .dash{gap:18px}
-.csrx .stats{gap:18px}
-.csrx .stats > .stat{padding:22px}
+.csrx.csrx-page{padding:var(--sp-8) 36px 72px}
+.csrx .dash{gap:var(--sp-5)}
+.csrx .stats{gap:var(--sp-5)}
+.csrx .stats > .stat{padding:var(--sp-6)}
 .csrx .stat-top{margin-bottom:16px}
-.csrx .trend{margin-bottom:14px}
+.csrx .trend{margin-bottom:var(--sp-4)}
 
-.csrx .statistic{padding:20px}
+.csrx .statistic{padding:var(--sp-5)}
 .csrx .stat-head{margin-bottom:16px}
-.csrx .donut{margin:4px auto 18px}
+.csrx .donut{margin:var(--sp-1) auto var(--sp-5)}
 .csrx .legend-row{padding:10px 0}
 
-.csrx .quick .qa{padding:18px 10px;gap:9px}
-.csrx .quick .limit{padding:18px 20px}
+.csrx .quick .qa{padding:var(--sp-5) var(--sp-3);gap:var(--sp-2)}
+.csrx .quick .limit{padding:var(--sp-5) var(--sp-5)}
 .csrx .limit-top{margin-bottom:12px}
-.csrx .limit-sub{margin-top:11px}
+.csrx .limit-sub{margin-top:var(--sp-3)}
 
 .csrx .flow{padding:20px}
-.csrx .flow-key{margin:8px 0 14px}
+.csrx .flow-key{margin:var(--sp-2) 0 var(--sp-4)}
 .csrx .pairs{margin-top:16px}
-.csrx .pairs-plot{height:170px;padding-bottom:26px}
+.csrx .pairs-plot{height:170px;padding-bottom:var(--sp-7)}
 .csrx .pairlbl{bottom:-24px}
 
 /* The section strip needs the same air as the content under it. */
@@ -1767,7 +1926,7 @@
     132px                      /* location / activity */
     minmax(200px, 1.3fr)       /* grant — the longest string on the page */
     124px;                     /* status */
-  gap:20px;
+  gap:var(--sp-5);
 }
 .csrx .lgrid > *:last-child{justify-self:end}
 
@@ -1777,23 +1936,23 @@
 .csrx .lgrid-head{
   background:linear-gradient(180deg,#F1F5F3 0%,#F7FAF8 100%);
   border-bottom:1px solid var(--line);
-  padding:14px 20px;
-  font-size:11.5px;letter-spacing:.055em;color:#5C6A63;font-weight:600;
+  padding:var(--sp-4) var(--sp-5);
+  font-size:13px;letter-spacing:.055em;color:#5C6A63;font-weight:600;
 }
 
 /* Scale. These were set a size below the nav beside them, which put the record
    under the chrome in the hierarchy. */
-.csrx .lrow{padding:16px 20px}
+.csrx .lrow{padding:var(--sp-4) var(--sp-5)}
 .csrx .lrow .t1{font-size:14px}
-.csrx .lrow .t2{font-size:12.5px}
-.csrx .lrow .fig{font-size:12.5px}
-.csrx .tfoot{padding:14px 20px;font-size:12.5px}
-.csrx .lrow .pill{font-size:11.5px;padding:4px 11px}
+.csrx .lrow .t2{font-size:13.5px}
+.csrx .lrow .fig{font-size:13.5px}
+.csrx .tfoot{padding:var(--sp-4) var(--sp-5);font-size:13.5px}
+.csrx .lrow .pill{font-size:13px;padding:4px 11px}
 
 /* The gate figure and the page heading move with them. */
 .csrx .ph h2{font-size:30px}
-.csrx .ph p{font-size:13.5px}
-.csrx .sb input,.csrx .sel{font-size:13.5px}
+.csrx .ph p{font-size:14px}
+.csrx .sb input,.csrx .sel{font-size:14px}
 .csrx .sb,.csrx .sel{height:42px}
 
 /* =========================================================================
@@ -1805,6 +1964,14 @@
    nothing but push its own label away.
    ========================================================================= */
 .csrx{line-height:1.7}
+/* 1.7 is a standing owner requirement, not a default. It has been broken twice
+   by appending a later block that re-declared the same selector with a tighter
+   value -- same specificity, later wins, silently. .pform-sub, .pform-help,
+   .pform-ring-note and .ovf-v were all set to 1.7 above and then re-tightened
+   to 1.5 further down the file. If you add a rule for body copy in this
+   stylesheet, do not set line-height at all: inherit it. Only single-line
+   figures and chips get a tighter value, and those are listed together lower
+   down with that reason stated. */
 .csrx p,
 .csrx .ph p,
 .csrx .lrow .t1,
@@ -1828,9 +1995,9 @@
 .csrx .pill,.csrx .trend,.csrx .chip{line-height:1.4}
 
 /* Rows get the height that leading needs. */
-.csrx .lrow{padding:18px 20px}
-.csrx .setrow{padding:16px 20px}
-.csrx .lgrid-head{padding:15px 20px}
+.csrx .lrow{padding:var(--sp-5) var(--sp-5)}
+.csrx .setrow{padding:var(--sp-4) var(--sp-5)}
+.csrx .lgrid-head{padding:var(--sp-4) var(--sp-5)}
 
 /* ---- the expand control ---- */
 .csrx .lwrap{border-bottom:1px solid var(--line2)}
@@ -1849,16 +2016,904 @@
 
 /* ---- what the chevron opens ---- */
 .csrx .ldetail{
-  display:grid;grid-template-columns:repeat(4,1fr);gap:18px 24px;
-  padding:4px 20px 22px;background:#FAFCFB;
+  display:grid;grid-template-columns:repeat(4,1fr);gap:var(--sp-5) var(--sp-6);
+  padding:var(--sp-1) var(--sp-5) var(--sp-6);background:#FAFCFB;
   border-top:1px solid var(--line2);
 }
-.csrx .ldetail > div{display:flex;flex-direction:column;min-width:0;padding-top:16px}
+.csrx .ldetail > div{display:flex;flex-direction:column;min-width:0;padding-top:var(--sp-4)}
 .csrx .ldetail .dfull{grid-column:1 / -1}
-.csrx .dk{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:600}
-.csrx .dv{font-size:13.5px;color:var(--ink);margin-top:4px}
+.csrx .dk{font-size:12.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.csrx .dv{font-size:14px;color:var(--ink);margin-top:4px}
 
 @media (max-width:900px){
   .csrx .ldetail{grid-template-columns:1fr 1fr}
 }
 
+
+
+/* =========================================================================
+   TABLE COLOUR ROLES  --  approved 3 Sep 2026.
+
+   The rule: a hue means the same thing on every screen, so a reader learns it
+   once. Indigo is identity (the funder or grant a record belongs to). Sand is
+   money. State keeps its semantic pills.
+
+   Green is deliberately NOT spent here. It stays the module's own colour --
+   buttons, the active rail item, anything important -- which is why the table
+   chrome had to be a different hue: green on the header AND on every button
+   makes neither of them mean anything. Sand is a cell wash only and never
+   becomes a control.
+
+   This does replace the Ledger's "grounds stay neutral" rule, for tables
+   specifically. Grounds carry tint now, on purpose.
+   ========================================================================= */
+:root{
+  --role-id:#EAF0F7; --role-id-edge:#D3E0EF; --role-id-ink:#33455C;
+  --role-money:#FBF3E4; --role-money-edge:#EFDFC2; --role-money-ink:#7A5618;
+  --head-bg:#284A73; --head-ink:#EEF3F9;
+}
+
+/* The band. This was a near-white gradient, which is the whole reason the
+   column headings kept disappearing into the page. */
+.csrx .lgrid-head{
+  background:var(--head-bg);
+  border-bottom:0;
+  color:var(--head-ink);
+  font-weight:600;
+  letter-spacing:.06em;
+}
+
+/* Identity -- the grant a record belongs to. It is the 4th cell in both the
+   activities and the reports table. The tint runs the full row height
+   (align-self, plus a negative margin cancelling the row's vertical padding)
+   so the column reads as one continuous band rather than a stack of loose
+   blocks. Both sides read --lrow-pad-y, because the padding is set twice in
+   this file already (var(--sp-4) at one point, var(--sp-5) later) and a hardcoded offset
+   here would silently go ragged the next time either moves. */
+.csrx .lrow{
+  --lrow-pad-y:var(--sp-5);
+  padding-top:var(--lrow-pad-y);padding-bottom:var(--lrow-pad-y);
+}
+.csrx .lrow:not(.lgrid--3):not(.lgrid--4) > *:nth-child(4){
+  align-self:stretch;
+  display:flex;align-items:center;
+  margin-block:calc(-1 * var(--lrow-pad-y));padding:0 12px;
+  background:var(--role-id);
+  border-left:1px solid var(--role-id-edge);
+  border-right:1px solid var(--role-id-edge);
+  color:var(--role-id-ink);font-weight:500;
+}
+
+/* Rows. A hair of ground on every second row -- enough to track one row
+   across five columns, not enough to draw stripes over the data.
+
+   nth-CHILD, not nth-of-type. Activities wraps each row in a .lwrap div (the
+   chevron opens inside it) and reports does not, so type-counting stripes the
+   two tables in opposite phase: the header is a div sibling in one case and
+   not the row's tag in the other. Counting all children puts the header at 1
+   in both, so :nth-child(odd) is the 2nd, 4th... row on every screen.
+
+   The unwrapped case is scoped with :not(.lwrap) because inside a .lwrap the
+   row is the FIRST child -- so a bare .lrow:nth-child(odd) matches every
+   wrapped row and tints the whole table. */
+.csrx .lwrap:nth-child(odd) > .lrow,
+.csrx *:not(.lwrap) > .lrow:nth-child(odd){background:var(--ground2)}
+.csrx .lrow:hover,
+.csrx .lwrap:nth-child(odd) > .lrow:hover{background:var(--g-wash)}
+
+/* Money. Sand, never green -- a figure must not read as identity. */
+.csrx .lr .am{
+  display:inline-block;
+  background:var(--role-money);
+  border:1px solid var(--role-money-edge);
+  border-radius:6px;
+  padding:1px 8px;
+  color:var(--role-money-ink);
+}
+
+@media (max-width:900px){
+  /* The grid collapses to a single column here, so a "column" tint would be
+     a random tinted strip across the middle of every card. */
+  .csrx .lrow:not(.lgrid--3):not(.lgrid--4) > *:nth-child(4){
+    display:block;margin-block:0;padding:0;
+    background:none;border:0;
+    color:var(--muted);font-weight:400;
+  }
+}
+
+
+/* =========================================================================
+   THE GRANT FORM PAGE  --  .pform-*
+
+   This block exists because the project form used to be an MUI <Dialog>. A
+   dialog never enters .csrx, so it inherited none of the tokens above and
+   arrived looking like a different application; it was also the wrong shape
+   for the record, which is the largest one the module holds. Everything here
+   is the page that replaced it.
+
+   Green is spent on ONE thing: the Save button (.newbtn, already defined) and
+   the completion bar's fill, which is the same action read as progress. It is
+   deliberately not used as a ground anywhere below.
+
+   Indigo is absent on purpose. Per TABLE COLOUR ROLES above, --head-bg and
+   --role-id now mean "identity column in a table"; borrowing either for form
+   chrome would spend a hue that a reader has just been taught to read as
+   something else.
+   ========================================================================= */
+.csrx .pform-head{margin-bottom:var(--sp-5)}
+.csrx .pform-head h2{
+  font-family:var(--serif);font-size:30px;font-weight:500;letter-spacing:-.018em;
+  color:var(--ink);line-height:1.2;margin:0;
+}
+.csrx .pform-sub{font-size:14px;color:var(--muted);margin:6px 0 0;line-height:1.7}
+
+/* The back link is a button, not an anchor: it navigates through the router,
+   and an <a href> that does not survive a middle-click is a lie. */
+.csrx .pform-back{
+  display:inline-flex;align-items:center;gap:6px;
+  background:none;border:0;padding:0;margin:0 0 12px;
+  font:inherit;font-size:13.5px;font-weight:500;color:var(--muted);
+  cursor:pointer;transition:color .15s;
+}
+.csrx .pform-back:hover{color:var(--g-deep)}
+.csrx .pform-back svg{width:14px;height:14px}
+
+/* ---- completion bar ----
+   Driven entirely by field state; the step classes below are the only place a
+   width is written, and there are exactly as many of them as there are
+   tracked fields, so a bar can never show a fraction the form does not mean. */
+.csrx .pform-prog{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r-card);
+  padding:var(--sp-4) var(--sp-5);margin-bottom:var(--sp-6);
+}
+.csrx .pform-prog-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:var(--sp-2)}
+.csrx .pform-prog-label{font-size:13.5px;color:var(--soft);font-weight:500;line-height:1.7}
+.csrx .pform-prog-pc{font-size:13.5px;color:var(--muted)}
+.csrx .pform-prog-track{height:8px;border-radius:var(--r-pill);background:var(--ground2);overflow:hidden}
+.csrx .pform-prog-fill{
+  height:100%;border-radius:var(--r-pill);background:var(--g);
+  transition:width .35s cubic-bezier(.2,.7,.2,1),background .2s;
+}
+.csrx .pform-prog-fill.s0{width:0}
+.csrx .pform-prog-fill.s1{width:20%}
+.csrx .pform-prog-fill.s2{width:40%}
+.csrx .pform-prog-fill.s3{width:60%}
+.csrx .pform-prog-fill.s4{width:80%}
+.csrx .pform-prog-fill.s5{width:100%;background:var(--g-bright)}
+
+/* ---- sections ----
+   Mobile-first: one column, and the paired date row only splits when there is
+   width for two date controls side by side without either wrapping. */
+.csrx .pform{display:flex;flex-direction:column;gap:20px;max-width:1040px}
+/* The bar sits above the form and has to measure the same thing it describes.
+   Left full-bleed it ran 330px past the last field, which read as a page-level
+   loading bar rather than as this form's own completion. */
+.csrx .pform-prog{max-width:1040px}
+.csrx .pform-sec{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r-card);
+  padding:var(--sp-5) var(--sp-5) var(--sp-5);margin:0;
+  display:flex;flex-direction:column;gap:var(--sp-4);
+}
+.csrx .pform-legend{
+  font-family:var(--disp);font-size:13px;font-weight:700;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--muted);padding:0 6px;margin-left:-6px;
+}
+.csrx .pform-row{display:flex;flex-direction:column;gap:var(--sp-4)}
+
+/* ---- fields ---- */
+.csrx .pform-field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.csrx .pform-field > label{font-size:13.5px;font-weight:600;color:var(--ink);line-height:1.7}
+.csrx .pform-field input,
+.csrx .pform-field textarea{
+  font:inherit;font-size:14px;line-height:1.7;color:var(--ink);
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r-ctl);
+  padding:9px 12px;width:100%;
+  transition:border-color .15s,box-shadow .15s;
+}
+.csrx .pform-field textarea{resize:vertical;min-height:96px}
+.csrx .pform-field input:focus,
+.csrx .pform-field textarea:focus{outline:none;border-color:var(--g);box-shadow:0 0 0 3px var(--g-wash)}
+.csrx .pform-field input[aria-invalid="true"]{border-color:var(--red)}
+.csrx .pform-field input[aria-invalid="true"]:focus{box-shadow:0 0 0 3px var(--red-wash)}
+.csrx .pform-field .sel{width:100%;min-width:0;height:auto;padding:9px 34px 9px 12px}
+.csrx .pform-help{font-size:13px;color:var(--muted);margin:0;line-height:1.7}
+.csrx .pform-help.bad{color:var(--red)}
+.csrx .pform-wide{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r-card);
+  padding:18px 20px;
+}
+
+/* A failed save keeps the page and says so where the eye already is -- next to
+   the button that failed, not in a toast that has gone by the time the person
+   looks up. */
+.csrx .pform-error{
+  background:var(--red-wash);border:1px solid #EBC9C4;border-radius:var(--r-ctl);
+  padding:11px 14px;margin:0;font-size:14px;color:var(--red);line-height:1.7;
+}
+
+.csrx .pform-actions{display:flex;align-items:center;gap:10px;padding-top:4px}
+.csrx .pform-actions .ghostbtn{margin-left:0}
+.csrx .pform-actions .newbtn{margin-left:0}
+
+/* ---- load and dead-end states ----
+   The not-found state is a stop, not a blank form: rendering empty inputs for
+   a record that failed to load invites a save that creates a second grant. */
+.csrx .pform-state{font-size:14px;color:var(--muted);line-height:1.7}
+.csrx .pform-state-bad{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r-card);
+  padding:26px 24px;max-width:520px;
+}
+.csrx .pform-state-bad h2{
+  font-family:var(--serif);font-size:22px;font-weight:500;color:var(--ink);
+  line-height:1.2;margin:0 0 8px;
+}
+.csrx .pform-state-bad p{font-size:14px;color:var(--soft);margin:0 0 16px}
+.csrx .pform-state-bad .ghostbtn{margin-left:0}
+
+@media (min-width:640px){
+  .csrx .pform-row{flex-direction:row}
+  .csrx .pform-row > .pform-field{flex:1 1 0}
+}
+
+
+/* =========================================================================
+   FORM SECTIONS -- paired fields, and a colour per section.
+
+   The form reads in three passes: what the grant IS, when it runs, and the
+   prose around it. Each section carries its own accent on the rule and the
+   legend so those three passes are separable at a glance rather than by
+   reading every label.
+
+   The accents are NOT the table roles. Indigo is deliberately absent: it means
+   "identity column" in a table and must not start meaning "form chrome" as
+   well. Green appears on the first section because that section is the grant's
+   identity, and green is this module's own colour -- it is still the only hue
+   on the Save button, which is the only control that writes anything.
+   ========================================================================= */
+.csrx .pform-sec--grant{--sec:var(--g)}
+.csrx .pform-sec--dates{--sec:#2F7D82}
+.csrx .pform-sec--detail{--sec:#7A5A86}
+
+.csrx .pform-sec{border-left:3px solid var(--sec,var(--line))}
+.csrx .pform-sec > .pform-legend{color:var(--sec,var(--muted))}
+
+/* Two fields across; three where the fields are short enough to stay legible
+   (the dates and the status are all fixed-width values). Single column below
+   720px -- a date input and a select side by side stop being tappable well
+   before the layout itself breaks. */
+.csrx .pform-row{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+.csrx .pform-row3{grid-template-columns:1fr 1fr 1fr}
+@media (max-width:720px){
+  .csrx .pform-row,
+  .csrx .pform-row3{grid-template-columns:1fr}
+}
+
+
+/* =========================================================================
+   READABLE DETAIL TYPE.
+
+   The record surfaces were set between 10.5px and 12.5px. That is caption size
+   being asked to carry the actual record -- a funder's name, a sanctioned
+   figure, a contract reference -- and reading a grant off it strains the eye.
+   These are the values people read, not annotations on something else, so they
+   are sized as content.
+
+   Labels move up too, but stay clearly subordinate: the gap between label and
+   value is what makes a fact strip scannable, so both rise and the ratio holds.
+   ========================================================================= */
+.csrx .fc .fl{font-size:13px}
+.csrx .fc .fv{font-size:15px}
+.csrx .sr .sl{font-size:13px}
+.csrx .sr .sv{font-size:14.5px}
+.csrx .dk{font-size:13px}
+.csrx .dv{font-size:14.5px}
+.csrx .lr .nm{font-size:14px}
+.csrx .lr .fn{font-size:13.5px}
+.csrx .lr .am{font-size:14px}
+
+
+/* =========================================================================
+   TABLE COLUMNS AND PAGE HEADINGS, after the type scale moved.
+
+   Raising the small end of the scale pushed two cells past their tracks: the
+   date column was cut at 148px, which clipped a range ("04 Jul 2026 -> 02 Oct
+   2026") mid-string, and the record name lost room to the grant beside it. A
+   date that reads as a fragment is worse than a narrow one.
+
+   The grant column also carried the most width on the screen while repeating
+   the same funder down every row. It keeps its band -- it is the identity
+   column and the tint means that -- but it stops being the widest thing on the
+   page and truncates instead of pushing the record name out.
+   ========================================================================= */
+.csrx .lgrid{
+  grid-template-columns:
+    182px                      /* date -- fits a start->end range unclipped */
+    minmax(240px, 1.4fr)       /* the record's own name, now the widest track */
+    120px                      /* location */
+    minmax(150px, 0.9fr)       /* grant -- repeats down the column, so it yields */
+    124px;                     /* status */
+}
+.csrx .lgrid > *{min-width:0}
+/* Wrap, never truncate. An ellipsis on a funder's name or an email address
+   hides the part that distinguishes one record from another, and the reader
+   cannot tell that anything was cut. A row that grows a line is honest; a row
+   that silently drops half a value is not. */
+.csrx .lrow .t1,
+.csrx .lrow .t2{overflow-wrap:anywhere;white-space:normal}
+
+/* The page never scrolls sideways; the table does, inside its own box. Five
+   columns of grant data do not fit 1024px however they are sized, and a body
+   that scrolls horizontally takes the rail and the header with it. */
+.csrx .twrap{overflow-x:auto}
+
+/* Page headings were 30px against 14px body -- a display size on a working
+   screen, where the record is what should carry weight. */
+.csrx .ph h2{font-size:24px}
+
+
+/* =========================================================================
+   ONE TOP EDGE -- the same bug as ONE LEFT EDGE above, on the other axis.
+
+   72px sat between the header strip and the page title on every CSR screen,
+   because two wrappers each paid for the gap: .dashboard-page's 40px and
+   .csrx-page's 32px, stacked. Horizontally that was already fixed by giving
+   the content wrapper no padding and letting .csrx-page own the inset; this
+   does the same vertically, so there is again exactly one value to change.
+
+   Applies to every CSR screen, not only Projects -- they all render through
+   .csrx-page.
+   ========================================================================= */
+.dashboard-layout:has(.sidebar--csr) .dashboard-page{padding-top:0}
+.csrx.csrx-page{padding-top:var(--sp-6)}
+
+
+/* =========================================================================
+   THE GRANT FORM -- two columns: the form, and a rail that reports on it.
+
+   The form used to run the full width, which made the one full-width field
+   (the project name) look enormous beside the paired ones below it. Narrowing
+   the form fixes that on its own: fields sit at a width their content actually
+   wants, and the space that frees goes to a rail that says what has landed so
+   far.
+
+   The rail is not decoration. Each step reports its own value back -- the
+   figure and the funder, the term -- so the amount can be checked against what
+   was typed without scrolling up to the field. A tick alone would not do that.
+   ========================================================================= */
+.csrx .pform-shell{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 268px;
+  gap:44px;
+  align-items:start;
+  max-width:1040px;
+}
+.csrx .pform{display:flex;flex-direction:column;gap:26px;max-width:none}
+
+.csrx .pform-crumb{
+  display:flex;align-items:center;gap:8px;
+  font-size:13px;color:var(--muted);margin-bottom:18px;
+}
+.csrx .pform-crumb-now{color:var(--ink);font-weight:600}
+.csrx .pform-back{
+  background:none;border:0;padding:0;font:inherit;color:var(--muted);cursor:pointer;
+}
+.csrx .pform-back:hover{color:var(--g);text-decoration:underline}
+
+/* Sections are headings on the page, not boxes on it. The reference has no
+   panel edges here -- the type and the spacing carry the grouping, and a form
+   in four bordered cards reads as four forms. */
+.csrx .pform-sec{border:0;padding:0;margin:0;background:none}
+.csrx .pform-legend{
+  /* text-transform is reset explicitly. The earlier .pform-legend rule styled a
+     <legend> as an uppercase eyebrow; these are section headings now, and
+     without the reset they inherit the caps and read as labels rather than as
+     the four passes the form is entered in. */
+  font-family:var(--serif);font-size:20px;font-weight:500;color:var(--ink);
+  text-transform:none;letter-spacing:-.012em;margin:0;padding:0;line-height:1.25;
+}
+.csrx .pform-sub{font-size:13.5px;color:var(--muted);margin:4px 0 16px;line-height:1.7}
+.csrx .pform-req{color:var(--clay-ink,#B4523F);font-weight:600}
+
+.csrx .pform-field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.csrx .pform-field + .pform-field{margin-top:16px}
+.csrx .pform-row .pform-field + .pform-field,
+.csrx .pform-row .pform-field{margin-top:0}
+.csrx .pform-field > label{font-size:13.5px;font-weight:600;color:var(--ink)}
+
+/* The tick lives on a wrapper so it can sit inside the field's box without a
+   positioned element inside the input itself. Only the wrapper moves; the
+   input keeps the module's own control styling. */
+.csrx .pform-input{position:relative;display:block}
+.csrx .pform-input > input{width:100%}
+.csrx .pform-input.ok::after{
+  content:"";position:absolute;right:13px;top:50%;width:11px;height:6px;
+  margin-top:-5px;border-left:2px solid var(--g);border-bottom:2px solid var(--g);
+  transform:rotate(-45deg);pointer-events:none;
+}
+.csrx .pform-input.ok > input{padding-right:36px}
+
+.csrx .pform-help{font-size:12.5px;color:var(--muted);margin:0;line-height:1.7}
+.csrx .pform-help.bad{color:#B4523F}
+.csrx .pform-error{
+  font-size:13.5px;color:#B4523F;background:#F8E9E5;border:1px solid #EBCFC8;
+  border-radius:var(--r-ctl);padding:10px 13px;margin:0;
+}
+.csrx .pform-actions{display:flex;gap:12px;align-items:center;padding-top:4px}
+
+/* ---- the rail ---- */
+.csrx .pform-rail{position:sticky;top:24px;display:flex;flex-direction:column;gap:22px}
+.csrx .pform-rail-h{
+  font-size:12px;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--muted);font-weight:600;margin:0;
+}
+.csrx .pform-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.csrx .pform-step{display:flex;gap:12px;align-items:flex-start;padding-bottom:20px;position:relative}
+.csrx .pform-step:last-child{padding-bottom:0}
+/* The connector is drawn from the mark downward, so it tracks the marks rather
+   than the text beside them, which varies in height with the summary. */
+.csrx .pform-step:not(:last-child)::before{
+  content:"";position:absolute;left:12px;top:26px;bottom:0;
+  width:2px;background:var(--line);
+}
+.csrx .pform-step.done:not(:last-child)::before{background:var(--g)}
+.csrx .pform-step-mark{
+  flex:none;width:26px;height:26px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  border:2px solid var(--line);background:var(--card);
+  font-size:12px;font-weight:600;color:var(--muted);
+  position:relative;z-index:1;
+}
+.csrx .pform-step.done .pform-step-mark{
+  background:var(--g);border-color:var(--g);color:var(--card);
+}
+.csrx .pform-step.done .pform-step-mark svg{width:14px;height:14px;display:block}
+.csrx .pform-step-body{display:flex;flex-direction:column;gap:2px;min-width:0}
+.csrx .pform-step-label{font-size:13.5px;font-weight:600;color:var(--ink)}
+.csrx .pform-step-hint{
+  font-size:12.5px;color:var(--muted);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+
+.csrx .pform-ring-card{
+  background:var(--g-wash);border:1px solid #CFE3D7;border-radius:var(--r-card);
+  padding:18px 18px 20px;display:flex;flex-direction:column;gap:6px;
+}
+.csrx .pform-ring{width:46px;height:46px;margin-bottom:6px}
+.csrx .pform-ring-track{fill:none;stroke:#CFE3D7;stroke-width:6}
+.csrx .pform-ring-fill{
+  fill:none;stroke:var(--g);stroke-width:6;stroke-linecap:round;
+  transform:rotate(-90deg);transform-origin:50% 50%;
+  transition:stroke-dasharray .3s ease;
+}
+.csrx .pform-ring-pc{font-size:15px;font-weight:600;color:var(--g-deep);margin:0}
+.csrx .pform-ring-note{font-size:12.5px;color:var(--soft);margin:0;line-height:1.7}
+
+@media (prefers-reduced-motion:reduce){
+  .csrx .pform-ring-fill{transition:none}
+}
+
+/* The rail is a report on the form, so below this width it goes above it
+   rather than squeezing into a column too narrow to read a funder name in. */
+@media (max-width:1080px){
+  .csrx .pform-shell{grid-template-columns:1fr;gap:28px}
+  .csrx .pform-rail{position:static;order:-1}
+  .csrx .pform-steps{
+    flex-direction:row;flex-wrap:wrap;gap:18px;
+  }
+  .csrx .pform-step{padding-bottom:0}
+  .csrx .pform-step:not(:last-child)::before{display:none}
+}
+
+
+/* =========================================================================
+   LET THE CSR PAGE SCROLL WITH THE DOCUMENT.
+
+   .dashboard-page carries overflow:auto, but its scrollHeight equals its
+   clientHeight -- it never actually scrolls, the document does. An ancestor
+   with a non-visible overflow still becomes the containing block for
+   position:sticky, so the setup rail was sticky against an element that never
+   moves, which is the same as not being sticky at all.
+
+   Clearing it for CSR only. The horizontal case that overflow was covering is
+   already handled closer to the problem: .twrap scrolls the table inside its
+   own box, so nothing here needs the page to scroll sideways.
+   ========================================================================= */
+.dashboard-layout:has(.sidebar--csr) .dashboard-page{overflow:visible}
+
+
+/* =========================================================================
+   LOG TABLE COLUMN VARIANTS -- .lgrid--3 and .lgrid--4
+
+   .lgrid is a five-track grid because that is the shape of the two tables it
+   was measured against (Activities and Reports: date, record, location, grant,
+   status). Screens converting off cards do not all hold five values, and a
+   three-value table laid on a five-track grid leaves two dead tracks and
+   pushes the trailing cell into the middle of the row.
+
+   These modifiers go on the SAME element as .lgrid -- on the head and on every
+   row -- e.g. `class="lgrid lgrid--3 lrow"`. They override only
+   grid-template-columns; gap, padding, the header band, the zebra stripe,
+   `> *:last-child{justify-self:end}` and the ellipsis rules all still apply,
+   so a variant table keeps the five-column table's rhythm.
+
+   --3 is name-led, not date-led. The three-value tables in this module are a
+   catalog shape (what the thing is / an attribute of it / an action), so the
+   widest track has to come first or every name ellipsises at the fixed width.
+   The 124px trailing track is the same one .lgrid ends on, which is what keeps
+   the action or status column landing on the same right edge across screens.
+
+   --4 keeps the five-track rhythm minus the location column: the fixed 182px
+   date track, the record's own name, one flexible secondary string, and the
+   same 124px trailing track.
+
+   IDENTITY TINT. The --role-id band is bound to `> *:nth-child(4)`, which on
+   the five-track grid is the grant. On a three-track row there is no fourth
+   child, so it cannot match; on a four-track row the fourth child is the
+   TRAILING status/action cell, and tinting that as identity would teach the
+   reader the wrong thing. Both variants are therefore excluded from the tint
+   rule by :not(), rather than left to depend on child counting. A variant
+   table with a genuine identity column should keep it as the 4th of five, or
+   the tint needs its own class -- do not re-point nth-child.
+   ========================================================================= */
+.csrx .lgrid--3{
+  grid-template-columns:
+    minmax(240px, 1.6fr)       /* the thing's own name -- leads, so it breathes */
+    minmax(150px, 0.9fr)       /* one attribute: a scope pill, a count, a state */
+    124px;                     /* action or status, hard right */
+}
+.csrx .lgrid--4{
+  grid-template-columns:
+    182px                      /* date -- fits a start->end range unclipped */
+    minmax(240px, 1.4fr)       /* the record's own name */
+    minmax(150px, 0.9fr)       /* the secondary string */
+    124px;                     /* status, hard right */
+}
+
+/* At 1100px .lgrid already collapses to a single column and drops its head;
+   the variants inherit that, but their grid-template-columns is set with a
+   higher-specificity selector than the collapse rule, so it has to be undone
+   explicitly or a variant table stays multi-column on a phone. */
+@media (max-width:1100px){
+  .csrx .lgrid--3,
+  .csrx .lgrid--4{grid-template-columns:1fr}
+}
+
+
+/* =========================================================================
+   NUMERIC CELLS IN A LOG TABLE -- .lnum
+
+   A money or count column that is left-aligned makes the reader compare digit
+   strings that do not line up: 9,80,000 and 1,20,00,000 start at the same x
+   and end nowhere near each other, so the eye cannot rank them without reading
+   both. Right alignment plus tabular figures puts the units column under the
+   units column, which is the entire reason a figure goes in a table.
+
+   Put .lnum on the cell in BOTH the head and the row so the heading sits over
+   its own column:
+     <div className="lgrid lgrid--4 lgrid-head"><span className="lnum">Utilised</span>...
+     <div className="lgrid lgrid--4 lrow"><span className="fig lnum">...</span>
+
+   This is a cell modifier, deliberately not a change to .fig. .fig is the
+   figure TYPEFACE role -- it is on KPI numbers, gauge totals and inline
+   amounts outside any table, where forcing text-align:right would shove a
+   standalone number to the far side of its card.
+
+   No justify-self here: a grid item stretches to its track by default, so the
+   cell already spans the column and text-align does the work. The one
+   exception is the last cell, which .lgrid > *:last-child shrinks to its
+   content -- .lnum:last-child therefore gets justify-self:end so a trailing
+   figure still lands on the row's right edge.
+   ========================================================================= */
+.csrx .lgrid > .lnum{text-align:right;font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1}
+.csrx .lgrid > .lnum:last-child{justify-self:end}
+
+/* Below 1100px the grid is one column per value and every cell is full width,
+   so a right-aligned figure would sit alone against the far edge of a card
+   with its label at the other end. Figures go back to the flow there. */
+@media (max-width:1100px){
+  .csrx .lgrid > .lnum{text-align:left}
+}
+
+
+/* =========================================================================
+   ONE COLUMN ORDER, EVERYWHERE.
+
+   Every table in the module now reads left to right the same way:
+
+     1  the anchor      when it happened, or how much
+     2  the record      its own name, the prominent cell
+     3  an attribute    where / what kind
+     4  what it belongs to   -- tinted, the identity band
+     5  its state, and the actions on it, in the same cell
+
+   The last point is the one that was breaking. Status sat in column 5 on the
+   Activities and Reports screens but in column 3 inside a grant, because
+   "Manage" had taken column 5 there -- so the same field moved depending on
+   which screen you were on. .lend already holds a pill and a button together
+   (the Activities screen does exactly that with its status chip and chevron),
+   so state and its controls share the cell and state stops moving.
+
+   Inside one grant a "which grant" column would repeat the same string down
+   every row, so column 4 holds what the row is categorised BY instead -- the
+   activity type, the linked activity, the kind of contact. Same rule, nearest
+   honest value.
+   ========================================================================= */
+
+/* Six columns, for a record that genuinely has five values plus its actions.
+   Contacts holds phone, name, role, type and email: dropping one to fit a
+   five-column grid would lose real data, and squeezing all five into five
+   tracks makes the email unreadable. */
+.csrx .lgrid--6{
+  grid-template-columns:
+    128px                      /* phone -- a fixed-format value */
+    minmax(170px, 1.15fr)      /* the record's own name */
+    118px                      /* role */
+    minmax(120px, 0.75fr)      /* type -- the identity band */
+    minmax(190px, 1.1fr)       /* email -- the longest string here */
+    108px;                     /* actions */
+}
+
+
+/* =========================================================================
+   THE GRANT OVERVIEW.
+
+   A strip, not a set of cards. Seven facts about one record are a caption on
+   that record -- boxing each group turned a glance into four objects to read,
+   and the boxes took more room than the values inside them.
+
+   So the colour goes on the ELEMENTS: each label wears the colour its kind of
+   value carries in the tables (identity indigo, money sand, term teal, state
+   green), the values stay ink, and thin rules do the separating that borders
+   were doing. Same lesson the table columns teach, one line tall.
+   ========================================================================= */
+.csrx .ovw{display:flex;flex-direction:column;gap:var(--sp-4,16px)}
+
+/* The seams are the grid's own 1px gaps showing the container through, not
+   borders on the cells. A border-left approach draws a stray leading rule on
+   every wrapped row -- there is no CSS selector for "first in row" -- whereas a
+   gap seam lands correctly however the cells reflow, and gives the horizontal
+   seam for free when they do.
+
+   132px, not 148: the strip measures 976px here, and seven facts need a track
+   under 139px to stay on one line. At 148 the certificate wrapped alone onto a
+   second row. */
+.csrx .ovw-strip{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(132px,1fr));
+  gap:1px;
+  background:var(--line2);
+  border:1px solid var(--line);
+  border-radius:var(--r-card,8px);
+  margin:0;
+  overflow:hidden;
+}
+.csrx .ovf{
+  display:flex;flex-direction:column;gap:3px;min-width:0;
+  padding:var(--sp-3,12px) var(--sp-4,16px);
+  background:var(--card);
+}
+
+.csrx .ovf-k{
+  font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;font-weight:600;
+  color:var(--ovk,var(--muted));
+}
+.csrx .ovf-v{
+  margin:0;font-size:14.5px;color:var(--ink);font-weight:500;
+  overflow-wrap:anywhere;line-height:1.7;
+}
+.csrx .ovf-v.em{color:var(--faint);font-weight:400}
+
+.csrx .ovf.k-id{--ovk:#3A5C86}
+.csrx .ovf.k-money{--ovk:#8A6212}
+.csrx .ovf.k-term{--ovk:#2F7D82}
+.csrx .ovf.k-state{--ovk:var(--g)}
+
+/* The one figure on the strip, in the sand the tables give money. It is the
+   number every other page reconciles against. */
+.csrx .ovf-v.money{
+  font-family:var(--disp,inherit);font-size:16.5px;font-weight:600;
+  color:#7A5618;letter-spacing:-.01em;font-variant-numeric:tabular-nums;
+}
+.csrx .ovf-lock{width:11px;height:11px;flex:none;margin-right:1px}
+
+.csrx .ovw-desc{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:var(--r-card,8px);
+  padding:var(--sp-3,12px) var(--sp-4,16px);
+  display:flex;flex-direction:column;gap:4px;
+}
+.csrx .ovw-desc h3{
+  font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;font-weight:600;
+  color:var(--muted);margin:0;
+}
+.csrx .ovw-desc p{
+  margin:0;font-size:14px;color:var(--soft);line-height:1.7;
+  white-space:pre-wrap;max-width:80ch;
+}
+
+
+/* =========================================================================
+   THE TRAILING CELL MUST FIT ITS TRACK.
+
+   Measured bug, not a tweak: on the in-grant Activities table the .lend cell
+   was 215px wide inside a 124px track, and its left edge sat 71px INSIDE the
+   type column -- the status pill printed on top of the type name.
+
+   Cause: `.lgrid > *:last-child{justify-self:end}` sizes that cell to its
+   content and anchors the RIGHT edge to the end of the track. Content wider
+   than the track therefore grows leftward, straight over the previous column,
+   with no clipping to say so. It only surfaced when state and actions moved
+   into the same cell and made it wide enough to reach.
+
+   Three parts, because widening alone would only move the failure point:
+     - the track is sized for what now lives there, a pill plus its actions;
+     - max-width:100% means the cell can never exceed its track again, whatever
+       is put in it later;
+     - and it wraps rather than overflows if it ever does run out of room, so
+       the row grows a line instead of printing over its neighbour.
+   ========================================================================= */
+.csrx .lgrid{
+  grid-template-columns:
+    178px                      /* date -- fits a start->end range unclipped */
+    minmax(200px, 1.3fr)       /* the record's own name */
+    116px                      /* location / attribute */
+    minmax(140px, 0.9fr)       /* what it belongs to -- the identity band */
+    200px;                     /* its state, and the actions on it */
+}
+.csrx .lgrid > *:last-child{justify-self:end;max-width:100%}
+.csrx .lend{flex-wrap:wrap;row-gap:6px}
+
+/* The same guard on the variants. Their trailing cells hold fewer controls, so
+   the tracks stay narrower -- but the rule that a cell cannot outgrow its track
+   has to hold everywhere, or this returns the next time a control is added. */
+.csrx .lgrid--3{
+  grid-template-columns:minmax(240px,1.6fr) minmax(150px,0.9fr) 140px;
+}
+.csrx .lgrid--4{
+  grid-template-columns:178px minmax(220px,1.4fr) minmax(150px,0.9fr) 140px;
+}
+.csrx .lgrid--6{
+  grid-template-columns:
+    124px                      /* phone -- a fixed-format value */
+    minmax(160px, 1.1fr)       /* the record's own name */
+    112px                      /* role */
+    minmax(112px, 0.7fr)       /* type -- the identity band */
+    minmax(180px, 1fr)         /* email -- the longest string here */
+    96px;                      /* actions */
+}
+
+
+/* =========================================================================
+   HAIRLINES BETWEEN ROWS.
+
+   "Put a very thin line in table." The rules were already there -- .lrow and
+   .lwrap carried border-bottom:1px solid var(--line2) -- but --line2 (#E8ECEB)
+   is a hair off the zebra stripe (--ground2 #EFF1FB), so on every second row
+   the separator simply stopped existing and the table read as alternating
+   blocks rather than as a ruled grid. A line that only survives on half the
+   rows is worse than no line: it makes the stripe do work the rule should do.
+
+   The fix is alpha, not thickness. --hair is ink at 10%, so it COMPOSITES with
+   whatever is under it -- it lands around #E5E7E6 on the card and around
+   #DADCE1 on the stripe, which is the same apparent weight on both grounds
+   instead of one strong line and one invisible one. Fractional borders
+   (0.5px) were the other candidate and were rejected: Chrome clamps them to a
+   device pixel at 1x and rounds them unevenly at fractional DPR, so a table
+   gets rows whose rules alternate weight and whose heights differ by a pixel.
+   1px geometry, sub-hairline colour: predictable box model, quiet line.
+
+   Declared twice on purpose -- the rgba is the same --ink value spelled out,
+   so a browser without color-mix() still gets the line rather than dropping
+   the declaration and losing every rule in the table.
+
+   NO VERTICAL COLUMN SEPARATORS, and this is a decision, not an omission.
+   .lgrid is align-items:center, so a cell is only as tall as its content: a
+   border or a seam on a cell draws a short tick floating in the row, not a
+   column rule. Making it full height means align-self:stretch plus negative
+   margins cancelling the row padding on every cell -- exactly the machinery
+   the identity band already runs -- which would (a) double the line at both
+   edges of the 4th cell, where --role-id-edge already draws one, and (b) put
+   an extra 1px of border into cells whose track widths were measured against
+   real content. That second one is how the trailing cell came to print over
+   its neighbour in the first place. The identity band's own two edges are the
+   vertical structure this table gets; the header is a solid band and takes no
+   rule under it either, because the band's bottom edge already is one.
+   ========================================================================= */
+.csrx{
+  --hair:rgba(28,35,32,.10);
+  --hair:color-mix(in srgb, var(--ink) 10%, transparent);
+}
+
+.csrx .lrow,
+.csrx .lwrap,
+.csrx .setrow{border-bottom-color:var(--hair)}
+.csrx table.dt tbody td{border-bottom-color:var(--hair)}
+
+
+/* =========================================================================
+   THE PAGER -- Previous / "Page 2 of 5" / Next.
+
+   Two class names arrived for one control: the four working screens put
+   .tfoot-pager inside the table footer, the grant list on the project screen
+   reuses the older .pager at the foot of its own column. Both get the same
+   treatment here rather than one of them getting a near-miss, because they are
+   the same control and a reader should not be able to tell which screen they
+   are on from how Next looks.
+
+   .pager already existed as a centred numbered strip with its own top border,
+   and the project list still sits it in that position -- so that rule is left
+   alone and only the group's internals are set here. Inside .tfoot both the
+   border and the padding come off: the footer already draws the border-top,
+   and a second rule 1px under it is a seam, not a divider.
+
+   Placement in the footer is margin-left:auto on the pager, not
+   justify-content on .tfoot -- the same footer renders on screens with no
+   pager at all (a single page hides it), where space-between would silently
+   do nothing and the count would look deliberately centred on some screens
+   and left-aligned on others.
+
+   Buttons are .ghostbtn tight, which carries margin-left:auto from .ghostbtn
+   for its usual job of sitting at the end of a settings row. In a flex group
+   of its own that pushes Previous and Next to opposite ends, so it is cleared.
+
+   Spacing is --sp-3 between the three items and the footer keeps --sp-3
+   between the count and the group; the footer wraps rather than growing,
+   because .twrap scrolls horizontally and a footer wide enough to force that
+   would drag the whole table sideways to reach Next.
+   ========================================================================= */
+.csrx .tfoot{flex-wrap:wrap;gap:var(--sp-3)}
+
+.csrx .pager,
+.csrx .tfoot-pager{
+  display:flex;align-items:center;flex-wrap:wrap;
+  gap:var(--sp-3);
+}
+.csrx .tfoot .pager,
+.csrx .tfoot .tfoot-pager{
+  margin-left:auto;justify-content:flex-end;
+  padding:0;border-top:0;
+}
+/* .ghostbtn's margin-left:auto is for a settings row, not for a button group. */
+.csrx .pager .ghostbtn,
+.csrx .tfoot-pager .ghostbtn{margin-left:0}
+
+/* "Page 2 of 5". Tabular figures so the line does not twitch as the number
+   changes width, and nowrap so it never breaks between the two buttons.
+   Colour and rhythm only -- the size is whatever the footer already sets. */
+.csrx .pgr-status{
+  /* Sized explicitly. On Activities/Reports/Utilisation this sits inside .tfoot
+     and inherits its 13.5px, but on Projects the pager is at the foot of the
+     list column with no .tfoot above it, so it inherited 16px and read a size
+     larger than the buttons it sits between. Setting it here is not a change to
+     the module's type scale -- it is giving a new element the size it should
+     have had, matching .tfoot, so the indicator reads the same on all four
+     screens instead of on three. */
+  font-size:13.5px;
+  color:var(--muted);white-space:nowrap;
+  font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1;
+  padding:0 var(--sp-1);
+}
+
+/* Unavailable, not absent. opacity:.45 (what .newbtn:disabled does) is right
+   for a filled button and wrong for a ghost one -- it fades the border away
+   and the control stops reading as a control at all. Dropping the ink to
+   --faint over the sunk ground keeps the shape and removes the affordance,
+   and the hover state is neutralised so a dead button never lights up. */
+.csrx .ghostbtn:disabled,
+.csrx .ghostbtn[aria-disabled="true"]{
+  background:var(--ground2);border-color:var(--line-soft);color:var(--faint);
+  cursor:not-allowed;
+}
+.csrx .ghostbtn:disabled:hover,
+.csrx .ghostbtn[aria-disabled="true"]:hover{
+  background:var(--ground2);border-color:var(--line-soft);color:var(--faint);
+}
+
+@media (max-width:640px){
+  /* Below this the count and the pager stop sharing a line; the pager takes
+     the full width under the count rather than squeezing it, and its two
+     buttons go to the edges where a thumb reaches them. */
+  .csrx .tfoot .pager,
+  .csrx .tfoot .tfoot-pager{margin-left:0;width:100%;justify-content:space-between}
+}
