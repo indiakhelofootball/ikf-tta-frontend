@@ -27,6 +27,9 @@ import { csvBlob } from '../../utils/csv';
 import { exportReportExcel, datedFileName } from '../../utils/reportExcel';
 import { MONTHS } from '../trials/trialConstants';
 import { computeStats } from './trialsReportStats';
+import {
+  buildCityAssignmentIndex, resolveAssignment, assignmentIsReachable,
+} from './trialsReportJoin';
 
 const UNSCHEDULED = 'Unscheduled';
 
@@ -153,43 +156,21 @@ function TrialsReport() {
 
   useEffect(() => { loadAll(); }, []);
 
-  // (trialId, city) -> { reps: [repName], physicalAddress, googleMapLink }
+  // (trial, city, state) -> { reps, physicalAddress, googleMapLink, ... }
   //
-  // The assignment carries the address and map link as well as the REP, and this
-  // join already existed to find the REP name — everything else on it used to be
-  // thrown away, which is why an address entered against a city never reached
-  // the report. First addressed assignment for a city wins; a second REP on the
-  // same city adds a name, not a competing address.
-  const repsByTrialCity = useMemo(() => {
-    const m = new Map();
-    reps.forEach((r) => {
-      (r.cityAssignments || []).forEach((a) => {
-        const key = `${a.trialId}||${norm(a.city)}`;
-        if (!m.has(key)) {
-          m.set(key, {
-            reps: [], physicalAddress: '', googleMapLink: '',
-            groundLocation: '', groundPinCode: '',
-          });
-        }
-        const entry = m.get(key);
-        entry.reps.push(r.repName);
-        if (!entry.physicalAddress && a.physicalAddress) entry.physicalAddress = a.physicalAddress;
-        if (!entry.googleMapLink && a.googleMapLink) entry.googleMapLink = a.googleMapLink;
-        if (!entry.groundLocation && a.groundLocation) entry.groundLocation = a.groundLocation;
-        // Prefer groundPinCode, fall back to pinCode. Both PIN inputs on the REP
-        // form sit under the "Trial Ground Location" heading and write pinCode
-        // (REPModal.jsx:1487 heading, :1497 and :1201 inputs); nothing anywhere
-        // writes groundPinCode. So pinCode IS the ground PIN the operator typed
-        // -- 51 assignments carry it, 0 carry groundPinCode. Dropping the
-        // fallback blanks the PIN on every row that has one, with no UI to
-        // restore it. Keep groundPinCode first in case an input is ever added.
-        if (!entry.groundPinCode && (a.groundPinCode || a.pinCode)) {
-          entry.groundPinCode = a.groundPinCode || a.pinCode;
-        }
-      });
-    });
-    return m;
-  }, [reps]);
+  // State is in this join because the backend's identity for a trial city is
+  // name + state, and add_city deliberately allows Aurangabad/Maharashtra and
+  // Aurangabad/Bihar in one project. Keyed on the name alone, both rows read the
+  // same entry and one printed the other's REP, address, map link and PIN.
+  //
+  // It disambiguates rather than keys: an exact state match wins, a name-only
+  // match is still used wherever the name is unambiguous, and only a genuine
+  // collision returns nothing. See trialsReportJoin.js for why the one-line
+  // "add state to the key" version would have blanked live addresses.
+  const cityIndex = useMemo(
+    () => buildCityAssignmentIndex(trials, reps),
+    [trials, reps],
+  );
 
   // Assignments whose (trial, city) pair the trial no longer lists. The join
   // above cannot see them, so an address recorded against one appears nowhere
@@ -197,18 +178,17 @@ function TrialsReport() {
   // Listed rather than dropped, because the address is real work and the
   // pairing is repairable.
   const orphanAssignments = useMemo(() => {
-    const known = new Set();
-    trials.forEach((t) => (t.assignedCities || []).forEach((c) => {
-      known.add(`${t.id}||${norm(c.cityName)}`);
-    }));
-
     const out = [];
     reps.forEach((r) => {
       (r.cityAssignments || []).forEach((a) => {
-        if (known.has(`${a.trialId}||${norm(a.city)}`)) return;
+        // Same resolution as the table above, so the two can never disagree:
+        // an assignment is an orphan exactly when no row can reach it. An
+        // assignment that cannot be told apart from a same-named city in
+        // another state lands here rather than printing on the wrong row.
+        if (assignmentIsReachable(cityIndex, a)) return;
         const t = trials.find((x) => x.id === a.trialId);
         out.push({
-          key: `${r.repName}||${a.trialId}||${a.city}`,
+          key: `${r.repName}||${a.trialId}||${a.city}||${a.state || ''}`,
           rep: r.repName,
           city: a.city || '(no city)',
           project: (t && (t.trialName || t.trialCode)) || `Project ${a.trialId}`,
@@ -217,7 +197,7 @@ function TrialsReport() {
       });
     });
     return out;
-  }, [trials, reps]);
+  }, [trials, reps, cityIndex]);
 
   // One row per (trial, city).
   const rows = useMemo(() => {
@@ -229,7 +209,7 @@ function TrialsReport() {
       // month matrix. Blank stays blank here; the table renders the dash.
       const projectName = t.trialName || t.trialType || '';
       (t.assignedCities || []).forEach((c) => {
-        const assignment = repsByTrialCity.get(`${t.id}||${norm(c.cityName)}`);
+        const assignment = resolveAssignment(cityIndex, t.id, c.cityName, c.state);
         const assignedReps = assignment ? assignment.reps : [];
         out.push({
           trialId: t.id,
@@ -279,7 +259,7 @@ function TrialsReport() {
       });
     });
     return out;
-  }, [trials, repsByTrialCity]);
+  }, [trials, cityIndex]);
 
   const seasons = useMemo(
     () => [...new Set(trials.map((t) => t.season).filter(Boolean))].sort(),
