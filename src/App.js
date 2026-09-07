@@ -33,7 +33,7 @@ import VendorAuditReport from "./components/reports/VendorAuditReport";
 import TrialSpendReport from "./components/reports/TrialSpendReport";
 import TrialsReport from "./components/reports/TrialsReport";
 import CourierManagementPage from "./components/courier/CourierManagementPage";
-import { CSRLogin, CSRDashboard, CSRProjectManagementPage, CSRProjectDetailPage, CSRActivitiesPage, CSRReportsPage, CSRUtilisationPage, CSRActivityTypesPage, CSRClientsPage, CSRBrandingPage, CSRAccountPage } from "./components/csr";
+import { CSRLogin, CSRDashboard, CSRProjectManagementPage, CSRProjectFormPage, CSRActivityFormPage, CSRReportFormPage, CSRContactFormPage, CSRExpenseTagFormPage, CSRProjectDetailPage, CSRActivitiesPage, CSRReportsPage, CSRUtilisationPage, CSRActivityTypesPage, CSRClientsPage, CSRBrandingPage, CSRAccountPage } from "./components/csr";
 import ClientPortalPage from "./components/client/ClientPortalPage";
 import ClientLogin from "./components/client/ClientLogin";
 import PermissionsManagementPage from "./components/permissions/PermissionsManagementPage";
@@ -215,6 +215,66 @@ function App() {
           <Route path="/csr/projects" element={
             <GrantedRoute module="csr">
               <CSRProjectManagementPage />
+            </GrantedRoute>
+          } />
+          {/* Creating and editing a grant is a full page, not a modal — the
+              form is long enough that a dialog hid most of it. Both paths are
+              two segments under /csr/projects, so neither can be swallowed by
+              the dynamic /csr/:id route below. */}
+          <Route path="/csr/projects/new" element={
+            <GrantedRoute module="csr">
+              <CSRProjectFormPage />
+            </GrantedRoute>
+          } />
+          <Route path="/csr/projects/:id/edit" element={
+            <GrantedRoute module="csr">
+              <CSRProjectFormPage />
+            </GrantedRoute>
+          } />
+          {/* Activity and report editing follow the same page-not-modal move as
+              the grant form above. Both are always entered from a grant's own
+              tabs, which is the only place that knows which grant a NEW
+              record belongs to — that id travels as ?project=<id> rather than
+              a path segment, since the record does not exist yet to have its
+              own id, and edit does not need it: a loaded record already
+              carries its own projectId. */}
+          <Route path="/csr/activities/new" element={
+            <GrantedRoute module="csr">
+              <CSRActivityFormPage />
+            </GrantedRoute>
+          } />
+          <Route path="/csr/activities/:id/edit" element={
+            <GrantedRoute module="csr">
+              <CSRActivityFormPage />
+            </GrantedRoute>
+          } />
+          <Route path="/csr/reports/new" element={
+            <GrantedRoute module="csr">
+              <CSRReportFormPage />
+            </GrantedRoute>
+          } />
+          <Route path="/csr/reports/:id/edit" element={
+            <GrantedRoute module="csr">
+              <CSRReportFormPage />
+            </GrantedRoute>
+          } />
+          {/* Contact is the same page-not-modal move, with the same ?project=
+              id-carrying convention. Expense-tag has no edit route: the server
+              keeps a tag audit-bound and write-once, and the modal it replaces
+              never loaded an existing one either — only create exists. */}
+          <Route path="/csr/contacts/new" element={
+            <GrantedRoute module="csr">
+              <CSRContactFormPage />
+            </GrantedRoute>
+          } />
+          <Route path="/csr/contacts/:id/edit" element={
+            <GrantedRoute module="csr">
+              <CSRContactFormPage />
+            </GrantedRoute>
+          } />
+          <Route path="/csr/expenses/new" element={
+            <GrantedRoute module="csr">
+              <CSRExpenseTagFormPage />
             </GrantedRoute>
           } />
           {/* Activities and Reports are cross-project destinations, not just

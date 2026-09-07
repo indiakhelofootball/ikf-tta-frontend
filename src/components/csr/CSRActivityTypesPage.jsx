@@ -115,27 +115,49 @@ export default function CSRActivityTypesPage() {
 
       {loading ? (
         <div className="loading"><div className="spin" /></div>
-      ) : types.length === 0 ? (
-        <div className="panel">
-          <div className="empty">
-            <h3>No activity types yet</h3>
-            An activity type is what a CSR activity IS — a trial, a workshop, a
-            training. Add the first one above.
-          </div>
-        </div>
       ) : (
         <div className="twrap">
-          {types.map((t) => (
-            <div className="setrow" key={t.id}>
-              <span className="setrow-n">{t.name}</span>
-              {t.isMaster && <span className="pill plain">Master</span>}
-              {editable && (
-                <button type="button" className="ico r" aria-label={`Delete ${t.name}`} onClick={() => remove(t)}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" /></svg>
-                </button>
-              )}
+          {/* Three columns is everything the catalog holds — the serializer
+              ships id, name and isMaster and nothing else. Inventing a date or
+              a usage count here would be fiction. */}
+          <div className="lgrid lgrid--3 lgrid-head">
+            {['Activity type', 'Scope', 'Manage'].map((h) => <span key={h}>{h}</span>)}
+          </div>
+
+          {types.length === 0 ? (
+            <div className="empty">
+              <h3>No activity types yet</h3>
+              An activity type is what a CSR activity IS — a trial, a workshop, a
+              training. Add the first one above.
+            </div>
+          ) : types.map((t) => (
+            <div className="lwrap" key={t.id}>
+              <div className="lgrid lgrid--3 lrow">
+                <span className="t1">{t.name}</span>
+                <span className="t2">
+                  {t.isMaster
+                    ? <span className="pill plain">Master</span>
+                    : 'Grant-specific'}
+                </span>
+                <span className="lend">
+                  {editable && (
+                    <button type="button" className="ico r" aria-label={`Delete ${t.name}`} onClick={() => remove(t)}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" /></svg>
+                    </button>
+                  )}
+                </span>
+              </div>
             </div>
           ))}
+
+          {types.length > 0 && (
+            <div className="tfoot">
+              <span className="cnt">
+                Showing {types.length} of {types.length}
+                {' '}{types.length === 1 ? 'activity type' : 'activity types'} in the catalog
+              </span>
+            </div>
+          )}
         </div>
       )}
 

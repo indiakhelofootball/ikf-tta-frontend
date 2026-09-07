@@ -11,6 +11,13 @@ import ConfirmDialog from '../common/ConfirmDialog';
 
 const EMPTY = { projectId: '', firstName: '', lastName: '', email: '', password: '' };
 
+const fmtDay = (value) => {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
+  return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
 function OnboardModal({ open, projects, onClose, onSave, saving }) {
   const [form, setForm] = useState(EMPTY);
   const [errors, setErrors] = useState({});
@@ -162,7 +169,7 @@ export default function CSRClientsPage() {
   };
 
   return (
-    <div className="csrx csrx-page csrx-narrow">
+    <div className="csrx csrx-page">
       <div className="ph">
         <div>
           <h2>Funders</h2>
@@ -179,30 +186,47 @@ export default function CSRClientsPage() {
 
       {loading ? (
         <div className="loading"><div className="spin" /></div>
-      ) : clients.length === 0 ? (
-        <div className="panel">
-          <div className="empty">
-            <h3>No funders onboarded yet</h3>
-            Onboarding a funder creates their portal login and ties it to one
-            grant — they see that grant and nothing else.
-          </div>
-        </div>
       ) : (
         <div className="twrap">
-          {clients.map((c) => (
-            <div className="setrow" key={c.id}>
-              <span className="av a1" aria-hidden="true">{(c.name || '?').slice(0, 1).toUpperCase()}</span>
-              <span className="setrow-c">
-                <span className="setrow-n">{c.name}</span>
-                <span className="setrow-s">{c.email}</span>
-              </span>
-              <span className="chip plain k2">{c.projectName}</span>
-              {!c.isActive && <span className="pill wait">Revoked</span>}
-              <button type="button" className="ghostbtn tight" onClick={() => toggleAccess(c)}>
-                {c.isActive ? 'Revoke' : 'Restore'}
-              </button>
+          {/* Grant sits fourth on purpose: the fourth cell carries the tinted
+              identity band, and which grant a funder is tied to IS the record's
+              identity here — a funder login exists only against one grant.
+              The funder's own name stays prime in .t1, the grant secondary. */}
+          <div className="lgrid lgrid-head">
+            {['Onboarded', 'Funder', 'Email', 'Grant', 'Access'].map((h) => <span key={h}>{h}</span>)}
+          </div>
+
+          {clients.length === 0 ? (
+            <div className="empty">
+              <h3>No funders onboarded yet</h3>
+              Onboarding a funder creates their portal login and ties it to one
+              grant — they see that grant and nothing else.
+            </div>
+          ) : clients.map((c) => (
+            <div className="lwrap" key={c.id}>
+              <div className="lgrid lrow">
+                <span className="fig nowrap">{fmtDay(c.createdAt)}</span>
+                <span className="t1">{c.name}</span>
+                <span className="t2">{c.email}</span>
+                <span className="t2">{c.projectName}</span>
+                <span className="lend">
+                  {!c.isActive && <span className="pill wait">Revoked</span>}
+                  <button type="button" className="ghostbtn tight" onClick={() => toggleAccess(c)}>
+                    {c.isActive ? 'Revoke' : 'Restore'}
+                  </button>
+                </span>
+              </div>
             </div>
           ))}
+
+          {clients.length > 0 && (
+            <div className="tfoot">
+              <span className="cnt">
+                Showing {clients.length} of {clients.length}
+                {' '}{clients.length === 1 ? 'funder' : 'funders'} onboarded in total
+              </span>
+            </div>
+          )}
         </div>
       )}
 
