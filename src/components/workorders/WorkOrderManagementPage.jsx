@@ -262,7 +262,16 @@ function WorkOrderManagementPage() {
   };
 
   useEffect(() => { fetchVendors(); fetchWorkOrders(); }, []);
-  useRefetchOnFocus(() => { fetchVendors(); fetchWorkOrders(); });
+  // Work orders refresh on focus; the vendor list deliberately does NOT.
+  // `vendors` is never rendered on this page — it feeds only the modal's picker
+  // and the Raise Payment prefill — and vendorsAPI.getAll({limit:1000}) is
+  // 15.9 MB on production, 95% of it base64 PAN card images. Refetching that
+  // every 30 s of alt-tabbing occupied one of the backend's two gunicorn
+  // workers and slowed the app for everyone, to refresh a dropdown nobody was
+  // looking at. PaymentManagementPage already made this same choice.
+  // Trade-off, accepted: a vendor created elsewhere while this tab is open will
+  // not appear in the picker until a reload.
+  useRefetchOnFocus(() => { fetchWorkOrders(); });
 
   // Auto-open modal when navigated from Vendor page with a vendor
   useEffect(() => {
