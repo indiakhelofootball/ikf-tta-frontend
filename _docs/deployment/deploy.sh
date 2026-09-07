@@ -95,6 +95,45 @@ check_repo() {
 check_repo "$FE_ROOT" "frontend"
 check_repo "$BE_ROOT" "backend"
 
+# THE GATE THAT MATTERS MOST: what is LIVE must be contained in what we ship.
+#
+# The origin/main check above is necessary but not sufficient. On 2026-09-05 a
+# deploy destroyed a week of live CSR work, and origin/main alone would not
+# necessarily have caught it: production can be running a commit that was never
+# merged to main (it is, right now — deploy branches ship before they merge).
+# The only authority on what must not be lost is the RUNNING SERVER, and since
+# /release.txt exists it can be asked directly.
+say "Live-version check (what is on the server must be contained in what we ship)"
+LIVE=$(curl -s -m 30 "https://tta.indiakhelofootball.com/release.txt" || true)
+if [ -z "$LIVE" ]; then
+  info "WARNING: could not read /release.txt from production."
+  info "         Either this predates the release stamp, or the site is down."
+  info "         Proceeding WITHOUT the strongest guard — verify by hand what is live."
+else
+  LIVE_FE=$(echo "$LIVE" | awk '/^frontend /{print $2}')
+  LIVE_BE=$(echo "$LIVE" | awk '/^backend /{print $2}')
+  check_contains() {
+    local root="$1" live="$2" name="$3"
+    [ -n "$live" ] || { info "$name: release.txt names no commit; skipping"; return; }
+    cd "$root"
+    if ! git cat-file -e "${live}^{commit}" 2>/dev/null; then
+      die "$name: production runs $live, which does not exist in this repo.
+       Someone deployed from another machine or another branch. Fetch it and
+       merge it before deploying, or you will destroy whatever it contains."
+    fi
+    if ! git merge-base --is-ancestor "$live" HEAD; then
+      die "$name: production runs ${live:0:7}, and it is NOT contained in
+       $(git rev-parse --short HEAD). Deploying would REMOVE work that is
+       live right now — this is exactly the 2026-09-05 CSR failure.
+       Fix: git merge $live"
+    fi
+    info "$name: live ${live:0:7} is contained in $(git rev-parse --short HEAD)"
+  }
+  check_contains "$FE_ROOT" "$LIVE_FE" "frontend"
+  check_contains "$BE_ROOT" "$LIVE_BE" "backend"
+  cd "$FE_ROOT"
+fi
+
 cd "$FE_ROOT"; FE_SHA=$(git rev-parse HEAD); FE_SHORT=${FE_SHA:0:7}
 FE_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 cd "$BE_ROOT"; BE_SHA=$(git rev-parse HEAD); BE_SHORT=${BE_SHA:0:7}
