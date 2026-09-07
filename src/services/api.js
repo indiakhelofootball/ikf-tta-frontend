@@ -4,6 +4,26 @@ import { storedRole, redirectToLoginDoor } from '../auth/loginDoor';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
+// How long a single request may hang before it is abandoned.
+//
+// There was no timeout at all. `fetch` has no default one, so a stalled request
+// waited forever and the screen sat on its spinner with no way to ever fail —
+// which is why a slow page read as "it never loaded" rather than "it failed".
+// A visible error the user can retry beats an infinite spinner.
+//
+// 60s is deliberately generous: it is a backstop for a dead connection, not a
+// performance budget. The backend answers every list in under 400ms; what took
+// minutes was payload transfer on a slow link, and that must still be allowed
+// to finish.
+const REQUEST_TIMEOUT_MS = 60000;
+
+function timeoutSignal(ms) {
+  // AbortSignal.timeout() is not in every browser this app supports.
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), ms);
+  return { signal: controller.signal, clear: () => clearTimeout(id) };
+}
+
 class APIService {
   /**
    * Core request helper with automatic token refresh on 401.
@@ -20,7 +40,20 @@ class APIService {
       },
     };
 
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+    const t = timeoutSignal(REQUEST_TIMEOUT_MS);
+    let response;
+    try {
+      response = await fetch(`${API_BASE_URL}${endpoint}`, { ...config, signal: t.signal });
+    } catch (err) {
+      // Turn the abort into a sentence a user can act on. Anything else (a real
+      // network failure) is re-thrown untouched so callers see the true cause.
+      if (err.name === 'AbortError') {
+        throw new Error('The server took too long to respond. Please try again.');
+      }
+      throw err;
+    } finally {
+      t.clear();
+    }
 
     // Attempt token refresh on 401
     if (response.status === 401 && token) {
@@ -326,6 +359,50 @@ export const repAPI = {
     if (filters.limit) params.append('limit', filters.limit);
     const qs = params.toString();
     return apiService.request(`/reps/${qs ? `?${qs}` : ''}`);
+  },
+
+  // Every REP as id + name + cityAssignments, with NO logo and NO MoU. Use this
+  // for any picker. `getAll` carries the attachments as base64 inside each row:
+  // measured on production 2026-09-07, 66 REPs came to 25.7 MB (18.4 MB on the
+  // wire), of which 17.44 MB was logos and 8.13 MB MoU PDFs.
+  getOptions: async () => {
+    return apiService.request('/reps/options/');
+  },
+
+  // A REP's logo/MoU as a real file URL for <img src> or a link — the bytes are
+  // fetched only when something displays them.
+  //
+  // `updatedAt` is REQUIRED, not decorative. The response carries a long
+  // max-age, and this is what makes that safe: replacing an attachment changes
+  // updatedAt, which changes the URL, so a superseded image is unreachable
+  // rather than merely unlikely to be shown. Pass the REP's updatedAt straight
+  // from whatever list or record you already hold.
+  logoUrl: (id, updatedAt) =>
+    `${API_BASE_URL}/reps/${id}/logo/?v=${encodeURIComponent(updatedAt || '')}`,
+  mouUrl: (id, updatedAt) =>
+    `${API_BASE_URL}/reps/${id}/mou/?v=${encodeURIComponent(updatedAt || '')}`,
+
+  // The logo as a data URL, for the PDF builder — jsPDF needs bytes, not a URL.
+  // These endpoints are behind auth, so a bare fetch() would 401; this sends the
+  // bearer token. Returns null when there is no logo (404) rather than throwing,
+  // because a missing logo must never stop a slip from printing.
+  getLogoDataUrl: async (id, updatedAt) => {
+    try {
+      const token = localStorage.getItem('tta_token');
+      const res = await fetch(repAPI.logoUrl(id, updatedAt), {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      return await new Promise((resolve) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result);
+        r.onerror = () => resolve(null);
+        r.readAsDataURL(blob);
+      });
+    } catch {
+      return null;
+    }
   },
 
   getById: async (id) => {

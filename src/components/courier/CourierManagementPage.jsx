@@ -33,7 +33,7 @@ import { daysUntil, getShipmentFlag } from './courierShipmentFlag';
 import {
   sanitizeQuantityInput, normalizeQuantity, normalizeItemsForSave, canSaveShipment,
 } from './courierItemQuantity';
-import { findRepIdForShipment, findRepLogoForShipment } from './courierRepLookup';
+import { findRepIdForShipment, findRepLogoRefForShipment } from './courierRepLookup';
 import useRefetchOnFocus from '../../hooks/useRefetchOnFocus';
 
 const TSHIRT_ITEM_NAME = 'Volunteer Tshirts';
@@ -99,24 +99,10 @@ const FILTER_LABELS = { active: 'Active', past: 'Past', all: 'All', deleted: 'De
 // daysUntil / getShipmentFlag now live in courierShipmentFlag.js — see the note
 // there on why (#9: an items array missing its fallback blanked the whole page).
 
-// Fetch a (possibly remote) image URL and return a data: URL for jsPDF.
-// Data URLs are passed straight through; failures resolve to null (logo skipped).
-async function urlToDataURL(url) {
-  if (!url) return null;
-  if (String(url).startsWith('data:')) return url;
-  try {
-    const res = await fetch(url);
-    const blob = await res.blob();
-    return await new Promise((resolve) => {
-      const r = new FileReader();
-      r.onload = () => resolve(r.result);
-      r.onerror = () => resolve(null);
-      r.readAsDataURL(blob);
-    });
-  } catch {
-    return null;
-  }
-}
+// (urlToDataURL lived here. It existed because the logo arrived as a base64
+// string inside the REP list and jsPDF needed it as a data URL. The list no
+// longer carries logos; repAPI.getLogoDataUrl fetches the one logo a slip needs
+// and does the conversion, with the auth header this helper never sent.)
 
 // Branded IKF "TYGER-IKF Trial Kit" package slip — pixel-identical to the official
 // artwork. The static layer (header, SHIP TO / DISPATCHED FROM labels, CONTENTS table
@@ -468,6 +454,10 @@ export default function CourierManagementPage() {
   const [returnId, setReturnId] = useState(null);
   const [returnNote, setReturnNote] = useState('');
 
+  // The REP picker loads independently of the shipment list, so it needs its
+  // own flag — the page must not be held hostage by it.
+  const [repsLoading, setRepsLoading] = useState(true);
+
   // admin-configured courier items + "+ Add Item" dropdown anchor
   const [adminItems, setAdminItems] = useState([]);
   const [addMenuAnchor, setAddMenuAnchor] = useState(null);
@@ -477,24 +467,47 @@ export default function CourierManagementPage() {
 
   const viewingDeleted = filterStatus === 'deleted';
 
-  async function loadData({ silent = false } = {}) {
+  // Two independent loads, NOT a Promise.all.
+  //
+  // Promise.all made the whole page wait for the slower call. Shipments arrive
+  // in well under a second; the REP call used to be repAPI.getAll({limit:100}),
+  // which on production returned 66 REPs as 25.7 MB — 17.44 MB of base64 logos
+  // and 8.13 MB of MoU PDFs, for a screen that displays neither. The shipment
+  // list sat finished and unrendered for minutes behind it, and on a slow link
+  // the page never appeared at all.
+  //
+  // Now: shipments paint as soon as they land, and the REP picker fills in
+  // behind them. Nothing stale is ever shown — the picker is simply not ready
+  // yet and says so. That is progressive loading, not a cached read.
+  async function loadShipments({ silent = false } = {}) {
     if (!silent) setLoading(true);
     try {
-      const [repsData, shipmentsData] = await Promise.all([
-        repAPI.getAll({ limit: 100 }),
-        courierAPI.getAll(viewingDeleted ? { deleted: true } : {}),
-      ]);
-      const repList = Array.isArray(repsData)
-        ? repsData
-        : (repsData.reps || repsData.results || []);
-      setReps(repList);
-      setShipments(Array.isArray(shipmentsData) ? shipmentsData : (shipmentsData.results || []));
+      const data = await courierAPI.getAll(viewingDeleted ? { deleted: true } : {});
+      setShipments(Array.isArray(data) ? data : (data.results || []));
       setAdminItems(getCourierItems());
     } catch {
-      if (!silent) setError('Failed to load data.');
+      if (!silent) setError('Failed to load shipments.');
     } finally {
       if (!silent) setLoading(false);
     }
+  }
+
+  async function loadReps() {
+    setRepsLoading(true);
+    try {
+      // getOptions, never getAll: id + name + cityAssignments only. The slip's
+      // logo is fetched per-REP at print time (repAPI.logoUrl).
+      const data = await repAPI.getOptions();
+      setReps(Array.isArray(data) ? data : (data.reps || data.results || []));
+    } catch {
+      setReps([]);
+    } finally {
+      setRepsLoading(false);
+    }
+  }
+
+  async function loadData({ silent = false } = {}) {
+    await Promise.all([loadShipments({ silent }), loadReps()]);
   }
 
   // Reload when toggling between the live list and the Deleted (super-admin) view,
@@ -506,7 +519,11 @@ export default function CourierManagementPage() {
   // back to the snapshot name when the assignment link has been nulled — see
   // ./courierRepLookup. Without it an orphaned shipment printed with no logo.
   async function handleDownload(s) {
-    const logoData = await urlToDataURL(findRepLogoForShipment(reps, s));
+    // Fetch this one REP's logo now, instead of having carried all 66 of them
+    // in the list. A REP with no logo, or one that cannot be resolved, yields
+    // null and the slip prints without a logo — the behaviour it always had.
+    const ref = findRepLogoRefForShipment(reps, s);
+    const logoData = ref ? await repAPI.getLogoDataUrl(ref.id, ref.updatedAt) : null;
     await downloadPDF(s, logoData);
   }
 
@@ -1009,9 +1026,15 @@ export default function CourierManagementPage() {
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
               <Box>
                 <Typography sx={labelSx}>REP <span style={{ color: '#ef4444' }}>*</span></Typography>
+                {/* The REP list loads separately from the shipments, so it can
+                    still be in flight when the form opens. Say so plainly
+                    rather than showing an empty picker that reads as "no REPs
+                    exist". */}
                 <TextField select fullWidth size="small" value={fRepId} onChange={e => onRepChange(e.target.value)}
-                  disabled={!!editingId}>
-                  <MenuItem value="" disabled sx={{ color: '#5A6B82' }}>— Select REP —</MenuItem>
+                  disabled={!!editingId || repsLoading}>
+                  <MenuItem value="" disabled sx={{ color: '#5A6B82' }}>
+                    {repsLoading ? 'Loading REPs…' : '— Select REP —'}
+                  </MenuItem>
                   {reps.map(r => <MenuItem key={r.id} value={r.id}>{r.repName}</MenuItem>)}
                 </TextField>
               </Box>

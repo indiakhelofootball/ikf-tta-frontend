@@ -47,7 +47,18 @@ export function findRepIdForShipment(reps, shipment) {
   return rep ? rep.id : '';
 }
 
-export function findRepLogoForShipment(reps, shipment) {
+// The REP list no longer carries repLogoUrl — it was 17.44 MB of base64 across
+// 66 rows, on a page that displays no logo at all (measured 2026-09-07). The
+// slip fetches the ONE logo it needs from /reps/<id>/logo/ at print time, so
+// this returns what is needed to address it rather than the bytes themselves.
+//
+// `updatedAt` is part of the answer, not a bonus: it versions the URL, so a
+// replaced logo is fetched fresh instead of served from cache.
+//
+// Returns null when the REP cannot be resolved, or when it has no logo — both
+// mean "print without a logo", which is what the slip already did.
+export function findRepLogoRefForShipment(reps, shipment) {
   const rep = findRepForShipment(reps, shipment);
-  return (rep && rep.repLogoUrl) || '';
+  if (!rep || !rep.hasLogo) return null;
+  return { id: rep.id, updatedAt: rep.updatedAt };
 }

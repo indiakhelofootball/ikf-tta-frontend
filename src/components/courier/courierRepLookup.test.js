@@ -1,17 +1,19 @@
 import {
-  findRepForShipment, findRepIdForShipment, findRepLogoForShipment,
+  findRepForShipment, findRepIdForShipment, findRepLogoRefForShipment,
 } from './courierRepLookup';
 
 const JERTHI = {
   id: 47,
   repName: 'Jerthi Football Club',
-  repLogoUrl: 'data:image/png;base64,JERTHI',
+  hasLogo: true,
+  updatedAt: '2026-09-01T10:00:00Z',
   cityAssignments: [{ id: 101, city: 'Sikar' }, { id: 102, city: 'Sikar' }],
 };
 const NFA = {
   id: 20,
   repName: 'NFA',
-  repLogoUrl: 'data:image/png;base64,NFA',
+  hasLogo: true,
+  updatedAt: '2026-09-02T10:00:00Z',
   cityAssignments: [{ id: 201, city: 'Nimbahera' }],
 };
 const REPS = [JERTHI, NFA];
@@ -36,9 +38,14 @@ describe('THE BUG: assignment deleted, link is null', () => {
     expect(findRepForShipment(REPS, s)).toBe(JERTHI);
   });
 
-  test('and therefore the slip gets the logo it used to lose', () => {
+  test('and therefore the slip can still address the logo it used to lose', () => {
     const s = { assignmentId: null, snapRepName: 'Jerthi Football Club' };
-    expect(findRepLogoForShipment(REPS, s)).toBe('data:image/png;base64,JERTHI');
+    // The bytes no longer travel in the list; what the slip needs is the id to
+    // fetch, plus the updatedAt that versions the URL so a replaced logo is
+    // never served from cache.
+    expect(findRepLogoRefForShipment(REPS, s)).toEqual({
+      id: 47, updatedAt: '2026-09-01T10:00:00Z',
+    });
   });
 
   test('and the REP field is no longer blank when the shipment is opened', () => {
@@ -63,14 +70,23 @@ describe('it must not invent a match', () => {
     const s = { assignmentId: null, snapRepName: 'Dissolved FC' };
     expect(findRepForShipment(REPS, s)).toBeNull();
     expect(findRepIdForShipment(REPS, s)).toBe('');
-    expect(findRepLogoForShipment(REPS, s)).toBe('');
+    expect(findRepLogoRefForShipment(REPS, s)).toBeNull();
   });
 
-  test('an org with no logo yields no logo, not a crash', () => {
-    const reps = [{ id: 60, repName: 'SportOwn', cityAssignments: [] }];
+  test('an org with no logo yields no logo ref, so no pointless fetch', () => {
+    const reps = [{ id: 60, repName: 'SportOwn', hasLogo: false, cityAssignments: [] }];
     const s = { assignmentId: null, snapRepName: 'SportOwn' };
     expect(findRepForShipment(reps, s).id).toBe(60);
-    expect(findRepLogoForShipment(reps, s)).toBe('');
+    expect(findRepLogoRefForShipment(reps, s)).toBeNull();
+  });
+
+  test('the slim list must not be assumed to carry the logo bytes', () => {
+    // Guards the regression this change could cause: if someone reintroduces a
+    // repLogoUrl read here, it would silently return undefined against
+    // /reps/options/ and every slip would print without a logo.
+    const s = { assignmentId: 101 };
+    const ref = findRepLogoRefForShipment(REPS, s);
+    expect(Object.keys(ref).sort()).toEqual(['id', 'updatedAt']);
   });
 });
 
