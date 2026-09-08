@@ -62,7 +62,15 @@ const whenLabel = (a) => {
 // column heading has no room for the full "Partner representative" the form
 // offers.
 const CONTACT_TYPE_LABELS = { Client: 'Client', IKF: 'IKF', Vendor: 'Partner' };
-const contactTypeLabel = (v) => (v ? CONTACT_TYPE_LABELS[v] || v : '\u2014');
+// A partner's own kind is shown INSIDE the type cell rather than as a seventh
+// column: it is a narrowing of the type, not a fact of its own, and the 4th
+// column carries the identity band on every table in this module. "Partner"
+// alone cannot tell a life-skills partner from an education one, which is the
+// whole reason the category was asked for.
+const contactTypeLabel = (c) => {
+  const base = c.contactType ? CONTACT_TYPE_LABELS[c.contactType] || c.contactType : '\u2014';
+  return c.partnerCategoryName ? `${base} \u00b7 ${c.partnerCategoryName}` : base;
+};
 
 // Why a tag is not on the certificate. Payment status first: money that never
 // moved is not evidence of utilisation whatever its date.
@@ -418,7 +426,7 @@ export default function CSRProjectDetailPage() {
                   <span className="fig nowrap">{c.phone || '—'}</span>
                   <span className="t1">{c.name}</span>
                   <span className="t2">{c.designation || '—'}</span>
-                  <span className="t2">{contactTypeLabel(c.contactType)}</span>
+                  <span className="t2">{contactTypeLabel(c)}</span>
                   <span className="t2">{c.email || '—'}</span>
                   <span className="lend">
                     {editable && (

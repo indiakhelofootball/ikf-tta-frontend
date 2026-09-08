@@ -4,10 +4,12 @@
 // Fields, validation and payload shape are carried over unchanged from
 // CSRContactModal; the comments explaining WHY a field behaves as it does
 // come with them.
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 
 import { csrAPI } from '../../services/api';
+import { getPartnerCategories } from '../../utils/adminStorage';
+import useConfigVersion from '../../hooks/useConfigVersion';
 import '../../styles/csrDesign.css';
 
 // The three sides the 26 Aug review named: IKF representative, client
@@ -24,7 +26,14 @@ const CONTACT_TYPES = [
   { value: 'Vendor', label: 'Partner representative' },
 ];
 
-const EMPTY = { name: '', designation: '', contactType: '', email: '', phone: '' };
+// Only a partner representative has a partner category. The API refuses the
+// combination outright, so the field is not merely hidden for the other two —
+// it is cleared when the type moves away from partner.
+const PARTNER_TYPE = 'Vendor';
+
+const EMPTY = {
+  name: '', designation: '', contactType: '', partnerCategoryId: '', email: '', phone: '',
+};
 
 export default function CSRContactFormPage() {
   const { id } = useParams();
@@ -64,6 +73,7 @@ export default function CSRContactFormPage() {
           name: data.name || '',
           designation: data.designation || '',
           contactType: data.contactType || '',
+          partnerCategoryId: data.partnerCategoryId ?? '',
           email: data.email || '',
           phone: data.phone || '',
         });
@@ -100,7 +110,25 @@ export default function CSRContactFormPage() {
     return () => { cancelled = true; };
   }, []);
 
+  // The SAME catalog that classifies a partner vendor, read the same way the
+  // activity form reads its workshop list. A second list for one question is
+  // how two screens start disagreeing about what a partner does.
+  const cfgVersion = useConfigVersion();
+  const partnerCategories = useMemo(() => getPartnerCategories(), [cfgVersion]);
+
   const setField = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  // Moving off the partner type drops the category with it. Leaving it set
+  // would send a combination the API refuses, and the operator would be looking
+  // at an error about a field the form is no longer showing them.
+  const handleTypeChange = (e) => {
+    const contactType = e.target.value;
+    setForm((f) => ({
+      ...f,
+      contactType,
+      partnerCategoryId: contactType === PARTNER_TYPE ? f.partnerCategoryId : '',
+    }));
+  };
 
   // Picking a suggestion prefills the other fields but never carries the
   // source contact's id — each grant keeps its own contact row, this is just
@@ -139,6 +167,11 @@ export default function CSRContactFormPage() {
       name: form.name.trim(),
       designation: form.designation.trim(),
       contactType: form.contactType,
+      // null, not '' — this is an FK. Sending an empty string would be a 400
+      // on a field the operator deliberately left blank.
+      partnerCategoryId: form.contactType === PARTNER_TYPE && form.partnerCategoryId !== ''
+        ? Number(form.partnerCategoryId)
+        : null,
       email: form.email.trim(),
       phone: form.phone.trim(),
     };
@@ -219,13 +252,40 @@ export default function CSRContactFormPage() {
 
           <div className="pform-field">
             <label htmlFor="c-type">Contact Type</label>
-            <select id="c-type" className="sel" value={form.contactType} onChange={setField('contactType')}>
+            <select id="c-type" className="sel" value={form.contactType} onChange={handleTypeChange}>
               <option value="">—</option>
               {CONTACT_TYPES.map((t) => (
                 <option key={t.value} value={t.value}>{t.label}</option>
               ))}
             </select>
           </div>
+
+          {/* WHICH KIND of partner, asked only once the answer can mean
+              something. The type above says which side this person sits on;
+              for a partner that is not enough, because a grant runs life
+              skills, player development and education partners at the same
+              time and their representatives are otherwise indistinguishable. */}
+          {form.contactType === PARTNER_TYPE && (
+            <div className="pform-field">
+              <label htmlFor="c-partner-category">Partner Type</label>
+              <select
+                id="c-partner-category" className="sel" value={form.partnerCategoryId}
+                onChange={setField('partnerCategoryId')}
+                disabled={partnerCategories.length === 0}
+                aria-describedby="c-partner-category-help"
+              >
+                <option value="">— none —</option>
+                {partnerCategories.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+              <p id="c-partner-category-help" className="pform-help">
+                {partnerCategories.length === 0
+                  ? 'No partner types in the catalog yet — an admin adds them in TTA Admin → Setup.'
+                  : 'What this partner does, e.g. life skills, player development, education.'}
+              </p>
+            </div>
+          )}
 
           <div className="pform-field">
             <label htmlFor="c-name">Name <span className="pform-req" aria-hidden="true">*</span></label>
