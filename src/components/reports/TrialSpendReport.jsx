@@ -21,6 +21,7 @@ import {
   WarningAmber as WarningIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { computeTrialSpend } from './trialSpendTotals';
 import { reportsAPI } from '../../services/api';
 import { csvBlob } from '../../utils/csv';
 import { exportReportExcel, datedFileName } from '../../utils/reportExcel';
@@ -90,16 +91,14 @@ function TrialSpendReport() {
       const woIds = wos.map(w => w.id || w._id);
       const prs = woIds.flatMap(id => prByWoId.get(id) || []);
 
-      const committed = wos.reduce((s, w) => s + (parseFloat(w.amount) || 0), 0);
-      const paidGross = prs
-        .filter(p => p.status === 'Payment Done' || p.status === 'Sent to Accounts')
-        .reduce((s, p) => s + (parseFloat(p.grossAmount) || 0), 0);
-      const paidNet = prs
-        .filter(p => p.status === 'Payment Done' || p.status === 'Sent to Accounts')
-        .reduce((s, p) => s + (parseFloat(p.netAmount) || 0), 0);
-      const tdsTotal = prs.reduce((s, p) => s + (parseFloat(p.tdsAmount) || 0), 0);
-      const pending = committed - paidGross;
-      const bounces = prs.filter(p => p.status === 'Payment Bounced').length;
+      // All six figures come from ./trialSpendTotals, behind ONE paid-status
+      // predicate. tdsTotal used to be computed here with no status filter at
+      // all, three lines under two that had one -- so a bounced payment's TDS
+      // was counted again on this screen after tracker #17 was fixed on the
+      // Payment Audit screen.
+      const {
+        committed, paidGross, paidNet, tdsTotal, pending, bounces,
+      } = computeTrialSpend(wos, prs);
 
       return {
         trial: t, wos, prs,
