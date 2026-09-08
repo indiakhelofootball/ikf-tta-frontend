@@ -81,6 +81,62 @@ describe('rows that work today keep working', () => {
   });
 });
 
+describe('data-entry variance is NOT a collision', () => {
+  // The first version of this module treated "the assignments disagree about the
+  // state" as ambiguity. On a project listing ONE Kota, with REP A on
+  // "Rajasthan" and REP B on "RAJ", it kept only A, blanked the address and
+  // reported B as an orphan -- the exact complaint this file exists to fix.
+  const trials = [trial(7, [city('Kota', 'Rajasthan')])];
+  const reps = [
+    rep('A', [asn(7, 'Kota', 'Rajasthan', { physicalAddress: '' })]),
+    rep('B', [asn(7, 'Kota', 'RAJ', { physicalAddress: 'Ground B', googleMapLink: 'http://maps/b' })]),
+  ];
+  const index = buildCityAssignmentIndex(trials, reps);
+
+  it('keeps both REPs on the row', () => {
+    expect(resolveAssignment(index, 7, 'Kota', 'Rajasthan').reps).toEqual(['A', 'B']);
+  });
+
+  it('keeps the address that only the other spelling carried', () => {
+    const hit = resolveAssignment(index, 7, 'Kota', 'Rajasthan');
+    expect(hit.physicalAddress).toBe('Ground B');
+    expect(hit.googleMapLink).toBe('http://maps/b');
+  });
+
+  it('does not report the other spelling as an orphan', () => {
+    expect(assignmentIsReachable(index, asn(7, 'Kota', 'RAJ'))).toBe(true);
+  });
+});
+
+describe('a project with no duplicate city name behaves exactly as before', () => {
+  // The guarantee that bounds the blast radius: where the project lists each
+  // city name once, this module returns the name-only merge the report always
+  // used, whatever the states say.
+  const trials = [trial(3, [city('Pune', 'Maharashtra'), city('Kota', 'Rajasthan')])];
+  const reps = [
+    rep('P1', [asn(3, 'Pune', '', { physicalAddress: 'P addr' })]),
+    rep('P2', [asn(3, 'Pune', 'MH', { groundLocation: 'P ground' })]),
+    rep('K1', [asn(3, 'Kota', 'WRONG STATE', { physicalAddress: 'K addr' })]),
+  ];
+  const index = buildCityAssignmentIndex(trials, reps);
+
+  it('merges every assignment for the city regardless of state', () => {
+    const pune = resolveAssignment(index, 3, 'Pune', 'Maharashtra');
+    expect(pune.reps).toEqual(['P1', 'P2']);
+    expect(pune.physicalAddress).toBe('P addr');
+    expect(pune.groundLocation).toBe('P ground');
+  });
+
+  it('still matches a plainly wrong state', () => {
+    expect(resolveAssignment(index, 3, 'Kota', 'Rajasthan').physicalAddress).toBe('K addr');
+  });
+
+  it('orphans nothing', () => {
+    expect(assignmentIsReachable(index, asn(3, 'Pune', ''))).toBe(true);
+    expect(assignmentIsReachable(index, asn(3, 'Kota', 'WRONG STATE'))).toBe(true);
+  });
+});
+
 describe('orphan detection follows the same rules', () => {
   it('does not turn a blank-state assignment into an orphan', () => {
     const trials = [trial(7, [city('Kota', 'Rajasthan')])];
