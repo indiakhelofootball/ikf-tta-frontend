@@ -12,23 +12,72 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { csrAPI } from '../../services/api';
 import '../../styles/csrDesign.css';
 
+/** Today as `YYYY-MM-DD` in the operator's own timezone — `toISOString()` would
+ *  hand back UTC and shift the date by a day for anyone east of Greenwich. */
+function today() {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/** Whether `value` sits inside the grant's stated period. Either bound may be
+ *  absent, which means unbounded on that side — the same rule the server
+ *  applies in certificate_rules.within_certificate_period. */
+function outsideGrantPeriod(value, grant) {
+  if (!value || !grant) return false;
+  const { startDate, endDate } = grant;
+  if (startDate && value < startDate) return true;
+  if (endDate && value > endDate) return true;
+  return false;
+}
+
 export default function CSRExpenseTagFormPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const projectId = searchParams.get('project') ? Number(searchParams.get('project')) : null;
 
   const [manualAmount, setManualAmount] = useState('');
+  // WHEN the money was spent — not when this row is being typed. The
+  // certificate files the expense under this date and compares it against the
+  // grant's own period, so a tag entered months after the fact, or against a
+  // grant that ran last year, lands where it belongs instead of dropping off
+  // the document. Defaulted to today so the common case is unchanged; never
+  // left blank, because blank falls back to the typing date and that is the
+  // behaviour being corrected.
+  const [expenseDate, setExpenseDate] = useState(today());
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
+  const [dateError, setDateError] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  // The grant's own period, read only so this page can warn BEFORE the save
+  // that a date falls outside it. A tag outside the window still saves — it is
+  // a real expense and refusing it would lose it — but the operator finds out
+  // here rather than from a certificate that quietly omits it later.
+  const [project, setProject] = useState(null);
 
   useEffect(() => {
     setManualAmount('');
+    setExpenseDate(today());
     setNote('');
     setError('');
+    setDateError('');
     setSaveError('');
   }, [projectId]);
+
+  useEffect(() => {
+    if (!projectId) { setProject(null); return undefined; }
+    let cancelled = false;
+    csrAPI.projects.getById(projectId)
+      .then((data) => { if (!cancelled) setProject(data); })
+      .catch(() => { if (!cancelled) setProject(null); });
+    return () => { cancelled = true; };
+  }, [projectId]);
+
+  const outside = outsideGrantPeriod(expenseDate, project);
+  const grantPeriod = project
+    ? `${project.startDate || 'inception'} to ${project.endDate || 'open'}`
+    : '';
 
   const leave = useCallback(
     (saved) => {
@@ -44,6 +93,10 @@ export default function CSRExpenseTagFormPage() {
       setError('Enter an amount');
       return;
     }
+    if (!expenseDate) {
+      setDateError('Enter the date this expense was incurred');
+      return;
+    }
     setSaving(true);
     setSaveError('');
     try {
@@ -54,7 +107,7 @@ export default function CSRExpenseTagFormPage() {
       // exists to prevent. Tagging a real payment is a FINANCE action, done
       // from the payment itself via "Tag to CSR".
       await csrAPI.expenseTags.create({
-        paymentId: null, manualAmount, note: note.trim(), projectId,
+        paymentId: null, manualAmount, expenseDate, note: note.trim(), projectId,
       });
       leave('Expense tagged.');
     } catch (err) {
@@ -106,6 +159,23 @@ export default function CSRExpenseTagFormPage() {
               />
             </div>
             {error ? <p id="x-amount-help" className="pform-help bad">{error}</p> : null}
+          </div>
+
+          <div className="pform-field">
+            <label htmlFor="x-date">Expense Date <span className="pform-req" aria-hidden="true">*</span></label>
+            <div className={`pform-input${expenseDate ? ' ok' : ''}`}>
+              <input
+                id="x-date" type="date" value={expenseDate}
+                onChange={(e) => { setExpenseDate(e.target.value); setDateError(''); }}
+                aria-invalid={Boolean(dateError)} aria-describedby="x-date-help"
+              />
+            </div>
+            <p id="x-date-help" className={`pform-help${dateError || outside ? ' bad' : ''}`}>
+              {dateError || (outside
+                ? `This falls outside the grant period (${grantPeriod}), so it will be `
+                  + 'recorded but will not appear on the Utilisation Certificate.'
+                : 'When the money was spent. The certificate files it under this date.')}
+            </p>
           </div>
 
           <div className="pform-field">

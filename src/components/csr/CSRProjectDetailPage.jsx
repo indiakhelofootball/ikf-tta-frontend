@@ -64,6 +64,25 @@ const whenLabel = (a) => {
 const CONTACT_TYPE_LABELS = { Client: 'Client', IKF: 'IKF', Vendor: 'Partner' };
 const contactTypeLabel = (v) => (v ? CONTACT_TYPE_LABELS[v] || v : '\u2014');
 
+// Why a tag is not on the certificate. Payment status first: money that never
+// moved is not evidence of utilisation whatever its date.
+const uncountedReason = (x) => {
+  if (!x.countsTowardCertificate) return x.paymentStatus || 'Not counted';
+  return 'Outside period';
+};
+
+// The dates behind an "Outside period" pill, so the operator can see which one
+// is wrong -- the expense's or the grant's -- without opening either.
+const outOfPeriodTitle = (x, project) => {
+  if (x.countsTowardCertificate && x.withinCertificatePeriod === false) {
+    const from = project?.startDate || 'inception';
+    const to = project?.endDate || 'open';
+    return `Dated ${x.effectiveDate || 'unknown'}, outside the grant period (${from} to ${to}), `
+      + 'so it is not on the Utilisation Certificate.';
+  }
+  return undefined;
+};
+
 const rowActivation = (label, onActivate) => (onActivate ? {
   role: 'button',
   tabIndex: 0,
@@ -265,12 +284,25 @@ export default function CSRProjectDetailPage() {
     }
   };
 
-  // Mirror the certificate's rule: only money that actually moved is utilised.
-  // A tag whose payment is still Draft, Sent to Accounts, or Bounced is shown in
-  // the list but excluded here, so this total always matches the PDF.
-  const counting = expenses.filter((x) => x.countsTowardCertificate);
+  // Mirror the certificate's rule — BOTH halves of it. Money that actually
+  // moved (a Draft, Sent to Accounts or Bounced payment has not), AND spend
+  // dated inside the grant's own period. Counting only the first half is what
+  // made this total disagree with the document it sits above: a tag could read
+  // as Counted here and be absent from the PDF, with nothing on the screen
+  // saying why. `withinCertificatePeriod` is undefined on a payload from an
+  // older server, and `!== false` keeps that reading as it did.
+  const onCertificate = (x) => x.countsTowardCertificate && x.withinCertificatePeriod !== false;
+  const counting = expenses.filter(onCertificate);
   const totalTagged = counting.reduce((sum, x) => sum + (Number(x.amount) || 0), 0);
   const excludedCount = expenses.length - counting.length;
+  const uncleared = expenses.filter((x) => !x.countsTowardCertificate).length;
+  const outOfPeriod = expenses.filter(
+    (x) => x.countsTowardCertificate && x.withinCertificatePeriod === false,
+  ).length;
+  const excludedReasons = [
+    uncleared > 0 ? `${uncleared} where the payment has not completed` : null,
+    outOfPeriod > 0 ? `${outOfPeriod} dated outside the grant period` : null,
+  ].filter(Boolean).join(', and ');
   const sanctioned = Number(project?.sanctionedAmount) || 0;
   const freeze = certificateFreezeState(project);
 
@@ -692,10 +724,15 @@ export default function CSRProjectDetailPage() {
                   Live totals. The frozen certificate reports the figures as at {freeze.frozenAtLabel}.
                 </Typography>
               )}
+              {/* The caption used to assert one reason for every uncounted
+                  tag — "the payment has not completed" — which was wrong the
+                  moment a tag could also be off the certificate for its date,
+                  and said so about tags that had no payment at all. It now
+                  names whichever reasons are actually present. */}
               {excludedCount > 0 && (
                 <Typography variant="caption" color="warning.dark">
                   {excludedCount} tagged {excludedCount === 1 ? 'expense is' : 'expenses are'} not
-                  counted — the payment has not completed.
+                  counted — {excludedReasons}.
                 </Typography>
               )}
             </Box>
@@ -740,10 +777,17 @@ export default function CSRProjectDetailPage() {
                   <span className="t1">{x.paymentLabel || 'Manual'}</span>
                   <span className="t2">{x.note || '—'}</span>
                   <span className="lend">
-                    <span className={`pill ${x.countsTowardCertificate ? 'act' : 'wait'}`}>
-                      {x.countsTowardCertificate
-                        ? 'Counted'
-                        : (x.paymentStatus || 'Not counted')}
+                    {/* Two different reasons a tag is off the certificate, and
+                        the operator needs to be able to tell them apart: the
+                        money never moved, or it moved outside the grant period.
+                        The second one used to be invisible here and was the
+                        reported complaint — a certificate that "does not take
+                        the expense" with nothing on screen admitting it. */}
+                    <span
+                      className={`pill ${onCertificate(x) ? 'act' : 'wait'}`}
+                      title={outOfPeriodTitle(x, project)}
+                    >
+                      {onCertificate(x) ? 'Counted' : uncountedReason(x)}
                     </span>
                     {/* An expense tag is audit-bound: permissions/registry.py
                         sets can_delete:false on csr_certificate, and the server

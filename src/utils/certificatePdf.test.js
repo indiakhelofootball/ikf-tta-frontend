@@ -130,8 +130,8 @@ describe('buildCertificateDoc — funder variant', () => {
   test('zero line items render a non-empty, non-broken table', () => {
     const { head, body } = buildCertificateTable({ ...base, lineItems: [] }, { variant: 'funder' });
     expect(body.length).toBeGreaterThan(0);
-    expect(body[0][0]).toMatch(/No expenses are recorded/);
-    expect(head[0]).toEqual(['Expense', 'Amount']);
+    expect(body[0][1]).toMatch(/No expenses are recorded/);
+    expect(head[0]).toEqual(['Date', 'Expense', 'Amount']);
   });
 
   test('isolation guarantee: never emits a Source/vendor/payment column or value, even when the object carries one', () => {
@@ -147,12 +147,29 @@ describe('buildCertificateDoc — funder variant', () => {
     };
     const { head, body } = buildCertificateTable(leaky, { variant: 'funder' });
     buildCertificateDoc(leaky, { variant: 'funder' });
-    expect(head[0]).toEqual(['Expense', 'Amount']);
-    expect(body[0]).toHaveLength(2);
+    expect(head[0]).toEqual(['Date', 'Expense', 'Amount']);
+    expect(body[0]).toHaveLength(3);
     expect(JSON.stringify(body)).not.toMatch(/Vendor Payment/);
     expect(JSON.stringify(body)).not.toMatch(/Acme Sports/);
     expect(JSON.stringify(body)).not.toMatch(/PAY-9912/);
     expect(allText()).not.toMatch(/Vendor Payment|Acme Sports|PAY-9912/);
+  });
+
+  test('each line carries its own date, so the stated period is auditable', () => {
+    const { head, body } = buildCertificateTable(
+      { ...base, lineItems: [{ date: '2026-03-04', note: 'Coaching kits', amount: 50000 }] },
+      { variant: 'funder' },
+    );
+    expect(head[0][0]).toBe('Date');
+    expect(body[0][0]).toBe('2026-03-04');
+  });
+
+  test('a certificate frozen before dates existed still prints', () => {
+    // The snapshot is served verbatim and is never rewritten in place, so a
+    // document frozen under the older builder has no `date` on its lines.
+    const { body } = buildCertificateTable(base, { variant: 'funder' });
+    expect(body[0][0]).toBe('—');
+    expect(body[0][1]).toBe('Coaching kits');
   });
 
   test('out-of-period count is internal-only: never printed on the funder side even if present', () => {
@@ -191,8 +208,8 @@ describe('buildCertificateDoc — internal variant', () => {
 
   test('Source column is present and carries the value', () => {
     const { head, body } = buildCertificateTable(base, { variant: 'internal' });
-    expect(head[0]).toEqual(['Source', 'Note', 'Amount']);
-    expect(body[0][0]).toBe('Vendor Payment');
+    expect(head[0]).toEqual(['Date', 'Source', 'Note', 'Amount']);
+    expect(body[0][1]).toBe('Vendor Payment');
   });
 
   test('excludedItems/outOfPeriodCount reach the reader on the internal side', () => {
@@ -203,8 +220,8 @@ describe('buildCertificateDoc — internal variant', () => {
   test('zero line items render a non-empty, non-broken table', () => {
     const { head, body } = buildCertificateTable({ ...base, lineItems: [] }, { variant: 'internal' });
     expect(body.length).toBeGreaterThan(0);
-    expect(body[0][1]).toMatch(/No expenses are recorded/);
-    expect(head[0]).toEqual(['Source', 'Note', 'Amount']);
+    expect(body[0][2]).toMatch(/No expenses are recorded/);
+    expect(head[0]).toEqual(['Date', 'Source', 'Note', 'Amount']);
   });
 });
 
