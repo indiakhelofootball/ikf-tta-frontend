@@ -181,3 +181,30 @@ that column being the complaint the report already carries.
 
 Suites: **frontend 453** (was 441) · **backend 55 in `reps`**.
 Not committed, not pushed, not deployed.
+
+---
+
+## O1 / O3 / O4 — done 2026-09-08
+
+| | what it was | commit |
+|---|---|---|
+| **O1** | `CR-2026-0051` printed the BANNERS artwork for "Naari Shakti Banner". A keyword pass let any name CONTAINING a keyword claim a tile whose word is baked into the image, so the slip named an item nobody typed. Pass removed; exactly-named items are pixel-identical. Rule extracted to `courierSlipRows.js`, 11 tests | `acbb4b4` |
+| **O3** | `tdsTotal` had no status filter three lines under two that did — tracker #17 on a second screen. All six figures now run through one `isPaid` predicate in `trialSpendTotals.js`, 9 tests. Inert on production only because no affected WO carries a project tag | `2d4532a` |
+| **O4** | DashboardHome (count via `total`), CityModal and REPModal repointed off the 18.4 MB list. REPModal also gains correctness: `limit: 1000` was capped at 100 server-side, so its assigned-city set was incomplete past 100 REPs | `e17c24b` |
+
+**O4 is partial on purpose.** Two callers are NOT a repoint and were left:
+
+- `REPManagementPage.jsx:107` — the card is fine, but `REPDetailView` reads
+  `mouDocumentUrl`, `repLogoUrl`, `repLogoLink` off this payload. Needs the
+  detail view to fetch the REP it opens, or to use the `/logo/` and `/mou/`
+  byte endpoints.
+- `REPModal.jsx:277` — the name lookup prefills the org fields it then disables.
+  `getOptions` does not carry contactName/phone/email, so it needs a slim search
+  rather than a swap. Bounded by `limit: 10`.
+
+**O2 is not code and is still open.** ₹4,300 of TDS deducted with no `TDSRecord`
+(`PR-2026-082`, `PR-2026-060`); audit strip ₹91,826.70 against register
+₹87,526.70. Either those two were deliberately no-TDS and the strip over-counts,
+or the deduction is real and two register rows must be backfilled. Owner call.
+
+Suite: frontend **476** (was 458). Not pushed, not deployed.
