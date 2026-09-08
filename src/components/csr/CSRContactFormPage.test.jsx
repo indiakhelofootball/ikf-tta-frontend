@@ -26,6 +26,17 @@ jest.mock('../../services/api', () => ({
   },
 }));
 
+// The SAME catalog that classifies a partner vendor — not a list of this
+// form's own.
+jest.mock('../../utils/adminStorage', () => ({
+  getPartnerCategories: () => [
+    { id: 7, name: 'Life Skills' },
+    { id: 8, name: 'Player Development' },
+  ],
+}));
+
+jest.mock('../../hooks/useConfigVersion', () => ({ __esModule: true, default: () => 0 }));
+
 const { csrAPI } = require('../../services/api');
 
 const CONTACT = {
@@ -71,6 +82,62 @@ describe('creating a contact', () => {
     const vendorOption = options.find((o) => o.value === 'Vendor');
     expect(vendorOption).toBeDefined();
     expect(vendorOption.textContent).toBe('Partner representative');
+  });
+
+  test('the partner type is asked only once the contact is a partner', async () => {
+    render(<CSRContactFormPage />);
+    await waitFor(() => expect(csrAPI.contacts.getAll).toHaveBeenCalled());
+    // A client or IKF representative has no partner type — the API refuses the
+    // combination, so the form must not offer it.
+    expect(screen.queryByLabelText(/partner type/i)).toBeNull();
+
+    await userEvent.selectOptions(screen.getByLabelText(/contact type/i), 'Vendor');
+    expect(await screen.findByLabelText(/partner type/i)).toBeInTheDocument();
+  });
+
+  test('the partner type is sent as the catalog row id', async () => {
+    csrAPI.contacts.create.mockResolvedValue({});
+    render(<CSRContactFormPage />);
+    await waitFor(() => expect(csrAPI.contacts.getAll).toHaveBeenCalled());
+
+    await userEvent.selectOptions(screen.getByLabelText(/contact type/i), 'Vendor');
+    await userEvent.selectOptions(await screen.findByLabelText(/partner type/i), '7');
+    await userEvent.type(screen.getByLabelText(/^name/i), 'Partner Person');
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+    await waitFor(() => expect(csrAPI.contacts.create).toHaveBeenCalled());
+    expect(csrAPI.contacts.create.mock.calls[0][0].partnerCategoryId).toBe(7);
+  });
+
+  test('moving off partner clears the type rather than sending a refused pair', async () => {
+    csrAPI.contacts.create.mockResolvedValue({});
+    render(<CSRContactFormPage />);
+    await waitFor(() => expect(csrAPI.contacts.getAll).toHaveBeenCalled());
+
+    await userEvent.selectOptions(screen.getByLabelText(/contact type/i), 'Vendor');
+    await userEvent.selectOptions(await screen.findByLabelText(/partner type/i), '8');
+    await userEvent.selectOptions(screen.getByLabelText(/contact type/i), 'Client');
+    await userEvent.type(screen.getByLabelText(/^name/i), 'Client Person');
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+    await waitFor(() => expect(csrAPI.contacts.create).toHaveBeenCalled());
+    const payload = csrAPI.contacts.create.mock.calls[0][0];
+    expect(payload.contactType).toBe('Client');
+    // null, not '' — the server field is an FK.
+    expect(payload.partnerCategoryId).toBeNull();
+  });
+
+  test('a partner with no type recorded sends null, not an empty string', async () => {
+    csrAPI.contacts.create.mockResolvedValue({});
+    render(<CSRContactFormPage />);
+    await waitFor(() => expect(csrAPI.contacts.getAll).toHaveBeenCalled());
+
+    await userEvent.selectOptions(screen.getByLabelText(/contact type/i), 'Vendor');
+    await userEvent.type(screen.getByLabelText(/^name/i), 'Untyped Partner');
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+    await waitFor(() => expect(csrAPI.contacts.create).toHaveBeenCalled());
+    expect(csrAPI.contacts.create.mock.calls[0][0].partnerCategoryId).toBeNull();
   });
 
   test('will not save without a name', async () => {
@@ -123,6 +190,16 @@ describe('editing a contact', () => {
 
     await waitFor(() => expect(csrAPI.contacts.getById).toHaveBeenCalledWith('4'));
     expect(await screen.findByDisplayValue('Aditi Rane')).toBeInTheDocument();
+  });
+
+  test('an existing partner contact loads its recorded partner type', async () => {
+    csrAPI.contacts.getById.mockResolvedValue({
+      ...CONTACT, contactType: 'Vendor', partnerCategoryId: 8,
+      partnerCategoryName: 'Player Development',
+    });
+    render(<CSRContactFormPage />);
+    await screen.findByDisplayValue('Aditi Rane');
+    expect(screen.getByLabelText(/partner type/i)).toHaveValue('8');
   });
 
   test('a record that will not load stops, rather than offering an empty form', async () => {
