@@ -23,9 +23,9 @@
 // So state DISAMBIGUATES rather than keys:
 //
 //   1. an exact (trial, city, state) match wins;
-//   2. failing that, a (trial, city) match is used ONLY where that city name is
-//      unambiguous within the project — one city of that name on the trial, and
-//      at most one state among the assignments for it;
+//   2. failing that, a (trial, city) match is used wherever the project lists
+//      that city name once — which is every row on every project that has no
+//      duplicate city name at all;
 //   3. where it IS ambiguous and the state does not match, nothing is returned.
 //      The row shows no address instead of another state's address, and the
 //      assignment surfaces in the orphan list, which is visible and repairable.
@@ -68,9 +68,19 @@ const absorb = (entry, rep, a) => {
  * @param {Array} reps    as returned by the report endpoint (cityAssignments carries state)
  */
 export function buildCityAssignmentIndex(trials, reps) {
-  // A (trial, city) pair is ambiguous when the project lists that city name more
-  // than once -- that is the case where a wrong state prints someone else's
-  // address -- or when its assignments disagree about the state.
+  // A (trial, city) pair is ambiguous when, and ONLY when, the project lists
+  // that city name more than once. That is the single situation in which a
+  // name-only match can attach one city's REP and address to another's row.
+  //
+  // Assignments disagreeing about the state is NOT ambiguity, and treating it as
+  // ambiguity was a defect in the first version of this file. Measured: one
+  // project listing one Kota, with REP A on state "Rajasthan" and REP B on
+  // "RAJ" -- ordinary data-entry variance -- split into two buckets. The row
+  // kept only REP A, lost REP B's name AND its address, and reported B as an
+  // orphan. That is the "address missing from the Trial Report" complaint,
+  // reintroduced by the code meant to fix it. With one city of that name on the
+  // project there is nothing to confuse, so every assignment for it belongs to
+  // that row however its state is spelt.
   const trialNameCounts = new Map();
   const knownExact = new Set();
   const knownLoose = new Set();
@@ -84,18 +94,8 @@ export function buildCityAssignmentIndex(trials, reps) {
     });
   });
 
-  const statesSeen = new Map();   // looseKey -> Set of non-blank states
-  (reps || []).forEach((r) => {
-    (r.cityAssignments || []).forEach((a) => {
-      const lk = looseKey(a.trialId, a.city);
-      if (!statesSeen.has(lk)) statesSeen.set(lk, new Set());
-      if (norm(a.state)) statesSeen.get(lk).add(norm(a.state));
-    });
-  });
-
   const ambiguous = new Set();
   trialNameCounts.forEach((count, lk) => { if (count > 1) ambiguous.add(lk); });
-  statesSeen.forEach((states, lk) => { if (states.size > 1) ambiguous.add(lk); });
 
   const byExact = new Map();
   const byLoose = new Map();
@@ -113,13 +113,23 @@ export function buildCityAssignmentIndex(trials, reps) {
   return { byExact, byLoose, ambiguous, knownExact, knownLoose };
 }
 
-/** The assignment for one row of the table, or undefined. */
+/** The assignment for one row of the table, or undefined.
+ *
+ * Order matters, and getting it wrong was the second half of the same defect.
+ * Preferring an exact state match FIRST split a single city's REPs across two
+ * buckets whenever their states were spelt differently: the row kept the REP
+ * whose spelling happened to match the trial city and silently dropped the
+ * other one's name and address.
+ *
+ * So the name-only bucket -- which merges every assignment for the city, exactly
+ * as the report always did -- is used unless the project genuinely lists that
+ * city name twice. Only then does the state have to match, because only then is
+ * there another row for the data to land on by mistake.
+ */
 export function resolveAssignment(index, trialId, city, state) {
-  const hit = index.byExact.get(exactKey(trialId, city, state));
-  if (hit) return hit;
   const lk = looseKey(trialId, city);
-  if (index.ambiguous.has(lk)) return undefined;
-  return index.byLoose.get(lk);
+  if (!index.ambiguous.has(lk)) return index.byLoose.get(lk);
+  return index.byExact.get(exactKey(trialId, city, state));
 }
 
 /**
