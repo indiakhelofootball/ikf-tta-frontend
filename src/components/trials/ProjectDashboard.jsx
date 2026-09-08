@@ -31,6 +31,7 @@ import useGrants from '../../auth/useGrants';
 import useRefetchOnFocus from '../../hooks/useRefetchOnFocus';
 import TrialDeleteDialog from './TrialDeleteDialog';
 import { CITY_SORT_OPTIONS, MONTHS } from './trialConstants';
+import { dateForMonth, monthForDate } from './trialCitySchedule';
 
 const indianStates = State.getStatesOfCountry('IN');
 
@@ -756,7 +757,16 @@ function ProjectDashboard() {
                                 <TextField
                                   select size="small" fullWidth
                                   value={editForm.tentativeMonth}
-                                  onChange={(e) => setEditForm(f => ({ ...f, tentativeMonth: e.target.value }))}
+                                  onChange={(e) => setEditForm(f => ({
+                                    ...f,
+                                    tentativeMonth: e.target.value,
+                                    // Carry the date into the chosen month. These are two
+                                    // separate columns edited by two separate controls, and
+                                    // picking a month used to leave the date behind -- "if we
+                                    // change the month then the date changes, we have to go to
+                                    // the next one". A month-only city keeps no date.
+                                    tentativeDate: dateForMonth(e.target.value, f.tentativeDate),
+                                  }))}
                                   sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px', fontSize: '0.95rem' } }}
                                   disabled={editSaving}
                                 >
@@ -776,7 +786,13 @@ function ProjectDashboard() {
                                 <TextField
                                   size="small" type="date" fullWidth
                                   value={editForm.tentativeDate || ''}
-                                  onChange={(e) => setEditForm(f => ({ ...f, tentativeDate: e.target.value }))}
+                                  onChange={(e) => setEditForm(f => ({
+                                    ...f,
+                                    tentativeDate: e.target.value,
+                                    // And the other direction, so the pair can never disagree.
+                                    // Clearing the date leaves the month alone.
+                                    tentativeMonth: monthForDate(e.target.value, f.tentativeMonth),
+                                  }))}
                                   InputLabelProps={{ shrink: true }}
                                   sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px', fontSize: '0.95rem' } }}
                                   disabled={editSaving}
