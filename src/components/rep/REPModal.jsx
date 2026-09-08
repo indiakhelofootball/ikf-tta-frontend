@@ -29,6 +29,7 @@ import {
 import { State, City } from 'country-state-city';
 import { trialsAPI, repAPI } from '../../services/api';
 import { buildAddModePayload } from './repMergePayload';
+import { buildEditModePayload } from './repEditPayload';
 import { getStateFromPinCode } from '../../utils/pinCodeToState';
 
 // Set of "state|city" keys for cities already assigned to a REP
@@ -137,6 +138,14 @@ function REPModal({ open, onClose, onSave, editingREP }) {
   const [addCityMonth, setAddCityMonth] = useState('');
   const [addCityDate, setAddCityDate] = useState('');
   const [addCitySaving, setAddCitySaving] = useState(false);
+  // The org exactly as it was seeded from the record. Save compares against it,
+  // so adding a city from this screen does not rewrite the org row that every
+  // other city assignment reads. See ./repEditPayload.
+  const orgBaselineRef = useRef(null);
+  // The trash icons used to clear only the preview, so Save omitted the field
+  // and the stored file survived. These make a removal explicit.
+  const [mouCleared, setMouCleared] = useState(false);
+  const [logoCleared, setLogoCleared] = useState(false);
 
   // Check if selected city is in the project
   const [cityInProject, setCityInProject] = useState(false);
@@ -194,6 +203,8 @@ function REPModal({ open, onClose, onSave, editingREP }) {
   // Reset on open
   useEffect(() => {
     if (!open) return;
+    setMouCleared(false);
+    setLogoCleared(false);
 
     if (editingREP) {
       setOrgData({
@@ -212,9 +223,26 @@ function REPModal({ open, onClose, onSave, editingREP }) {
         mouStatus: editingREP.mouStatus || '',
         repLogoLink: editingREP.repLogoLink || '',
       });
+      orgBaselineRef.current = {
+        repName: editingREP.repName || '',
+        season: editingREP.season || '',
+        contactName: editingREP.contactName || '',
+        phone: editingREP.phone || '',
+        email: editingREP.email || '',
+        backupContactName: editingREP.backupContactName || '',
+        backupPhone: editingREP.backupPhone || '',
+        backupEmail: editingREP.backupEmail || '',
+        website: editingREP.website || '', websiteNA: !!editingREP.websiteNA,
+        facebook: editingREP.facebook || '', facebookNA: !!editingREP.facebookNA,
+        instagram: editingREP.instagram || '', instagramNA: !!editingREP.instagramNA,
+        telegram: editingREP.telegram || '', telegramNA: !!editingREP.telegramNA,
+        mouStatus: editingREP.mouStatus || '',
+        repLogoLink: editingREP.repLogoLink || '',
+      };
       if (editingREP.mouDocumentUrl) setMouDocumentPreview(editingREP.mouDocumentUrl);
       if (editingREP.repLogoUrl) setRepLogoPreview(editingREP.repLogoUrl);
     } else {
+      orgBaselineRef.current = null;
       setOrgData({
         repName: '', season: '',
         contactName: '', phone: '', email: '',
@@ -511,13 +539,23 @@ function REPModal({ open, onClose, onSave, editingREP }) {
             courierSubArea,
           });
         }
-        // Org fields. Only send logo/MOU when a NEW file was actually chosen —
-        // otherwise omit them so the backend preserves the stored value. Re-sending
-        // the existing base64 on every edit bloated the payload (multi-MB) and, if
-        // the edit object ever lacked it, persisted a blank and wiped the logo.
-        const repData = { ...orgData };
-        if (mouDocument) { repData.mouDocumentName = mouDocument.name; repData.mouDocumentUrl = mouDocumentPreview; }
-        if (repLogo)     { repData.repLogoName = repLogo.name; repData.repLogoUrl = repLogoPreview; }
+        // Org fields, or NULL when nothing about the org changed.
+        //
+        // Null matters: this screen can also add a city, and that has already
+        // been saved through its own endpoint above. PUTting an unchanged org
+        // rewrites the row every other city assignment reads -- harmless in
+        // content, but `updated_at` moves and the server normalises what it is
+        // given (validate_phone strips to ten digits, so '+91 98765 43210'
+        // comes back '9876543210' on a save that only added a city).
+        //
+        // A new file replaces, a pressed remove sends an explicit blank, and an
+        // untouched attachment is omitted so the stored value is preserved.
+        // Rule and reasoning live in ./repEditPayload so they can be tested.
+        const repData = buildEditModePayload(
+          orgData, orgBaselineRef.current,
+          { mouDocument, mouDocumentPreview, repLogo, repLogoPreview },
+          { mou: mouCleared, logo: logoCleared },
+        );
         await onSave(repData);
       } else {
         // Add mode. Two operations wear this one form:
@@ -1346,7 +1384,7 @@ function REPModal({ open, onClose, onSave, editingREP }) {
                       <Typography variant="caption" sx={{ flex: 1, fontSize: '0.75rem' }} noWrap>
                         {mouDocument?.name || editingREP?.mouDocumentName || 'MoU document attached'}
                       </Typography>
-                      <IconButton size="small" onClick={() => { setMouDocument(null); setMouDocumentPreview(null); }}
+                      <IconButton size="small" onClick={() => { setMouDocument(null); setMouDocumentPreview(null); setMouCleared(true); }}
                         disabled={saving} aria-label="Remove MOU document">
                         <DeleteIcon fontSize="small" />
                       </IconButton>
@@ -1367,7 +1405,7 @@ function REPModal({ open, onClose, onSave, editingREP }) {
                     <Box sx={{ position: 'relative', width: '100%' }}>
                       <Box component="img" src={repLogoPreview} alt="REP Logo Preview"
                         sx={{ width: '100%', height: 80, objectFit: 'contain', border: '1px solid #e5e7eb', borderRadius: 1, p: 1, bgcolor: '#f9fafb' }} />
-                      <IconButton size="small" onClick={() => { setRepLogo(null); setRepLogoPreview(null); }}
+                      <IconButton size="small" onClick={() => { setRepLogo(null); setRepLogoPreview(null); setLogoCleared(true); }}
                         disabled={saving} aria-label="Remove REP logo"
                         sx={{ position: 'absolute', top: 4, right: 4, bgcolor: 'white', '&:hover': { bgcolor: '#fee2e2' } }}>
                         <DeleteIcon fontSize="small" color="error" />

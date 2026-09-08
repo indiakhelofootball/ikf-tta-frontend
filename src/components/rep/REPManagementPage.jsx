@@ -201,8 +201,17 @@ function REPManagementPage() {
   const handleSaveREP = async (repData) => {
     try {
       if (editingREP) {
-        await repAPI.update(editingREP.id, repData);
-        showToast('REP updated successfully');
+        // repData is NULL when nothing about the org changed. The edit screen
+        // can also add or edit a city assignment, and those save through their
+        // own endpoints before this runs -- so there is genuinely nothing to
+        // PUT, and writing the org row anyway is what let a save that only
+        // added a city renormalise the stored phone number.
+        if (repData) {
+          await repAPI.update(editingREP.id, repData);
+          showToast('REP updated successfully');
+        } else {
+          showToast('Saved');
+        }
       } else {
         await repAPI.create(repData);
         showToast('REP created successfully');
