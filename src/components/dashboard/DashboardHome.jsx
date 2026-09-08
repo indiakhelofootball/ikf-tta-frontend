@@ -42,14 +42,19 @@ export default function DashboardHome() {
         // Only hit endpoints the user can view — the rest would 403.
         const [trialsRes, repsRes, vendorsRes, workOrdersRes, paymentsRes] = await Promise.allSettled([
           canView('trials') ? trialsAPI.getAll() : skip,
-          canView('reps') ? repAPI.getAll() : skip,
+          canView('reps') ? repAPI.getAll({ limit: 1 }) : skip,
           canView('vendors') ? vendorsAPI.getAll({ limit: 1 }) : skip,
           canView('workorders') ? workOrdersAPI.getAll() : skip,
           canView('payments') ? paymentRequestsAPI.getAll() : skip,
         ]);
 
         const trials = trialsRes.status === 'fulfilled' ? (trialsRes.value?.trials || []) : [];
-        const reps = repsRes.status === 'fulfilled' ? (repsRes.value?.reps || []) : [];
+        // A COUNT, not the rows. This card shows one number, and an unbounded
+        // getAll returned every REP with its logo and MoU as base64 inside the
+        // row -- 18.4 MB on the wire to render `reps.length`. The list endpoint
+        // already returns `total`, which is what the vendors call beside this
+        // one has always used.
+        const repsTotal = repsRes.status === 'fulfilled' ? (repsRes.value?.total || 0) : 0;
         const vendors = vendorsRes.status === 'fulfilled' ? (vendorsRes.value?.total || 0) : 0;
         const workOrders = workOrdersRes.status === 'fulfilled' ? (workOrdersRes.value?.workOrders || []) : [];
         const payments = paymentsRes.status === 'fulfilled' ? (paymentsRes.value?.paymentRequests || []) : [];
@@ -61,7 +66,7 @@ export default function DashboardHome() {
         setStats({
           totalTrials: trials.length,
           activeTrials,
-          totalReps: reps.length,
+          totalReps: repsTotal,
           totalVendors: vendors,
           totalWorkOrders: workOrders.length,
           activeWorkOrders: activeWOs,
