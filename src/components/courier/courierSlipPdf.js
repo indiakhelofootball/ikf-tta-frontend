@@ -4,6 +4,7 @@ import {
   BARLOW_REGULAR_TTF, BARLOW_BOLD_TTF, BARLOW_EXTRABOLD_TTF,
 } from './courierSlipAssets';
 import { fitAddressBlock, fitBadgeNumber } from './courierSlipText';
+import { assignSlipRows } from './courierSlipRows';
 
 export function buildSlipDoc(shipment, logoDataURL) {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: SLIP_PAGE_PT });
@@ -80,21 +81,12 @@ export function buildSlipDoc(shipment, logoDataURL) {
   // and QTY numbers are drawn live for both kinds.
   const QTY_X = 1207.7, QTY_SIZE = 17.02;
   const items = (shipment.items || []).filter((i) => Number(i.quantity || 0) > 0);
-  const nameLower = (s) => String(s || '').toLowerCase();
   const pad2 = (n) => String(n).padStart(2, '0');
 
-  // Canonical artwork rows in slip order. Each tile is claimed by at most ONE item —
-  // an exact canonical name wins first, then a legacy keyword variant — so a custom
-  // item like "School Banners Kit" can't steal the Banners artwork from the real
-  // "Banners" row; unclaimed items fall through to text.
-  const CONTENT_ROWS = [
-    { tile: 'vol',  exact: 'volunteer tshirts',    match: (n) => n.includes('volunteer') || n.includes('shirt') },
-    { tile: 'ban',  exact: 'banners',              match: (n) => n.includes('banner') },
-    { tile: 'mat',  exact: 'matchsheet',           match: (n) => n.includes('matchsheet') },
-    { tile: 'sco',  exact: 'scout dockets',        match: (n) => n.includes('scout') },
-    { tile: 'bibo', exact: 'numbered bibs orange', match: (n) => n.includes('bib') && n.includes('orange') },
-    { tile: 'bibg', exact: 'numbered bibs green',  match: (n) => n.includes('bib') && n.includes('green') },
-  ];
+  // Which items claim the six artwork tiles lives in ./courierSlipRows, so the
+  // rule can be tested without jsPDF. A tile has its word baked into the image,
+  // so only an exactly-named item may claim one.
+
 
   // Original slot geometry from the source art (pt). Surviving rows fill these from the
   // top; the all-six case reproduces the original layout pixel-for-pixel.
@@ -118,25 +110,8 @@ export function buildSlipDoc(shipment, logoDataURL) {
   // admin-added item only looked misaligned on a long shipment.
   const ITEM_TXT = { inset: 29.8, base: 12.25, size: 15.1, tc: 1.35 };
 
-  const claimed = new Set();
-  const claims = new Map();
-  CONTENT_ROWS.forEach((r) => {
-    const it = items.find((i) => !claimed.has(i) && nameLower(i.name).trim() === r.exact);
-    if (it) { claimed.add(it); claims.set(r.tile, it); }
-  });
-  CONTENT_ROWS.forEach((r) => {
-    if (claims.has(r.tile)) return;
-    const it = items.find((i) => !claimed.has(i) && r.match(nameLower(i.name)));
-    if (it) { claimed.add(it); claims.set(r.tile, it); }
-  });
-  const tiled = CONTENT_ROWS
-    .filter((r) => claims.has(r.tile))
-    .map((r) => ({ tile: r.tile, qty: Number(claims.get(r.tile).quantity) }));
-  const present = [
-    ...tiled,
-    ...items.filter((i) => !claimed.has(i))
-      .map((i) => ({ text: String(i.name || '').trim(), qty: Number(i.quantity) })),
-  ];
+  const present = assignSlipRows(items);
+
 
   // Six rows or fewer sit in the original slots; a surplus respaces the same vertical
   // span evenly and scales rows down proportionally so nothing overflows the template.
