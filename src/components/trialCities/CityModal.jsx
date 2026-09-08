@@ -84,7 +84,14 @@ function CityModal({ open, onClose, onSave, onSaveAndAddAnother, editingCity, ex
   // Load active REPs when modal opens
   useEffect(() => {
     if (open) {
-      repAPI.getAll({ status: 'Active' })
+      // getOptions, not getAll: this picker renders rep.id and rep.repName and
+      // nothing else, while getAll carries every REP's logo and MoU as base64
+      // inside the row -- 18.4 MB on the wire, measured on production.
+      //
+      // The dropped `status: 'Active'` filter was never doing anything: REP has
+      // no status field (see the no-rep-status decision), so the server ignored
+      // it and returned every REP either way.
+      repAPI.getOptions()
         .then(data => {
           setRepOptions(data.reps || []);
         })

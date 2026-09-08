@@ -175,8 +175,12 @@ function REPModal({ open, onClose, onSave, editingREP }) {
       setTrialCitiesByState(result);
     }).catch(() => {});
 
-    // Fetch all REPs to know which cities are already assigned
-    repAPI.getAll({ limit: 1000 }).then((res) => {
+    // Which cities are already assigned. Only cityAssignments is read here, so
+    // getOptions is both smaller and MORE correct than the getAll it replaces:
+    // the list endpoint caps `limit` at 100 server-side (reps/views.py), so the
+    // old `limit: 1000` silently saw only the first 100 REPs and the set was
+    // incomplete beyond that. getOptions is deliberately unpaginated.
+    repAPI.getOptions().then((res) => {
       const assigned = new Set();
       for (const rep of res.reps || []) {
         for (const a of rep.cityAssignments || []) {
