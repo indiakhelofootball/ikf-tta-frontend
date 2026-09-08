@@ -30,13 +30,25 @@ import { computeStats } from './trialsReportStats';
 import {
   buildCityAssignmentIndex, resolveAssignment, assignmentIsReachable,
 } from './trialsReportJoin';
-// A DATE decides the month; the stored month string only counts when there is no
-// date. The two are independent columns that nothing keeps in step, so a trial
-// moved from September to 7 October kept reading "September" and was counted
-// under it -- the "upper analysis numbers are wrong" complaint.
-import { monthOf, UNSCHEDULED } from './trialCityMonth';
+
+const UNSCHEDULED = 'Unscheduled';
 
 const norm = (s) => (s || '').trim().toLowerCase();
+
+const monthOf = (city) => {
+  if (city.tentativeMonth) {
+    // tentativeMonth may be a full month name or already short — normalise to a
+    // known MONTHS entry, else keep as-is.
+    const m = MONTHS.find((x) => norm(x) === norm(city.tentativeMonth));
+    if (m) return m;
+    return city.tentativeMonth;
+  }
+  if (city.tentativeDate) {
+    const d = new Date(city.tentativeDate);
+    if (!isNaN(d)) return MONTHS[d.getMonth()];
+  }
+  return UNSCHEDULED;
+};
 
 const fmtDate = (d) => {
   if (!d) return '—';
