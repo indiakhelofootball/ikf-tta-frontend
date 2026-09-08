@@ -47,6 +47,18 @@ export function formatPeriod(cert, { openText } = {}) {
   return `Period: ${periodStart || 'project inception'} to ${periodEnd || 'date'}`;
 }
 
+/**
+ * A line item's own date, as the server sent it (`YYYY-MM-DD`) or an em dash.
+ * Printed verbatim rather than reformatted: this is a filed document, the
+ * server already decided which date each line carries, and re-parsing an ISO
+ * date in the browser is how a certificate ends up a day out in one timezone.
+ * A certificate frozen before this field existed has no `date` on its lines,
+ * and must still print.
+ */
+export function formatLineDate(value) {
+  return value || '—';
+}
+
 /** Filesystem-safe file stem: strips characters Windows/macOS/Linux all reject. */
 export function sanitizeFileNamePart(value) {
   const cleaned = String(value || '')
@@ -88,19 +100,25 @@ export function buildCertificateTable(cert, { variant = 'funder' } = {}) {
   const isInternal = variant === 'internal';
   const c = cert || {};
   const lineItems = Array.isArray(c.lineItems) ? c.lineItems : [];
+  // The Date column is on BOTH variants. The document already states the grant
+  // period it is filed for; without a date per line, a reader has to take on
+  // trust that every line falls inside it. It is served to the funder
+  // deliberately (client_serializers.CLIENT_CERTIFICATE_LINE_FIELDS) — it is
+  // the date of their own grant spend, not a payment reference and not a
+  // vendor, so it crosses none of the lines the funder variant exists to hold.
   const head = isInternal
-    ? [['Source', 'Note', 'Amount']]
-    : [['Expense', 'Amount']];
-  // The funder variant reads only `note` and `amount` off each line item —
-  // structurally incapable of surfacing a vendor/source/payment field even
-  // when the object handed in happens to carry one.
+    ? [['Date', 'Source', 'Note', 'Amount']]
+    : [['Date', 'Expense', 'Amount']];
+  // The funder variant reads only `date`, `note` and `amount` off each line
+  // item — structurally incapable of surfacing a vendor/source/payment field
+  // even when the object handed in happens to carry one.
   const body = lineItems.length > 0
     ? lineItems.map((x) => (isInternal
-      ? [x.source || 'Manual', x.note || '', formatMoney(x.amount)]
-      : [x.note || 'Expense', formatMoney(x.amount)]))
+      ? [formatLineDate(x.date), x.source || 'Manual', x.note || '', formatMoney(x.amount)]
+      : [formatLineDate(x.date), x.note || 'Expense', formatMoney(x.amount)]))
     : [isInternal
-      ? ['—', 'No expenses are recorded against this grant.', formatMoney(0)]
-      : ['No expenses are recorded against this grant.', formatMoney(0)]];
+      ? ['—', '—', 'No expenses are recorded against this grant.', formatMoney(0)]
+      : ['—', 'No expenses are recorded against this grant.', formatMoney(0)]];
   return { head, body };
 }
 

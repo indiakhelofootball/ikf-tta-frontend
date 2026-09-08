@@ -389,7 +389,7 @@ export default function ClientPortalPage() {
                         {cert.endDate ? `, on ${cert.endDate}` : ''}. Until then expenses
                         are still being allocated against your contribution, so the
                         figures would keep changing after you filed them. The grant is
-                        currently {cert.projectStatus || project.status}.
+                        currently {cert.projectStatus || project?.status || 'open'}.
                       </>
                     )}
                 </Typography>
@@ -434,9 +434,18 @@ export default function ClientPortalPage() {
                     </Typography>
                   ) : (
                     <List dense>
+                      {/* The date each line is filed under. The block above
+                          states the period this certificate covers; without a
+                          date per line the funder has to take on trust that
+                          every line falls inside it. A certificate frozen
+                          before the server sent this field has no date, and
+                          must still render. */}
                       {cert.lineItems.map((x, i) => (
                         <ListItem key={i} sx={{ justifyContent: 'space-between' }}>
-                          <ListItemText primary={x.note || 'Expense'} />
+                          <ListItemText
+                            primary={x.note || 'Expense'}
+                            secondary={x.date || null}
+                          />
                           <Typography variant="body2">{rupees(x.amount)}</Typography>
                         </ListItem>
                       ))}
