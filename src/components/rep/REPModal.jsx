@@ -516,26 +516,26 @@ function REPModal({ open, onClose, onSave, editingREP }) {
         if (repLogo)     { repData.repLogoName = repLogo.name; repData.repLogoUrl = repLogoPreview; }
         await onSave(repData);
       } else {
-        // Add mode: org + assignment.
-        // `orgData` seeds every untouched field to '' (repLogoLink is never
-        // prefilled by the name search at all), and when the name matches an
-        // existing org the backend merges onto that row — so shipping the whole
-        // object wiped the stored logo link and MOU status each time a city was
-        // added. Blanks therefore cannot be sent wholesale.
+        // Add mode. Two operations wear this one form:
         //
-        // But they cannot be dropped wholesale either. Once the name search has
-        // prefilled a field from the matched org, emptying that box IS a
-        // deliberate clear, and the backend honours a blank the caller actually
-        // sent. Dropping every blank would silently discard that edit — trading
-        // one bug for another.
+        //   NEW ORG  — the name matches nothing, so the org fields ARE the
+        //              record being created and all of them go.
+        //   ADD CITY — the name matches an existing org. The city is being
+        //              added UNDER a master record that many other city
+        //              assignments already read, and that record is not being
+        //              edited here. Only its name goes, so the server can find
+        //              it. Editing it is edit mode (PUT /reps/<id>/).
         //
-        // So: keep a blank only where the matched org holds a value for that
-        // field, which is exactly when clearing it means something. With no
-        // match, nothing exists to clear and every blank is dropped.
+        // The MoU and logo FILES are org-layer too, so on the add-city path they
+        // are not sent either -- previously an upload here replaced the MoU and
+        // logo for every city under that org.
+        //
         // Rule and reasoning live in ./repMergePayload so they can be tested.
         const repData = buildAddModePayload(orgData, existingRep);
-        if (mouDocument) { repData.mouDocumentName = mouDocument.name; repData.mouDocumentUrl = mouDocumentPreview; }
-        if (repLogo) { repData.repLogoName = repLogo.name; repData.repLogoUrl = repLogoPreview; }
+        if (!existingRep) {
+          if (mouDocument) { repData.mouDocumentName = mouDocument.name; repData.mouDocumentUrl = mouDocumentPreview; }
+          if (repLogo) { repData.repLogoName = repLogo.name; repData.repLogoUrl = repLogoPreview; }
+        }
 
         // Build trial IDs
         const trialIds = lookupProject ? [Number(lookupProject)] : [];
@@ -1332,7 +1332,7 @@ function REPModal({ open, onClose, onSave, editingREP }) {
                 <Typography sx={labelSx}>Signed MoU / Agreement</Typography>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                   <Button component="label" variant="outlined" startIcon={<UploadIcon />}
-                    sx={{ justifyContent: 'flex-start' }} disabled={saving || !canFillForm}>
+                    sx={{ justifyContent: 'flex-start' }} disabled={saving || !canFillForm || (!isEditMode && !!existingRep)}>
                     Choose File
                     <input type="file" hidden accept=".pdf,.doc,.docx" onChange={handleMouDocumentUpload} />
                   </Button>
@@ -1355,7 +1355,7 @@ function REPModal({ open, onClose, onSave, editingREP }) {
                 <Typography sx={labelSx}>REP Logo</Typography>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                   <Button component="label" variant="outlined" startIcon={<UploadIcon />}
-                    sx={{ justifyContent: 'flex-start' }} disabled={saving || !canFillForm}>
+                    sx={{ justifyContent: 'flex-start' }} disabled={saving || !canFillForm || (!isEditMode && !!existingRep)}>
                     Choose File
                     <input type="file" hidden accept="image/*" onChange={handleRepLogoUpload} />
                   </Button>
@@ -1374,7 +1374,7 @@ function REPModal({ open, onClose, onSave, editingREP }) {
                   <TextField
                     fullWidth size="small" placeholder="https://drive.google.com/..."
                     value={orgData.repLogoLink} onChange={handleOrgChange('repLogoLink')}
-                    disabled={saving || !canFillForm}
+                    disabled={saving || !canFillForm || (!isEditMode && !!existingRep)}
                     label="Original logo link (optional)"
                     helperText="Paste a Drive/URL link to the full-quality original"
                     sx={{ mt: 0.5 }}
