@@ -668,7 +668,14 @@ export default function CourierManagementPage() {
 
       {/* Table */}
       <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden' }}>
-        <Table size="small">
+        {/* The Paper clips to keep its rounded corners, so without this the
+            widest column -- the row actions -- is cut off with no scrollbar to
+            reach it. A dispatched row fills AWB and Courier with a tracking
+            number and a full URL, which is enough to push the table past a
+            laptop viewport: the PDF, Edit and Delete controls vanish while the
+            table still looks complete. Scroll the table, not the page. */}
+        <Box sx={{ overflowX: 'auto' }}>
+        <Table size="small" sx={{ minWidth: 980 }}>
           <TableHead>
             <TableRow sx={{ bgcolor: '#f5f5f7' }}>
               {['', 'REP', 'City', 'Trial Date', 'Items', 'AWB', 'Courier', 'Dispatch Date', 'Status', ''].map((h, i) => (
@@ -822,6 +829,7 @@ export default function CourierManagementPage() {
             })}
           </TableBody>
         </Table>
+        </Box>
       </Paper>
 
       {/* NEW / EDIT SHIPMENT MODAL */}
