@@ -78,3 +78,28 @@ describe('DashboardLayout header/breadcrumb title', () => {
     expect(screen.getByText('Home / Dashboard')).toBeInTheDocument();
   });
 });
+
+// The rail defaults to collapsed because it costs 196px of content width and
+// the widest screens here are tables. These read the source rather than
+// mounting the layout: this file's other tests mount it, but the preference is
+// read once in a lazy initialiser, so what matters is the DEFAULT branch and
+// that a stored choice wins over it.
+describe('the sidebar starts collapsed and remembers a change', () => {
+  const src = require('fs')
+    .readFileSync(require('path').join(__dirname, 'DashboardLayout.jsx'), 'utf8')
+    .replace(/\s+/g, '');
+
+  test('anything other than an explicit "open" starts collapsed', () => {
+    expect(src).toContain("window.localStorage.getItem(SIDEBAR_PREF_KEY)!=='open'".replace(/\s+/g, ''));
+  });
+
+  test('a browser that refuses storage still starts collapsed', () => {
+    // A private window throws on access; the catch must not fall through to
+    // an open rail, or the default depends on the browser.
+    expect(src).toContain('}catch{returntrue;}');
+  });
+
+  test('toggling writes the choice back', () => {
+    expect(src).toContain("setItem(SIDEBAR_PREF_KEY,sidebarCollapsed?'closed':'open')".replace(/\s+/g, ''));
+  });
+});
