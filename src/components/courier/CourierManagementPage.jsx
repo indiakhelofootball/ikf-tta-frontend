@@ -31,6 +31,7 @@ import {
   sanitizeQuantityInput, normalizeQuantity, normalizeItemsForSave, canSaveShipment,
 } from './courierItemQuantity';
 import { findRepIdForShipment, findRepLogoRefForShipment } from './courierRepLookup';
+import { assignmentOptionLines, assignmentSelectedLabel } from './courierAssignmentLabel';
 import useRefetchOnFocus from '../../hooks/useRefetchOnFocus';
 
 const TSHIRT_ITEM_NAME = 'Volunteer Tshirts';
@@ -160,21 +161,30 @@ function AddressCard({ assignment }) {
       {assignment.courierAcceptingPhone && (
         <Typography sx={{ fontSize: '0.82rem', color: '#475569' }}>Ph: {assignment.courierAcceptingPhone}</Typography>
       )}
-      {assignment.trialDate && (
-        <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid #bfdbfe', display: 'flex', gap: 1, alignItems: 'center' }}>
-          <Typography sx={{ fontSize: '0.78rem', color: '#1e40af', fontWeight: 600 }}>
-            Trial: {assignment.trialName}
-          </Typography>
-          <Chip label={assignment.trialDate} size="small"
-            sx={{ fontSize: '0.7rem', fontWeight: 700, bgcolor: '#dbeafe', color: '#1e40af' }} />
-          {(() => {
-            const days = daysUntil(assignment.trialDate);
-            if (days !== null && days <= 30) return <Chip label={`${days}d away`} size="small" color="error" sx={{ fontSize: '0.7rem', fontWeight: 700 }} />;
-            if (days !== null && days <= 60) return <Chip label={`${days}d away`} size="small" color="warning" sx={{ fontSize: '0.7rem', fontWeight: 700 }} />;
-            return <Typography sx={{ fontSize: '0.75rem', color: '#64748b' }}>{days}d away</Typography>;
-          })()}
-        </Box>
-      )}
+      {/* The project is the third part of the identity, and until 2026-09-10 it
+          was drawn only inside `assignment.trialDate &&`. That date is the
+          Trial's own start_date, which is null for all 109 assignments on
+          production, so this block never rendered and the project never
+          appeared anywhere in the form. The project is the thing being
+          confirmed, so it shows unconditionally; the date keeps its own guard
+          because a missing date has nothing to draw. */}
+      <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid #bfdbfe', display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+        <Typography sx={{ fontSize: '0.78rem', color: '#1e40af', fontWeight: 600 }}>
+          Trial: {assignment.trialName || '—'}{assignment.trialType ? ` · ${assignment.trialType}` : ''}
+        </Typography>
+        {assignment.trialDate && (
+          <>
+            <Chip label={assignment.trialDate} size="small"
+              sx={{ fontSize: '0.7rem', fontWeight: 700, bgcolor: '#dbeafe', color: '#1e40af' }} />
+            {(() => {
+              const days = daysUntil(assignment.trialDate);
+              if (days !== null && days <= 30) return <Chip label={`${days}d away`} size="small" color="error" sx={{ fontSize: '0.7rem', fontWeight: 700 }} />;
+              if (days !== null && days <= 60) return <Chip label={`${days}d away`} size="small" color="warning" sx={{ fontSize: '0.7rem', fontWeight: 700 }} />;
+              return <Typography sx={{ fontSize: '0.75rem', color: '#64748b' }}>{days}d away</Typography>;
+            })()}
+          </>
+        )}
+      </Box>
     </Box>
   );
 }
@@ -872,13 +882,46 @@ export default function CourierManagementPage() {
               </Box>
               <Box>
                 <Typography sx={labelSx}>City <span style={{ color: '#ef4444' }}>*</span></Typography>
+                {/* One REP can hold the same city under two projects — 11 such
+                    pairs on production. Both rows are correct; the identity is
+                    project + REP + city and the database enforces it. Drawing
+                    only `city, state` showed two of the three parts and hid the
+                    one that decides which trial date the shipment inherits.
+
+                    Measured 2026-09-09: appending the project to this line
+                    fails 6 of the pairs (trimmed off the end, and five pairs
+                    share 18 leading characters), and the trial date fails 4
+                    (same day under both programmes). Only the code, leading a
+                    line of its own, separates all of them. Do not fold this
+                    back onto one line.
+
+                    renderValue is required, not cosmetic: TextField select
+                    draws the chosen MenuItem's children inside the closed
+                    field, so a two-line option would make the input two lines
+                    tall and break its alignment with the REP field. */}
                 <TextField select fullWidth size="small" value={fAsgId} disabled={!selectedRep || !!editingId}
-                  onChange={e => setFAsgId(e.target.value)}>
+                  onChange={e => setFAsgId(e.target.value)}
+                  slotProps={{
+                    select: {
+                      renderValue: value => {
+                        const a = (selectedRep?.cityAssignments || []).find(x => x.id === value);
+                        if (!a) return selectedRep ? '— Select city —' : 'Pick a REP first';
+                        return assignmentSelectedLabel(a);
+                      },
+                    },
+                  }}>
                   <MenuItem value="" disabled sx={{ color: '#5A6B82' }}>
                     {selectedRep ? '— Select city —' : 'Pick a REP first'}
                   </MenuItem>
                   {(selectedRep?.cityAssignments || []).map(a => (
-                    <MenuItem key={a.id} value={a.id}>{a.city}, {a.state}</MenuItem>
+                    <MenuItem key={a.id} value={a.id} sx={{ display: 'block', py: 0.75 }}>
+                      <Typography sx={{ fontSize: '0.85rem', color: '#1e293b' }}>
+                        {assignmentOptionLines(a).primary}
+                      </Typography>
+                      <Typography sx={{ fontSize: '0.72rem', color: '#5A6B82' }}>
+                        {assignmentOptionLines(a).secondary}
+                      </Typography>
+                    </MenuItem>
                   ))}
                 </TextField>
               </Box>
