@@ -81,6 +81,8 @@ function resolveTitle(pathname) {
   return match ? match.title : "Dashboard";
 }
 
+const SIDEBAR_PREF_KEY = 'tta_sidebar';
+
 // `sidebar` takes a COMPONENT, not an element. The collapse state lives here and
 // is passed down as collapsed/onToggle, which an element could not receive
 // without cloneElement — CSR_IMPLEMENTATION.md §3.3 wrote it as an element, and
@@ -91,7 +93,25 @@ export default function DashboardLayout({ sidebar: SidebarComponent = Sidebar })
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const title = resolveTitle(location.pathname);
-  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
+  // Collapsed by default. The rail costs 196px of content width, and the
+  // widest screens here are tables — the courier list needs 980px before it
+  // scrolls, which an open rail takes it below on a laptop. Whoever prefers
+  // the labels opens it once and the choice is remembered, per browser.
+  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(() => {
+    try {
+      return window.localStorage.getItem(SIDEBAR_PREF_KEY) !== 'open';
+    } catch {
+      return true;
+    }
+  });
+
+  React.useEffect(() => {
+    try {
+      window.localStorage.setItem(SIDEBAR_PREF_KEY, sidebarCollapsed ? 'closed' : 'open');
+    } catch {
+      /* private windows and blocked site data: the default still applies */
+    }
+  }, [sidebarCollapsed]);
 
   const [anchorEl, setAnchorEl] = React.useState(null);
   const open = Boolean(anchorEl);
