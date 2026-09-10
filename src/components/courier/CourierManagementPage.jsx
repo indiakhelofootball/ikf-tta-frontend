@@ -60,6 +60,30 @@ function makeCourierItem(name) {
 }
 
 const PRODUCTION_STATUSES = ['Pending', 'Sent for Printing', 'Received from Printer'];
+
+// The row actions are pinned to the right edge of the scroll container.
+//
+// 2026-09-09 fixed the first half of this: the table sits in an overflow-x box
+// so nothing is unreachable any more. It was not enough. The scrollbar is at
+// the BOTTOM of a 54-row table, so with the sidebar open the actions are off
+// the edge and the only way to discover them is to scroll to the end of the
+// page first and then drag sideways. Reported as "buttons are there when the
+// sidebar is closed, not when it is open" — the sidebar is simply the width
+// that decides whether any scrolling is needed at all.
+//
+// Pinning removes the discovery problem rather than buying width, which is why
+// it survives the next long tracking URL. `backgroundColor: inherit` takes the
+// row's own colour, so hover and the amber/red flag rows keep working and the
+// covered columns do not show through.
+const STICKY_ACTIONS_SX = {
+  position: 'sticky',
+  right: 0,
+  zIndex: 2,
+  backgroundColor: 'inherit',
+  borderLeft: '1px solid #e5e7eb',
+  boxShadow: '-6px 0 6px -6px rgba(15, 23, 42, 0.15)',
+  whiteSpace: 'nowrap',
+};
 const COURIERS = ['Blue Dart', 'DTDC', 'Delhivery', 'FedEx', 'India Post', 'Ekart', 'Professional Couriers', 'XpressBees', 'Other'];
 
 const TRACKING_URLS = {
@@ -688,8 +712,9 @@ export default function CourierManagementPage() {
         <Table size="small" sx={{ minWidth: 980 }}>
           <TableHead>
             <TableRow sx={{ bgcolor: '#f5f5f7' }}>
-              {['', 'REP', 'City', 'Trial Date', 'Items', 'AWB', 'Courier', 'Dispatch Date', 'Status', ''].map((h, i) => (
-                <TableCell key={i} sx={{ fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#64748b', py: 1.25 }}>{h}</TableCell>
+              {['', 'REP', 'City', 'Trial Date', 'Items', 'AWB', 'Courier', 'Dispatch Date', 'Status', ''].map((h, i, arr) => (
+                <TableCell key={i} sx={{ fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#64748b', py: 1.25,
+                  ...(i === arr.length - 1 ? STICKY_ACTIONS_SX : {}) }}>{h}</TableCell>
               ))}
             </TableRow>
           </TableHead>
@@ -704,7 +729,12 @@ export default function CourierManagementPage() {
             ) : filtered.map(s => {
               const flag = getShipmentFlag(s);
               return (
-                <TableRow key={s.id} sx={{ '&:hover': { bgcolor: '#f8fafc' }, ...(flag?.level === 'error' ? { bgcolor: '#fff7f7' } : flag?.level === 'warning' ? { bgcolor: '#fffbeb' } : {}) }}>
+                // The row carries an explicit background so the sticky actions
+                // cell can inherit it. Without a base colour the cell would be
+                // transparent and the columns it covers would scroll visibly
+                // underneath it. Hover and the flag colours still win, and the
+                // sticky cell follows them because it inherits at paint time.
+                <TableRow key={s.id} sx={{ bgcolor: '#fff', '&:hover': { bgcolor: '#f8fafc' }, ...(flag?.level === 'error' ? { bgcolor: '#fff7f7' } : flag?.level === 'warning' ? { bgcolor: '#fffbeb' } : {}) }}>
                   <TableCell sx={{ width: 28, pr: 0 }}>
                     {flag && (
                       <Tooltip title={flag.msg}>
@@ -758,8 +788,8 @@ export default function CourierManagementPage() {
                       color={STATUS_CONFIG[s.status]?.color || 'default'}
                       sx={{ fontWeight: 600, fontSize: '0.72rem' }} />
                   </TableCell>
-                  <TableCell>
-                    <Stack direction="row" gap={0.5} flexWrap="wrap">
+                  <TableCell sx={STICKY_ACTIONS_SX}>
+                    <Stack direction="row" gap={0.5} flexWrap="nowrap">
                       {viewingDeleted ? (
                         <>
                           <Tooltip title="Download packing slip PDF">
