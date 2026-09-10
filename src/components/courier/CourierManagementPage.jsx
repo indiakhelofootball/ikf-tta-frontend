@@ -61,29 +61,6 @@ function makeCourierItem(name) {
 
 const PRODUCTION_STATUSES = ['Pending', 'Sent for Printing', 'Received from Printer'];
 
-// The row actions are pinned to the right edge of the scroll container.
-//
-// 2026-09-09 fixed the first half of this: the table sits in an overflow-x box
-// so nothing is unreachable any more. It was not enough. The scrollbar is at
-// the BOTTOM of a 54-row table, so with the sidebar open the actions are off
-// the edge and the only way to discover them is to scroll to the end of the
-// page first and then drag sideways. Reported as "buttons are there when the
-// sidebar is closed, not when it is open" — the sidebar is simply the width
-// that decides whether any scrolling is needed at all.
-//
-// Pinning removes the discovery problem rather than buying width, which is why
-// it survives the next long tracking URL. `backgroundColor: inherit` takes the
-// row's own colour, so hover and the amber/red flag rows keep working and the
-// covered columns do not show through.
-const STICKY_ACTIONS_SX = {
-  position: 'sticky',
-  right: 0,
-  zIndex: 2,
-  backgroundColor: 'inherit',
-  borderLeft: '1px solid #e5e7eb',
-  boxShadow: '-6px 0 6px -6px rgba(15, 23, 42, 0.15)',
-  whiteSpace: 'nowrap',
-};
 const COURIERS = ['Blue Dart', 'DTDC', 'Delhivery', 'FedEx', 'India Post', 'Ekart', 'Professional Couriers', 'XpressBees', 'Other'];
 
 const TRACKING_URLS = {
@@ -702,39 +679,41 @@ export default function CourierManagementPage() {
 
       {/* Table */}
       <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden' }}>
-        {/* The Paper clips to keep its rounded corners, so without this the
-            widest column -- the row actions -- is cut off with no scrollbar to
-            reach it. A dispatched row fills AWB and Courier with a tracking
-            number and a full URL, which is enough to push the table past a
-            laptop viewport: the PDF, Edit and Delete controls vanish while the
-            table still looks complete. Scroll the table, not the page. */}
-        <Box sx={{ overflowX: 'auto' }}>
-        <Table size="small" sx={{ minWidth: 980 }}>
+        {/* The table scrolls inside its own frame, not down the page.
+            With no height the box grew to all 54 rows, which put its
+            horizontal scrollbar at the bottom of the list: to reach a column
+            on the right you had to scroll to the very end, drag sideways, then
+            come back. Bounding the height keeps that scrollbar on screen at
+            all times, and stickyHeader keeps the column names visible while
+            the rows move under them. */}
+        <Box sx={{ overflowX: 'auto', overflowY: 'auto', maxHeight: 'calc(100vh - 320px)', minHeight: 240 }}>
+        <Table size="small" stickyHeader sx={{ minWidth: 980 }}>
           <TableHead>
             <TableRow sx={{ bgcolor: '#f5f5f7' }}>
-              {['', 'REP', 'City', 'Trial Date', 'Items', 'AWB', 'Courier', 'Dispatch Date', 'Status', ''].map((h, i, arr) => (
-                <TableCell key={i} sx={{ fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#64748b', py: 1.25,
-                  ...(i === arr.length - 1 ? STICKY_ACTIONS_SX : {}) }}>{h}</TableCell>
+              {['', 'REP', 'City', 'Trial Date', 'Items', 'AWB', 'Courier', 'Dispatch Date', 'Status'].map((h, i) => (
+                <TableCell key={i} sx={{ fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#64748b', py: 1.25, bgcolor: '#f5f5f7' }}>{h}</TableCell>
               ))}
             </TableRow>
           </TableHead>
           <TableBody>
             {!filtered.length ? (
               <TableRow>
-                <TableCell colSpan={10} sx={{ textAlign: 'center', py: 6, color: '#5A6B82' }}>
+                <TableCell colSpan={9} sx={{ textAlign: 'center', py: 6, color: '#5A6B82' }}>
                   <BoxIcon sx={{ fontSize: 36, display: 'block', mx: 'auto', mb: 1, opacity: 0.4 }} />
                   No shipments found.
                 </TableCell>
               </TableRow>
             ) : filtered.map(s => {
               const flag = getShipmentFlag(s);
+              // One shipment is TWO rows: its data, then its actions. They are
+              // wrapped so the pair stays together, and both carry the same
+              // background so a flagged shipment tints as one block rather
+              // than as a coloured row above a white one.
+              const rowBg = flag?.level === 'error' ? '#fff7f7'
+                : flag?.level === 'warning' ? '#fffbeb' : '#fff';
               return (
-                // The row carries an explicit background so the sticky actions
-                // cell can inherit it. Without a base colour the cell would be
-                // transparent and the columns it covers would scroll visibly
-                // underneath it. Hover and the flag colours still win, and the
-                // sticky cell follows them because it inherits at paint time.
-                <TableRow key={s.id} sx={{ bgcolor: '#fff', '&:hover': { bgcolor: '#f8fafc' }, ...(flag?.level === 'error' ? { bgcolor: '#fff7f7' } : flag?.level === 'warning' ? { bgcolor: '#fffbeb' } : {}) }}>
+                <React.Fragment key={s.id}>
+                <TableRow sx={{ bgcolor: rowBg, '& > td': { borderBottom: 'none', pb: 0.25 } }}>
                   <TableCell sx={{ width: 28, pr: 0 }}>
                     {flag && (
                       <Tooltip title={flag.msg}>
@@ -788,8 +767,18 @@ export default function CourierManagementPage() {
                       color={STATUS_CONFIG[s.status]?.color || 'default'}
                       sx={{ fontWeight: 600, fontSize: '0.72rem' }} />
                   </TableCell>
-                  <TableCell sx={STICKY_ACTIONS_SX}>
-                    <Stack direction="row" gap={0.5} flexWrap="nowrap">
+                </TableRow>
+                {/* The actions get a line of their own, spanning the full
+                    width. They used to be a tenth column, which put them at
+                    the far right of a table wider than the window: reachable
+                    only by scrolling to the bottom of 54 rows to find the
+                    horizontal scrollbar, then dragging sideways. On their own
+                    line they need no horizontal scrolling at all, and the data
+                    columns get the width back. */}
+                <TableRow
+                  sx={{ bgcolor: rowBg, '& > td': { borderBottom: '2px solid #eef2f7', pt: 0, pb: 1 } }}>
+                  <TableCell colSpan={9} sx={{ pl: 5 }}>
+                    <Stack direction="row" gap={0.5} flexWrap="wrap" alignItems="center">
                       {viewingDeleted ? (
                         <>
                           <Tooltip title="Download packing slip PDF">
@@ -865,6 +854,7 @@ export default function CourierManagementPage() {
                     </Stack>
                   </TableCell>
                 </TableRow>
+                </React.Fragment>
               );
             })}
           </TableBody>

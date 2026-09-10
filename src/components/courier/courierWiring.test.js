@@ -170,30 +170,29 @@ describe('the slip download reports an address that would not fit', () => {
   });
 });
 
-describe('the row actions are pinned to the right edge', () => {
-  test('the sticky style exists and pins to the right, not merely to a corner', () => {
-    expect(wires(courierSrc, "position: 'sticky'")).toBe(true);
-    expect(wires(courierSrc, 'right: 0')).toBe(true);
-    // inherit, not a literal colour: the row's own background changes on hover
-    // and on the amber/red flag rows, and the pinned cell has to follow it or
-    // the covered columns show through as they scroll underneath.
-    expect(wires(courierSrc, "backgroundColor: 'inherit'")).toBe(true);
+describe('the row actions sit on their own line, and the table has a frame', () => {
+  test('the actions are a full-width row, not a tenth column', () => {
+    expect(wires(courierSrc, '<TableCell colSpan={9} sx={{ pl: 5 }}>')).toBe(true);
+    // The pinned column is gone with the column itself. If this comes back
+    // alongside the colSpan row, the actions are rendered twice.
+    expect(courierSrc.includes('STICKY_ACTIONS_SX')).toBe(false);
   });
 
-  test('it is applied to the LAST header cell and to the actions cell', () => {
-    expect(wires(courierSrc, 'i === arr.length - 1 ? STICKY_ACTIONS_SX : {}')).toBe(true);
-    expect(wires(courierSrc, '<TableCell sx={STICKY_ACTIONS_SX}>')).toBe(true);
+  test('the two rows of one shipment are wrapped, and share a background', () => {
+    expect(wires(courierSrc, '<React.Fragment key={s.id}>')).toBe(true);
+    expect(wires(courierSrc, 'const rowBg = flag?.level === "error" ? "#fff7f7"')).toBe(true);
   });
 
-  test('the row still carries a base background for the cell to inherit', () => {
-    // Without this the sticky cell is transparent on ordinary rows.
-    expect(wires(courierSrc, "sx={{ bgcolor: '#fff', '&:hover': { bgcolor: '#f8fafc' }")).toBe(true);
-  });
-
-  test('the scroll container from the first half of the fix is still there', () => {
-    // Pinning removes the discovery problem; the scroll box is what makes the
-    // middle columns reachable at all. Losing either one brings the bug back.
-    expect(wires(courierSrc, "<Box sx={{ overflowX: 'auto' }}>")).toBe(true);
+  test('the table scrolls in a bounded frame so the scrollbar stays on screen', () => {
+    // Without a max height the box grows to every row and its horizontal
+    // scrollbar ends up below the fold, which is the bug this replaced.
+    expect(wires(courierSrc, "maxHeight: 'calc(100vh - 320px)'")).toBe(true);
+    expect(wires(courierSrc, "<Table size=\"small\" stickyHeader")).toBe(true);
     expect(wires(courierSrc, 'minWidth: 980')).toBe(true);
+  });
+
+  test('the header lost its tenth cell, so the columns still line up', () => {
+    expect(wires(courierSrc, "'Dispatch Date', 'Status'].map((h, i) => (")).toBe(true);
+    expect(wires(courierSrc, '<TableCell colSpan={9} sx={{ textAlign')).toBe(true);
   });
 });
