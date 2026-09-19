@@ -26,7 +26,8 @@ import {
   Add as AddIcon,
   Edit as EditIcon,
 } from '@mui/icons-material';
-import { State, City } from 'country-state-city';
+import { State } from 'country-state-city';
+import { buildCityOptions, filterCityOptions } from '../../utils/cityOptions';
 import { trialsAPI, repAPI } from '../../services/api';
 import { buildAddModePayload } from './repMergePayload';
 import { getStateFromPinCode } from '../../utils/pinCodeToState';
@@ -778,13 +779,10 @@ function REPModal({ open, onClose, onSave, editingREP }) {
                       setLookupCityObj(null);
                       setCityInProject(false);
                       if (val) {
-                        const libCities = City.getCitiesOfState('IN', val.isoCode);
-                        const libNames = new Set(libCities.map(c => c.name.toLowerCase()));
-                        const projectCities = (trialCitiesByState[val.name] || [])
-                          .filter(name => !libNames.has(name.toLowerCase()))
-                          .map(name => ({ name, isProjectCity: true }));
                         const stateLower = val.name.toLowerCase();
-                        const allCities = [...libCities, ...projectCities].map(c => ({
+                        const allCities = buildCityOptions(
+                          val.isoCode, trialCitiesByState[val.name] || [],
+                        ).map(c => ({
                           ...c,
                           _assigned: _repAssignedCities.has(`${stateLower}|${c.name.toLowerCase()}`),
                         }));
@@ -818,7 +816,8 @@ function REPModal({ open, onClose, onSave, editingREP }) {
                     getOptionLabel={(o) => o.name || ''} value={lookupCityObj}
                     disabled={!lookupStateObj}
                     inputValue={lookupCityInput} onInputChange={(_, v) => setLookupCityInput(v)}
-                    filterOptions={(opts, state) => smartFilterOptions(opts, state)}
+                    filterOptions={(opts, state) =>
+                      filterCityOptions(opts, state.inputValue, { allowNew: false })}
                     onChange={(_, val) => {
                       setLookupCityObj(val);
                       checkCityInProject(lookupProject, lookupStateObj, val);
@@ -1047,15 +1046,11 @@ function REPModal({ open, onClose, onSave, editingREP }) {
                       setLookupStateObj(val);
                       setLookupCityObj(null);
                       if (val) {
-                        const libCities = City.getCitiesOfState('IN', val.isoCode);
-                        const libNames = new Set(libCities.map(c => c.name.toLowerCase()));
-                        const projectCities = (trialCitiesByState[val.name] || [])
-                          .filter(name => !libNames.has(name.toLowerCase()))
-                          .map(name => ({ name, isProjectCity: true }));
                         // A city assigned under another project is a fresh start
                         // here, so don't grey it — just list alphabetically.
-                        const allCities = [...libCities, ...projectCities]
-                          .sort((a, b) => a.name.localeCompare(b.name));
+                        const allCities = buildCityOptions(
+                          val.isoCode, trialCitiesByState[val.name] || [],
+                        ).sort((a, b) => a.name.localeCompare(b.name));
                         setLookupAvailCities(allCities);
                       } else {
                         setLookupAvailCities([]);
@@ -1072,7 +1067,8 @@ function REPModal({ open, onClose, onSave, editingREP }) {
                     getOptionLabel={(o) => o.name || ''} value={lookupCityObj}
                     disabled={!lookupStateObj}
                     inputValue={cityInputValue} onInputChange={(_, v) => setCityInputValue(v)}
-                    filterOptions={(opts, state) => smartFilterOptions(opts, state)}
+                    filterOptions={(opts, state) =>
+                      filterCityOptions(opts, state.inputValue, { allowNew: false })}
                     onChange={(_, val) => {
                       setLookupCityObj(val);
                       setAssignmentData(prev => ({ ...prev, city: val?.name || '' }));
