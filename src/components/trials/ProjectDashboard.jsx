@@ -24,13 +24,16 @@ import {
   EmojiEvents as TierIcon,
   StickyNote2 as NotesIcon,
 } from '@mui/icons-material';
-import { State, City } from 'country-state-city';
+import { State } from 'country-state-city';
 
 import { trialsAPI } from '../../services/api';
 import useGrants from '../../auth/useGrants';
 import useRefetchOnFocus from '../../hooks/useRefetchOnFocus';
 import TrialDeleteDialog from './TrialDeleteDialog';
 import { CITY_SORT_OPTIONS, MONTHS } from './trialConstants';
+import {
+  buildCityOptions, filterCityOptions, cityOptionLabel, cityOptionHint,
+} from '../../utils/cityOptions';
 
 const indianStates = State.getStatesOfCountry('IN');
 
@@ -232,8 +235,12 @@ function ProjectDashboard() {
       const next = { ...prev, ...updates };
       if ('state' in updates) {
         next.city = null;
-        next.availableCities = updates.state
-          ? City.getCitiesOfState('IN', updates.state.isoCode) : [];
+        next.availableCities = buildCityOptions(updates.state?.isoCode);
+      }
+      // A typed city is not in the options array it was offered from, and MUI
+      // warns about a value it cannot find there. Keep it as a real option.
+      if (updates.city?.isNew) {
+        next.availableCities = [...next.availableCities, updates.city];
       }
       if ('month' in updates && updates.month) {
         const idx = MONTHS.indexOf(updates.month);
@@ -254,8 +261,10 @@ function ProjectDashboard() {
       const next = { ...row, ...updates };
       if ('state' in updates) {
         next.city = null;
-        next.availableCities = updates.state
-          ? City.getCitiesOfState('IN', updates.state.isoCode) : [];
+        next.availableCities = buildCityOptions(updates.state?.isoCode);
+      }
+      if (updates.city?.isNew) {
+        next.availableCities = [...next.availableCities, updates.city];
       }
       if ('month' in updates && updates.month) {
         const idx = MONTHS.indexOf(updates.month);
@@ -565,9 +574,22 @@ function ProjectDashboard() {
                     ListboxProps={{ style: { maxHeight: 220 } }}
                   />
                   <Autocomplete
-                    size="small" options={addForm.availableCities} getOptionLabel={o => o.name || ''}
+                    size="small" options={addForm.availableCities} getOptionLabel={cityOptionLabel}
                     value={addForm.city}
                     onChange={(_, val) => updateAddForm({ city: val })}
+                    filterOptions={(opts, state) => filterCityOptions(opts, state.inputValue)}
+                    renderOption={(props, option) => (
+                      <li {...props} key={`${option.name}-${option.isNew ? 'new' : 'lib'}`}>
+                        <Box>
+                          <Typography sx={{ fontSize: '0.85rem' }}>{option.name}</Typography>
+                          {cityOptionHint(option) && (
+                            <Typography sx={{ fontSize: '0.7rem', color: '#6b7280' }}>
+                              {cityOptionHint(option)}
+                            </Typography>
+                          )}
+                        </Box>
+                      </li>
+                    )}
                     renderInput={(params) => (
                       <TextField {...params} placeholder={addForm.state ? 'City...' : 'Select state'} sx={inputSx} />
                     )}
@@ -1017,9 +1039,22 @@ function ProjectDashboard() {
                     </TableCell>
                     <TableCell sx={{ minWidth: 200 }}>
                       <Autocomplete
-                        options={row.availableCities} getOptionLabel={o => o.name || ''}
+                        options={row.availableCities} getOptionLabel={cityOptionLabel}
                         value={row.city}
                         onChange={(_, val) => updateBulkRow(row.id, { city: val })}
+                        filterOptions={(opts, state) => filterCityOptions(opts, state.inputValue)}
+                        renderOption={(props, option) => (
+                          <li {...props} key={`${option.name}-${option.isNew ? 'new' : 'lib'}`}>
+                            <Box>
+                              <Typography sx={{ fontSize: '0.85rem' }}>{option.name}</Typography>
+                              {cityOptionHint(option) && (
+                                <Typography sx={{ fontSize: '0.7rem', color: '#6b7280' }}>
+                                  {cityOptionHint(option)}
+                                </Typography>
+                              )}
+                            </Box>
+                          </li>
+                        )}
                         renderInput={(params) => <TextField {...params} placeholder={row.state ? 'City...' : '—'} sx={inputSx} />}
                         disabled={!row.state || bulkSaving}
                         isOptionEqualToValue={(o, v) => o.name === v.name}
