@@ -54,6 +54,17 @@ die()  { printf '\n\033[31mFAILED: %s\033[0m\n' "$*" >&2; exit 1; }
 # plink call hanging for 20 minutes on a step that takes seconds.
 rsh()  { timeout 300 "$PLINK" -batch -pw "$TTA_DEPLOY_PASS" "$USER_@$HOST" "$@"; }
 PSCP_T() { timeout 600 "$PSCP" "$@"; }
+# The value the login request's base-URL variable holds in a minified bundle.
+# Must be exactly /api. On 2026-09-19 it was "C:/Program Files/Git/api" and every
+# login failed while every status-code check passed. Reads the variable the
+# login call actually uses, so it does not depend on how the build encodes env.
+api_base_of() {
+  local f="$1" v re
+  v=$(grep -oE 'concat\([A-Za-z0-9_$]+,"/auth/login/"\)' "$f" | head -1 | sed -E 's/^concat\(//; s/,.*//')
+  [ -n "$v" ] || { echo "<login call not found>"; return; }
+  re=$(printf '%s' "$v" | sed 's/[$]/\\$/g')
+  grep -oE "(^|[^A-Za-z0-9_\$.])${re}=\"[^\"]*\"" "$f" | sed -E 's/^[^=]*="//; s/"$//' | sort -u
+}
 
 if [ "$MODE" != rehearse ]; then
   : "${TTA_DEPLOY_PASS:?set TTA_DEPLOY_PASS to the server root password}"
@@ -147,7 +158,10 @@ grep -q '^FROM --platform=\$BUILDPLATFORM node:' "$CTX/Dockerfile" \
 say "Building tta-frontend:$FE_SHORT for linux/$ARCH (on this machine)"
 IMG="tta-frontend:$FE_SHORT"
 T0=$(date +%s)
-docker buildx build --platform "linux/$ARCH" --build-arg REACT_APP_API_URL=/api \
+# MSYS_NO_PATHCONV: Git Bash rewrites "/api" to "C:/Program Files/Git/api" when
+# passing it to docker.exe. That shipped on 2026-09-19 and broke every login.
+# Scoped to this one command: pscp below NEEDS the rewrite for its local paths.
+MSYS_NO_PATHCONV=1 docker buildx build --platform "linux/$ARCH" --build-arg REACT_APP_API_URL=/api \
   --load -t "$IMG" "$(cygpath -w "$CTX" 2>/dev/null || echo "$CTX")" 2>&1 | tail -5
 info "built in $(( $(date +%s) - T0 ))s"
 
@@ -170,7 +184,14 @@ docker run --rm --platform "linux/$ARCH" --add-host backend:127.0.0.1 --entrypoi
   if grep -rl --include="*.js" "localhost:8000" $H/static/js $H/client/static/js 2>/dev/null; then exit 1; fi
   nginx -t 2>/dev/null
 ' || die "image failed verification (missing bundle, wrong release.txt, or a localhost API leak)"
-info "bundle present$([ $WANT_CLIENT = 1 ] && echo ' (+ /client)') · release.txt = $FE_SHORT · no localhost:8000 in .js · nginx -t ok"
+# POSITIVE check: the API address the login call uses must be exactly /api.
+# The absence of one known-bad value (localhost:8000) is not enough.
+MSYS_NO_PATHCONV=1 docker create --name "apicheck-$STAMP" "$IMG" >/dev/null
+MSYS_NO_PATHCONV=1 docker cp "apicheck-$STAMP:/usr/share/nginx/html/static/js" "$(cygpath -w "$WORK" 2>/dev/null || echo "$WORK")/js" >/dev/null
+docker rm "apicheck-$STAMP" >/dev/null
+BASE=$(api_base_of "$(ls "$WORK"/js/main.*.js | head -1)")
+[ "$BASE" = "/api" ] || die "image calls the API at '$BASE', not /api. Login would break"
+info "bundle present$([ $WANT_CLIENT = 1 ] && echo ' (+ /client)') · release.txt = $FE_SHORT · login calls /api · no localhost:8000 in .js · nginx -t ok"
 
 IMG_TGZ="$WORK/tta-frontend-$FE_SHORT.tar.gz"
 docker save "$IMG" | gzip > "$IMG_TGZ"
@@ -221,6 +242,20 @@ SERVED=$(curl -s -m 30 "https://tta.indiakhelofootball.com/release.txt" || true)
 echo "$SERVED" | grep -q "$FE_SHA" \
   || die "release.txt does not report $FE_SHORT — Cloudflare cache, or the swap did not take"
 info "served release.txt reports $FE_SHORT"
+
+# A LOGIN through the browser's own path. Status codes on / and /api/ passed on
+# 2026-09-19 while every login failed. Read the API address out of the bundle
+# the site actually serves, then log in with credentials that cannot exist.
+JS=$(curl -s -m 30 "https://tta.indiakhelofootball.com/" | grep -o 'static/js/main\.[a-z0-9]*\.js' | head -1)
+[ -n "$JS" ] || die "could not find the served main bundle"
+curl -s -m 90 -o "$WORK/served.js" "https://tta.indiakhelofootball.com/$JS"
+API=$(api_base_of "$WORK/served.js")
+[ "$API" = "/api" ] || die "served bundle calls the API at '$API', not /api. LOGIN IS BROKEN: roll back"
+LOGIN=$(curl -s -m 30 -w ' HTTP%{http_code}' -X POST "https://tta.indiakhelofootball.com$API/auth/login/" \
+  -H 'Content-Type: application/json' -d '{"email":"deploy-check@invalid.example","password":"x"}')
+echo "$LOGIN" | grep -q 'Invalid email or password.* HTTP401$' \
+  || die "login through the served bundle's address failed: $LOGIN. Roll back"
+info "login path OK: bundle calls $API, login answers 401 'Invalid email or password'"
 for u in tta.indiakhelofootball.com ikf.indiakhelofootball.com indiakhelofootball.com \
          www.indiakhelofootball.com scout.myfirstkick.com anantcomputing.in; do
   info "$(curl -s -o /dev/null -w '%{http_code}' -m 20 -L "https://$u/")  $u"
