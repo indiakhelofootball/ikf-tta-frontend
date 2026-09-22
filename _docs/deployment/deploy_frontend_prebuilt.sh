@@ -129,6 +129,20 @@ for f in Dockerfile nginx.conf package.json package-lock.json; do
   [ -f "$CTX/$f" ] || die "build context has no $f"
 done
 
+# nginx.conf comes from the repo, not the server: the server's copy never told
+# browsers to re-check index.html (2026-09-21). The repo file is the server's
+# file plus that one block, so refuse if the server's copy has changed in any
+# other way — that change would otherwise be dropped without anyone seeing it.
+NGINX_SRC="$FE_ROOT/_docs/deployment/nginx.frontend.conf"
+[ -f "$NGINX_SRC" ] || die "missing $NGINX_SRC"
+if [ "$MODE" != rehearse ]; then
+  sed '/# The page every route falls back to/,/^    }$/d' "$NGINX_SRC" | diff -B -q - "$CTX/nginx.conf" >/dev/null \
+    || cmp -s "$NGINX_SRC" "$CTX/nginx.conf" \
+    || die "the server's nginx.conf differs from $NGINX_SRC beyond the cache block; reconcile first"
+fi
+cp "$NGINX_SRC" "$CTX/nginx.conf"
+info "nginx.conf from the repo (index.html: no-cache)"
+
 rm -rf "$CTX/src"
 git archive HEAD src | tar -x -C "$CTX"
 cat > "$CTX/public/release.txt" <<EOF
@@ -191,6 +205,17 @@ MSYS_NO_PATHCONV=1 docker cp "apicheck-$STAMP:/usr/share/nginx/html/static/js" "
 docker rm "apicheck-$STAMP" >/dev/null
 BASE=$(api_base_of "$(ls "$WORK"/js/main.*.js | head -1)")
 [ "$BASE" = "/api" ] || die "image calls the API at '$BASE', not /api. Login would break"
+# Serve the image on this laptop and read the real response headers: the entry
+# page must say re-check, the hashed bundle must still be cacheable.
+MSYS_NO_PATHCONV=1 docker run -d --rm --name "hdrcheck-$STAMP" --platform "linux/$ARCH" \
+  --add-host backend:127.0.0.1 -p 127.0.0.1:18080:80 "$IMG" >/dev/null
+sleep 3
+HDR_HTML=$(curl -s -o /dev/null -D - -m 10 http://127.0.0.1:18080/login | tr -d '\r' | grep -i '^cache-control:' || true)
+HDR_JS=$(curl -s -o /dev/null -D - -m 10 "http://127.0.0.1:18080/static/js/$(basename "$(ls "$WORK"/js/main.*.js | head -1)")" | tr -d '\r' | grep -i '^cache-control:' || true)
+docker stop "hdrcheck-$STAMP" >/dev/null 2>&1 || true
+echo "$HDR_HTML" | grep -qi 'no-cache' || die "entry page is not no-cache in the image: '$HDR_HTML'"
+echo "$HDR_JS" | grep -qi 'max-age' || die "hashed bundle lost its cache header in the image: '$HDR_JS'"
+info "headers in the image: /login '$HDR_HTML' · bundle '$HDR_JS'"
 info "bundle present$([ $WANT_CLIENT = 1 ] && echo ' (+ /client)') · release.txt = $FE_SHORT · login calls /api · no localhost:8000 in .js · nginx -t ok"
 
 IMG_TGZ="$WORK/tta-frontend-$FE_SHORT.tar.gz"
@@ -217,8 +242,11 @@ git archive HEAD src | gzip > "$WORK/src.tar.gz"
 PSCP_T -batch -pw "$TTA_DEPLOY_PASS" "$WORK/src.tar.gz" "$USER_@$HOST:/root/tta-src-$STAMP.tar.gz" >/dev/null
 cp "$CTX/public/release.txt" "$WORK/release.txt"
 PSCP_T -batch -pw "$TTA_DEPLOY_PASS" "$WORK/release.txt" "$USER_@$HOST:/root/tta-release-$STAMP.txt" >/dev/null
+PSCP_T -batch -pw "$TTA_DEPLOY_PASS" "$NGINX_SRC" "$USER_@$HOST:/root/tta-nginx-$STAMP.conf" >/dev/null
 rsh "set -e
-  cd /root && tar -czf /root/tta-rollback-$STAMP.tar.gz tta/src tta/public
+  cd /root && tar -czf /root/tta-rollback-$STAMP.tar.gz tta/src tta/public tta/nginx.conf
+  # the on-disk nginx.conf must match the image, or a later build drops the rule
+  cp /root/tta-nginx-$STAMP.conf $REMOTE/nginx.conf && rm -f /root/tta-nginx-$STAMP.conf
   docker tag tta-frontend:latest tta-frontend:pre-$STAMP
   gunzip -c /root/tta-frontend-$FE_SHORT.tar.gz | docker load | tail -1
   # keep the on-disk source identical to the image, so a later --build agrees
@@ -256,6 +284,9 @@ LOGIN=$(curl -s -m 30 -w ' HTTP%{http_code}' -X POST "https://tta.indiakhelofoot
 echo "$LOGIN" | grep -q 'Invalid email or password.* HTTP401$' \
   || die "login through the served bundle's address failed: $LOGIN. Roll back"
 info "login path OK: bundle calls $API, login answers 401 'Invalid email or password'"
+LIVE_HDR=$(curl -s -o /dev/null -D - -m 20 "https://tta.indiakhelofootball.com/login" | tr -d '\r' | grep -i '^cache-control:' || true)
+echo "$LIVE_HDR" | grep -qi 'no-cache' || die "live entry page is not no-cache: '$LIVE_HDR' (Cloudflare or host nginx is overriding it)"
+info "live entry page: $LIVE_HDR"
 for u in tta.indiakhelofootball.com ikf.indiakhelofootball.com indiakhelofootball.com \
          www.indiakhelofootball.com scout.myfirstkick.com anantcomputing.in; do
   info "$(curl -s -o /dev/null -w '%{http_code}' -m 20 -L "https://$u/")  $u"

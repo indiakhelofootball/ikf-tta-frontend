@@ -4,7 +4,7 @@ Written 2026-09-21 from: the deploy session transcript (`fe7dba16`), git history
 the live server's response headers and bundle, and a reproduction on this laptop.
 All times IST unless marked. Server clock is CST (UTC+8).
 
-**Status at time of writing: STILL BROKEN.** Fix not yet deployed.
+**Status: FIXED 2026-09-21 16:14 IST** (`d12460e` rebuilt with the corrected script, `85e51e7`). Browsers that cached the broken copy still fail until they fetch the new one.
 
 ---
 
@@ -16,8 +16,10 @@ Every other screen fails the same way — login is only where it shows first.
 ## The cause, in one line
 
 The frontend bundle deployed on 09-19 sends every API call to
-`https://tta.indiakhelofootball.com/C:/Program Files/Git/api/...` instead of
-`/api/...`. nginx answers `405 Not Allowed`.
+`C:/Program Files/Git/api/...` instead of `/api/...`. A browser reads `C:` as a
+URL scheme and **refuses to send the request at all** (`TypeError: Failed to
+fetch`, reproduced 09-21), so failed logins leave no trace in any server log.
+The `405` quoted earlier came from a manual curl to that path, not from a browser.
 
 Evidence, 2026-09-21:
 
