@@ -14,6 +14,7 @@ import CSRProjectDetailView, { ttaProjectIdentity } from './CSRProjectDetailView
 import CSRContractManagementPage from './CSRContractManagementPage';
 import ConfirmDialog from '../common/ConfirmDialog';
 import { certificateFreezeState } from './csrContractRules';
+import { DEFAULT_REPORT_SORT, reportSortOptions, sortReports } from './reportSort';
 import { csrAPI } from '../../services/api';
 import '../../styles/csrDesign.css';
 import useGrants from '../../auth/useGrants';
@@ -142,6 +143,7 @@ export default function CSRProjectDetailPage() {
   const [project, setProject] = useState(null);
   const [activities, setActivities] = useState([]);
   const [reports, setReports] = useState([]);
+  const [reportSort, setReportSort] = useState(DEFAULT_REPORT_SORT);
   const [contacts, setContacts] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [activityTypes, setActivityTypes] = useState([]);
@@ -313,6 +315,15 @@ export default function CSRProjectDetailPage() {
   ].filter(Boolean).join(', and ');
   const sanctioned = Number(project?.sanctionedAmount) || 0;
   const freeze = certificateFreezeState(project);
+
+  // This tab never sorted: it shows the server's order, which is newest first.
+  // The default leaves that array untouched, so nobody who ignores the control
+  // sees a single row move.
+  const shownReports = reportSort === DEFAULT_REPORT_SORT
+    ? reports
+    : sortReports(reports, reportSort, {
+      activityName: (r) => activities.find((a) => a.id === r.activityId)?.title,
+    });
 
   // The PDF is a download of the server's authoritative figures, not a
   // browser-side sum — fetch the certificate, then render it. The 'internal'
@@ -600,6 +611,20 @@ export default function CSRProjectDetailPage() {
               Add Report
             </Button>
           )}
+          {reports.length > 0 && (
+            <div className="toolbar">
+              <select
+                className="sel"
+                aria-label="Sort reports"
+                value={reportSort}
+                onChange={(e) => setReportSort(e.target.value)}
+              >
+                {reportSortOptions({ withGrant: false }).map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="twrap">
             {/* The activity takes the 4th cell and its identity band: inside one
                 grant, what a report is a report OF is what identifies it — the
@@ -618,7 +643,7 @@ export default function CSRProjectDetailPage() {
 
             {reports.length === 0 ? (
               <div className="empty"><h3>No reports yet</h3></div>
-            ) : reports.map((r) => {
+            ) : shownReports.map((r) => {
               const linkedActivity = activities.find((a) => a.id === r.activityId);
               return (
                 <div className="lwrap" key={r.id}>
