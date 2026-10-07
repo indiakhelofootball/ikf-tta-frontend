@@ -42,7 +42,7 @@ export default function DashboardHome() {
         // Only hit endpoints the user can view — the rest would 403.
         const [trialsRes, repsRes, vendorsRes, workOrdersRes, paymentsRes] = await Promise.allSettled([
           canView('trials') ? trialsAPI.getAll() : skip,
-          canView('reps') ? repAPI.getAll() : skip,
+          canView('reps') ? repAPI.getOptions() : skip,
           canView('vendors') ? vendorsAPI.getAll({ limit: 1 }) : skip,
           canView('workorders') ? workOrdersAPI.getAll() : skip,
           canView('payments') ? paymentRequestsAPI.getAll() : skip,

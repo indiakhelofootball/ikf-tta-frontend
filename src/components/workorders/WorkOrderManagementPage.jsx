@@ -246,7 +246,7 @@ function WorkOrderManagementPage() {
   };
 
   const fetchVendors = () => {
-    vendorsAPI.getAll({ limit: 1000 })
+    vendorsAPI.getOptions()
       .then((res) => {
         setVendors(res.vendors || []);
       })
@@ -264,8 +264,9 @@ function WorkOrderManagementPage() {
   useEffect(() => { fetchVendors(); fetchWorkOrders(); }, []);
   // Work orders refresh on focus; the vendor list deliberately does NOT.
   // `vendors` is never rendered on this page — it feeds only the modal's picker
-  // and the Raise Payment prefill — and vendorsAPI.getAll({limit:1000}) is
-  // 15.9 MB on production, 95% of it base64 PAN card images. Refetching that
+  // and the Raise Payment prefill — and when this was written it came from
+  // vendorsAPI.getAll({limit:1000}), 15.9 MB on production, 95% of it base64
+  // PAN card images (now getOptions, without them). Refetching that
   // every 30 s of alt-tabbing occupied one of the backend's two gunicorn
   // workers and slowed the app for everyone, to refresh a dropdown nobody was
   // looking at. PaymentManagementPage already made this same choice.

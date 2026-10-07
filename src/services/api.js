@@ -539,6 +539,13 @@ export const vendorsAPI = {
     return apiService.request(`/vendors/${qs ? `?${qs}` : ''}`);
   },
 
+  // Every vendor exactly as `getAll` returns it, minus `panCardImageUrl`, newest
+  // first, unpaginated. Use this for any picker. `getAll({ limit: 1000 })` is
+  // ~26 MB, 99% of it base64 PAN card images that only the Vendors page shows.
+  getOptions: async () => {
+    return apiService.request('/vendors/options/');
+  },
+
   getById: async (id) => {
     return apiService.request(`/vendors/${id}/`);
   },

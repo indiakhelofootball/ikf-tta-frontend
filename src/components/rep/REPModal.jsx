@@ -177,7 +177,7 @@ function REPModal({ open, onClose, onSave, editingREP }) {
     }).catch(() => {});
 
     // Fetch all REPs to know which cities are already assigned
-    repAPI.getAll({ limit: 1000 }).then((res) => {
+    repAPI.getOptions().then((res) => {
       const assigned = new Set();
       for (const rep of res.reps || []) {
         for (const a of rep.cityAssignments || []) {
