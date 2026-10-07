@@ -134,6 +134,12 @@ export function buildCertificateDoc(cert, { variant = 'funder' } = {}) {
   let y = 28;
   const line = (text) => { doc.text(text, 14, y); y += 6; };
 
+  // The kind of certificate, directly under the title. Printed only when the
+  // grant has one: a certificate frozen before the type existed, or a grant
+  // nobody typed, omits the line rather than printing a blank or "null".
+  const certificateType = typeof c.utilisationType === 'string' ? c.utilisationType.trim() : '';
+  if (certificateType) line(`Certificate type: ${certificateType}`);
+
   line(`Project: ${c.projectName || ''}`);
   line(`${isInternal ? 'Client / Funder' : 'Funder'}: ${c.clientName || ''}`);
   line(`${isInternal ? 'Sanctioned' : 'Contribution'}: ${formatMoney(c.sanctionedAmount)}`);
