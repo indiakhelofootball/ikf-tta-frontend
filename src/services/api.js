@@ -1019,6 +1019,11 @@ function csrCrud(base) {
       apiService.request(`${base}/`, { method: 'POST', body: JSON.stringify(data) }),
     update: async (id, data) =>
       apiService.request(`${base}/${id}/`, { method: 'PUT', body: JSON.stringify(data) }),
+    // One field, without resending the record. A PUT would have to carry every
+    // required field, and the GET body cannot simply be echoed back: the
+    // project serializer refuses `workOrderId` on write.
+    patch: async (id, data) =>
+      apiService.request(`${base}/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }),
     delete: async (id) => apiService.request(`${base}/${id}/`, { method: 'DELETE' }),
   };
 }

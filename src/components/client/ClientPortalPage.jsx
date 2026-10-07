@@ -419,6 +419,12 @@ export default function ClientPortalPage() {
                   </Stack>
 
                   <Stack direction="row" spacing={4} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
+                    {/* The kind of certificate this is. The server sends it only
+                        when the grant has one, so a missing type is no field,
+                        never an empty or "None" one. */}
+                    {cert.utilisationType && (
+                      <Field label="Certificate type" value={cert.utilisationType} />
+                    )}
                     <Field label="Contribution" value={rupees(cert.sanctionedAmount)} />
                     <Field label="Total utilised" value={rupees(cert.totalUtilised)} />
                     <Field

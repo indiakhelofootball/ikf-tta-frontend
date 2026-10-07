@@ -17,6 +17,7 @@ const CATEGORY_MAP = {
   partnerCategories: 'partner_category',
   workshopNames: 'workshop_name',
   trainingProgrammes: 'training_programme',
+  utilisationTypes: 'utilisation_type',
 };
 
 // ── In-memory cache ─────────────────────────────────────────────────
@@ -33,6 +34,7 @@ const _cache = {
   partnerCategories: null,
   workshopNames: null,
   trainingProgrammes: null,
+  utilisationTypes: null,
 };
 
 // Per-key load status. 'loaded' is the ONLY state in which _cache is
@@ -52,6 +54,7 @@ const _status = {
   partnerCategories: 'idle',
   workshopNames: 'idle',
   trainingProgrammes: 'idle',
+  utilisationTypes: 'idle',
 };
 
 const DEFAULTS = {
@@ -70,6 +73,10 @@ const DEFAULTS = {
   // created; a default would offer CSR something that never happened.
   workshopNames: [],
   trainingProgrammes: [],
+  // No client-side seed: the three starting types are rows the server seeds by
+  // migration, so they carry real ids a grant can reference. A local seed has
+  // only a synthetic id and could not be saved onto a grant.
+  utilisationTypes: [],
 };
 
 // ── Change notification ─────────────────────────────────────────────
@@ -350,6 +357,18 @@ export function saveTrainingProgrammes(list) {
 
 export function getTrainingProgrammeList() {
   return getTrainingProgrammes().map(item => item.name);
+}
+
+// The Utilisation Certificate types (tranche, final, periodic). Same ownership
+// as the two catalogs above: TTA Admin edits them, CSR only reads them, and a
+// rename goes through configAPI.rename because CSRProject.utilisation_type
+// holds the row by ForeignKey.
+export function getUtilisationTypes() {
+  return getFromCache('utilisationTypes');
+}
+
+export function saveUtilisationTypes(list) {
+  return saveCategory('utilisationTypes', CATEGORY_MAP.utilisationTypes, list);
 }
 
 // ── Helper: return just name strings ─────────────────────────────────
