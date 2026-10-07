@@ -34,6 +34,7 @@ import {
   getPartnerCategories, savePartnerCategories,
   getWorkshopNames, saveWorkshopNames,
   getTrainingProgrammes, saveTrainingProgrammes,
+  getUtilisationTypes, saveUtilisationTypes,
   refreshAllFromAPI,
 } from '../../utils/adminStorage';
 import { configAPI } from '../../services/api';
@@ -512,6 +513,7 @@ export default function AdminPage() {
   const [partnerCategories, setPartnerCategories] = useState([]);
   const [workshopNames, setWorkshopNames] = useState([]);
   const [trainingProgrammes, setTrainingProgrammes] = useState([]);
+  const [utilisationTypes, setUtilisationTypes] = useState([]);
   const [saveError, setSaveError] = useState('');
   const [renameInfo, setRenameInfo] = useState('');
 
@@ -574,11 +576,13 @@ export default function AdminPage() {
   // through the backend rather than the ordinary save path, which would remove
   // the old row and add a new one and leave every CSRActivity pointing at the
   // row it just replaced.
-  const handleCatalogRename = (category, noun, setState, getState) => async (oldName, newName) => {
+  const handleCatalogRename = (
+    category, noun, setState, getState, holder = 'CSR activity',
+  ) => async (oldName, newName) => {
     setSaveError(''); setRenameInfo('');
     try {
       await configAPI.rename(category, oldName, newName);
-      setRenameInfo(`Renamed ${noun} "${oldName}" to "${newName}". Every CSR activity using it follows automatically.`);
+      setRenameInfo(`Renamed ${noun} "${oldName}" to "${newName}". Every ${holder} using it follows automatically.`);
       await refreshAllFromAPI();
       setState(getState());
     } catch (err) {
@@ -600,6 +604,7 @@ export default function AdminPage() {
     setPartnerCategories(getPartnerCategories());
     setWorkshopNames(getWorkshopNames());
     setTrainingProgrammes(getTrainingProgrammes());
+    setUtilisationTypes(getUtilisationTypes());
 
     // Fetch latest from API and refresh state
     refreshAllFromAPI().then(() => {
@@ -614,6 +619,7 @@ export default function AdminPage() {
       setPartnerCategories(getPartnerCategories());
       setWorkshopNames(getWorkshopNames());
       setTrainingProgrammes(getTrainingProgrammes());
+      setUtilisationTypes(getUtilisationTypes());
     }).catch(() => {});
   }, []);
 
@@ -758,6 +764,13 @@ export default function AdminPage() {
               items={trainingProgrammes}
               onSave={handleSave(setTrainingProgrammes, saveTrainingProgrammes)}
               onRename={handleCatalogRename('training_programme', 'training programme', setTrainingProgrammes, getTrainingProgrammes)}
+            />
+            <OptionPanel
+              title="Utilisation Certificate Types"
+              subtitle="The kinds of Utilisation Certificate a grant can issue (e.g. Tranche / Interim, Final / Closure, Periodic). CSR staff pick one on a grant's Utilisation tab and it is printed on the certificate. Renaming one updates every grant that references it."
+              items={utilisationTypes}
+              onSave={handleSave(setUtilisationTypes, saveUtilisationTypes)}
+              onRename={handleCatalogRename('utilisation_type', 'certificate type', setUtilisationTypes, getUtilisationTypes, 'CSR grant')}
             />
             <Paper elevation={0} sx={{ border: '1.5px solid #e8e8e8', borderRadius: '20px', overflow: 'hidden' }}>
               <Box sx={{ px: 3.5, py: 2.5, bgcolor: '#fafafa', borderBottom: '1px solid #e8e8e8' }}>

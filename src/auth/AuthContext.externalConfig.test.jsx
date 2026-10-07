@@ -72,13 +72,13 @@ test('an external funder session fires zero /api/config/ requests', async () => 
   expect(permissionsAPI.getMine).not.toHaveBeenCalled();
 });
 
-test('an internal session still loads the full config cache (11 categories)', async () => {
+test('an internal session still loads the full config cache (12 categories)', async () => {
   seedSession('ADMIN');
   await renderAuth();
 
   await waitFor(() => expect(adminStorage.refreshAllFromAPI).toHaveBeenCalledTimes(1));
   // Spelled out on purpose: adding a config category stays a deliberate edit.
-  expect(configAPI.getByCategory).toHaveBeenCalledTimes(11);
+  expect(configAPI.getByCategory).toHaveBeenCalledTimes(12);
   // Decoupled from the grants fetch: a config failure must not blank the app,
   // and a grants failure must not blank the dropdowns.
   expect(permissionsAPI.getMine).toHaveBeenCalledTimes(1);
@@ -89,7 +89,7 @@ test('config still loads for an internal user when the grants fetch fails', asyn
   seedSession('ADMIN');
   await renderAuth();
 
-  await waitFor(() => expect(configAPI.getByCategory).toHaveBeenCalledTimes(11));
+  await waitFor(() => expect(configAPI.getByCategory).toHaveBeenCalledTimes(12));
 });
 
 test("the funder's skipped fetch does not poison the cache for a later internal user", async () => {
