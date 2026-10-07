@@ -19,6 +19,8 @@ import { csrAPI } from '../../services/api';
 import '../../styles/csrDesign.css';
 import useGrants from '../../auth/useGrants';
 import { downloadCertificatePdf } from '../../utils/certificatePdf';
+import { getUtilisationTypes } from '../../utils/adminStorage';
+import useConfigVersion from '../../hooks/useConfigVersion';
 
 // The record lists on this page are the module's coloured table (.twrap /
 // .lgrid / .lrow), the same one every other CSR screen uses — the owner's
@@ -278,6 +280,12 @@ export default function CSRProjectDetailPage() {
   });
 
   const [saving, setSaving] = useState(false);
+  const [typeSaving, setTypeSaving] = useState(false);
+  // The certificate-type catalogue, read from the admin-managed cache and never
+  // fetched from config here. Subscribing re-renders this page when
+  // refreshAllFromAPI lands, and the read below then picks up the new list.
+  useConfigVersion();
+  const utilisationTypes = getUtilisationTypes();
   // One dialog, one slot of state: { title, message, confirmLabel, onConfirm }.
   // Each delete asks by filling this in; the dialog is a view of it.
   const [confirmState, setConfirmState] = useState(null);
@@ -449,6 +457,37 @@ export default function CSRProjectDetailPage() {
     }
     downloadCertificatePdf(cert, { variant: 'internal' });
   };
+
+  // Saved as soon as it is picked: a single field, so a separate Save button
+  // would only be a second step to forget. PATCH, not the PUT the project form
+  // uses, so nothing else on the grant is resent.
+  const saveUtilisationType = async (e) => {
+    const nextId = e.target.value === '' ? null : Number(e.target.value);
+    setTypeSaving(true);
+    try {
+      const saved = await csrAPI.projects.patch(id, { utilisationTypeId: nextId });
+      // A partial response omits a blank read-only name, so '' is filled in
+      // here rather than keeping the previous type's label.
+      setProject((p) => ({
+        ...p,
+        utilisationTypeId: saved?.utilisationTypeId ?? nextId,
+        utilisationTypeName: saved?.utilisationTypeName || '',
+      }));
+      notify(nextId === null ? 'Certificate type cleared.' : 'Certificate type saved.');
+    } catch (err) {
+      notify(err?.message || 'Could not save the certificate type.', 'error');
+    } finally {
+      setTypeSaving(false);
+    }
+  };
+
+  // A grant can hold a type that has since been retired from the catalogue.
+  // It stays selectable for that grant -- otherwise the select would show
+  // "not set" for a type the certificate still prints.
+  const typeOptions = project?.utilisationTypeId
+    && !utilisationTypes.some((t) => t.id === project.utilisationTypeId)
+    ? [...utilisationTypes, { id: project.utilisationTypeId, name: project.utilisationTypeName }]
+    : utilisationTypes;
 
   if (loading) {
     return (
@@ -839,6 +878,42 @@ export default function CSRProjectDetailPage() {
 
       {tab === 5 && canViewCert && (
         <Box>
+          {/* The certificate type, under the Utilisation heading: «type लिख दो
+              इसके नीचे» (26 Aug review, 19:53), resolved on 3 Sep as the type of
+              Utilisation Certificate. It lives here and not on the cross-grant
+              Work Utilisation ledger because it belongs to one grant, and this
+              is the one screen that is about one grant's certificate. Editing
+              writes the grant, so it follows the `csr` edit grant, not the
+              certificate grant. */}
+          <Box sx={{ mb: 2, maxWidth: 420 }}>
+            <div className="pform-field">
+              <label htmlFor="uc-type">Certificate type</label>
+              {editable ? (
+                <select
+                  id="uc-type"
+                  className="sel"
+                  value={project.utilisationTypeId ?? ''}
+                  onChange={saveUtilisationType}
+                  disabled={typeSaving || (typeOptions.length === 0 && !project.utilisationTypeId)}
+                  aria-describedby="uc-type-help"
+                >
+                  <option value="">— not set —</option>
+                  {typeOptions.map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <Typography variant="body2">{project.utilisationTypeName || 'Not set'}</Typography>
+              )}
+              <p id="uc-type-help" className="pform-help">
+                {typeOptions.length === 0
+                  ? 'No certificate types in the catalog yet — an admin adds them in TTA Admin → CSR.'
+                  : freeze.frozen
+                    ? 'The frozen certificate keeps the type it was issued with. A change here applies when the grant is next closed.'
+                    : 'Printed on the Utilisation Certificate.'}
+              </p>
+            </div>
+          </Box>
           <Alert
             severity={freeze.frozen ? 'info' : 'success'}
             icon={freeze.frozen ? <LockIcon fontSize="inherit" /> : undefined}

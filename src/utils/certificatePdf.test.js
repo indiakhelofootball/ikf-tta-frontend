@@ -225,6 +225,34 @@ describe('buildCertificateDoc — internal variant', () => {
   });
 });
 
+describe('buildCertificateDoc — certificate type', () => {
+  const base = {
+    projectName: 'Football Program',
+    clientName: 'Acme Foundation',
+    sanctionedAmount: 500000,
+    totalUtilised: 120000,
+    certificateVersion: 1,
+    lineItems: [],
+  };
+
+  test.each(['funder', 'internal'])('%s: the type is printed directly under the title', (variant) => {
+    buildCertificateDoc({ ...base, utilisationType: 'Tranche / Interim' }, { variant });
+    expect(mockTextCalls[0].str).toBe('Utilisation Certificate');
+    expect(mockTextCalls[1].str).toBe('Certificate type: Tranche / Interim');
+  });
+
+  test.each([
+    ['missing', {}],
+    ['null', { utilisationType: null }],
+    ['blank', { utilisationType: '   ' }],
+  ])('%s type: the line is omitted, never printed empty', (_label, extra) => {
+    buildCertificateDoc({ ...base, ...extra }, { variant: 'funder' });
+    expect(allText()).not.toMatch(/Certificate type/);
+    expect(allText()).not.toMatch(/undefined|null|None/);
+    expect(mockTextCalls[1].str).toBe('Project: Football Program');
+  });
+});
+
 describe('downloadCertificatePdf', () => {
   test('saves under a sanitised, collision-resistant file name', () => {
     downloadCertificatePdf({
