@@ -125,6 +125,117 @@ const ChevronGlyph = () => (
   </svg>
 );
 
+const trialDates = (t) => {
+  if (!t.firstCityDate && !t.lastCityDate) return '—';
+  if (t.firstCityDate === t.lastCityDate || !t.lastCityDate) return fmtDay(t.firstCityDate);
+  if (!t.firstCityDate) return fmtDay(t.lastCityDate);
+  return `${fmtDay(t.firstCityDate)} → ${fmtDay(t.lastCityDate)}`;
+};
+
+// 26 Aug review, 03:52-05:31: a project can carry several trials, so the grant
+// does not "run under" a trial -- the trials are conducted on the project, and
+// the screen reads funder, then description, then these. Fetched when the
+// Overview is shown rather than with the rest of the grant, so a failure here
+// cannot hide the grant, and is stated as a failure rather than as "no trials".
+function GrantTrials({ project }) {
+  const linked = Boolean(project.projectRefId);
+  const [state, setState] = useState({ status: linked ? 'loading' : 'idle', trials: [] });
+
+  const fetchTrials = useCallback(async () => {
+    setState({ status: 'loading', trials: [] });
+    try {
+      const data = await csrAPI.grantTrials(project.id);
+      setState({ status: 'ready', trials: Array.isArray(data) ? data : [] });
+    } catch (e) {
+      setState({ status: 'error', trials: [], message: e.message });
+    }
+  }, [project.id]);
+
+  useEffect(() => {
+    if (linked) fetchTrials();
+  }, [linked, fetchTrials]);
+
+  const { status, trials } = state;
+  const scope = [project.ttaProjectName, project.season].filter(Boolean).join(' · ');
+
+  return (
+    <section className="ovw-trials" aria-labelledby="grant-trials-heading">
+      <h3 id="grant-trials-heading">Following trials will be conducted on this project</h3>
+      {linked && !project.season && (
+        <p className="ovw-note">
+          This grant has no season set, so trials from every season
+          of {project.ttaProjectName || 'its TTA project'} are listed.
+        </p>
+      )}
+
+      {!linked && (
+        <div className="twrap">
+          <div className="empty"><h3>Link this grant to a TTA project to list its trials</h3></div>
+        </div>
+      )}
+
+      {linked && status === 'loading' && (
+        <div className="twrap">
+          <div className="empty" role="status">
+            <CircularProgress size={22} />
+            <p>Loading trials…</p>
+          </div>
+        </div>
+      )}
+
+      {linked && status === 'error' && (
+        <Alert
+          severity="error"
+          action={<Button color="inherit" size="small" onClick={fetchTrials}>Retry</Button>}
+        >
+          Could not load the trials for this grant{state.message ? `: ${state.message}` : '.'}
+        </Alert>
+      )}
+
+      {linked && status === 'ready' && (
+        <div className="twrap">
+          {/* Season takes the 4th cell and its identity band: inside one
+              project, the season is what a trial belongs to. Rows open
+              nothing -- a CSR operator holds no trials grant to open them in. */}
+          <div className="lgrid lgrid--6 lgrid-head">
+            {['Code', 'Trial', 'Cities', 'Season', 'Dates', 'Status'].map((h) => <span key={h}>{h}</span>)}
+          </div>
+
+          {trials.length === 0 ? (
+            <div className="empty"><h3>No trials found for {scope || 'this project'}</h3></div>
+          ) : trials.map((t) => (
+            <div className="lwrap" key={t.id}>
+              <div className="lgrid lgrid--6 lrow">
+                <span className="fig nowrap">{t.trialCode}</span>
+                <span className="t1">{t.trialName}</span>
+                <span className="t2">
+                  {t.cityCount ?? 0} {t.cityCount === 1 ? 'city' : 'cities'}
+                </span>
+                <span className="t2">{t.season || '—'}</span>
+                <span className="t2">{trialDates(t)}</span>
+                <span className="lend">
+                  <span className={`pill ${t.status === 'Active' ? 'act' : 'closed'}`}>
+                    {t.status || 'Unknown'}
+                  </span>
+                </span>
+              </div>
+            </div>
+          ))}
+
+          {trials.length > 0 && (
+            <div className="tfoot">
+              <span className="cnt">
+                Showing {trials.length} of {trials.length}
+                {' '}{trials.length === 1 ? 'trial' : 'trials'} on this project
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default function CSRProjectDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -380,7 +491,11 @@ export default function CSRProjectDetailPage() {
         {canViewCert && <Tab label="Utilisation" />}
       </Tabs>
 
-      {tab === 0 && <CSRProjectDetailView project={project} />}
+      {tab === 0 && (
+        <CSRProjectDetailView project={project}>
+          <GrantTrials project={project} />
+        </CSRProjectDetailView>
+      )}
 
       {tab === 1 && (
         <Box>
