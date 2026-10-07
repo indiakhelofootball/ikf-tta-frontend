@@ -21,6 +21,7 @@ import { Alert } from '@mui/material';
 import { csrAPI } from '../../services/api';
 import useGrants from '../../auth/useGrants';
 import useRefetchOnFocus from '../../hooks/useRefetchOnFocus';
+import { DEFAULT_REPORT_SORT, reportSortOptions, sortReports } from './reportSort';
 import '../../styles/csrDesign.css';
 
 const asList = (data) => (Array.isArray(data) ? data : data?.results || []);
@@ -75,6 +76,7 @@ export default function CSRReportsPage() {
   // Opens on the queue, not on everything. The complete list is one click away;
   // the outstanding work should not be.
   const [view, setView] = useState('Internal');
+  const [sortKey, setSortKey] = useState(DEFAULT_REPORT_SORT);
   const [page, setPage] = useState(1);
 
   const load = useCallback(async (silent = false) => {
@@ -101,10 +103,11 @@ export default function CSRReportsPage() {
   useEffect(() => { load(); }, [load]);
   useRefetchOnFocus(() => load(true));
 
-  const projectName = useMemo(() => {
-    const map = new Map(projects.map((p) => [String(p.id), p.name]));
-    return (id) => map.get(String(id)) || '—';
-  }, [projects]);
+  const projectNames = useMemo(
+    () => new Map(projects.map((p) => [String(p.id), p.name])),
+    [projects],
+  );
+  const projectName = useCallback((id) => projectNames.get(String(id)) || '—', [projectNames]);
 
   const activityTitle = useMemo(() => {
     const map = new Map(activities.map((a) => [String(a.id), a.title]));
@@ -115,7 +118,7 @@ export default function CSRReportsPage() {
 
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return reports
+    const filtered = reports
       .filter((r) => {
         if (view === 'Internal') return !r.visibleToClient;
         if (view === 'Visible') return Boolean(r.visibleToClient);
@@ -127,9 +130,14 @@ export default function CSRReportsPage() {
         return [r.fileName, projectName(r.projectId), activityTitle(r.activityId)]
           .filter(Boolean)
           .some((v) => String(v).toLowerCase().includes(q));
-      })
-      .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
-  }, [reports, view, projectFilter, search, projectName, activityTitle]);
+      });
+    // The raw map, not projectName(): its '—' for an unknown grant would sort
+    // as a real name instead of going to the bottom.
+    return sortReports(filtered, sortKey, {
+      activityName: (r) => activityTitle(r.activityId),
+      grantName: (r) => projectNames.get(String(r.projectId)),
+    });
+  }, [reports, view, projectFilter, search, sortKey, projectName, projectNames, activityTitle]);
 
   const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
   // safePage, not page: releasing a report moves it out of the Internal view
@@ -146,7 +154,7 @@ export default function CSRReportsPage() {
   // Any change to the filtered set — the gate, the grant, the search — starts
   // the reader at the top of it again, rather than on a page the new result
   // set does not have.
-  useEffect(() => { setPage(1); }, [search, projectFilter, view]);
+  useEffect(() => { setPage(1); }, [search, projectFilter, view, sortKey]);
 
   if (!canView('csr')) {
     return <Alert severity="warning">You do not have access to CSR.</Alert>;
@@ -199,6 +207,14 @@ export default function CSRReportsPage() {
         >
           <option value="All">All grants</option>
           {projects.map((p) => <option key={p.id} value={String(p.id)}>{p.name}</option>)}
+        </select>
+        <select
+          className="sel"
+          aria-label="Sort reports"
+          value={sortKey}
+          onChange={(e) => setSortKey(e.target.value)}
+        >
+          {reportSortOptions().map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
       </div>
 
