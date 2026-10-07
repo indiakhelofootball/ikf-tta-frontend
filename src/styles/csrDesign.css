@@ -2732,6 +2732,14 @@
   white-space:pre-wrap;max-width:80ch;
 }
 
+/* The trials on the project. The heading is the client's own sentence, so it
+   is set in sentence case rather than the uppercase caption the description
+   uses -- a full sentence in capitals reads as shouting. */
+.csrx .ovw-trials{display:flex;flex-direction:column;gap:var(--sp-2,8px)}
+.csrx .ovw-trials > h3{margin:0;font-size:15px;font-weight:600;color:var(--ink)}
+.csrx .ovw-note{margin:0;font-size:13.5px;color:var(--muted);line-height:1.6}
+.csrx .ovw-trials .empty p{margin:8px 0 0}
+
 
 /* =========================================================================
    THE TRAILING CELL MUST FIT ITS TRACK.

@@ -1060,6 +1060,10 @@ export const csrAPI = /*#__PURE__*/ {
   // Server-authoritative Utilisation Certificate (totals computed server-side).
   utilisationCertificate: async (projectId) =>
     apiService.request(`/csr/projects/${projectId}/utilisation-certificate/`),
+  // The TTA trials conducted under a grant. Its own endpoint because a CSR
+  // operator holds the csr grant, not trials, so /trials/ answers them 403.
+  grantTrials: async (projectId) =>
+    apiService.request(`/csr/projects/${projectId}/trials/`),
   // White-label branding — admin-managed CRUD (SUPER_ADMIN/ADMIN).
   branding: /*#__PURE__*/ csrCrud('/csr/branding'),
   // The vendors a workshop may name as its partner. Read-only on purpose, and
