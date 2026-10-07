@@ -32,7 +32,7 @@ function Fact({ label, value, kind, tone }) {
   );
 }
 
-export default function CSRProjectDetailView({ project }) {
+export default function CSRProjectDetailView({ project, children }) {
   if (!project) return null;
   const amount =
     project.sanctionedAmount != null
@@ -98,6 +98,8 @@ export default function CSRProjectDetailView({ project }) {
           <p>{project.description}</p>
         </section>
       )}
+
+      {children}
     </div>
   );
 }
