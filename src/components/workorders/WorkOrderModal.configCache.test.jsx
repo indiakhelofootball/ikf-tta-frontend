@@ -13,12 +13,12 @@ import WorkOrderModal from './WorkOrderModal';
 // babel-jest hoists jest.mock above the imports, so these resolve to the mocks.
 jest.mock('../../services/api', () => ({
   configAPI: { getByCategory: jest.fn(), bulk: jest.fn(), delete: jest.fn() },
-  vendorsAPI: { getAll: jest.fn() },
+  vendorsAPI: { getOptions: jest.fn() },
   trialsAPI: { getAll: jest.fn() },
 }));
 
 beforeEach(() => {
-  vendorsAPI.getAll.mockResolvedValue([]);
+  vendorsAPI.getOptions.mockResolvedValue([]);
   trialsAPI.getAll.mockResolvedValue([]);
   configAPI.getByCategory.mockResolvedValue([]);
   localStorage.clear();

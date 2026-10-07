@@ -255,7 +255,7 @@ function PaymentManagementPage() {
   };
 
   useEffect(() => {
-    vendorsAPI.getAll({ limit: 1000 })
+    vendorsAPI.getOptions()
       .then((res) => {
         setVendors(res.vendors || []);
       })

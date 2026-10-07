@@ -106,7 +106,7 @@ function WorkOrderModal({ open, onClose, onSave, workOrder, saving, allVendors: 
 
   useEffect(() => {
     if (open) {
-      vendorsAPI.getAll({ limit: 1000 })
+      vendorsAPI.getOptions()
         .then(res => { if (res.vendors?.length) setFreshVendors(res.vendors); })
         .catch(() => {});
       trialsAPI.getAll()
