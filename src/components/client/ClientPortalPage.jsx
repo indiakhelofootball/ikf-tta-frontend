@@ -5,6 +5,7 @@ import { Download as DownloadIcon } from '@mui/icons-material';
 
 import { clientAPI } from '../../services/api';
 import { downloadCertificatePdf } from '../../utils/certificatePdf';
+import { openDownloadedFile } from '../../utils/reportFile';
 import { useAuth } from '../../auth/AuthContext';
 import clientThemeFrom, { brandCssVars } from './clientTheme';
 import { formatDate, formatRange, formatCount, formatRupees } from './clientFormat';
@@ -118,6 +119,8 @@ export default function ClientPortalPage() {
   const [project, setProject] = useState(null);
   const [activities, setActivities] = useState([]);
   const [reports, setReports] = useState([]);
+  const [fileBusy, setFileBusy] = useState(null);
+  const [fileErrors, setFileErrors] = useState({});
   const [deliverables, setDeliverables] = useState([]);
   const [brand, setBrand] = useState(null);
   const [cert, setCert] = useState(null);
@@ -340,6 +343,21 @@ export default function ClientPortalPage() {
     )
   );
 
+  // An uploaded report is behind the funder's login, so it cannot be a plain
+  // link: it is fetched with the token, then opened (PDF, image) or saved.
+  const openUploadedReport = async (r, name) => {
+    if (fileBusy) return;
+    setFileBusy(r.id);
+    setFileErrors((prev) => ({ ...prev, [r.id]: '' }));
+    try {
+      openDownloadedFile(await clientAPI.reportFile(r.id), name);
+    } catch {
+      setFileErrors((prev) => ({ ...prev, [r.id]: 'The file could not be opened. Please try again.' }));
+    } finally {
+      setFileBusy(null);
+    }
+  };
+
   const renderReports = () => (
     reports.length === 0 ? (
       <EmptyPanel>
@@ -357,14 +375,28 @@ export default function ClientPortalPage() {
               <li className="crow" key={r.id}>
                 <div className="crow-main">
                   <div className="crow-t">
-                    {r.fileUrl ? (
+                    {r.hasFile ? (
+                      <button type="button" className="crow-tbtn" onClick={() => openUploadedReport(r, name)}>
+                        {name}
+                      </button>
+                    ) : r.fileUrl ? (
                       <a href={r.fileUrl} target="_blank" rel="noopener noreferrer">{name}</a>
                     ) : name}
                   </div>
                   {meta && <div className="crow-s">{meta}</div>}
                 </div>
                 <div className="crow-end">
-                  {r.fileUrl ? (
+                  {r.hasFile ? (
+                    <button
+                      type="button"
+                      className="cbtn"
+                      aria-label={`Open ${name}`}
+                      onClick={() => openUploadedReport(r, name)}
+                      disabled={fileBusy === r.id}
+                    >
+                      {fileBusy === r.id ? 'Opening…' : 'Open'}
+                    </button>
+                  ) : r.fileUrl ? (
                     <a
                       className="cbtn"
                       href={r.fileUrl}
@@ -377,6 +409,9 @@ export default function ClientPortalPage() {
                   ) : (
                     <span className="crow-s">File not attached yet</span>
                   )}
+                  {fileErrors[r.id] ? (
+                    <span className="crow-s crow-err" role="alert">{fileErrors[r.id]}</span>
+                  ) : null}
                 </div>
               </li>
             );
