@@ -62,6 +62,7 @@ const HEX = /^#?[0-9a-fA-F]{6}$/;
 
 const UNKNOWN_SLUG = "This portal link isn't recognised. Use the link from your invitation email.";
 const SESSION_ENDED = 'Your session ended. Sign in again.';
+const STAFF_SIGNED_IN = "You're signed in to TTA as staff. Sign in with the client's account to view their portal.";
 
 // C3 — per-client branded login. Fetches PUBLIC branding by slug (pre-auth) so
 // the screen is already in the funder's brand, then reuses the same auth engine.
@@ -69,7 +70,11 @@ export default function ClientLogin() {
   const { slug } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, user } = useAuth();
+  // Only a funder session skips this door. A staff session in the same browser
+  // would otherwise be sent to /client, which no staff role may open.
+  const funderSignedIn = isAuthenticated && user?.role === CSR_CLIENT_ROLE;
+  const staffSignedIn = isAuthenticated && !funderSignedIn;
   const sessionEnded = new URLSearchParams(location?.search || '').get('reason') === EXPIRED_REASON;
 
   const [brand, setBrand] = useState(null);
@@ -85,8 +90,8 @@ export default function ClientLogin() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (isAuthenticated) navigate('/client', { replace: true });
-  }, [isAuthenticated, navigate]);
+    if (funderSignedIn) navigate('/client', { replace: true });
+  }, [funderSignedIn, navigate]);
 
   useEffect(() => {
     let active = true;
@@ -229,6 +234,8 @@ export default function ClientLogin() {
             image nobody has seen. Where they did not, the ground is their brand
             colour with the on-fill colour the theme already measured for it. */}
         <Box
+          component="aside"
+          aria-label={brand?.displayName ? `${brand.displayName} CSR Portal` : 'CSR Portal'}
           sx={{
             display: { xs: 'none', lg: 'flex' },
             width: '46%',
@@ -367,6 +374,9 @@ export default function ClientLogin() {
 
             {slugUnknown && (
               <Alert severity="warning" sx={{ mb: 2, borderRadius: '10px' }}>{UNKNOWN_SLUG}</Alert>
+            )}
+            {staffSignedIn && !error && (
+              <Alert severity="info" sx={{ mb: 2, borderRadius: '10px' }}>{STAFF_SIGNED_IN}</Alert>
             )}
             {sessionEnded && !error && (
               <Alert severity="info" sx={{ mb: 2, borderRadius: '10px' }}>{SESSION_ENDED}</Alert>
