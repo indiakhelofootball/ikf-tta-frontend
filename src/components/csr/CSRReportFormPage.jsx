@@ -162,7 +162,9 @@ export default function CSRReportFormPage() {
       activityId: form.activityId === '' ? null : Number(form.activityId),
       visibleToClient: form.visibleToClient,
     };
-    if (!isEdit) payload.projectId = projectId;
+    // Sent on edits too: the update is a PUT, and the server requires the grant
+    // on every full write, so leaving it out made every edit fail with a 400.
+    payload.projectId = projectId;
     setSaving(true);
     setSaveError('');
     let reportId = id || createdId;
