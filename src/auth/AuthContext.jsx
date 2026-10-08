@@ -5,7 +5,7 @@
 import { createContext, useContext, useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { ROLE_PERMISSIONS, ROLES } from "./roles";
-import { redirectToLoginDoor } from "./loginDoor";
+import { redirectToLoginDoor, storedRole, CSR_CLIENT_ROLE } from "./loginDoor";
 import api, { permissionsAPI } from "../services/api";
 import { refreshAllFromAPI, clearConfigCache } from "../utils/adminStorage";
 
@@ -35,6 +35,19 @@ const isCsrOnly = (permsData) => {
   if (!permsData || permsData.isSuperAdmin || !grants) return false;
   if (!grants.csr?.can_view) return false;
   return !TTA_MODULES.some((m) => grants[m]?.can_view || grants[m]?.can_edit);
+};
+
+// tta_client_slug is the funder's branded login (loginDoor.js). A staff sign-in
+// or sign-out removes it, so it can never route a staff user to a funder's door.
+// A funder's sign-in keeps it; ClientLogin then overwrites it with the slug they
+// signed in on, when that slug resolved.
+const forgetFunderDoorUnlessFunder = (role) => {
+  if (role === CSR_CLIENT_ROLE) return;
+  try {
+    localStorage.removeItem("tta_client_slug");
+  } catch {
+    // storage blocked — nothing stored to leak
+  }
 };
 
 const SESSION_TIMEOUT = 8 * 60 * 60 * 1000; // 8 hours
@@ -163,8 +176,10 @@ export const AuthProvider = ({ children }) => {
           setUser(userWithProfile);
           startSessionTimer(timeout - elapsed);
         } else {
+          // Read before logout() clears it, or a funder is sent to the staff door.
+          const role = storedRole();
           logout();
-          redirectToLoginDoor();
+          redirectToLoginDoor(role);
         }
       }
       setLoading(false);
@@ -209,9 +224,14 @@ export const AuthProvider = ({ children }) => {
     if (sessionTimeout) clearTimeout(sessionTimeout);
     
     const timeout = setTimeout(() => {
-      alert("Your session has expired. Please login again.");
+      // Read before logout() clears it, or a funder is sent to the staff door.
+      const role = storedRole();
+      // A funder's login says the session ended in the page itself
+      // (?reason=expired), so the native alert stays on the staff path only.
+      // eslint-disable-next-line no-restricted-globals
+      if (role !== CSR_CLIENT_ROLE) alert("Your session has expired. Please login again.");
       logout();
-      redirectToLoginDoor();
+      redirectToLoginDoor(role);
     }, duration);
     
     setSessionTimeout(timeout);
@@ -273,6 +293,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem("tta_user", JSON.stringify(userWithPermissions));
       localStorage.setItem("tta_login_time", Date.now().toString());
       localStorage.setItem("tta_remember_me", rememberMe.toString());
+      forgetFunderDoorUnlessFunder(userWithPermissions.role);
       
       pendingLandingRedirect.current = true;
       setUser(userWithProfile);
@@ -322,6 +343,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('tta_user', JSON.stringify(userWithPermissions));
       localStorage.setItem('tta_login_time', Date.now().toString());
       localStorage.setItem('tta_remember_me', 'false');
+      forgetFunderDoorUnlessFunder(userWithPermissions.role);
 
       pendingLandingRedirect.current = true;
       setUser(userWithProfile);
@@ -373,6 +395,9 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    // A staff session ending must not leave a funder's door behind for the
+    // next visitor; a funder's ending keeps it, so they return to their portal.
+    forgetFunderDoorUnlessFunder(storedRole() || user?.role);
     localStorage.removeItem("tta_token");
     localStorage.removeItem("tta_refresh");
     localStorage.removeItem("tta_user");
