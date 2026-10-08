@@ -12,9 +12,15 @@
    the internal system would paint every funder's portal moss green, which is
    the one thing this product must never do — a funder's portal carries the
    FUNDER's colour. So this file provides only structure: surfaces, hairlines,
-   spacing and type scale. Every hue resolves through --brand, set inline from
-   the branding record, with --brand-ink chosen for contrast by clientTheme.js.
-   Nothing here hardcodes a brand colour.
+   spacing and type scale. Every hue resolves through two variables set inline
+   from the branding record by clientTheme.js's brandCssVars():
+     --brand       bars and fills (3:1 as a graphic)
+     --brand-text  every TEXT use of the brand, and the focus ring (4.5:1)
+   They are two because one colour cannot serve both: #486AFF, a real funder's
+   brand, is a fine bar at 3.85:1 and a failing tab label at 4.10:1. Never use
+   --brand for text. Nothing here hardcodes a brand colour.
+
+   Mobile-first: the base rules are the phone; the 821px query adds the desk.
    ========================================================================= */
 
 .cportal{
@@ -27,97 +33,171 @@
   --line:#E5E7EB;
   --line-soft:#F0F2F4;
   --r:10px;
-  /* --brand and --brand-ink are set inline per funder. The fallback is the
-     same graphite ClientLogin uses for an unbranded door, so a funder with no
-     colour recorded gets a quiet neutral portal rather than a broken one. */
-  --brand:#334155;
-  --brand-ink:#FFFFFF;
-  --brand-wash:rgba(51,65,85,.08);
+  /* Set inline per funder. The fallback is the same graphite ClientLogin uses
+     for an unbranded door, so a funder with no colour recorded gets a quiet
+     neutral portal rather than a broken one — and never TTA's amber. */
+  --brand:#243040;
+  --brand-text:#243040;
+  --brand-wash:rgba(36,48,64,.08);
 
   background:var(--pg);
   min-height:100vh;
 }
 
+/* The global ring is TTA amber (#FBBF24), 1.56:1 on this page's ground: a
+   keyboard user could not see where they were. Inside the portal the ring is
+   the brand's TEXT colour, which clears 4.5:1 and so the 3:1 a ring needs. */
+.cportal :focus-visible{
+  outline:2px solid var(--brand-text);outline-offset:2px;border-radius:4px;
+}
+
 /* ---- the bar ---------------------------------------------------------- */
+/* Two groups that wrap. On a phone the logo and the funder's name keep the
+   first line and the two buttons drop to a second; before, the buttons took
+   the row and squeezed the name to 0px. On a desk it is one line. */
 .cportal .cbar{
   background:var(--card);
   border-bottom:1px solid var(--line);
-  padding:14px 28px;
-  display:flex;align-items:center;gap:14px;
+  padding:8px 16px;
+  display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px;
 }
-.cportal .cbar-logo{height:34px;width:auto;display:block;flex:none}
+.cportal .cbar-id{
+  flex:1 1 180px;min-width:0;
+  display:flex;align-items:center;gap:12px;min-height:44px;
+}
+.cportal .cbar-logo{height:34px;width:auto;max-width:120px;object-fit:contain;display:block;flex:none}
 .cportal .cbar-name{
   font-size:16px;font-weight:600;color:var(--ink);letter-spacing:-.01em;
   flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
+.cportal .cbar-actions{display:flex;gap:4px;margin-left:auto;flex:none}
+.cportal .cbar-btn{white-space:nowrap}
 
 /* ---- the shell -------------------------------------------------------- */
-.cportal .cwrap{max-width:1080px;margin:0 auto;padding:28px 28px 72px}
+.cportal .cwrap{max-width:1080px;margin:0 auto;padding:20px 16px 56px}
+
+/* The grant's own name. It wraps anywhere rather than widen the page. */
+.cportal .cgrant{
+  font-size:22px;font-weight:700;color:var(--ink);letter-spacing:-.02em;
+  line-height:1.25;margin:0 0 14px;overflow-wrap:anywhere;
+}
 
 /* Tabs read as navigation, so the active one is marked in the funder's own
-   colour rather than in a borrowed accent. */
+   colour rather than in a borrowed accent.
+
+   On a phone the five tabs are wider than the screen. The row scrolls on its
+   own, edge to edge, and the page never does: before, the row was ~475px in a
+   390px viewport and dragged the whole page sideways with it. The hairline is
+   an inset shadow, not a border the tabs overlap with a negative margin, so
+   the scroll container has nothing poking out of it to clip. */
 .cportal .ctabs{
-  display:flex;gap:4px;margin-bottom:22px;
-  border-bottom:1px solid var(--line);
+  display:flex;flex-wrap:nowrap;gap:4px;
+  margin:0 -16px 18px;padding:0 16px;
+  overflow-x:auto;overscroll-behavior-x:contain;
+  scrollbar-width:none;
+  box-shadow:inset 0 -1px 0 var(--line);
 }
+.cportal .ctabs::-webkit-scrollbar{display:none}
 .cportal .ctab{
   appearance:none;background:transparent;border:0;font:inherit;
+  flex:none;white-space:nowrap;min-height:44px;
   font-size:13.5px;font-weight:500;color:var(--muted);
-  padding:11px 16px;cursor:pointer;position:relative;
-  border-bottom:2px solid transparent;margin-bottom:-1px;
+  padding:11px 14px;cursor:pointer;
+  border-bottom:2px solid transparent;
   transition:color .15s;
 }
 .cportal .ctab:hover{color:var(--ink)}
-.cportal .ctab.on{color:var(--brand);font-weight:600;border-bottom-color:var(--brand)}
-.cportal .ctab:focus-visible{outline-offset:-2px}
+/* Label in --brand-text (it is text); underline in --brand (it is a bar). */
+.cportal .ctab.on{color:var(--brand-text);font-weight:600;border-bottom-color:var(--brand)}
+/* Inset, because the scroll container would clip a ring drawn outside. */
+.cportal .ctab:focus-visible{outline-offset:-3px}
 
 /* ---- surfaces --------------------------------------------------------- */
 .cportal .cpanel{
   background:var(--card);border:1px solid var(--line);border-radius:var(--r);
-  padding:22px 24px;margin-bottom:16px;
+  padding:18px 16px;margin-bottom:16px;
 }
 .cportal .ckicker{
   font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;
-  color:var(--muted);margin-bottom:10px;
+  color:var(--muted);margin:0 0 10px;
 }
 .cportal .clede{font-size:14px;line-height:1.7;color:var(--soft);margin:0}
+.cportal .cdesc{margin-top:18px;white-space:pre-wrap;overflow-wrap:anywhere}
 
-/* The fact strip — dividers between columns, never under them. */
-.cportal .cfacts{
-  display:grid;grid-template-columns:repeat(4,1fr);
-  border-top:1px solid var(--line);margin-top:18px;
+/* A panel's own heading line: title and meta on the left, its one action on
+   the right, wrapping under on a phone. */
+.cportal .chead{
+  display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;
+  gap:12px 16px;
 }
-.cportal .cfact{padding:14px 16px;border-left:1px solid var(--line-soft)}
-.cportal .cfact:first-child{border-left:0;padding-left:0}
+.cportal .ctitle{
+  font-size:17px;font-weight:700;color:var(--ink);letter-spacing:-.01em;margin:0 0 4px;
+}
+
+/* The fact strip — dividers between columns, never under them. A <dl>, so
+   each value is read with its label. */
+.cportal .cfacts{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  border-top:1px solid var(--line);margin:18px 0 0;
+}
+.cportal .cfact{padding:14px 16px;border-left:1px solid var(--line-soft);min-width:0}
+.cportal .cfact:nth-child(odd){border-left:0;padding-left:0}
 .cportal .cfact-k{
   font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;
   color:var(--muted);margin-bottom:5px;
 }
-.cportal .cfact-v{font-size:15px;font-weight:600;color:var(--ink);letter-spacing:-.01em}
+.cportal .cfact-v{
+  font-size:15px;font-weight:600;color:var(--ink);letter-spacing:-.01em;
+  margin:0;overflow-wrap:anywhere;
+}
 
 /* A pair of counts, in the funder's colour because they are the point of the
    page: what has actually been delivered. */
-.cportal .ccounts{display:flex;gap:36px;margin:18px 0 4px}
+.cportal .ccounts{display:flex;gap:24px;margin:18px 0 4px}
 .cportal .ccount-n{
-  font-size:26px;font-weight:700;color:var(--brand);letter-spacing:-.025em;line-height:1;
+  font-size:26px;font-weight:700;color:var(--brand-text);letter-spacing:-.025em;line-height:1;
+  font-variant-numeric:tabular-nums;
 }
 .cportal .ccount-k{font-size:11.5px;color:var(--muted);margin-top:6px}
 
 /* ---- rows ------------------------------------------------------------- */
+/* Every list in the portal is this row: a title line, a muted meta line, and
+   a right-aligned end column. One vocabulary on all five tabs. */
+.cportal .crows{list-style:none;margin:0;padding:0}
 .cportal .crow{
   display:flex;align-items:flex-start;gap:14px;
   padding:15px 0;border-top:1px solid var(--line-soft);
 }
-.cportal .crow:first-of-type{border-top:0}
+.cportal .crow:first-of-type{border-top:0;padding-top:4px}
 .cportal .crow-main{flex:1;min-width:0}
-.cportal .crow-t{font-size:14px;font-weight:600;color:var(--ink);line-height:1.5}
-.cportal .crow-s{font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.6}
-.cportal .crow-end{flex:none;text-align:right}
-
-.cportal .cdate{
-  font-size:12.5px;color:var(--soft);white-space:nowrap;
-  font-variant-numeric:tabular-nums;
+.cportal .crow-t{
+  font-size:14px;font-weight:600;color:var(--ink);line-height:1.5;overflow-wrap:anywhere;
 }
+.cportal .crow-t a{text-decoration:none}
+.cportal .crow-t a:hover{text-decoration:underline}
+.cportal .crow-s{
+  font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.6;overflow-wrap:anywhere;
+}
+.cportal .crow-end{
+  flex:none;text-align:right;
+  display:flex;flex-direction:column;align-items:flex-end;gap:6px;
+}
+.cportal .crow-end .crow-s{margin-top:0}
+/* A row with a progress bar wraps so the bar runs the full width under the
+   row; inside the main column it was a different length on every row. */
+.cportal .crow-wrap{flex-wrap:wrap;row-gap:10px}
+.cportal .crow-wrap .ctrack{flex:0 0 100%;margin-top:0}
+
+.cportal .cfig{
+  font-size:15px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;
+}
+.cportal .cnote{font-size:11.5px;color:var(--soft)}
+.cportal .cnum{font-variant-numeric:tabular-nums;white-space:nowrap}
+/* The certificate's line items sit under its fact strip; a full hairline keeps
+   the first expense from reading as a fifth fact. */
+.cportal .clines{border-top:1px solid var(--line)}
+.cportal .clines .crow:first-of-type{padding-top:15px}
+.cportal .crow-end.cnum{font-size:14px;font-weight:600;color:var(--ink)}
 
 /* A status marker. `.ok` takes the brand; everything else stays neutral, so a
    funder's colour never means "bad". */
@@ -126,8 +206,19 @@
   padding:4px 11px;border-radius:999px;white-space:nowrap;
   background:#F3F4F6;color:var(--soft);
 }
-.cportal .cpill.ok{background:var(--brand-wash);color:var(--brand)}
+.cportal .cpill.ok{background:var(--brand-wash);color:var(--brand-text)}
 .cportal .cpill.bad{background:#FEF2F2;color:#B3352A}
+
+/* A row's own action. 44px tall: it is the thumb target on a phone, where the
+   20px icon it replaces was not one. */
+.cportal .cbtn{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-height:44px;padding:0 16px;
+  border:1px solid var(--line);border-radius:8px;background:var(--card);
+  font-size:13.5px;font-weight:600;color:var(--brand-text);text-decoration:none;
+  white-space:nowrap;transition:background-color .15s;
+}
+.cportal .cbtn:hover{background:var(--brand-wash)}
 
 /* ---- progress --------------------------------------------------------- */
 .cportal .ctrack{
@@ -135,18 +226,66 @@
 }
 .cportal .cfill{height:100%;border-radius:999px;background:var(--brand)}
 
-/* ---- empty ------------------------------------------------------------ */
+/* ---- empty, loading --------------------------------------------------- */
 .cportal .cempty{
-  padding:44px 20px;text-align:center;color:var(--muted);
+  padding:36px 8px;text-align:center;color:var(--muted);
   font-size:13.5px;line-height:1.7;
 }
 .cportal .cempty strong{display:block;color:var(--ink);font-size:15px;margin-bottom:6px}
+.cportal .cempty-act{margin-top:16px}
+.cportal .cloading{display:flex;justify-content:center;padding:64px 0}
 
-.cportal a{color:var(--brand)}
+.cportal a{color:var(--brand-text)}
 
-@media (max-width:820px){
-  .cportal .cwrap{padding:20px 16px 56px}
-  .cportal .cfacts{grid-template-columns:repeat(2,1fr)}
-  .cportal .cfact:nth-child(odd){border-left:0;padding-left:0}
-  .cportal .ccounts{gap:24px}
+/* ---- the desk --------------------------------------------------------- */
+@media (min-width:821px){
+  .cportal .cbar{padding:14px 28px}
+  .cportal .cwrap{padding:28px 28px 72px}
+  .cportal .cgrant{font-size:26px;margin-bottom:16px}
+  .cportal .ctabs{margin:0 0 22px;padding:0}
+  .cportal .ctab{padding:11px 16px}
+  .cportal .cpanel{padding:22px 24px}
+  .cportal .cfacts{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .cportal .cfact:nth-child(odd){border-left:1px solid var(--line-soft);padding-left:16px}
+  .cportal .cfact:first-child{border-left:0;padding-left:0}
+  .cportal .ccounts{gap:36px}
+  .cportal .cempty{padding:44px 20px}
+}
+
+/* ---- motion ----------------------------------------------------------- */
+/* Off when the reader asks for it. The doubled class outranks MUI's
+   single-class emotion rules (Button's `transition: all .2s`) without
+   reaching for !important. */
+@media (prefers-reduced-motion:reduce){
+  .cportal.cportal *,
+  .cportal.cportal *::before,
+  .cportal.cportal *::after{transition:none;scroll-behavior:auto}
+  .cportal .MuiTouchRipple-root{display:none}
+}
+
+/* ---- outside the shell ------------------------------------------------ */
+/* Three things the portal shows that render outside .cportal and so cannot
+   read its variables: the page scrollbar and text selection (globals.css
+   paints both TTA yellow) and the password dialog's focus ring (MUI portals
+   the dialog to <body>). They take the neutral graphite instead of amber. */
+html:has(.cportal) ::selection{background:#DCE1E8;color:#111827}
+html:has(.cportal) ::-webkit-scrollbar-thumb{background:#C5CCD6}
+html:has(.cportal) .MuiDialog-root :focus-visible{outline-color:#243040}
+
+/* ---- print ------------------------------------------------------------ */
+/* What a funder prints is the tab they are looking at, as a document: no
+   buttons, no tab row, no download control. Bars keep their colour so the
+   progress still reads on paper. */
+@media print{
+  .cportal{background:none;min-height:0}
+  .cportal .cbar{padding:0 0 12px;border-bottom:1px solid var(--line)}
+  .cportal .cbar-actions,
+  .cportal .ctabs,
+  .cportal .cnoprint,
+  .cportal .cbtn{display:none}
+  .cportal .cwrap{max-width:none;padding:16px 0 0}
+  .cportal .crow{break-inside:avoid}
+  .cportal .ctrack,
+  .cportal .cfill{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .cportal a{color:var(--ink)}
 }
