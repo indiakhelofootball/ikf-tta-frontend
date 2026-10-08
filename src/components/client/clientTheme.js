@@ -6,11 +6,21 @@ import muiTheme from '../../styles/muiTheme';
 // Colour helpers
 // ---------------------------------------------------------------------------
 
-function parseHex(hex) {
+export function parseHex(hex) {
   const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || '').trim());
   if (!m) return null;
   const int = parseInt(m[1], 16);
   return [(int >> 16) & 255, (int >> 8) & 255, int & 255];
+}
+
+// The one shape a brand colour is accepted in: '#RRGGBB'. A value without the
+// '#' is the same colour and is repaired; anything else — 'blue', '#12', an
+// rgb() string — is refused. Passed through raw, 'blue' painted pure blue past
+// every contrast check, and '#12' is not a colour at all, so the portal's bars
+// went transparent.
+export function normalizeHex(hex) {
+  const rgb = parseHex(hex);
+  return rgb ? toHex(rgb).toUpperCase() : null;
 }
 
 const toHex = (rgb) =>
@@ -27,7 +37,7 @@ function luminance(hex) {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
-function contrastRatio(a, b) {
+export function contrastRatio(a, b) {
   const la = luminance(a);
   const lb = luminance(b);
   return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
@@ -109,7 +119,7 @@ const LIGHT_SURFACE = '#F3F4F6';
 // label (4.20:1), the focused input label and the dialog Close button (4.39:1).
 // Darkening only where needed keeps the hue; a brand that is already legible
 // (#1B3A6B measures 10.24:1) is returned untouched.
-function legibleOnLight(hex) {
+export function legibleOnLight(hex) {
   if (!parseHex(hex)) return INK;
   if (contrastRatio(hex, LIGHT_SURFACE) >= AA) return hex;
   for (let step = 1; step <= 20; step += 1) {
@@ -117,6 +127,51 @@ function legibleOnLight(hex) {
     if (contrastRatio(candidate, LIGHT_SURFACE) >= AA) return candidate;
   }
   return INK;
+}
+
+// WCAG 1.4.11: a bar or other graphic needs 3:1 against what it sits on.
+const GRAPHIC = 3;
+// The portal's progress track — the darkest ground a brand bar is painted on,
+// so the hard case for any brand dark enough to pass against white.
+const TRACK = '#EEF0F3';
+
+// The brand as a BAR. Most brands already clear 3:1 against the track (#486AFF
+// measures 3.85) and are left exactly as given; a pale one (#F5F5F5, #FDE68A)
+// is darkened along its own hue until it does, rather than painting a bar
+// nobody can see.
+export function legibleAsGraphic(hex) {
+  if (!parseHex(hex)) return INK;
+  if (contrastRatio(hex, TRACK) >= GRAPHIC) return hex;
+  for (let step = 1; step <= 20; step += 1) {
+    const candidate = shade(hex, step * 0.05);
+    if (contrastRatio(candidate, TRACK) >= GRAPHIC) return candidate;
+  }
+  return INK;
+}
+
+// The unbranded colour. The same graphite ClientLogin paints an unbranded door
+// with, so a funder with no colour recorded sees one neutral product from login
+// to portal — never TTA's amber, which is what falling back to muiTheme gave.
+export const NEUTRAL_BRAND = '#243040';
+
+// The CSS variables the portal stylesheet reads, or null when the funder has no
+// usable colour (the stylesheet's own graphite defaults then hold).
+//
+//   --brand       bars and fills: needs 3:1 as a graphic
+//   --brand-text  every place the brand is TEXT, plus the focus ring: 4.5:1
+//   --brand-wash  the tint behind a brand-coloured pill
+//
+// They are two variables because one cannot serve both. Using the raw brand as
+// text put #486AFF's selected tab at 4.10:1 on the page ground.
+export function brandCssVars(primaryColor) {
+  const hex = normalizeHex(primaryColor);
+  if (!hex) return null;
+  const bar = legibleAsGraphic(hex);
+  return {
+    '--brand': bar,
+    '--brand-text': legibleOnLight(hex),
+    '--brand-wash': `${bar}14`,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -181,20 +236,36 @@ function rebrand(node, primary) {
 
 // ---------------------------------------------------------------------------
 
-export default function clientThemeFrom(brand) {
-  if (!brand || (!brand.primaryColor && !brand.secondaryColor)) {
-    return muiTheme;
-  }
+// Built once: every unbranded funder gets the same graphite theme, and
+// createTheme over 26 component overrides is not free to repeat per render.
+let neutralTheme = null;
 
+export default function clientThemeFrom(brand) {
   // A malformed value is treated as absent. Passing it through reaches
   // createTheme, which throws on a colour it cannot parse — one bad character in
-  // an admin form would white-screen the funder's whole portal.
-  const primary = parseHex(brand.primaryColor) ? brand.primaryColor : null;
-  const secondary = parseHex(brand.secondaryColor) ? brand.secondaryColor : null;
-  if (!primary && !secondary) return muiTheme;
+  // an admin form would white-screen the funder's whole portal. A value without
+  // its '#' is repaired rather than refused, for the same reason.
+  //
+  // NO BRAND IS NOT TTA. This used to return muiTheme here, which is TTA's own
+  // theme: an unbranded funder got amber buttons (#A35905) and an amber
+  // deliverables bar. Absent a brand, the theme is built from graphite instead,
+  // through exactly the same path, so the amber ramp is replaced either way.
+  const secondary = normalizeHex(brand?.secondaryColor);
+  const branded = normalizeHex(brand?.primaryColor);
+  if (!branded && !secondary) {
+    if (!neutralTheme) neutralTheme = buildTheme(NEUTRAL_BRAND, null);
+    return neutralTheme;
+  }
+  return buildTheme(branded || NEUTRAL_BRAND, secondary);
+}
 
-  const primaryFill = primary ? legibleFill(primary) : null;
-  const secondaryFill = secondary ? legibleFill(secondary) : null;
+function buildTheme(primary, secondary) {
+
+  // A fill is a graphic before it is a backdrop for text: #F5F5F5 carried ink
+  // legibly but painted a Download button 1.09:1 against the white card it sits
+  // on, so it is first made visible, then made to carry its label.
+  const primaryFill = primary ? legibleFill(legibleAsGraphic(primary)) : null;
+  const secondaryFill = secondary ? legibleFill(legibleAsGraphic(secondary)) : null;
 
   // Re-skin the inherited component overrides, then set the primary button
   // explicitly so its text contrast is computed rather than inherited.
