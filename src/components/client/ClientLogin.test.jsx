@@ -24,8 +24,9 @@ jest.mock(
 jest.mock('../../services/api', () => ({ clientAPI: { brandingBySlug: jest.fn() } }));
 
 const mockLogin = jest.fn();
+let mockSession = { isAuthenticated: false, user: null };
 jest.mock('../../auth/AuthContext', () => ({
-  useAuth: () => ({ login: mockLogin, isAuthenticated: false }),
+  useAuth: () => ({ login: mockLogin, ...mockSession }),
 }));
 
 const ACME = { displayName: 'Acme Foundation', primaryColor: '#1D4ED8', logoUrl: '/logos/acme.png' };
@@ -47,6 +48,7 @@ beforeEach(() => {
   mockNavigate.mockClear();
   mockSearch = '';
   mockSlug = 'acme';
+  mockSession = { isAuthenticated: false, user: null };
   // The real login() stores the signed-in user before resolving.
   mockLogin.mockImplementation(async () => {
     localStorage.setItem('tta_user', JSON.stringify({ role: signedInRole }));
@@ -140,6 +142,55 @@ test('a logo that fails to load falls back to the initial and name', async () =>
 
   expect(screen.queryByRole('img', { name: 'Acme Foundation' })).not.toBeInTheDocument();
   expect(screen.getByText('A')).toBeInTheDocument();
+});
+
+describe('someone already signed in in this browser', () => {
+  const STAFF_NOTE = "You're signed in to TTA as staff. Sign in with the client's account to view their portal.";
+
+  test('a funder session goes straight to the portal', async () => {
+    mockSession = { isAuthenticated: true, user: { role: 'CSR_CLIENT' } };
+    clientAPI.brandingBySlug.mockResolvedValue(ACME);
+    render(<ClientLogin />);
+    await screen.findByRole('button', { name: 'Sign In' });
+
+    expect(mockNavigate).toHaveBeenCalledWith('/client', { replace: true });
+    expect(screen.queryByText(STAFF_NOTE)).not.toBeInTheDocument();
+  });
+
+  test('a staff session stays on the door, told to use the client account', async () => {
+    mockSession = { isAuthenticated: true, user: { role: 'SUPER_ADMIN' } };
+    clientAPI.brandingBySlug.mockResolvedValue(ACME);
+    render(<ClientLogin />);
+
+    expect(await screen.findByText(STAFF_NOTE)).toBeInTheDocument();
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Sign In' })).toBeEnabled();
+  });
+
+  test('signing in as the funder from there opens the portal', async () => {
+    mockSession = { isAuthenticated: true, user: { role: 'ADMIN' } };
+    clientAPI.brandingBySlug.mockResolvedValue(ACME);
+    render(<ClientLogin />);
+    await screen.findByRole('button', { name: 'Sign In' });
+
+    await signIn();
+
+    expect(mockLogin).toHaveBeenCalledWith('f@acme.org', 'pw');
+    expect(localStorage.getItem('tta_client_slug')).toBe('acme');
+    expect(mockNavigate).toHaveBeenCalledWith('/client', { replace: true });
+  });
+});
+
+test('the branded hero is a labelled landmark, not loose content', async () => {
+  clientAPI.brandingBySlug.mockResolvedValue(ACME);
+  render(<ClientLogin />);
+  await screen.findByRole('button', { name: 'Sign In' });
+
+  // hidden: the hero is display:none below the lg breakpoint, and jsdom has no
+  // viewport to lift that.
+  expect(
+    screen.getByRole('complementary', { name: 'Acme Foundation CSR Portal', hidden: true })
+  ).toBeInTheDocument();
 });
 
 test('the form sits in a main landmark', async () => {

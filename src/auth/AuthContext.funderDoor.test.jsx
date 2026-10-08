@@ -161,6 +161,24 @@ describe('sign-in', () => {
 
     expect(localStorage.getItem('tta_client_slug')).toBe('acme');
   });
+
+  test('a funder sign-in over a live staff session replaces it entirely', async () => {
+    at('/client/acme/login');
+    seedSession('SUPER_ADMIN');
+    await renderPortal('auth');
+    expect(auth.user.role).toBe('SUPER_ADMIN');
+    backendSays('CSR_CLIENT');
+
+    await act(async () => { await auth.login('x@example.com', 'pw'); });
+
+    expect(auth.user.role).toBe('CSR_CLIENT');
+    expect(auth.user.email).toBe('x@example.com');
+    expect(JSON.parse(localStorage.getItem('tta_user')).role).toBe('CSR_CLIENT');
+    expect(localStorage.getItem('tta_token')).toBe('a');
+    expect(localStorage.getItem('tta_refresh')).toBe('r');
+    // A funder holds no module grants; the staff grants must not linger.
+    expect(auth.perms).toBeNull();
+  });
 });
 
 describe('the 8-hour timer', () => {
