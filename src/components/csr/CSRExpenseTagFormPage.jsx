@@ -50,10 +50,9 @@ export default function CSRExpenseTagFormPage() {
   const [dateError, setDateError] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
-  // The grant's own period, read only so this page can warn BEFORE the save
-  // that a date falls outside it. A tag outside the window still saves — it is
-  // a real expense and refusing it would lose it — but the operator finds out
-  // here rather than from a certificate that quietly omits it later.
+  // The grant's own period. Owner, 8 Oct 2026: "do not let them take past
+  // dates" — a typed expense dated outside its grant is refused, here before
+  // the save and by the server on it.
   const [project, setProject] = useState(null);
 
   useEffect(() => {
@@ -76,7 +75,10 @@ export default function CSRExpenseTagFormPage() {
 
   const outside = outsideGrantPeriod(expenseDate, project);
   const grantPeriod = project
-    ? `${project.startDate || 'inception'} to ${project.endDate || 'open'}`
+    ? `${project.startDate || 'open'} to ${project.endDate || 'open'}`
+    : '';
+  const periodError = outside
+    ? `The expense date must fall within the grant period (${grantPeriod}).`
     : '';
 
   const leave = useCallback(
@@ -97,6 +99,7 @@ export default function CSRExpenseTagFormPage() {
       setDateError('Enter the date this expense was incurred');
       return;
     }
+    if (outside) return;
     setSaving(true);
     setSaveError('');
     try {
@@ -163,18 +166,16 @@ export default function CSRExpenseTagFormPage() {
 
           <div className="pform-field">
             <label htmlFor="x-date">Expense Date <span className="pform-req" aria-hidden="true">*</span></label>
-            <div className={`pform-input${expenseDate ? ' ok' : ''}`}>
+            <div className={`pform-input${expenseDate && !outside ? ' ok' : ''}`}>
               <input
                 id="x-date" type="date" value={expenseDate}
                 onChange={(e) => { setExpenseDate(e.target.value); setDateError(''); }}
-                aria-invalid={Boolean(dateError)} aria-describedby="x-date-help"
+                aria-invalid={Boolean(dateError || periodError)} aria-describedby="x-date-help"
               />
             </div>
-            <p id="x-date-help" className={`pform-help${dateError || outside ? ' bad' : ''}`}>
-              {dateError || (outside
-                ? `This falls outside the grant period (${grantPeriod}), so it will be `
-                  + 'recorded but will not appear on the Utilisation Certificate.'
-                : 'When the money was spent. The certificate files it under this date.')}
+            <p id="x-date-help" className={`pform-help${dateError || periodError ? ' bad' : ''}`}>
+              {dateError || periodError
+                || 'When the money was spent. The certificate files it under this date.'}
             </p>
           </div>
 

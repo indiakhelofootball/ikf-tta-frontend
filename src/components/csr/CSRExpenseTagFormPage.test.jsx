@@ -22,8 +22,8 @@ jest.mock('react-router-dom', () => ({
 jest.mock('../../services/api', () => ({
   csrAPI: {
     expenseTags: { create: jest.fn() },
-    // The page reads the grant's own period so it can warn, before the save,
-    // that a date falls outside it.
+    // The page reads the grant's own period so it can refuse, before the save,
+    // a date that falls outside it.
     projects: { getById: jest.fn() },
   },
 }));
@@ -42,7 +42,9 @@ const today = () => {
 beforeEach(() => {
   jest.clearAllMocks();
   mockSearch = new URLSearchParams();
-  csrAPI.projects.getById.mockResolvedValue(GRANT);
+  // Open-ended by default, so a test that keeps the today() default never
+  // depends on the clock falling inside a fixed period.
+  csrAPI.projects.getById.mockResolvedValue({ ...GRANT, endDate: null });
 });
 
 test('without ?project= it stops rather than posting an orphan tag', async () => {
@@ -114,10 +116,9 @@ describe('with a grant in the query param', () => {
     expect(csrAPI.expenseTags.create.mock.calls[0][0].expenseDate).toBe('2025-09-10');
   });
 
-  test('a date outside the grant period warns before the save, and still saves', async () => {
-    // The complaint this page is answering: an expense that never reaches the
-    // certificate. It is a real expense, so it is recorded either way — the
-    // operator just finds out here instead of from a document months later.
+  test('a date outside the grant period is refused inline and not saved', async () => {
+    // Owner, 8 Oct 2026: "do not let them take past dates".
+    csrAPI.projects.getById.mockResolvedValue(GRANT);
     csrAPI.expenseTags.create.mockResolvedValue({});
     render(<CSRExpenseTagFormPage />);
     await waitFor(() => expect(csrAPI.projects.getById).toHaveBeenCalled());
@@ -126,7 +127,17 @@ describe('with a grant in the query param', () => {
     await userEvent.clear(screen.getByLabelText(/expense date/i));
     await userEvent.type(screen.getByLabelText(/expense date/i), '2024-01-01');
 
-    expect(await screen.findByText(/outside the grant period/i)).toBeInTheDocument();
+    expect(await screen.findByText(
+      'The expense date must fall within the grant period (2025-04-01 to 2026-03-31).',
+    )).toBeInTheDocument();
+    expect(screen.getByLabelText(/expense date/i)).toHaveAttribute('aria-invalid', 'true');
+    await userEvent.click(screen.getByRole('button', { name: /^tag$/i }));
+    expect(csrAPI.expenseTags.create).not.toHaveBeenCalled();
+
+    // The last day of the grant is inside it.
+    await userEvent.clear(screen.getByLabelText(/expense date/i));
+    await userEvent.type(screen.getByLabelText(/expense date/i), '2026-03-31');
+    expect(screen.queryByText(/must fall within the grant period/i)).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: /^tag$/i }));
     await waitFor(() => expect(csrAPI.expenseTags.create).toHaveBeenCalled());
   });
@@ -139,7 +150,7 @@ describe('with a grant in the query param', () => {
     await userEvent.type(screen.getByLabelText(/amount/i), '5000');
     await userEvent.click(screen.getByRole('button', { name: /^tag$/i }));
     await waitFor(() => expect(csrAPI.expenseTags.create).toHaveBeenCalled());
-    expect(screen.queryByText(/outside the grant period/i)).toBeNull();
+    expect(screen.queryByText(/must fall within the grant period/i)).toBeNull();
   });
 
   test('cancel leaves for the grant without saving', async () => {
