@@ -38,6 +38,10 @@ const filled = (f) => ({
 });
 const TRACKED_COUNT = 5;
 
+const END_BEFORE_START = 'End date must be on or after the start date.';
+// ISO yyyy-mm-dd strings order the same way the dates do.
+const endsBeforeStart = (f) => f.startDate !== '' && f.endDate !== '' && f.endDate < f.startDate;
+
 export default function CSRProjectFormPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -112,6 +116,7 @@ export default function CSRProjectFormPage() {
   };
 
   const progress = filled(form);
+  const endDateError = endsBeforeStart(form) ? END_BEFORE_START : '';
   const done = Object.values(progress).filter(Boolean).length;
   const pct = Math.round((done / TRACKED_COUNT) * 100);
 
@@ -122,6 +127,7 @@ export default function CSRProjectFormPage() {
     if (form.sanctionedAmount === '' || Number.isNaN(Number(form.sanctionedAmount))) {
       next.sanctionedAmount = 'Enter an amount';
     }
+    if (endsBeforeStart(form)) next.endDate = END_BEFORE_START;
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -338,9 +344,16 @@ export default function CSRProjectFormPage() {
               </div>
               <div className="pform-field">
                 <label htmlFor="csr-end">End date</label>
-                <div className={`pform-input${progress.endDate ? ' ok' : ''}`}>
-                  <input id="csr-end" type="date" value={form.endDate} onChange={setField('endDate')} />
+                <div className={`pform-input${progress.endDate && !endDateError ? ' ok' : ''}`}>
+                  <input
+                    id="csr-end" type="date" value={form.endDate} onChange={setField('endDate')}
+                    aria-invalid={Boolean(endDateError)}
+                    aria-describedby={endDateError ? 'csr-end-help' : undefined}
+                  />
                 </div>
+                {endDateError ? (
+                  <p id="csr-end-help" className="pform-help bad">{endDateError}</p>
+                ) : null}
               </div>
               <div className="pform-field">
                 <label htmlFor="csr-status">Status</label>

@@ -80,10 +80,10 @@ export default function CSRActivityFormPage() {
   const [activity, setActivity] = useState(null);
   const [activityTypes, setActivityTypes] = useState([]);
   const [trials, setTrials] = useState([]);
-  // Partner vendors for a workshop. The spec says a workshop links to a vendor
-  // "in the 'partner' category", so an ordinary supplier must not be offered.
+  // Partner vendors: vendor type Partner, or a partner category (owner, 8 Oct
+  // 2026). An ordinary supplier or a REP must not be offered.
   // The narrowing is the endpoint's, not this component's: /csr/partner-vendors/
-  // returns partner-flagged vendors only, through the csr grant this operator
+  // returns partner vendors only, through the csr grant this operator
   // already holds, so nobody needs the vendors module to fill this picker.
   const [partners, setPartners] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -521,8 +521,8 @@ export default function CSRActivityFormPage() {
                       {errors.linkedVendorId || (form.deliveryMode === 'Self'
                         ? 'Not needed — this one was delivered by TTA.'
                         : partners.length === 0
-                          ? 'No vendors carry a partner category yet. An admin flags them in TTA Admin, under Vendors.'
-                          : 'The partner who delivered this. Only vendors flagged with a partner category appear.')}
+                          ? 'No partners yet. In TTA, add a vendor with vendor type Partner (or a Partner Category).'
+                          : 'The partner who delivered this. Only vendors of type Partner, or with a Partner Category, appear.')}
                     </p>
                   </div>
                 )}
