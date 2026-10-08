@@ -18,15 +18,35 @@
 # stopped responding and all six apps were down for ~95 minutes until a
 # forced restart. The same step had passed on 09-07/09/10 — a latent risk.
 #
-# What stays identical to an on-box build:
-#   - the build CONTEXT is the server's own /root/tta (its Dockerfile,
-#     nginx.conf, package.json, lockfile, public/ with templates/), fetched
-#     read-only. deploy.sh never shipped those files, so the server's copies
-#     are what every live image was built from. Only src/ is replaced, from
-#     the commit, exactly as deploy.sh does.
-#   - the Dockerfile is the server's, with one change: the node build stage
-#     runs on this machine's platform. Its output is plain JS, identical on
-#     any CPU; the nginx stage that ships is built for the server's CPU.
+# WHAT IT BUILDS FROM (changed 2026-10-08)
+#   - the build CONTEXT is the repo at the commit being shipped: its
+#     Dockerfile, package.json, lockfile, craco.config.js, scripts/, public/
+#     and src/. Until 10-08 it was the server's own /root/tta with only src/
+#     replaced, on the reasoning that the server's files were what every live
+#     image had been built from. They were also older than git's, and that is
+#     what kept two security bugs live (measured 10-07, fix_bug/TRACKER.md):
+#       SEC1  the server's Dockerfile built with source maps ON, so
+#             /static/js/main.<hash>.js.map served the staff app's full
+#             original source (12.4 MB) to anyone, no login.
+#       SEC2  the server's Dockerfile had no build:client stage and its
+#             nginx.conf no /client blocks, so /client served the STAFF
+#             bundle to external funders — the leak G3 exists to stop.
+#     git's Dockerfile builds both bundles with GENERATE_SOURCEMAP=false.
+#   - nginx.conf is _docs/deployment/nginx.frontend.conf from the commit: the
+#     server's file (its /static/ volume path is not the one in git's root
+#     nginx.conf, which serves local compose) plus the index.html cache block
+#     and the G3 /client blocks.
+#   - taken from the server, read-only, is only what lives nowhere else:
+#     files under public/ that git does not have (public/templates/ is the
+#     known one). They are added, never allowed to replace a file git has.
+#     The server's nginx.conf is fetched too, as the input to a gate.
+#   - the node build stage runs on this machine's platform. Its output is
+#     plain JS, identical on any CPU; the nginx stage that ships is built for
+#     the server's CPU.
+#   - after the swap, the same build inputs are written to /root/tta, so a
+#     later on-box `docker compose up --build frontend` builds what is live
+#     instead of silently reopening SEC1/SEC2. docker-compose.yml is never
+#     shipped (the box's copy carries the dbbridge network git lacks).
 #
 # The backend is NOT touched. Use deploy.sh-style steps for backend changes.
 # ---------------------------------------------------------------------------
@@ -77,7 +97,11 @@ docker info >/dev/null 2>&1 || die "Docker is not running on this machine"
 # ---------------------------------------------------------------------------
 say "Preflight"
 cd "$FE_ROOT"
-git diff --quiet HEAD -- src || die "uncommitted changes to src/. Commit or stash first."
+# Every build input comes from HEAD, so an uncommitted edit to any of them
+# would silently not ship.
+SHIPPED="src public scripts Dockerfile package.json package-lock.json craco.config.js .dockerignore _docs/deployment/nginx.frontend.conf"
+# shellcheck disable=SC2086
+git diff --quiet HEAD -- $SHIPPED || die "uncommitted changes to build inputs ($SHIPPED). Commit or stash first."
 git fetch origin main --quiet 2>/dev/null || info "fetch failed, using cached origin/main"
 git merge-base --is-ancestor origin/main HEAD \
   || die "HEAD is missing $(git rev-list --count HEAD..origin/main) commit(s) from origin/main"
@@ -85,7 +109,10 @@ FE_SHA=$(git rev-parse HEAD); FE_SHORT=${FE_SHA:0:7}
 FE_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 info "frontend $FE_SHORT on $FE_BRANCH — contains origin/main"
 
-LIVE=$(curl -s -m 30 "https://tta.indiakhelofootball.com/release.txt" || true)
+# A rehearsal contacts no server at all, the live site included.
+LIVE=""
+[ "$MODE" = rehearse ] && info "REHEARSAL: live release check skipped (no server contact)"
+[ "$MODE" = rehearse ] || LIVE=$(curl -s -m 30 "https://tta.indiakhelofootball.com/release.txt" || true)
 LIVE_FE=$(echo "$LIVE" | awk '/^frontend /{print $2}')
 LIVE_BE=$(echo "$LIVE" | awk '/^backend /{print $2}')
 LIVE_BE_BRANCH=$(echo "$LIVE" | awk '/^backend_branch /{print $2}')
@@ -100,15 +127,17 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 2. BUILD CONTEXT — the server's, with src/ from the commit
+# 2. BUILD CONTEXT — the repo at HEAD, plus server-only public/ files
 # ---------------------------------------------------------------------------
 CTX="$WORK/ctx"; mkdir -p "$CTX"
+SRV="$WORK/srv"; mkdir -p "$SRV"
+say "Build context: the repo at $FE_SHORT"
+git archive HEAD | tar -x -C "$CTX"
 if [ "$MODE" = rehearse ]; then
-  say "Build context (REHEARSAL: git's infra files, not the server's)"
-  git archive HEAD | tar -x -C "$CTX"
   ARCH=amd64
+  info "REHEARSAL: no server, so no server-only public/ files (a real run carries e.g. public/templates/)"
 else
-  say "Fetching the server's build context (read-only)"
+  say "Fetching the server's context (read-only): its server-only files and the nginx gate"
   case "$(rsh uname -m)" in
     x86_64)  ARCH=amd64 ;;
     aarch64) ARCH=arm64 ;;
@@ -119,32 +148,68 @@ else
         --exclude=./node_modules --exclude=./build --exclude=./build-client \
         --exclude=./tta_backend --exclude=./.git --exclude=./_docs \
         --exclude='./.env*' --exclude='*.sql' --exclude='*.tar.gz' ."
-  PSCP_T -batch -pw "$TTA_DEPLOY_PASS" "$USER_@$HOST:/tmp/tta-ctx-$STAMP.tgz" "$WORK/ctx.tgz" >/dev/null
+  PSCP_T -batch -pw "$TTA_DEPLOY_PASS" "$USER_@$HOST:/tmp/tta-ctx-$STAMP.tgz" "$WORK/srv.tgz" >/dev/null
   rsh "rm -f /tmp/tta-ctx-$STAMP.tgz"
-  tar -xzf "$WORK/ctx.tgz" -C "$CTX"
-  info "context $(du -sh "$WORK/ctx.tgz" | cut -f1) — Dockerfile, nginx.conf, package files, public/ are the server's"
+  tar -xzf "$WORK/srv.tgz" -C "$SRV"
+  [ -f "$SRV/nginx.conf" ] || die "the server's context has no nginx.conf"
+
+  # Server-only public/ files are added; a file git has always wins.
+  : > "$WORK/carried.txt"
+  if [ -d "$SRV/public" ]; then
+    while IFS= read -r f; do
+      f=${f#./}
+      [ "$f" = release.txt ] && continue
+      [ -e "$CTX/public/$f" ] && continue
+      mkdir -p "$CTX/public/$(dirname "$f")"
+      cp -p "$SRV/public/$f" "$CTX/public/$f"
+      echo "$f" >> "$WORK/carried.txt"
+    done < <(cd "$SRV/public" && find . -type f)
+  fi
+  if [ -s "$WORK/carried.txt" ]; then
+    info "carried from the server's public/ (git has no copy):"
+    sed 's/^/     /' "$WORK/carried.txt"
+  else
+    info "no server-only public/ files"
+  fi
+  for f in Dockerfile package.json package-lock.json; do
+    cmp -s "$SRV/$f" "$CTX/$f" 2>/dev/null \
+      || info "the server's $f differs from git's; git's is used (both bundles, no source maps)"
+  done
 fi
 
-for f in Dockerfile nginx.conf package.json package-lock.json; do
+for f in Dockerfile package.json package-lock.json craco.config.js src/client-index.js; do
   [ -f "$CTX/$f" ] || die "build context has no $f"
 done
+# SEC1/SEC2 are only closed by a Dockerfile that builds the funder bundle and
+# installs it under /client, with source maps off. Refuse anything else.
+grep -q 'npm run build:client' "$CTX/Dockerfile" \
+  && grep -q 'build-client /usr/share/nginx/html/client' "$CTX/Dockerfile" \
+  || die "the Dockerfile does not build and install the /client bundle"
+grep -q 'GENERATE_SOURCEMAP=false' "$CTX/Dockerfile" \
+  || die "the Dockerfile does not set GENERATE_SOURCEMAP=false"
 
 # nginx.conf comes from the repo, not the server: the server's copy never told
-# browsers to re-check index.html (2026-09-21). The repo file is the server's
-# file plus that one block, so refuse if the server's copy has changed in any
-# other way — that change would otherwise be dropped without anyone seeing it.
-NGINX_SRC="$FE_ROOT/_docs/deployment/nginx.frontend.conf"
-[ -f "$NGINX_SRC" ] || die "missing $NGINX_SRC"
+# browsers to re-check index.html (2026-09-21) and has no /client blocks
+# (SEC2). The repo file is the server's file plus those two sections, so refuse
+# if the server's copy has changed in any other way — that change would
+# otherwise be dropped without anyone seeing it. Accepted server states: the
+# original, the original + cache block (deploys 09-21 to 10-07), or this file.
+NGINX_GIT="$WORK/nginx.frontend.conf"
+git show "HEAD:_docs/deployment/nginx.frontend.conf" > "$NGINX_GIT" 2>/dev/null \
+  || die "HEAD has no _docs/deployment/nginx.frontend.conf"
+grep -q '# G3 BEGIN' "$NGINX_GIT" && grep -q 'location = /client ' "$NGINX_GIT" \
+  || die "nginx.frontend.conf has no /client blocks"
+strip_g3()    { sed '/# G3 BEGIN/,/# G3 END/d' "$1"; }
+strip_cache() { sed '/# The page every route falls back to/,/^    }$/d'; }
 if [ "$MODE" != rehearse ]; then
-  sed '/# The page every route falls back to/,/^    }$/d' "$NGINX_SRC" | diff -B -q - "$CTX/nginx.conf" >/dev/null \
-    || cmp -s "$NGINX_SRC" "$CTX/nginx.conf" \
-    || die "the server's nginx.conf differs from $NGINX_SRC beyond the cache block; reconcile first"
+  { cmp -s "$NGINX_GIT" "$SRV/nginx.conf" \
+    || strip_g3 "$NGINX_GIT" | diff -B -q - "$SRV/nginx.conf" >/dev/null \
+    || strip_g3 "$NGINX_GIT" | strip_cache | diff -B -q - "$SRV/nginx.conf" >/dev/null; } \
+    || die "the server's nginx.conf differs from nginx.frontend.conf beyond the cache and /client blocks; reconcile first"
 fi
-cp "$NGINX_SRC" "$CTX/nginx.conf"
-info "nginx.conf from the repo (index.html: no-cache)"
+cp "$NGINX_GIT" "$CTX/nginx.conf"
+info "nginx.conf from the repo (index.html: no-cache · /client: the funder bundle)"
 
-rm -rf "$CTX/src"
-git archive HEAD src | tar -x -C "$CTX"
 cat > "$CTX/public/release.txt" <<EOF
 frontend $FE_SHA
 frontend_branch $FE_BRANCH
@@ -152,14 +217,12 @@ backend ${LIVE_BE:-unknown}
 backend_branch ${LIVE_BE_BRANCH:-unknown}
 deployed_at $(date -u +%Y-%m-%dT%H:%M:%SZ)
 EOF
-info "src/ replaced from $FE_SHORT; release.txt written (backend stamp carried from live)"
+info "release.txt written (backend stamp carried from live)"
 
-# The server's Dockerfile is older than git's (measured 2026-09-19: no
-# build:client stage, npm install, source maps on). Verify against what THIS
-# Dockerfile produces, not against git's — the live image has no /client.
-WANT_CLIENT=0
-grep -q 'build-client' "$CTX/Dockerfile" && WANT_CLIENT=1
-info "Dockerfile builds the /client bundle: $([ $WANT_CLIENT = 1 ] && echo yes || echo no)"
+# What /root/tta must hold after the swap so an on-box build agrees with the
+# image: git's build inputs, with the Dockerfile as committed (not pinned below).
+git archive --format=tar HEAD src public scripts Dockerfile package.json package-lock.json \
+  craco.config.js .dockerignore | gzip > "$WORK/inputs.tar.gz"
 
 # The node stage runs natively here; only the nginx stage targets the server.
 sed -i -E '0,/^FROM node:/s//FROM --platform=$BUILDPLATFORM node:/' "$CTX/Dockerfile"
@@ -189,34 +252,70 @@ info "architecture: $GOT"
 # nginx resolves the `backend` upstream at startup; outside compose there is no
 # such host, so give it a stand-in or `nginx -t` fails on a correct config.
 docker run --rm --platform "linux/$ARCH" --add-host backend:127.0.0.1 --entrypoint sh "$IMG" -c '
-  set -e
   H=/usr/share/nginx/html
-  test -f $H/index.html
-  if [ "'"$WANT_CLIENT"'" = 1 ]; then test -f $H/client/index.html; fi
-  grep -q "'"$FE_SHA"'" $H/release.txt
+  no() { echo "   image check: $*" >&2; exit 1; }
+  test -f $H/index.html || no "no staff index.html"
+  test -f $H/client/index.html || no "no /client/index.html (SEC2)"
+  grep -q "/client/static/js/" $H/client/index.html || no "/client/index.html does not load the funder bundle"
+  grep -q "'"$FE_SHA"'" $H/release.txt || no "release.txt is not this commit"
+  if find $H -name "*.map" | grep -q .; then find $H -name "*.map" >&2; no "source maps in the image (SEC1)"; fi
+  if grep -rl "sourceMappingURL" $H/static/js $H/client/static/js 2>/dev/null; then no "sourceMappingURL trailer (SEC1)"; fi
+  if grep -rlE "WorkOrderModal|PermissionsManagement|payment-requests" $H/client/static/js; then no "staff code in the funder bundle (SEC2)"; fi
+  test ! -e $H/client/templates || no "internal templates/ in the funder bundle"
   # .js only: a .map carries the original source, including the fallback URL
-  if grep -rl --include="*.js" "localhost:8000" $H/static/js $H/client/static/js 2>/dev/null; then exit 1; fi
-  nginx -t 2>/dev/null
-' || die "image failed verification (missing bundle, wrong release.txt, or a localhost API leak)"
+  if grep -rl --include="*.js" "localhost:8000" $H/static/js $H/client/static/js 2>/dev/null; then no "localhost:8000 API leak"; fi
+  nginx -t 2>/dev/null || no "nginx -t failed"
+  exit 0
+' || die "image failed verification (see the image check above)"
 # POSITIVE check: the API address the login call uses must be exactly /api.
 # The absence of one known-bad value (localhost:8000) is not enough.
 MSYS_NO_PATHCONV=1 docker create --name "apicheck-$STAMP" "$IMG" >/dev/null
 MSYS_NO_PATHCONV=1 docker cp "apicheck-$STAMP:/usr/share/nginx/html/static/js" "$(cygpath -w "$WORK" 2>/dev/null || echo "$WORK")/js" >/dev/null
+MSYS_NO_PATHCONV=1 docker cp "apicheck-$STAMP:/usr/share/nginx/html/client/static/js" "$(cygpath -w "$WORK" 2>/dev/null || echo "$WORK")/cjs" >/dev/null
 docker rm "apicheck-$STAMP" >/dev/null
 BASE=$(api_base_of "$(ls "$WORK"/js/main.*.js | head -1)")
 [ "$BASE" = "/api" ] || die "image calls the API at '$BASE', not /api. Login would break"
-# Serve the image on this laptop and read the real response headers: the entry
-# page must say re-check, the hashed bundle must still be cacheable.
+CBASE=$(api_base_of "$(ls "$WORK"/cjs/main.*.js | head -1)")
+[ "$CBASE" = "/api" ] || die "funder bundle calls the API at '$CBASE', not /api. Funder login would break"
+# The denylist above must be able to match something: if the staff bundle
+# stopped carrying the string, its absence from the funder bundle proves nothing.
+grep -rlq "payment-requests" "$WORK/js" \
+  || die "control failed: 'payment-requests' is not in the staff bundle either, so the funder check is blind"
+# Serve the image on this laptop and read the real responses: the entry pages
+# must say re-check, the hashed bundles must stay cacheable, every funder URL
+# must get the funder shell, and no source map may be served.
+MAIN_JS=$(basename "$(ls "$WORK"/js/main.*.js | head -1)")
+CMAIN_JS=$(basename "$(ls "$WORK"/cjs/main.*.js | head -1)")
 MSYS_NO_PATHCONV=1 docker run -d --rm --name "hdrcheck-$STAMP" --platform "linux/$ARCH" \
   --add-host backend:127.0.0.1 -p 127.0.0.1:18080:80 "$IMG" >/dev/null
 sleep 3
-HDR_HTML=$(curl -s -o /dev/null -D - -m 10 http://127.0.0.1:18080/login | tr -d '\r' | grep -i '^cache-control:' || true)
-HDR_JS=$(curl -s -o /dev/null -D - -m 10 "http://127.0.0.1:18080/static/js/$(basename "$(ls "$WORK"/js/main.*.js | head -1)")" | tr -d '\r' | grep -i '^cache-control:' || true)
+U=http://127.0.0.1:18080
+hdr() { curl -s -o /dev/null -D - -m 10 "$1" | tr -d '\r' | grep -i '^cache-control:' || true; }
+HDR_HTML=$(hdr "$U/login")
+HDR_JS=$(hdr "$U/static/js/$MAIN_JS")
+HDR_CLIENT=$(hdr "$U/client/acme/login")
+HDR_CJS=$(hdr "$U/client/static/js/$CMAIN_JS")
+CODE_CJS=$(curl -s -o /dev/null -w '%{http_code}' -m 10 "$U/client/static/js/$CMAIN_JS" || true)
+CODE_MAP=$(curl -s -o /dev/null -w '%{http_code}' -m 10 "$U/static/js/$MAIN_JS.map" || true)
+C_BARE=$(curl -s -m 10 "$U/client" || true)
+C_ROOT=$(curl -s -m 10 "$U/client/" || true)
+C_LOGIN=$(curl -s -m 10 "$U/client/acme/login" || true)
+STAFF=$(curl -s -m 10 "$U/login" || true)
 docker stop "hdrcheck-$STAMP" >/dev/null 2>&1 || true
 echo "$HDR_HTML" | grep -qi 'no-cache' || die "entry page is not no-cache in the image: '$HDR_HTML'"
 echo "$HDR_JS" | grep -qi 'max-age' || die "hashed bundle lost its cache header in the image: '$HDR_JS'"
+echo "$C_BARE"  | grep -q "/client/static/js/$CMAIN_JS" || die "the image does not serve the funder bundle at /client (SEC2)"
+echo "$C_ROOT"  | grep -q "/client/static/js/$CMAIN_JS" || die "the image does not serve the funder bundle at /client/ (SEC2)"
+echo "$C_LOGIN" | grep -q "/client/static/js/$CMAIN_JS" || die "the image does not serve the funder bundle at /client/acme/login (SEC2)"
+echo "$STAFF"   | grep -q "/static/js/$MAIN_JS" || die "the image does not serve the staff bundle at /login"
+echo "$HDR_CLIENT" | grep -qi 'no-cache' || die "funder entry page is not no-cache in the image: '$HDR_CLIENT'"
+[ "$CODE_CJS" = 200 ] || die "funder bundle /client/static/js/$CMAIN_JS answers $CODE_CJS"
+echo "$HDR_CJS" | grep -qi 'max-age' || die "funder bundle lost its cache header: '$HDR_CJS'"
+if echo "$HDR_CJS" | grep -qi 'no-cache'; then die "funder bundle is sent no-cache: '$HDR_CJS'"; fi
+[ "$CODE_MAP" != 200 ] || die "the image serves /static/js/$MAIN_JS.map (SEC1)"
 info "headers in the image: /login '$HDR_HTML' · bundle '$HDR_JS'"
-info "bundle present$([ $WANT_CLIENT = 1 ] && echo ' (+ /client)') · release.txt = $FE_SHORT · login calls /api · no localhost:8000 in .js · nginx -t ok"
+info "funder portal in the image: /client, /client/, /client/acme/login -> funder shell '$HDR_CLIENT' · bundle $CODE_CJS '$HDR_CJS'"
+info "staff + funder bundles · release.txt = $FE_SHORT · both call /api · no .map (served: $CODE_MAP) · no staff code in the funder bundle · no localhost:8000 · nginx -t ok"
 
 IMG_TGZ="$WORK/tta-frontend-$FE_SHORT.tar.gz"
 docker save "$IMG" | gzip > "$IMG_TGZ"
@@ -238,23 +337,30 @@ REMOTE_HASH=$(rsh "sha256sum /root/tta-frontend-$FE_SHORT.tar.gz | cut -d' ' -f1
 info "sha256 matches both ends"
 
 say "Backing up and swapping the frontend"
-git archive HEAD src | gzip > "$WORK/src.tar.gz"
-PSCP_T -batch -pw "$TTA_DEPLOY_PASS" "$WORK/src.tar.gz" "$USER_@$HOST:/root/tta-src-$STAMP.tar.gz" >/dev/null
+PSCP_T -batch -pw "$TTA_DEPLOY_PASS" "$WORK/inputs.tar.gz" "$USER_@$HOST:/root/tta-inputs-$STAMP.tar.gz" >/dev/null
 cp "$CTX/public/release.txt" "$WORK/release.txt"
 PSCP_T -batch -pw "$TTA_DEPLOY_PASS" "$WORK/release.txt" "$USER_@$HOST:/root/tta-release-$STAMP.txt" >/dev/null
-PSCP_T -batch -pw "$TTA_DEPLOY_PASS" "$NGINX_SRC" "$USER_@$HOST:/root/tta-nginx-$STAMP.conf" >/dev/null
+PSCP_T -batch -pw "$TTA_DEPLOY_PASS" "$NGINX_GIT" "$USER_@$HOST:/root/tta-nginx-$STAMP.conf" >/dev/null
 rsh "set -e
-  cd /root && tar -czf /root/tta-rollback-$STAMP.tar.gz tta/src tta/public tta/nginx.conf
-  # the on-disk nginx.conf must match the image, or a later build drops the rule
+  cd /root
+  # every on-disk build input this deploy replaces, whichever of them exist
+  BK=''
+  for p in src public scripts nginx.conf Dockerfile package.json package-lock.json craco.config.js .dockerignore; do
+    if [ -e tta/\$p ]; then BK=\"\$BK tta/\$p\"; fi
+  done
+  tar -czf /root/tta-rollback-$STAMP.tar.gz \$BK
+  # the on-disk nginx.conf must match the image, or a later build drops the rules
   cp /root/tta-nginx-$STAMP.conf $REMOTE/nginx.conf && rm -f /root/tta-nginx-$STAMP.conf
   docker tag tta-frontend:latest tta-frontend:pre-$STAMP
   gunzip -c /root/tta-frontend-$FE_SHORT.tar.gz | docker load | tail -1
-  # keep the on-disk source identical to the image, so a later --build agrees
-  cd $REMOTE && rm -rf src && tar -xzf /root/tta-src-$STAMP.tar.gz
+  # keep the on-disk build inputs identical to the image, so a later --build
+  # agrees with it instead of rebuilding with source maps and no /client.
+  # public/ is overlaid, not replaced: its server-only files stay.
+  cd $REMOTE && rm -rf src && tar -xzf /root/tta-inputs-$STAMP.tar.gz
   cp /root/tta-release-$STAMP.txt public/release.txt
   docker tag $IMG tta-frontend:latest
   docker compose up -d --no-deps --no-build frontend 2>&1 | tail -3
-  rm -f /root/tta-src-$STAMP.tar.gz /root/tta-release-$STAMP.txt"
+  rm -f /root/tta-inputs-$STAMP.tar.gz /root/tta-release-$STAMP.txt"
 
 # ---------------------------------------------------------------------------
 # 6. VERIFY — behaviour, on the box and from outside, for every app on it
@@ -284,6 +390,13 @@ LOGIN=$(curl -s -m 30 -w ' HTTP%{http_code}' -X POST "https://tta.indiakhelofoot
 echo "$LOGIN" | grep -q 'Invalid email or password.* HTTP401$' \
   || die "login through the served bundle's address failed: $LOGIN. Roll back"
 info "login path OK: bundle calls $API, login answers 401 'Invalid email or password'"
+# SEC1 and SEC2 as the public meets them.
+MAP_LIVE=$(curl -s -o /dev/null -w '%{http_code}' -m 30 "https://tta.indiakhelofootball.com/$JS.map" || true)
+[ "$MAP_LIVE" != 200 ] || die "the live staff source map still answers 200 (SEC1). Purge Cloudflare, then recheck"
+CLIENT_LIVE=$(curl -s -m 30 "https://tta.indiakhelofootball.com/client/" || true)
+echo "$CLIENT_LIVE" | grep -q '/client/static/js/main\.' \
+  || die "live /client/ is not the funder bundle (SEC2). Purge Cloudflare, then check the host nginx"
+info "live: staff source map -> $MAP_LIVE · /client/ serves the funder bundle"
 LIVE_HDR=$(curl -s -o /dev/null -D - -m 20 "https://tta.indiakhelofootball.com/login" | tr -d '\r' | grep -i '^cache-control:' || true)
 echo "$LIVE_HDR" | grep -qi 'no-cache' || die "live entry page is not no-cache: '$LIVE_HDR' (Cloudflare or host nginx is overriding it)"
 info "live entry page: $LIVE_HDR"
@@ -299,6 +412,9 @@ cat <<EOF
      docker tag tta-frontend:pre-$STAMP tta-frontend:latest
      cd $REMOTE && docker compose up -d --no-deps --no-build frontend
      cd /root && tar -xzf /root/tta-rollback-$STAMP.tar.gz
+       (restores src/, public/, scripts/, nginx.conf, Dockerfile, package*.json,
+        craco.config.js, .dockerignore as they were; files this deploy ADDED to
+        /root/tta, e.g. a first craco.config.js, stay and are harmless)
 
    Cloudflare caches this origin. If the UI looks stale, purge the cache —
    release.txt above is the authority on what is served.
