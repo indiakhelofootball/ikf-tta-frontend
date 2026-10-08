@@ -92,7 +92,41 @@ without a CORS or mixed-content problem.
 > 08-26 — has been a file copy. The instructions that used to sit here told you
 > to pull; they were wrong for over a month. Pushing to GitHub does NOT deploy.
 
-### The method that works
+### Frontend: `_docs/deployment/deploy_frontend_prebuilt.sh`
+
+The frontend is no longer built on the box: a two-bundle CRA build froze it on
+2026-09-19 (2 vCPU, no swap, six apps down ~95 min). The script builds the image
+on your machine, verifies it, uploads it and swaps one container. Its WHY block
+is the reference; in short:
+
+- **Build context = the commit** (changed 2026-10-08): git's `Dockerfile`,
+  `package.json`, lockfile, `craco.config.js`, `scripts/`, `public/`, `src/`.
+  Before that it was the server's own older context with only `src/` replaced,
+  which is why production served the staff source map publicly (**SEC1**) and the
+  staff bundle at `/client` (**SEC2**). From the server it now takes only files
+  under `public/` that git lacks (e.g. `public/templates/`), never replacing one
+  git has.
+- **nginx config = `_docs/deployment/nginx.frontend.conf`**, not the root
+  `nginx.conf`. It is the server's file (Django static at `/var/www/static`) plus
+  the `index.html` cache block and the G3 `/client` blocks. The root `nginx.conf`
+  matches git's `docker-compose.yml` (`/staticfiles`) and serves local compose
+  only. A gate refuses to deploy if the server's copy has changed in any other way.
+- **The image is checked before upload**: both bundles present, no `*.map`
+  anywhere, no `sourceMappingURL`, no `WorkOrderModal` / `PermissionsManagement`
+  / `payment-requests` in the funder JS (with a control that the staff JS has
+  `payment-requests`), both bundles call `/api`, and a locally run container
+  serves the funder shell at `/client`, `/client/` and `/client/<slug>/login`
+  with `no-cache`, and no `.map`.
+- **After the swap** the same build inputs are written to `/root/tta`, so a later
+  on-box build matches what is live. `docker-compose.yml` is never shipped.
+
+```bash
+_docs/deployment/deploy_frontend_prebuilt.sh --rehearse    # builds + checks, contacts no server
+TTA_DEPLOY_PASS='...' _docs/deployment/deploy_frontend_prebuilt.sh --dry-run
+TTA_DEPLOY_PASS='...' _docs/deployment/deploy_frontend_prebuilt.sh
+```
+
+### The method that works (backend; and the frontend before the script)
 
 **Bundle ONLY `src/` and `tta_backend/backend/`.** Nothing else. See the warning
 below for why that is not optional.
@@ -159,6 +193,12 @@ git diff --name-only <deployed>..<new> -- docker-compose.yml nginx.conf Dockerfi
 Empty output means a code-only bundle is safe. Any output means stop and
 reconcile by hand — the box's version is probably the correct one.
 
+**Exception, frontend only (2026-10-08):** for `Dockerfile`, `package.json`,
+`package-lock.json` and the frontend `nginx.conf` the box's version was measured
+to be the WRONG one — it is what kept SEC1 and SEC2 live.
+`deploy_frontend_prebuilt.sh` ships git's versions of those, deliberately, and
+keeps the box's `public/`-only files. `docker-compose.yml` still never ships.
+
 ### A failed build is safe
 
 The multi-stage build aborts before replacing the image, so the running
@@ -181,7 +221,9 @@ cd /root/tta && docker compose up -d --no-deps backend frontend
 image — it has to be passed in. It falls back to the literal `docker`, which means
 "nobody passed a hash".
 
-Frontend only: `docker compose up -d --build frontend`.
+Frontend only: `deploy_frontend_prebuilt.sh` (above). Do not run
+`docker compose up -d --build frontend` on the box: that on-box build is what
+froze it on 2026-09-19.
 Backend only: `docker compose up -d --build backend`.
 
 ### Migrations run themselves
@@ -272,7 +314,15 @@ Any hit means the image was built from a context that leaked a `.env*` file. Reb
 
 **Main app works, `/client` serves the staff bundle** — the `location = /client` exact
 match in `nginx.conf` is missing or was overridden. That is the exact leak G3 exists
-to stop; treat it as a security bug, not a routing nit.
+to stop; treat it as a security bug, not a routing nit. It was live until 2026-10
+(SEC2) because the image was built from the server's context, whose Dockerfile had
+no client stage and whose nginx.conf had no `/client` blocks. The deployed config
+is `_docs/deployment/nginx.frontend.conf` (the `# G3 BEGIN` section); check
+`docker compose exec frontend ls /usr/share/nginx/html/client/index.html` too.
+
+**`/static/js/main.<hash>.js.map` answers 200** — source maps are in the image
+(SEC1). Both `package.json` build scripts and the `Dockerfile` set
+`GENERATE_SOURCEMAP=false`; an image built from anything else is the cause.
 
 **Django admin loses its CSS** — `static_volume` is stale. The backend writes it on
 start via `collectstatic`; restart the backend, not the frontend.

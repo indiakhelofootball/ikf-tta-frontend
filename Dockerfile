@@ -24,6 +24,11 @@ ENV REACT_APP_API_URL=$REACT_APP_API_URL
 ARG BUILD_ID=docker
 ENV BUILD_ID=$BUILD_ID
 
+# Both build scripts in package.json already pass this; it is repeated here so
+# no edit to a script can bring source maps back. A map is the full original
+# source: production served the staff app's (12.4 MB, no login) until 2026-10.
+ENV GENERATE_SOURCEMAP=false
+
 RUN npm run build
 
 # G3 — a SECOND, separate bundle for external funders. It is built from
