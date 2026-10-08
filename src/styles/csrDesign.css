@@ -1231,6 +1231,11 @@
 .csrx .lrow .t1wrap{display:flex;align-items:center;gap:7px;min-width:0}
 .csrx .lrow .t1wrap a{display:inline-flex;color:var(--muted);flex:none}
 .csrx .lrow .t1wrap a:hover{color:var(--g)}
+.csrx .lrow .t1wrap .t1file{
+  display:inline-flex;flex:none;color:var(--muted);background:none;border:0;padding:0;cursor:pointer;
+}
+.csrx .lrow .t1wrap .t1file:hover{color:var(--g)}
+.csrx .lrow .t1wrap .t1file:disabled{cursor:progress;opacity:.6}
 .csrx .lrow .t1wrap svg{width:13px;height:13px}
 
 /* Native select styled to match the search field beside it. */

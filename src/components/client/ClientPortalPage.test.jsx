@@ -14,6 +14,7 @@ jest.mock('../../services/api', () => ({
     project: jest.fn(),
     activities: jest.fn(),
     reports: jest.fn(),
+    reportFile: jest.fn(),
     deliverables: jest.fn(),
     myBranding: jest.fn(),
     certificate: jest.fn(),
@@ -286,6 +287,57 @@ test('reports are listed by title with type and a human date, falling back to th
   expect(screen.getByText('field-notes.pdf')).toBeInTheDocument();
   expect(screen.getByText('File not attached yet')).toBeInTheDocument();
   expect(screen.queryByRole('link', { name: 'field-notes.pdf' })).not.toBeInTheDocument();
+});
+
+test('an uploaded report opens through the authenticated client endpoint, not a link', async () => {
+  clientAPI.reports.mockResolvedValue([
+    { id: 7, title: 'Pune trial report', fileName: '', fileUrl: '', hasFile: true, createdAt: '2026-10-08' },
+    {
+      id: 8, title: 'Drive report', fileName: '', fileUrl: 'https://files.example/d.pdf',
+      hasFile: false, createdAt: '2026-10-08',
+    },
+  ]);
+  const blob = new Blob(['%PDF-1.4'], { type: 'application/pdf' });
+  clientAPI.reportFile.mockResolvedValue({ blob, contentType: 'application/pdf', fileName: 'pune.pdf' });
+  const opened = {};
+  const openSpy = jest.spyOn(window, 'open').mockReturnValue(opened);
+  const origCreate = URL.createObjectURL;
+  const origRevoke = URL.revokeObjectURL;
+  URL.createObjectURL = jest.fn(() => 'blob:pune');
+  URL.revokeObjectURL = jest.fn();
+  window.history.replaceState(null, '', '#reports');
+  try {
+    render(<ClientPortalPage />);
+    const open = await screen.findByRole('button', { name: 'Open Pune trial report' });
+    expect(screen.queryByRole('link', { name: 'Pune trial report' })).not.toBeInTheDocument();
+    await act(async () => { fireEvent.click(open); });
+
+    expect(clientAPI.reportFile).toHaveBeenCalledWith(7);
+    expect(URL.createObjectURL).toHaveBeenCalledWith(blob);
+    expect(openSpy).toHaveBeenCalledWith('blob:pune', '_blank');
+    expect(opened.opener).toBeNull();
+
+    // A link-only report keeps the plain link and never calls the file endpoint.
+    expect(screen.getByRole('link', { name: 'Open Drive report' }))
+      .toHaveAttribute('href', 'https://files.example/d.pdf');
+    expect(clientAPI.reportFile).toHaveBeenCalledTimes(1);
+  } finally {
+    openSpy.mockRestore();
+    URL.createObjectURL = origCreate;
+    URL.revokeObjectURL = origRevoke;
+  }
+});
+
+test('an uploaded report that fails to load says so on its row', async () => {
+  clientAPI.reports.mockResolvedValue([
+    { id: 7, title: 'Pune trial report', fileUrl: '', hasFile: true, createdAt: '2026-10-08' },
+  ]);
+  clientAPI.reportFile.mockRejectedValue(new Error('Not found.'));
+  window.history.replaceState(null, '', '#reports');
+  render(<ClientPortalPage />);
+  const open = await screen.findByRole('button', { name: 'Open Pune trial report' });
+  await act(async () => { fireEvent.click(open); });
+  expect(screen.getByRole('alert')).toHaveTextContent('The file could not be opened. Please try again.');
 });
 
 test('the selected tab is kept in the hash, so a reload lands on it', async () => {

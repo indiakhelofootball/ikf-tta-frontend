@@ -22,6 +22,7 @@ import { csrAPI } from '../../services/api';
 import useGrants from '../../auth/useGrants';
 import useRefetchOnFocus from '../../hooks/useRefetchOnFocus';
 import { DEFAULT_REPORT_SORT, reportSortOptions, sortReports } from './reportSort';
+import ReportFileButton from './ReportFileButton';
 import '../../styles/csrDesign.css';
 
 const asList = (data) => (Array.isArray(data) ? data : data?.results || []);
@@ -251,6 +252,7 @@ export default function CSRReportsPage() {
               <span className="fig nowrap">{fmtDay(r.createdAt)}</span>
               <span className="t1wrap">
                 <span className="t1">{r.fileName || 'Untitled'}</span>
+                <ReportFileButton report={r} onError={setError} />
                 {r.fileUrl && (
                   <a
                     href={r.fileUrl}
