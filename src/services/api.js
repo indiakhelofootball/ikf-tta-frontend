@@ -24,6 +24,24 @@ function timeoutSignal(ms) {
   return { signal: controller.signal, clear: () => clearTimeout(id) };
 }
 
+// An upload of up to 15 MB on a slow link legitimately takes longer than the
+// 60s ordinary-request backstop.
+const UPLOAD_TIMEOUT_MS = 300000;
+
+export function fileNameFromDisposition(header) {
+  if (!header) return '';
+  const star = /filename\*=UTF-8''([^;]+)/i.exec(header);
+  if (star) {
+    try {
+      return decodeURIComponent(star[1].trim());
+    } catch {
+      // fall through to the plain filename
+    }
+  }
+  const plain = /filename="?([^";]+)"?/i.exec(header);
+  return plain ? plain[1].trim() : '';
+}
+
 class APIService {
   /**
    * Core request helper with automatic token refresh on 401.
@@ -134,6 +152,68 @@ class APIService {
     }
 
     return data;
+  }
+
+  /**
+   * An authenticated fetch that returns the raw Response, for the two calls
+   * request() cannot make: a multipart upload (request() forces a JSON
+   * Content-Type, which would break the multipart boundary) and a file
+   * download (the body is bytes, not JSON). Same bearer token, same timeout,
+   * and the same one-shot refresh on 401.
+   */
+  async rawFetch(endpoint, init = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
+    const send = async () => {
+      const token = localStorage.getItem('tta_token');
+      const t = timeoutSignal(timeoutMs);
+      try {
+        return await fetch(`${API_BASE_URL}${endpoint}`, {
+          ...init,
+          headers: { ...(token && { Authorization: `Bearer ${token}` }), ...init.headers },
+          signal: t.signal,
+        });
+      } catch (err) {
+        if (err.name === 'AbortError') {
+          throw new Error('The server took too long to respond. Please try again.');
+        }
+        throw err;
+      } finally {
+        t.clear();
+      }
+    };
+    let response = await send();
+    if (response.status === 401 && localStorage.getItem('tta_token')) {
+      if (!(await this.refreshToken())) {
+        const expiredRole = storedRole();
+        localStorage.removeItem('tta_token');
+        localStorage.removeItem('tta_refresh');
+        localStorage.removeItem('tta_user');
+        redirectToLoginDoor(expiredRole);
+        throw new Error('Session expired');
+      }
+      response = await send();
+    }
+    if (!response.ok) {
+      let message = `Request failed (${response.status})`;
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const data = await response.json();
+        const first = data.detail || data.message || Object.values(data)[0];
+        if (first) message = Array.isArray(first) ? first[0] : String(first);
+      }
+      const err = new Error(message);
+      err.response = { status: response.status };
+      throw err;
+    }
+    return response;
+  }
+
+  async downloadFile(endpoint) {
+    const res = await this.rawFetch(endpoint);
+    return {
+      blob: await res.blob(),
+      contentType: res.headers.get('content-type') || '',
+      fileName: fileNameFromDisposition(res.headers.get('content-disposition')),
+    };
   }
 
   /**
@@ -1041,6 +1121,23 @@ export const csrAPI = /*#__PURE__*/ {
   activities: /*#__PURE__*/ csrCrud('/csr/activities'),
   activityTypes: /*#__PURE__*/ csrCrud('/csr/activity-types'),
   reports: /*#__PURE__*/ csrCrud('/csr/reports'),
+  // A report's uploaded copy. Kept off the report payload on purpose: lists
+  // carry only hasFile / uploadedFileName / uploadedFileSize, and the bytes
+  // travel only through these calls.
+  reportFile: {
+    upload: async (reportId, file) => {
+      const body = new FormData();
+      body.append('file', file);
+      const res = await apiService.rawFetch(
+        `/csr/reports/${reportId}/file/`, { method: 'POST', body }, UPLOAD_TIMEOUT_MS,
+      );
+      return res.json();
+    },
+    download: async (reportId) => apiService.downloadFile(`/csr/reports/${reportId}/file/`),
+    remove: async (reportId) => {
+      await apiService.rawFetch(`/csr/reports/${reportId}/file/`, { method: 'DELETE' });
+    },
+  },
   // The funder's INBOUND grant contract and its promised outputs. Internal
   // surface only — there is deliberately no /api/client/ counterpart, so these
   // must never be reached from anything the funder portal renders.
@@ -1089,6 +1186,9 @@ export const clientAPI = {
   project: async () => apiService.request('/client/project/'),
   activities: async () => apiService.request('/client/activities/'),
   reports: async () => apiService.request('/client/reports/'),
+  // The uploaded copy of one published report. 404 unless the report is the
+  // funder's own and published.
+  reportFile: async (reportId) => apiService.downloadFile(`/client/reports/${reportId}/file/`),
   // Deliverable progress only — the grant contract behind them stays internal.
   deliverables: async () => apiService.request('/client/deliverables/'),
   // White-label branding: public by slug (pre-auth login), and the funder's own

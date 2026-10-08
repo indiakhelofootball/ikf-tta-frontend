@@ -15,6 +15,7 @@ import CSRContractManagementPage from './CSRContractManagementPage';
 import ConfirmDialog from '../common/ConfirmDialog';
 import { certificateFreezeState } from './csrContractRules';
 import { DEFAULT_REPORT_SORT, reportSortOptions, sortReports } from './reportSort';
+import ReportFileButton from './ReportFileButton';
 import { funderVisibilityLabel } from './activityVisibility';
 import { csrAPI } from '../../services/api';
 import '../../styles/csrDesign.css';
@@ -815,6 +816,7 @@ export default function CSRProjectDetailPage() {
                     <span className="fig nowrap">{fmtDay(r.createdAt)}</span>
                     <span className="t1wrap">
                       <span className="t1">{r.fileName}</span>
+                      <ReportFileButton report={r} onError={(m) => notify(m, 'error')} />
                       {r.fileUrl && (
                         <a
                           href={r.fileUrl}

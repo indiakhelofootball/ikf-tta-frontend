@@ -8,6 +8,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 
 import { csrAPI } from '../../services/api';
+import {
+  REPORT_FILE_ACCEPT,
+  formatFileSize,
+  openDownloadedFile,
+  reportFileError,
+} from '../../utils/reportFile';
 import '../../styles/csrDesign.css';
 
 // The kinds the 26 Aug review asked to distinguish: "what is the report of the
@@ -36,6 +42,16 @@ export default function CSRReportFormPage() {
   const [loadFailed, setLoadFailed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  // The file chosen in this visit, not yet sent. Uploaded after the report row
+  // is saved, because the upload route needs the report's id.
+  const [pickedFile, setPickedFile] = useState(null);
+  const [fileError, setFileError] = useState('');
+  const [removeUpload, setRemoveUpload] = useState(false);
+  const [fileInputKey, setFileInputKey] = useState(0);
+  // Set when a new report saved but its upload failed: the next Save updates
+  // that report and retries the upload instead of filing a second report.
+  const [createdId, setCreatedId] = useState(null);
+  const [downloadError, setDownloadError] = useState('');
 
   const projectId = report?.projectId ?? (projectIdFromQuery ? Number(projectIdFromQuery) : null);
 
@@ -95,9 +111,36 @@ export default function CSRReportFormPage() {
   const validate = () => {
     const next = {};
     if (!form.title.trim()) next.title = 'Required';
-    if (!form.fileUrl.trim()) next.fileUrl = 'Paste the document link';
+    const keepsUpload = Boolean(report?.hasFile) && !removeUpload;
+    if (!form.fileUrl.trim() && !pickedFile && !keepsUpload) {
+      next.fileUrl = 'Upload the report, or paste a Drive link.';
+    }
     setErrors(next);
-    return Object.keys(next).length === 0;
+    return Object.keys(next).length === 0 && !fileError;
+  };
+
+  const pickFile = (e) => {
+    const file = e.target.files?.[0] || null;
+    const problem = reportFileError(file);
+    setFileError(problem);
+    setPickedFile(problem ? null : file);
+    if (!problem && file) setErrors((prev) => ({ ...prev, fileUrl: undefined }));
+  };
+
+  const clearPickedFile = () => {
+    setPickedFile(null);
+    setFileError('');
+    setFileInputKey((k) => k + 1);
+  };
+
+  const downloadCurrent = async () => {
+    setDownloadError('');
+    try {
+      const file = await csrAPI.reportFile.download(id);
+      openDownloadedFile(file, report?.uploadedFileName);
+    } catch (err) {
+      setDownloadError(err?.message || 'Could not download the file.');
+    }
   };
 
   const leave = useCallback(
@@ -122,15 +165,28 @@ export default function CSRReportFormPage() {
     if (!isEdit) payload.projectId = projectId;
     setSaving(true);
     setSaveError('');
+    let reportId = id || createdId;
     try {
-      if (isEdit) await csrAPI.reports.update(id, payload);
-      else await csrAPI.reports.create(payload);
-      leave(isEdit ? 'Report updated.' : 'Report filed.');
+      if (reportId) await csrAPI.reports.update(reportId, payload);
+      else reportId = (await csrAPI.reports.create(payload)).id;
     } catch (err) {
       // Stay on the page. Navigating away on a failed save is how typed work
       // gets thrown out — the report is gone and the person has nothing to
       // retry.
       setSaveError(err?.message || 'Could not save this report. Please try again.');
+      setSaving(false);
+      return;
+    }
+    try {
+      if (pickedFile) await csrAPI.reportFile.upload(reportId, pickedFile);
+      else if (isEdit && removeUpload && report?.hasFile) await csrAPI.reportFile.remove(reportId);
+      leave(isEdit ? 'Report updated.' : 'Report filed.');
+    } catch (err) {
+      if (!isEdit) setCreatedId(reportId);
+      setSaveError(
+        `The report was saved, but the file was not: ${err?.message || 'upload failed'}. `
+        + 'Save again to retry.',
+      );
       setSaving(false);
     }
   };
@@ -221,17 +277,63 @@ export default function CSRReportFormPage() {
             </div>
           </div>
 
-          <div className="pform-field">
-            <label htmlFor="r-url">Document Link <span className="pform-req" aria-hidden="true">*</span></label>
-            <div className={`pform-input${form.fileUrl.trim() ? ' ok' : ''}`}>
+          <p className="pform-help">Upload the report, or paste a Drive link. Either is enough.</p>
+
+          <div className="pform-row">
+            <div className="pform-field">
+              <label htmlFor="r-file">Upload file</label>
               <input
-                id="r-url" type="text" value={form.fileUrl} onChange={setField('fileUrl')}
-                aria-invalid={Boolean(errors.fileUrl)} aria-describedby="r-url-help"
+                key={fileInputKey} id="r-file" type="file" accept={REPORT_FILE_ACCEPT} onChange={pickFile}
+                aria-invalid={Boolean(fileError)} aria-describedby="r-file-help"
               />
+              <p id="r-file-help" className={`pform-help${fileError ? ' bad' : ''}`}>
+                {fileError
+                  || (pickedFile
+                    ? `${pickedFile.name} (${formatFileSize(pickedFile.size)}) will be uploaded on save.`
+                    : 'PDF, image, Word, Excel or PowerPoint, up to 15 MB.')}
+              </p>
+              {pickedFile ? (
+                <div className="pform-actions">
+                  <button type="button" className="ghostbtn tight" onClick={clearPickedFile}>
+                    Clear chosen file
+                  </button>
+                </div>
+              ) : null}
+              {isEdit && report?.hasFile ? (
+                <>
+                  <p className="pform-help">
+                    {removeUpload
+                      ? `${report.uploadedFileName} will be removed on save.`
+                      : `Current file: ${report.uploadedFileName} (${formatFileSize(report.uploadedFileSize)})${pickedFile ? ', replaced on save.' : ''}`}
+                  </p>
+                  <div className="pform-actions">
+                    <button type="button" className="ghostbtn tight" onClick={downloadCurrent}>
+                      Download
+                    </button>
+                    <button
+                      type="button" className="ghostbtn tight"
+                      onClick={() => setRemoveUpload((v) => !v)}
+                    >
+                      {removeUpload ? 'Keep file' : 'Remove'}
+                    </button>
+                  </div>
+                  {downloadError ? <p className="pform-help bad" role="alert">{downloadError}</p> : null}
+                </>
+              ) : null}
             </div>
-            <p id="r-url-help" className={`pform-help${errors.fileUrl ? ' bad' : ''}`}>
-              {errors.fileUrl || 'External link (e.g. Drive), per the app convention.'}
-            </p>
+
+            <div className="pform-field">
+              <label htmlFor="r-url">Document Link</label>
+              <div className={`pform-input${form.fileUrl.trim() ? ' ok' : ''}`}>
+                <input
+                  id="r-url" type="text" value={form.fileUrl} onChange={setField('fileUrl')}
+                  aria-invalid={Boolean(errors.fileUrl)} aria-describedby="r-url-help"
+                />
+              </div>
+              <p id="r-url-help" className={`pform-help${errors.fileUrl ? ' bad' : ''}`}>
+                {errors.fileUrl || 'External link, e.g. Google Drive.'}
+              </p>
+            </div>
           </div>
         </section>
 
