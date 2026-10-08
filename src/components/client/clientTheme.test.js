@@ -1,4 +1,4 @@
-import clientThemeFrom from './clientTheme';
+import clientThemeFrom, { NEUTRAL_BRAND, normalizeHex, brandCssVars } from './clientTheme';
 
 // WCAG 2.x relative luminance + contrast ratio, computed independently of the
 // implementation so a bug in one cannot hide a bug in the other.
@@ -168,14 +168,103 @@ describe('funder portal theming', () => {
     }
   });
 
-  it('falls back to the base theme when no brand is set', () => {
-    // eslint-disable-next-line global-require
-    const base = require('../../styles/muiTheme').default;
-    expect(clientThemeFrom(null)).toBe(base);
-    expect(clientThemeFrom({})).toBe(base);
+  // NO BRAND IS NOT TTA. An unbranded funder used to get muiTheme itself —
+  // amber buttons and an amber bar on a white-labelled portal.
+  it.each([
+    ['null', null],
+    ['an empty record', {}],
+    ['a malformed colour', { primaryColor: 'not-a-colour' }],
+    ['a named colour', { primaryColor: 'blue' }],
+    ['a short hex', { primaryColor: '#12' }],
+  ])('%s gets the graphite theme, with no amber anywhere', (_label, brand) => {
+    const theme = clientThemeFrom(brand);
+    expect(theme.palette.primary.main.toUpperCase()).toBe(NEUTRAL_BRAND);
+    expect(theme.components.MuiButton.styleOverrides.containedPrimary.backgroundColor.toUpperCase())
+      .toBe(NEUTRAL_BRAND);
+    const serialised = JSON.stringify(theme.components).toUpperCase();
+    for (const amber of ['#A35905', '#FBBF24', '#F59E0B', '#D97706', '#B45309', '#FDE68A']) {
+      expect(serialised).not.toContain(amber);
+    }
+  });
+
+  it.each(['#F5F5F5', '#FDE68A'])('%s as a button fill is visible against the white card', (c) => {
+    // Legible label, invisible button: #F5F5F5 measured 1.09:1 on white.
+    const { backgroundColor } = clientThemeFrom({ primaryColor: c })
+      .components.MuiButton.styleOverrides.containedPrimary;
+    expect(ratio(backgroundColor, '#FFFFFF')).toBeGreaterThanOrEqual(3);
+  });
+
+  it('is the same graphite ClientLogin paints an unbranded door with', () => {
+    expect(NEUTRAL_BRAND).toBe('#243040');
   });
 
   it('ignores a malformed colour rather than throwing', () => {
     expect(() => clientThemeFrom({ primaryColor: 'not-a-colour' })).not.toThrow();
+  });
+
+  it('repairs a colour missing its # instead of letting createTheme throw', () => {
+    expect(() => clientThemeFrom({ primaryColor: 'B45309' })).not.toThrow();
+    expect(clientThemeFrom({ primaryColor: 'B45309' }).palette.primary.main).toMatch(/^#/);
+  });
+});
+
+describe('normalizeHex', () => {
+  it('accepts #RRGGBB, with or without the #, and nothing else', () => {
+    expect(normalizeHex('#486aff')).toBe('#486AFF');
+    expect(normalizeHex('486AFF')).toBe('#486AFF');
+    expect(normalizeHex(' #486AFF ')).toBe('#486AFF');
+    for (const bad of ['blue', '#12', '#12345', '#1234567', 'rgb(0,0,255)', '', null, undefined]) {
+      expect(normalizeHex(bad)).toBeNull();
+    }
+  });
+});
+
+describe('brandCssVars — the portal stylesheet variables', () => {
+  const PAGE = '#F6F7F9';
+  const TRACK = '#EEF0F3';
+  const COLOURS = ['#486AFF', '#1B3A6B', '#22C55E', '#FDE68A', '#F5F5F5', '#808080', '#7A1F2B'];
+
+  it('refuses anything that is not a hex colour, so the graphite defaults hold', () => {
+    for (const bad of ['blue', '#12', '', null, 'not-a-colour']) {
+      expect(brandCssVars(bad)).toBeNull();
+    }
+  });
+
+  it.each(COLOURS)('%s as TEXT clears 4.5:1 on the page ground', (c) => {
+    // Raw #486AFF measured 4.10:1 as the selected tab label on #F6F7F9.
+    expect(ratio(brandCssVars(c)['--brand-text'], PAGE)).toBeGreaterThanOrEqual(AA);
+  });
+
+  it.each(COLOURS)('%s as a BAR clears 3:1 against the track', (c) => {
+    expect(ratio(brandCssVars(c)['--brand'], TRACK)).toBeGreaterThanOrEqual(3);
+  });
+
+  it('keeps the raw brand for bars when it already reaches 3:1', () => {
+    // #486AFF measures 3.85:1 on the track: fine as a bar, not fine as text.
+    const vars = brandCssVars('#486AFF');
+    expect(vars['--brand']).toBe('#486AFF');
+    expect(vars['--brand-text'].toUpperCase()).not.toBe('#486AFF');
+  });
+
+  it('makes a near-white brand visible instead of painting invisible tabs', () => {
+    const vars = brandCssVars('#F5F5F5');
+    expect(ratio(vars['--brand'], TRACK)).toBeGreaterThanOrEqual(3);
+    expect(ratio(vars['--brand-text'], PAGE)).toBeGreaterThanOrEqual(AA);
+  });
+
+  it.each(COLOURS)('%s pill text clears 4.5:1 on its own wash', (c) => {
+    // A .cpill.ok paints --brand-text on --brand-wash, composited over the card.
+    const vars = brandCssVars(c);
+    const wash = vars['--brand-wash'];
+    const alpha = parseInt(wash.slice(7, 9), 16) / 255;
+    const over = [1, 3, 5]
+      .map((i) => Math.round(parseInt(wash.slice(i, i + 2), 16) * alpha + 255 * (1 - alpha)))
+      .map((v) => v.toString(16).padStart(2, '0'))
+      .join('');
+    expect(ratio(vars['--brand-text'], `#${over}`)).toBeGreaterThanOrEqual(AA);
+  });
+
+  it('derives the wash from the bar colour as an 8% tint', () => {
+    expect(brandCssVars('#486AFF')['--brand-wash']).toBe('#486AFF14');
   });
 });
