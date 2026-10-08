@@ -30,7 +30,7 @@
 // always returns 403. The staff and CSR doors offer it; this one must not.
 
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
 import {
   Box, Avatar, Typography, TextField, Button, Alert, CircularProgress, CssBaseline,
@@ -45,6 +45,7 @@ import {
 
 import { clientAPI } from '../../services/api';
 import { useAuth } from '../../auth/AuthContext';
+import { EXPIRED_REASON, CSR_CLIENT_ROLE, storedRole } from '../../auth/loginDoor';
 import clientThemeFrom from './clientTheme';
 
 // Neutrals only. Nothing here carries a brand.
@@ -59,15 +60,24 @@ const ON_GRAPHITE = '#FFFFFF';
 
 const HEX = /^#?[0-9a-fA-F]{6}$/;
 
+const UNKNOWN_SLUG = "This portal link isn't recognised. Use the link from your invitation email.";
+const SESSION_ENDED = 'Your session ended. Sign in again.';
+
 // C3 — per-client branded login. Fetches PUBLIC branding by slug (pre-auth) so
 // the screen is already in the funder's brand, then reuses the same auth engine.
 export default function ClientLogin() {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { login, isAuthenticated } = useAuth();
+  const sessionEnded = new URLSearchParams(location?.search || '').get('reason') === EXPIRED_REASON;
 
   const [brand, setBrand] = useState(null);
   const [brandLoading, setBrandLoading] = useState(true);
+  // Only a 404 means the slug is wrong. A throttle or a dropped connection says
+  // nothing about the link, so those render the plain door without the notice.
+  const [slugUnknown, setSlugUnknown] = useState(false);
+  const [logoBroken, setLogoBroken] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -80,12 +90,26 @@ export default function ClientLogin() {
 
   useEffect(() => {
     let active = true;
+    setSlugUnknown(false);
+    setLogoBroken(false);
     clientAPI.brandingBySlug(slug)
       .then((b) => { if (active) setBrand(b); })
-      .catch(() => { if (active) setBrand(null); })
+      .catch((err) => {
+        if (!active) return;
+        setBrand(null);
+        setSlugUnknown(err?.response?.status === 404);
+      })
       .finally(() => { if (active) setBrandLoading(false); });
     return () => { active = false; };
   }, [slug]);
+
+  // The funder's tab should name their portal, not the staff app.
+  useEffect(() => {
+    if (brandLoading) return undefined;
+    const previous = document.title;
+    document.title = brand?.displayName ? `${brand.displayName} · CSR Portal` : 'CSR Portal';
+    return () => { document.title = previous; };
+  }, [brand, brandLoading]);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -97,8 +121,13 @@ export default function ClientLogin() {
     if (result?.success) {
       // Remember the branded slug so a later session-expiry can bounce the funder
       // back to THIS login screen (see api.js refresh-failure handling), not the
-      // generic portal entry.
-      if (slug) localStorage.setItem('tta_client_slug', slug);
+      // generic portal entry. Only a slug the server recognised: storing a typo
+      // would send every later expiry to a door that does not exist. Only for a
+      // funder: a staff account signed in here must not leave a funder's door
+      // behind (AuthContext has just cleared it for them).
+      if (slug && brand && storedRole() === CSR_CLIENT_ROLE) {
+        localStorage.setItem('tta_client_slug', slug);
+      }
       navigate('/client', { replace: true });
     } else setError(result?.message || 'Login failed.');
   };
@@ -167,6 +196,7 @@ export default function ClientLogin() {
     textTransform: 'none',
     boxShadow: 'none',
     transition: 'background-color 140ms cubic-bezier(0, 0, 0.2, 1)',
+    '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
     '&:hover': { boxShadow: 'none' },
     ...(branded ? {} : {
       bgcolor: GRAPHITE,
@@ -175,10 +205,22 @@ export default function ClientLogin() {
     }),
   };
 
+  // The global ring is TTA amber, 1.56:1 on this white page. The accent is the
+  // brand colour clientTheme already made legible on white (INK when unbranded),
+  // so it clears 3:1 on any funder's door.
+  const focusRingSx = {
+    '& .MuiButtonBase-root:focus-visible': {
+      outline: `2px solid ${accent}`,
+      outlineOffset: '2px',
+    },
+  };
+
+  const showLogo = brand?.logoUrl && !logoBroken;
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: CANVAS }}>
+      <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: CANVAS, ...focusRingSx }}>
 
         {/* ── HERO ────────────────────────────────────────────────
             The funder's own surface. Where they supplied a login image it runs
@@ -278,6 +320,7 @@ export default function ClientLogin() {
             a white letterhead; over a coloured hero or a photograph a dark mark
             can disappear entirely, and there is no way to know in advance. */}
         <Box
+          component="main"
           sx={{
             flex: 1,
             display: 'flex',
@@ -288,11 +331,12 @@ export default function ClientLogin() {
           }}
         >
           <Box sx={{ width: '100%', maxWidth: 420 }}>
-            {brand?.logoUrl ? (
+            {showLogo ? (
               <Box
                 component="img"
                 src={brand.logoUrl}
                 alt={title}
+                onError={() => setLogoBroken(true)}
                 sx={{ maxHeight: 52, maxWidth: 220, display: 'block', mb: 4 }}
               />
             ) : (
@@ -321,6 +365,12 @@ export default function ClientLogin() {
               View your CSR project activity and published reports.
             </Typography>
 
+            {slugUnknown && (
+              <Alert severity="warning" sx={{ mb: 2, borderRadius: '10px' }}>{UNKNOWN_SLUG}</Alert>
+            )}
+            {sessionEnded && !error && (
+              <Alert severity="info" sx={{ mb: 2, borderRadius: '10px' }}>{SESSION_ENDED}</Alert>
+            )}
             {error && <Alert severity="error" sx={{ mb: 2, borderRadius: '10px' }}>{error}</Alert>}
 
             <Box component="form" onSubmit={submit} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -367,7 +417,7 @@ export default function ClientLogin() {
                           edge="end"
                           size="small"
                           aria-label={showPassword ? 'Hide password' : 'Show password'}
-                          sx={{ color: MUTED }}
+                          sx={{ color: MUTED, width: 44, height: 44, mr: -1 }}
                         >
                           {showPassword ? <HideIcon sx={{ fontSize: 20 }} /> : <ShowIcon sx={{ fontSize: 20 }} />}
                         </IconButton>

@@ -17,6 +17,10 @@
 
 export const CSR_CLIENT_ROLE = 'CSR_CLIENT';
 
+// Shown on the funder's login after a redirect for an ended session, in place of
+// the native alert() that used to fire before it.
+export const EXPIRED_REASON = 'expired';
+
 // The role must be read BEFORE the session data is cleared, or the funder branch
 // can never fire.
 export function storedRole() {
@@ -27,15 +31,31 @@ export function storedRole() {
   }
 }
 
+// Written only by a funder's sign-in on a slug that resolved (ClientLogin), and
+// removed by every staff sign-in and sign-out (AuthContext), so its presence
+// means "the last session in this browser was a funder's".
+export function storedClientSlug() {
+  try {
+    return localStorage.getItem('tta_client_slug') || null;
+  } catch {
+    return null; // storage blocked (private mode / embedded webview)
+  }
+}
+
+const onClientPath = (path) => path === '/client' || path.startsWith('/client/');
+
 export function expiredSessionLoginPath(role = storedRole()) {
   const path = typeof window !== 'undefined' ? window.location.pathname : '';
   // Path is tested first, and safely: a funder never browses /csr, so the two
   // rules cannot collide.
   if (path === '/csr' || path.startsWith('/csr/')) return '/csr/login';
+  const slug = storedClientSlug();
   if (role === CSR_CLIENT_ROLE) {
-    const slug = localStorage.getItem('tta_client_slug');
     return slug ? `/client/${slug}/login` : '/client';
   }
+  // After sign-out the stored user is gone, so the role reads null. A funder on
+  // the portal still has the slug; a staff page with no role keeps /login.
+  if (!role && slug && onClientPath(path)) return `/client/${slug}/login`;
   return '/login';
 }
 
@@ -44,5 +64,9 @@ export function redirectToLoginDoor(role = storedRole()) {
   const target = expiredSessionLoginPath(role);
   // Never redirect to where we already are — otherwise a failed request made
   // from a login screen reloads it in a loop.
-  if (window.location.pathname !== target) window.location.href = target;
+  if (window.location.pathname === target) return;
+  // Every caller is an ended session. The funder's door says so in the page; the
+  // staff and CSR doors are left exactly as they were.
+  const funderDoor = target.startsWith('/client/');
+  window.location.href = funderDoor ? `${target}?reason=${EXPIRED_REASON}` : target;
 }
