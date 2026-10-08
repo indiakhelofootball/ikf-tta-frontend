@@ -37,6 +37,8 @@ const { refreshAllFromAPI } = require('../utils/adminStorage');
 const { AuthProvider, useAuth } = require('./AuthContext');
 const RoleBasedRoute = require('./RoleBasedRoute').default;
 const RequireAuth = require('./RequireAuth').default;
+const FunderRoute = require('./FunderRoute').default;
+const { SESSION_ENDED_MESSAGE } = require('../components/client/ClientSignedOut');
 
 const HOUR = 60 * 60 * 1000;
 const realLocation = window.location;
@@ -63,12 +65,16 @@ const renderPortal = async (guard = 'role') => {
   render(
     <AuthProvider>
       <Probe />
-      {guard === 'role' ? (
+      {guard === 'role' && (
         <RoleBasedRoute allowedRoles={['CSR_CLIENT']}>
           <div>portal</div>
         </RoleBasedRoute>
-      ) : (
-        <RequireAuth />
+      )}
+      {guard === 'auth' && <RequireAuth />}
+      {guard === 'funder' && (
+        <FunderRoute>
+          <div>portal</div>
+        </FunderRoute>
       )}
     </AuthProvider>
   );
@@ -129,6 +135,42 @@ describe('sign-out', () => {
 
     expect(screen.getByTestId('navigate')).toHaveTextContent('/login');
     expect(localStorage.getItem('tta_client_slug')).toBeNull();
+  });
+});
+
+describe('the /client route (FunderRoute)', () => {
+  test('a funder with no stored slug signs out onto the neutral funder page, not /login', async () => {
+    // How they get there: signing in through a portal link that did not
+    // resolve stores no slug.
+    at('/client');
+    seedSession('CSR_CLIENT');
+    await renderPortal('funder');
+    expect(screen.getByText('portal')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Sign out'));
+
+    expect(screen.getByText(SESSION_ENDED_MESSAGE)).toBeInTheDocument();
+    expect(screen.queryByTestId('navigate')).toBeNull();
+  });
+
+  test('a funder with a stored slug still signs out onto their branded login', async () => {
+    at('/client');
+    seedSession('CSR_CLIENT');
+    localStorage.setItem('tta_client_slug', 'acme');
+    await renderPortal('funder');
+
+    fireEvent.click(screen.getByText('Sign out'));
+
+    expect(screen.getByTestId('navigate')).toHaveTextContent('/client/acme/login');
+  });
+
+  test('UNCHANGED: a signed-in staff user opening /client is sent to /unauthorized', async () => {
+    at('/client');
+    seedSession('SUPER_ADMIN');
+    await renderPortal('funder');
+
+    expect(screen.getByTestId('navigate')).toHaveTextContent('/unauthorized');
+    expect(screen.queryByText('portal')).toBeNull();
   });
 });
 
