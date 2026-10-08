@@ -219,6 +219,14 @@
   white-space:nowrap;transition:background-color .15s;
 }
 .cportal .cbtn:hover{background:var(--brand-wash)}
+.cportal button.cbtn{font-family:inherit;cursor:pointer}
+.cportal button.cbtn:disabled{cursor:progress;opacity:.7}
+.cportal .crow-tbtn{
+  font:inherit;color:var(--brand-text);background:none;border:0;padding:0;
+  text-align:left;cursor:pointer;overflow-wrap:anywhere;
+}
+.cportal .crow-tbtn:hover{text-decoration:underline}
+.cportal .crow-err{color:#B3352A}
 
 /* ---- progress --------------------------------------------------------- */
 .cportal .ctrack{
