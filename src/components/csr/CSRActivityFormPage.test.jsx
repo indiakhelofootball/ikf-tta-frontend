@@ -212,6 +212,18 @@ describe('visible to funder', () => {
     expect(csrAPI.activities.update.mock.calls[0][1].visibleToClient).toBe(false);
   });
 
+  test('an edit sends the grant, because the server refuses a PUT without it', async () => {
+    mockParams = { id: '5' };
+    csrAPI.activities.getById.mockResolvedValue(ACTIVITY);
+    csrAPI.activities.update.mockResolvedValue({});
+    render(<CSRActivityFormPage />);
+    await screen.findByDisplayValue('Bhilai Trial');
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+    await waitFor(() => expect(csrAPI.activities.update).toHaveBeenCalled());
+    expect(csrAPI.activities.update.mock.calls[0][1].projectId).toBe(ACTIVITY.projectId);
+  });
+
   test('the helper says Planned is not shown, and Completed is', async () => {
     mockSearch = new URLSearchParams({ project: '11' });
     render(<CSRActivityFormPage />);
