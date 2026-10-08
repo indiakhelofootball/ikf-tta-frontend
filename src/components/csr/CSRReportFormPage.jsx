@@ -250,14 +250,20 @@ export default function CSRReportFormPage() {
             <p className="pform-help">Attach this report to a specific activity.</p>
           </div>
 
-          <label className="chk">
-            <input
-              type="checkbox"
-              checked={form.visibleToClient}
-              onChange={(e) => setForm((f) => ({ ...f, visibleToClient: e.target.checked }))}
-            />
-            Visible to client
-          </label>
+          <div className="pform-field">
+            <label className="chk">
+              <input
+                type="checkbox"
+                checked={form.visibleToClient}
+                aria-describedby="r-visible-help"
+                onChange={(e) => setForm((f) => ({ ...f, visibleToClient: e.target.checked }))}
+              />
+              Visible to client
+            </label>
+            <p id="r-visible-help" className="pform-help">
+              The funder sees this title on their portal.
+            </p>
+          </div>
         </section>
 
         {saveError ? <p className="pform-error" role="alert">{saveError}</p> : null}

@@ -3,11 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import {
   Button, Stack, Snackbar, Alert,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem,
+  Box, InputAdornment,
 } from '@mui/material';
 
 import { csrAPI } from '../../services/api';
 import '../../styles/csrDesign.css';
 import ConfirmDialog from '../common/ConfirmDialog';
+import { normaliseHex, isTooLightForText } from './brandColour';
+
+const HEX_ERROR = 'Use a 6-digit hex colour, e.g. #2C6A4F.';
+const TOO_LIGHT = 'Too light for text on white; the portal will use a darker shade of it for text.';
+// A native colour input always holds some colour; this is what it shows while
+// the typed value is blank or invalid. It is never saved on its own.
+const SWATCH_FALLBACK = '#FFFFFF';
 
 const EMPTY = {
   projectId: '', slug: '', displayName: '',
@@ -58,16 +66,56 @@ export default function CSRBrandingPage() {
 
   const setField = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
+  const setColour = (k) => (e) => {
+    const { value } = e.target;
+    setForm((f) => ({ ...f, [k]: e.target.type === 'color' ? value.toUpperCase() : value }));
+    setErrors((prev) => ({ ...prev, [k]: undefined }));
+  };
+
+  const colourField = (k, label, placeholder) => {
+    const value = form[k];
+    const hex = normaliseHex(value);
+    const note = k === 'primaryColor' && isTooLightForText(value) ? TOO_LIGHT : '';
+    return (
+      <TextField
+        label={label} value={value} onChange={setColour(k)} placeholder={placeholder} fullWidth
+        error={!!errors[k]} helperText={errors[k] || note}
+        slotProps={{
+          input: {
+            startAdornment: (
+              <InputAdornment position="start">
+                <Box
+                  component="input" type="color" aria-label={`${label} swatch`}
+                  value={(hex || SWATCH_FALLBACK).toLowerCase()} onChange={setColour(k)}
+                  sx={{ width: 28, height: 28, p: 0, border: 0, bgcolor: 'transparent', cursor: 'pointer' }}
+                />
+              </InputAdornment>
+            ),
+          },
+        }}
+      />
+    );
+  };
+
   const save = async () => {
     const next = {};
     if (!form.projectId) next.projectId = 'Pick a project';
     if (!form.slug.trim()) next.slug = 'Required';
     if (!form.displayName.trim()) next.displayName = 'Required';
+    ['primaryColor', 'secondaryColor'].forEach((k) => {
+      if (form[k].trim() && !normaliseHex(form[k])) next[k] = HEX_ERROR;
+    });
     setErrors(next);
     if (Object.keys(next).length) return;
     setSaving(true);
     try {
-      const payload = { ...form, projectId: Number(form.projectId), slug: form.slug.trim().toLowerCase() };
+      const payload = {
+        ...form,
+        projectId: Number(form.projectId),
+        slug: form.slug.trim().toLowerCase(),
+        primaryColor: normaliseHex(form.primaryColor) || '',
+        secondaryColor: normaliseHex(form.secondaryColor) || '',
+      };
       if (modal.editing) await csrAPI.branding.update(modal.editing.id, payload);
       else await csrAPI.branding.create(payload);
       notify('Branding saved.');
@@ -170,8 +218,8 @@ export default function CSRBrandingPage() {
             <TextField label="Logo URL" value={form.logoUrl} onChange={setField('logoUrl')} fullWidth />
             <TextField label="Login image URL" value={form.loginImageUrl} onChange={setField('loginImageUrl')} fullWidth />
             <Stack direction="row" spacing={2}>
-              <TextField label="Primary colour" value={form.primaryColor} onChange={setField('primaryColor')} placeholder="#0B5FFF" fullWidth />
-              <TextField label="Secondary colour" value={form.secondaryColor} onChange={setField('secondaryColor')} placeholder="#22C55E" fullWidth />
+              {colourField('primaryColor', 'Primary colour', '#0B5FFF')}
+              {colourField('secondaryColor', 'Secondary colour', '#22C55E')}
             </Stack>
             <TextField label="Status" value={form.isActive ? 'active' : 'inactive'} onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.value === 'active' }))} select fullWidth>
               <MenuItem value="active">Active</MenuItem>

@@ -15,6 +15,7 @@ import CSRContractManagementPage from './CSRContractManagementPage';
 import ConfirmDialog from '../common/ConfirmDialog';
 import { certificateFreezeState } from './csrContractRules';
 import { DEFAULT_REPORT_SORT, reportSortOptions, sortReports } from './reportSort';
+import { funderVisibilityLabel } from './activityVisibility';
 import { csrAPI } from '../../services/api';
 import '../../styles/csrDesign.css';
 import useGrants from '../../auth/useGrants';
@@ -674,7 +675,10 @@ export default function CSRProjectDetailPage() {
                     )}
                   >
                     <span className="fig nowrap">{whenLabel(a)}</span>
-                    <span className="t1">{a.title}</span>
+                    <span className="setrow-c">
+                      <span className="t1">{a.title}</span>
+                      <span className="t2">{funderVisibilityLabel(a)}</span>
+                    </span>
                     {/* Location is back in its own column. It had been given up
                         to make room for the status, which put the status in the
                         middle of this table while it sits on the right of every

@@ -59,6 +59,7 @@ const EMPTY = {
   location: '', status: 'Planned', linkedTrialId: '',
   workshopId: '', trainingProgrammeId: '', linkedVendorId: '',
   deliveryMode: '',
+  visibleToClient: true,
 };
 
 export default function CSRActivityFormPage() {
@@ -126,6 +127,7 @@ export default function CSRActivityFormPage() {
           trainingProgrammeId: data.trainingProgrammeId ?? '',
           linkedVendorId: data.linkedVendorId ?? '',
           deliveryMode: data.deliveryMode || '',
+          visibleToClient: data.visibleToClient !== false,
         });
         setLoading(false);
       })
@@ -232,6 +234,7 @@ export default function CSRActivityFormPage() {
         form.trainingProgrammeId === '' ? null : Number(form.trainingProgrammeId),
       linkedVendorId: form.linkedVendorId === '' ? null : Number(form.linkedVendorId),
       deliveryMode: form.deliveryMode,
+      visibleToClient: form.visibleToClient,
     };
     if (!isEdit) payload.projectId = projectId;
     setSaving(true);
@@ -385,6 +388,22 @@ export default function CSRActivityFormPage() {
           <div className="pform-field">
             <label htmlFor="a-location">Location</label>
             <input id="a-location" type="text" value={form.location} onChange={setField('location')} />
+          </div>
+
+          <div className="pform-field">
+            <label className="chk">
+              <input
+                type="checkbox" role="switch" checked={form.visibleToClient}
+                aria-describedby="a-visible-help"
+                onChange={(e) => setForm((f) => ({ ...f, visibleToClient: e.target.checked }))}
+              />
+              Visible to funder
+            </label>
+            <p id="a-visible-help" className="pform-help">
+              {form.status === 'Planned'
+                ? 'Planned activities are not shown to the funder until marked Completed.'
+                : 'The funder sees this activity on their portal once it is marked Completed.'}
+            </p>
           </div>
         </section>
 

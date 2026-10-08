@@ -169,3 +169,54 @@ describe('editing an activity', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/csr/11', undefined);
   });
 });
+
+describe('visible to funder', () => {
+  test('a new activity starts visible, and the switch value is what gets sent', async () => {
+    mockSearch = new URLSearchParams({ project: '11' });
+    csrAPI.activities.create.mockResolvedValue({});
+    render(<CSRActivityFormPage />);
+    await screen.findByText('District Trial');
+
+    const sw = screen.getByRole('switch', { name: 'Visible to funder' });
+    expect(sw).toBeChecked();
+
+    await userEvent.type(screen.getByLabelText(/title/i), 'Nashik Trial');
+    await userEvent.selectOptions(screen.getByLabelText(/activity type/i), '10');
+    await userEvent.click(sw);
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+    await waitFor(() => expect(csrAPI.activities.create).toHaveBeenCalled());
+    expect(csrAPI.activities.create.mock.calls[0][0].visibleToClient).toBe(false);
+  });
+
+  test('editing reflects the stored value and sends it back', async () => {
+    mockParams = { id: '5' };
+    csrAPI.activities.getById.mockResolvedValue({ ...ACTIVITY, visibleToClient: false });
+    csrAPI.activities.update.mockResolvedValue({});
+    render(<CSRActivityFormPage />);
+    await screen.findByDisplayValue('Bhilai Trial');
+
+    expect(screen.getByRole('switch', { name: 'Visible to funder' })).not.toBeChecked();
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+    await waitFor(() => expect(csrAPI.activities.update).toHaveBeenCalled());
+    expect(csrAPI.activities.update.mock.calls[0][1].visibleToClient).toBe(false);
+  });
+
+  test('the helper says Planned is not shown, and Completed is', async () => {
+    mockSearch = new URLSearchParams({ project: '11' });
+    render(<CSRActivityFormPage />);
+    await screen.findByText('District Trial');
+
+    const sw = screen.getByRole('switch', { name: 'Visible to funder' });
+    expect(sw).toHaveAccessibleDescription(
+      'Planned activities are not shown to the funder until marked Completed.',
+    );
+    expect(sw).toBeEnabled();
+
+    await userEvent.selectOptions(screen.getByLabelText(/status/i), 'Completed');
+    expect(sw).toHaveAccessibleDescription(
+      'The funder sees this activity on their portal once it is marked Completed.',
+    );
+  });
+});
