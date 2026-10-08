@@ -124,3 +124,22 @@ describe('editing a report', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/csr/11', undefined);
   });
 });
+
+test('the visibility control says the funder reads the title', async () => {
+  mockSearch = new URLSearchParams({ project: '11' });
+  render(<CSRReportFormPage />);
+  const box = await screen.findByRole('checkbox', { name: /visible to client/i });
+  expect(box).toHaveAccessibleDescription('The funder sees this title on their portal.');
+  expect(screen.queryByText(/linked report/i)).toBeNull();
+});
+
+test('a report needs a title even when the document link is filled', async () => {
+  mockSearch = new URLSearchParams({ project: '11' });
+  render(<CSRReportFormPage />);
+  await userEvent.type(screen.getByLabelText(/document link/i), 'https://drive.example.com/q2');
+  await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+  expect(screen.getByLabelText(/report name/i)).toHaveAttribute('aria-invalid', 'true');
+  expect(screen.getByLabelText(/report name/i)).toHaveAccessibleDescription('Required');
+  expect(csrAPI.reports.create).not.toHaveBeenCalled();
+});
