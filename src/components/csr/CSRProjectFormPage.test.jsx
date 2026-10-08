@@ -5,7 +5,7 @@
 // has to refuse to render a blank form when that load fails, and it leaves by
 // navigating rather than by calling a prop.
 import React from 'react';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import CSRProjectFormPage from './CSRProjectFormPage';
@@ -100,6 +100,27 @@ test('the season is asked beside the project, because together they are one iden
     expect(mockNavigate).toHaveBeenCalledWith(
       '/csr/projects', { state: { saved: 'Project created.' } },
     );
+  });
+
+  test('an end date before the start date is named inline and blocks the save', async () => {
+    csrAPI.projects.create.mockResolvedValue({});
+    render(<CSRProjectFormPage />);
+
+    await userEvent.type(screen.getByLabelText(/project name/i), 'Khelo Girls');
+    await userEvent.type(screen.getByLabelText(/client \/ funder/i), 'Tata Trusts');
+    await userEvent.type(screen.getByLabelText(/sanctioned amount/i), '1200000');
+    fireEvent.change(screen.getByLabelText(/start date/i), { target: { value: '2026-04-05' } });
+    fireEvent.change(screen.getByLabelText(/end date/i), { target: { value: '2026-04-01' } });
+
+    expect(screen.getByText('End date must be on or after the start date.')).toBeInTheDocument();
+    expect(screen.getByLabelText(/end date/i)).toHaveAttribute('aria-invalid', 'true');
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+    expect(csrAPI.projects.create).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText(/end date/i), { target: { value: '2026-04-05' } });
+    expect(screen.queryByText('End date must be on or after the start date.')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+    await waitFor(() => expect(csrAPI.projects.create).toHaveBeenCalled());
   });
 });
 

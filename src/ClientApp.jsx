@@ -7,46 +7,22 @@
 // route-gating hides data, this hides the code.
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { Box, Typography } from '@mui/material';
-
 import { useAuth } from './auth/AuthContext';
 import { ROLES } from './auth/roles';
 import ClientLogin from './components/client/ClientLogin';
 import ClientPortalPage from './components/client/ClientPortalPage';
+import ClientSignedOut from './components/client/ClientSignedOut';
 
 function RequireClient({ children }) {
   const { isAuthenticated, user, loading } = useAuth();
   if (loading) return null;
 
   if (!isAuthenticated || user?.role !== ROLES.CSR_CLIENT) {
-    // The slug IS available, and the old comment here claiming otherwise was
-    // simply wrong. ClientLogin.jsx:50 writes `tta_client_slug` on every
-    // successful sign-in and loginDoor.js:36 already reads it. Without this
-    // branch, a funder who signs out deliberately -- not just one whose session
-    // expired -- landed on a screen telling them to open a portal link, with no
-    // link on it, and could not get back in without finding an old email.
-    //
-    // loginDoor.js:37 sends a slug-less funder to '/client', which is this
-    // component, so the fallback below is genuinely the last stop. Redirecting
-    // to the branded door is a different path, so there is no loop.
-    const slug = (() => {
-      try {
-        return localStorage.getItem('tta_client_slug');
-      } catch {
-        return null; // storage blocked (private mode / embedded webview)
-      }
-    })();
-
-    if (slug) return <Navigate to={`/client/${slug}/login`} replace />;
-
-    return (
-      <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3 }}>
-        <Typography color="text.secondary" align="center" sx={{ maxWidth: '42ch' }}>
-          Your session has ended. Open your organisation&rsquo;s portal link to sign
-          in again &mdash; it is in the invitation email from India Khelo Football.
-        </Typography>
-      </Box>
-    );
+    // The branded door when this browser remembers it, else the neutral page.
+    // loginDoor.js sends a slug-less funder to '/client', which is this
+    // component, so the fallback is genuinely the last stop; redirecting to the
+    // branded door is a different path, so there is no loop.
+    return <ClientSignedOut />;
   }
   return children;
 }

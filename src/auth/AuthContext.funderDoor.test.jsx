@@ -37,6 +37,8 @@ const { refreshAllFromAPI } = require('../utils/adminStorage');
 const { AuthProvider, useAuth } = require('./AuthContext');
 const RoleBasedRoute = require('./RoleBasedRoute').default;
 const RequireAuth = require('./RequireAuth').default;
+const FunderRoute = require('./FunderRoute').default;
+const { SESSION_ENDED_MESSAGE } = require('../components/client/ClientSignedOut');
 
 const HOUR = 60 * 60 * 1000;
 const realLocation = window.location;
@@ -63,12 +65,16 @@ const renderPortal = async (guard = 'role') => {
   render(
     <AuthProvider>
       <Probe />
-      {guard === 'role' ? (
+      {guard === 'role' && (
         <RoleBasedRoute allowedRoles={['CSR_CLIENT']}>
           <div>portal</div>
         </RoleBasedRoute>
-      ) : (
-        <RequireAuth />
+      )}
+      {guard === 'auth' && <RequireAuth />}
+      {guard === 'funder' && (
+        <FunderRoute>
+          <div>portal</div>
+        </FunderRoute>
       )}
     </AuthProvider>
   );
@@ -132,6 +138,42 @@ describe('sign-out', () => {
   });
 });
 
+describe('the /client route (FunderRoute)', () => {
+  test('a funder with no stored slug signs out onto the neutral funder page, not /login', async () => {
+    // How they get there: signing in through a portal link that did not
+    // resolve stores no slug.
+    at('/client');
+    seedSession('CSR_CLIENT');
+    await renderPortal('funder');
+    expect(screen.getByText('portal')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Sign out'));
+
+    expect(screen.getByText(SESSION_ENDED_MESSAGE)).toBeInTheDocument();
+    expect(screen.queryByTestId('navigate')).toBeNull();
+  });
+
+  test('a funder with a stored slug still signs out onto their branded login', async () => {
+    at('/client');
+    seedSession('CSR_CLIENT');
+    localStorage.setItem('tta_client_slug', 'acme');
+    await renderPortal('funder');
+
+    fireEvent.click(screen.getByText('Sign out'));
+
+    expect(screen.getByTestId('navigate')).toHaveTextContent('/client/acme/login');
+  });
+
+  test('UNCHANGED: a signed-in staff user opening /client is sent to /unauthorized', async () => {
+    at('/client');
+    seedSession('SUPER_ADMIN');
+    await renderPortal('funder');
+
+    expect(screen.getByTestId('navigate')).toHaveTextContent('/unauthorized');
+    expect(screen.queryByText('portal')).toBeNull();
+  });
+});
+
 describe('sign-in', () => {
   const backendSays = (role) =>
     api.login.mockResolvedValue({
@@ -160,6 +202,24 @@ describe('sign-in', () => {
     await act(async () => { await auth.login('x@example.com', 'pw'); });
 
     expect(localStorage.getItem('tta_client_slug')).toBe('acme');
+  });
+
+  test('a funder sign-in over a live staff session replaces it entirely', async () => {
+    at('/client/acme/login');
+    seedSession('SUPER_ADMIN');
+    await renderPortal('auth');
+    expect(auth.user.role).toBe('SUPER_ADMIN');
+    backendSays('CSR_CLIENT');
+
+    await act(async () => { await auth.login('x@example.com', 'pw'); });
+
+    expect(auth.user.role).toBe('CSR_CLIENT');
+    expect(auth.user.email).toBe('x@example.com');
+    expect(JSON.parse(localStorage.getItem('tta_user')).role).toBe('CSR_CLIENT');
+    expect(localStorage.getItem('tta_token')).toBe('a');
+    expect(localStorage.getItem('tta_refresh')).toBe('r');
+    // A funder holds no module grants; the staff grants must not linger.
+    expect(auth.perms).toBeNull();
   });
 });
 

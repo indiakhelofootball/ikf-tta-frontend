@@ -118,6 +118,15 @@ describe('creating an activity', () => {
     expect(screen.queryByLabelText(/linked trial/i)).toBeNull();
   });
 
+  test('an empty partner list says how to add a partner in TTA', async () => {
+    render(<CSRActivityFormPage />);
+    await screen.findByText('District Trial');
+    await userEvent.selectOptions(screen.getByLabelText(/activity type/i), '11');
+    expect(await screen.findByText(
+      'No partners yet. In TTA, add a vendor with vendor type Partner (or a Partner Category).',
+    )).toBeInTheDocument();
+  });
+
   test('exactly two date fields exist, never three: Start and End only', async () => {
     render(<CSRActivityFormPage />);
     await screen.findByText('District Trial');

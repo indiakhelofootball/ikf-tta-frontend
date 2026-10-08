@@ -36,6 +36,7 @@ import CourierManagementPage from "./components/courier/CourierManagementPage";
 import { CSRLogin, CSRDashboard, CSRProjectManagementPage, CSRProjectFormPage, CSRActivityFormPage, CSRReportFormPage, CSRContactFormPage, CSRExpenseTagFormPage, CSRProjectDetailPage, CSRActivitiesPage, CSRReportsPage, CSRUtilisationPage, CSRActivityTypesPage, CSRClientsPage, CSRBrandingPage, CSRAccountPage } from "./components/csr";
 import ClientPortalPage from "./components/client/ClientPortalPage";
 import ClientLogin from "./components/client/ClientLogin";
+import FunderRoute from "./auth/FunderRoute";
 import PermissionsManagementPage from "./components/permissions/PermissionsManagementPage";
 import RequestAccessPage from "./components/permissions/RequestAccessPage";
 
@@ -336,14 +337,16 @@ function App() {
             </GrantedRoute>
           } />
           </Route>
-
-          {/* External CSR funder portal — own shell, no TTA sidebar */}
-          <Route path="/client" element={
-            <RoleBasedRoute allowedRoles={[ROLES.CSR_CLIENT]}>
-              <ClientPortalPage />
-            </RoleBasedRoute>
-          } />
         </Route>
+
+        {/* External CSR funder portal — own shell, no TTA sidebar. Outside
+            RequireAuth so a signed-out funder lands on their own page, not
+            the staff /login; FunderRoute keeps the role gate for a session. */}
+        <Route path="/client" element={
+          <FunderRoute>
+            <ClientPortalPage />
+          </FunderRoute>
+        } />
 
         {/* FALLBACK */}
         <Route path="*" element={<Navigate to="/" replace />} />
