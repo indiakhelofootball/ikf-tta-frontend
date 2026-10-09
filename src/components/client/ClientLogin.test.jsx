@@ -1,7 +1,7 @@
 // The funder's front door: what it says when the link is wrong or the session
 // ended, what it remembers after sign-in, and what the browser tab is called.
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
 import { clientAPI } from '../../services/api';
@@ -240,4 +240,13 @@ test('buttons get a focus ring in the legible accent, not the global amber', asy
   // Unbranded: the ring is the page ink (#111827), 17:1 on the canvas.
   expect(css).toMatch(/\.MuiButtonBase-root:focus-visible\{outline:2pxsolid#111827;outline-offset:2px;\}/);
   expect(css).toMatch(/@media\(prefers-reduced-motion:reduce\)\{[^}]*\{[^}]*;transition:none;\}/);
+});
+
+test('with a logo, the funder is still named on the form side, which is all a phone shows', async () => {
+  clientAPI.brandingBySlug.mockResolvedValue(ACME);
+  render(<ClientLogin />);
+  const main = await screen.findByRole('main');
+  expect(within(main).getByRole('img', { name: 'Acme Foundation' })).toBeInTheDocument();
+  expect(within(main).getByText('Acme Foundation')).toBeInTheDocument();
+  expect(screen.queryByText('CSR Portal')).not.toBeInTheDocument();
 });
