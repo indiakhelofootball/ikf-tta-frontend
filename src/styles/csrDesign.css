@@ -2940,3 +2940,46 @@
 .csrx .aphoto-x{align-self:flex-start}
 .csrx .aphotos-add{align-self:flex-start;cursor:pointer}
 .csrx .aphotos-add.is-off{opacity:.6;cursor:not-allowed}
+
+
+/* ---- the CSR shell on a phone ------------------------------------------ */
+/* The icon rail stays a rail: fixed to the left edge, 64px, and the content is
+   offset by exactly that. Before, Sidebar.css's phone rule put the rail back
+   into the flow (position:relative) while the content kept its 64px margin,
+   so the page started at 128px and a 390px phone had 262px left for content.
+   Opening the rail on a phone lays it OVER the content instead of squeezing
+   the page to 114px beside a 212px rail. */
+@media (max-width:768px){
+  .dashboard-layout:has(.sidebar--csr){--rail-w:64px;--rail-w-collapsed:64px}
+  .sidebar.sidebar--csr{position:fixed;z-index:1200}
+  .sidebar.sidebar--csr:not(.sidebar-collapsed){box-shadow:0 0 0 100vmax rgba(28,35,32,.28)}
+  .csrx.csrx-page{padding:20px 16px 48px}
+
+  /* The rail's links stay a column; Sidebar.css's phone rule turns every
+     sidebar's nav into a sideways strip, which is right for TTA's top bar and
+     wrong for a 64px rail. */
+  .sidebar.sidebar--csr .sidebar-nav{flex-direction:column;overflow-x:hidden;overflow-y:auto;padding:8px 0}
+  .sidebar.sidebar--csr .sidebar-toggle{display:flex}
+
+  /* List rows stack: the desk grid is five fixed tracks (~830px), so on a phone
+     each record becomes a small card of lines instead of a row cut off at the
+     edge. Later in the file than the desk grid, so it wins at equal weight. */
+  .csrx .lgrid{grid-template-columns:minmax(0,1fr);gap:4px}
+  .csrx .lgrid > *{min-width:0;overflow-wrap:anywhere}
+  .csrx .lgrid > *:last-child{justify-self:start}
+  .csrx .lgrid-head{display:none}
+
+  /* Filter bars wrap, and each control takes the full width. */
+  .csrx .toolbar{flex-wrap:wrap}
+  .csrx .toolbar > *{flex:1 1 100%;min-width:0}
+  .csrx .toolbar .sel,.csrx .sel{max-width:100%}
+  .csrx .segbar{overflow-x:auto;max-width:100%}
+  .csrx .segbar .s{flex:none;white-space:nowrap}
+
+  /* Dashboard: one column, one figure per line. */
+  .csrx .dash{grid-template-columns:minmax(0,1fr)}
+  .csrx .stats{grid-template-columns:minmax(0,1fr)}
+  .csrx .stats > .stat{min-width:0}
+  .csrx .stats > .stat{border-left:0}
+  .csrx .panel{min-width:0;max-width:100%}
+}
