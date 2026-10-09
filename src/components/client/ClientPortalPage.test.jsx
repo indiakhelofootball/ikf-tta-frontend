@@ -420,6 +420,23 @@ test('a certificate failure keeps its own message and leaves the rest of the por
   expect(screen.queryByText(/couldn.t load your grant/)).not.toBeInTheDocument();
 });
 
+test('Try again re-fetches only the certificate and shows it once it loads', async () => {
+  clientAPI.certificate.mockRejectedValueOnce(httpError(500, {}));
+  clientAPI.certificate.mockResolvedValueOnce({
+    available: true, certificateVersion: 1, frozenAt: '2026-10-08T07:05:25Z',
+    periodStart: '2026-04-01', periodEnd: '2027-03-31', lineItems: [],
+  });
+  window.history.replaceState(null, '', '#certificate');
+  render(<ClientPortalPage />);
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+
+  expect(await screen.findByText('Utilisation Certificate')).toBeInTheDocument();
+  expect(screen.queryByText(/could not be loaded/)).not.toBeInTheDocument();
+  expect(clientAPI.certificate).toHaveBeenCalledTimes(2);
+  expect(clientAPI.project).toHaveBeenCalledTimes(1);
+});
+
 test.each(['blue', '#12'])('a brand colour %p that is not #RRGGBB leaves graphite in place', async (bad) => {
   clientAPI.myBranding.mockResolvedValue({ slug: 'acme', displayName: 'Acme', primaryColor: bad });
   render(<ClientPortalPage />);
