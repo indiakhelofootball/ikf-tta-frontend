@@ -339,7 +339,7 @@ export default function CSRClientsPage() {
                       </button>
                     </span>
                   ) : (
-                    <span className="portal-path">Portal link switched off on the Branding page.</span>
+                    <span className="portal-path">No portal link. Set it up on the Branding page.</span>
                   )}
                 </span>
                 <span className="lend">

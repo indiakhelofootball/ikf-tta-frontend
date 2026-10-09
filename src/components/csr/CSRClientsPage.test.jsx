@@ -90,3 +90,10 @@ test('after onboarding, the link, email and password are shown together to send'
   fireEvent.click(screen.getByRole('button', { name: 'Copy all' }));
   await waitFor(() => expect(writeText).toHaveBeenCalledWith(expect.stringContaining('Password: Start-Pass-2026')));
 });
+
+test('a funder whose grant has no portal link is told where to set one up', async () => {
+  csrAPI.clients.list.mockResolvedValue([{ ...FUNDER, portalPath: '' }]);
+  render(<CSRClientsPage />);
+  expect(await screen.findByText('No portal link. Set it up on the Branding page.')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /Copy portal link/ })).not.toBeInTheDocument();
+});
