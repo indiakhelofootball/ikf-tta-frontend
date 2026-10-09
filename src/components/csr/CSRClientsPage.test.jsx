@@ -59,3 +59,34 @@ test('the server reason is shown when it refuses the password', async () => {
   expect(await screen.findByText('This password is too common.')).toBeInTheDocument();
   expect(screen.getByLabelText('New Password')).toBeInTheDocument();
 });
+
+test('each funder row shows its full portal link with a Copy button', async () => {
+  csrAPI.clients.list.mockResolvedValue([{ ...FUNDER, portalPath: '/client/dlf/login' }]);
+  const writeText = jest.fn().mockResolvedValue();
+  Object.assign(navigator, { clipboard: { writeText } });
+  render(<CSRClientsPage />);
+  expect(await screen.findByText('/client/dlf/login')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Copy portal link for funder@acme.com' }));
+  await waitFor(() => expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/client/dlf/login`));
+  expect(await screen.findByText('Link copied.')).toBeInTheDocument();
+});
+
+test('after onboarding, the link, email and password are shown together to send', async () => {
+  csrAPI.projects.getAll.mockResolvedValue([{ id: 1, name: 'Football for All', clientName: 'Vardhman Steel' }]);
+  csrAPI.clients.onboard.mockResolvedValue({ success: true, clientUser: { ...FUNDER, portalPath: '/client/vardhman-steel/login' } });
+  const writeText = jest.fn().mockResolvedValue();
+  Object.assign(navigator, { clipboard: { writeText } });
+  render(<CSRClientsPage />);
+  fireEvent.click(await screen.findByRole('button', { name: /Onboard Funder/ }));
+  fireEvent.mouseDown(screen.getByLabelText('Project'));
+  fireEvent.click(await screen.findByRole('option', { name: /Vardhman Steel/ }));
+  fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'sanskriti@vs.com' } });
+  fireEvent.change(screen.getByLabelText('Initial Password'), { target: { value: 'Start-Pass-2026' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Create Funder' }));
+
+  expect(await screen.findByText('Send these to the funder')).toBeInTheDocument();
+  expect(screen.getByLabelText('Portal link')).toHaveValue(`${window.location.origin}/client/vardhman-steel/login`);
+  expect(screen.getByLabelText('Password')).toHaveValue('Start-Pass-2026');
+  fireEvent.click(screen.getByRole('button', { name: 'Copy all' }));
+  await waitFor(() => expect(writeText).toHaveBeenCalledWith(expect.stringContaining('Password: Start-Pass-2026')));
+});

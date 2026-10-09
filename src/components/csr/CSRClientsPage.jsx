@@ -134,6 +134,61 @@ function ResetPasswordModal({ client, onClose, onSave, saving }) {
   );
 }
 
+// The full address a funder signs in at. The server sends the path; the site's
+// own origin makes it the link to send them.
+const portalUrl = (path) => (path ? `${window.location.origin}${path}` : '');
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Shown once, right after onboarding: everything the funder needs, ready to
+// paste into a message. The password is not stored anywhere to show later.
+function SendDetailsDialog({ details, onClose, notify }) {
+  const url = portalUrl(details?.portalPath);
+  const text = details
+    ? [
+      'Your CSR programme portal',
+      `Link: ${url}`,
+      `Email: ${details.email}`,
+      `Password: ${details.password}`,
+      'Please change the password from Profile after signing in.',
+    ].join('\n')
+    : '';
+  return (
+    <Dialog open={!!details} onClose={onClose} fullWidth maxWidth="sm">
+      <DialogTitle>Send these to the funder</DialogTitle>
+      <DialogContent>
+        <Stack spacing={1.5} sx={{ mt: 1 }}>
+          <Typography variant="body2" color="text.secondary">
+            The password is shown only now. Copy the details and send them to the funder.
+          </Typography>
+          <TextField label="Portal link" value={url} fullWidth slotProps={{ htmlInput: { readOnly: true } }} />
+          <TextField label="Email" value={details?.email || ''} fullWidth slotProps={{ htmlInput: { readOnly: true } }} />
+          <TextField label="Password" value={details?.password || ''} fullWidth slotProps={{ htmlInput: { readOnly: true } }} />
+        </Stack>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>Done</Button>
+        <Button
+          variant="contained"
+          onClick={async () => {
+            const ok = await copyText(text);
+            notify(ok ? 'Details copied.' : 'Copy failed. Select the text and copy it.', ok ? 'success' : 'error');
+          }}
+        >
+          Copy all
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
 export default function CSRClientsPage() {
   const [clients, setClients] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -143,6 +198,7 @@ export default function CSRClientsPage() {
   const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
   const [confirmState, setConfirmState] = useState(null);
   const [resetFor, setResetFor] = useState(null);
+  const [sendDetails, setSendDetails] = useState(null);
 
   const notify = (message, severity = 'success') => setToast({ open: true, message, severity });
   const asList = (data) => (Array.isArray(data) ? data : data?.results || []);
@@ -208,9 +264,11 @@ export default function CSRClientsPage() {
   const handleSave = async (payload) => {
     setSaving(true);
     try {
-      await csrAPI.clients.onboard(payload);
-      notify('Funder onboarded.');
+      const res = await csrAPI.clients.onboard(payload);
       setModalOpen(false);
+      setSendDetails({
+        email: payload.email, password: payload.password, portalPath: res?.clientUser?.portalPath || '',
+      });
       load();
     } catch (e) {
       // Surface field errors from the backend when present.
@@ -264,7 +322,26 @@ export default function CSRClientsPage() {
                 <span className="fig nowrap">{fmtDay(c.createdAt)}</span>
                 <span className="t1">{c.name}</span>
                 <span className="t2">{c.email}</span>
-                <span className="t2">{c.projectName}</span>
+                <span className="t2">
+                  {c.projectName}
+                  {c.portalPath ? (
+                    <span className="portal-link">
+                      <span className="portal-path">{c.portalPath}</span>
+                      <button
+                        type="button" className="ghostbtn tight"
+                        aria-label={`Copy portal link for ${c.email}`}
+                        onClick={async () => {
+                          const ok = await copyText(portalUrl(c.portalPath));
+                          notify(ok ? 'Link copied.' : 'Copy failed. Select the link and copy it.', ok ? 'success' : 'error');
+                        }}
+                      >
+                        Copy link
+                      </button>
+                    </span>
+                  ) : (
+                    <span className="portal-path">Portal link switched off on the Branding page.</span>
+                  )}
+                </span>
                 <span className="lend">
                   {!c.isActive && <span className="pill wait">Revoked</span>}
                   <button type="button" className="ghostbtn tight" onClick={() => setResetFor(c)}>
@@ -296,6 +373,8 @@ export default function CSRClientsPage() {
         onSave={handleSave}
         saving={saving}
       />
+
+      <SendDetailsDialog details={sendDetails} onClose={() => setSendDetails(null)} notify={notify} />
 
       <ResetPasswordModal
         client={resetFor}
