@@ -213,11 +213,13 @@ info "nginx.conf from the repo (index.html: no-cache · /client: the funder bund
 cat > "$CTX/public/release.txt" <<EOF
 frontend $FE_SHA
 frontend_branch $FE_BRANCH
-backend ${LIVE_BE:-unknown}
-backend_branch ${LIVE_BE_BRANCH:-unknown}
+backend ${TTA_BACKEND_SHA:-${LIVE_BE:-unknown}}
+backend_branch ${TTA_BACKEND_BRANCH:-${LIVE_BE_BRANCH:-unknown}}
 deployed_at $(date -u +%Y-%m-%dT%H:%M:%SZ)
 EOF
-info "release.txt written (backend stamp carried from live)"
+# A backend deployed separately is named with TTA_BACKEND_SHA / _BRANCH; without
+# them the stamp is carried from live, which goes stale after a backend deploy.
+info "release.txt written (backend stamp: ${TTA_BACKEND_SHA:+set for this deploy}${TTA_BACKEND_SHA:-carried from live})"
 
 # What /root/tta must hold after the swap so an on-box build agrees with the
 # image: git's build inputs, with the Dockerfile as committed (not pinned below).
