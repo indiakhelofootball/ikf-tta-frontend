@@ -17,7 +17,7 @@ const DATE_ONLY = /^(\d{4})-(\d{2})-(\d{2})$/;
 // to new Date() reads it as UTC midnight, which is the previous evening anywhere
 // west of Greenwich — so it is split by hand. A full timestamp is an instant and
 // is shown on the reader's own calendar.
-function toParts(value) {
+export function toParts(value) {
   if (value == null || value === '') return null;
   if (typeof value === 'string') {
     const m = DATE_ONLY.exec(value.trim());

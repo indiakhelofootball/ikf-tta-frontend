@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ThemeProvider } from '@mui/material/styles';
-import { Button, CircularProgress } from '@mui/material';
-import { Download as DownloadIcon } from '@mui/icons-material';
+import { Button, CircularProgress, IconButton, Menu, MenuItem } from '@mui/material';
+import { Download as DownloadIcon, Menu as MenuIcon } from '@mui/icons-material';
 
 import { clientAPI } from '../../services/api';
 import { downloadCertificatePdf } from '../../utils/certificatePdf';
@@ -9,6 +9,7 @@ import { openDownloadedFile } from '../../utils/reportFile';
 import { useAuth } from '../../auth/AuthContext';
 import clientThemeFrom, { brandCssVars } from './clientTheme';
 import { formatDate, formatRange, formatCount, formatRupees } from './clientFormat';
+import { grantProgress, monthStrip, placesReached, latestFirst, activityDate } from './clientReport';
 import '../../styles/clientPortal.css';
 import ClientChangePasswordDialog from './ClientChangePasswordDialog';
 
@@ -16,7 +17,7 @@ import ClientChangePasswordDialog from './ClientChangePasswordDialog';
 // tab's address: a funder who reloads on Reports, or presses Back, stays where
 // they were instead of being thrown to the landing tab.
 const TABS = [
-  { key: 'project', label: () => 'My Project' },
+  { key: 'project', label: () => 'Overview' },
   { key: 'activities', label: (c) => `Activities (${formatCount(c.activities)})` },
   { key: 'reports', label: (c) => `Reports (${formatCount(c.reports)})` },
   { key: 'deliverables', label: (c) => `Deliverables (${formatCount(c.deliverables)})` },
@@ -103,6 +104,58 @@ function DeliverableRow({ d, detailed }) {
   );
 }
 
+// One deliverable on the Overview, written as a line of a report: the figure
+// large, then what it counts against what was promised. Still one unit per
+// line, never a total.
+const deliveryNote = (done, target, percent) => {
+  if (target <= 0) return '';
+  if (done > target) return 'Target exceeded';
+  if (done === target) return 'Target met';
+  if (done === 0) return 'Not started';
+  return `${percent}% of target`;
+};
+
+function LedgerRow({ d }) {
+  const percent = deliverablePercent(d);
+  const target = Number(d.targetCount) || 0;
+  const done = Number(d.completedCount) || 0;
+  const note = deliveryNote(done, target, percent);
+  return (
+    <li className="cled">
+      <div className="cled-n">{formatCount(done)}</div>
+      <div className="cled-b">
+        <div className="cled-t">
+          {d.title}{target > 0 ? `, against a target of ${formatCount(target)}.` : '.'}
+        </div>
+        {note && <div className="cled-s">{note}</div>}
+        {percent != null && (
+          <div
+            className="ctrack"
+            role="progressbar"
+            aria-label={`Progress for ${d.title}`}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={percent}
+          >
+            <div className="cfill" style={{ width: `${percent}%` }} />
+          </div>
+        )}
+      </div>
+    </li>
+  );
+}
+
+function IkfMark() {
+  return (
+    <span className="cikf">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+        <circle cx="12" cy="12" r="9" /><path d="M12 3v18M3 12h18" /><circle cx="12" cy="12" r="3" />
+      </svg>
+      Delivered by India Khelo Football
+    </span>
+  );
+}
+
 function EmptyPanel({ title, children }) {
   return (
     <div className="cpanel">
@@ -132,6 +185,7 @@ export default function ClientPortalPage() {
   const [tab, setTab] = useState(tabFromHash);
   const [pwOpen, setPwOpen] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
+  const [menuAnchor, setMenuAnchor] = useState(null);
   const tabRefs = useRef({});
 
   useEffect(() => {
@@ -239,81 +293,165 @@ export default function ClientPortalPage() {
     activities: activities.length, reports: reports.length, deliverables: deliverables.length,
   };
 
-  const renderProject = () => (
-    <>
-      {/* Delivery leads. This tab used to open with Funder / Sanctioned /
-          Status / Start / End and nothing else -- five facts the funder
-          already knew, on the one screen where they decide whether to
-          renew. What was actually delivered sat two tabs away.
+  // The Overview is written as a programme report for the funder, read top to
+  // bottom: what was delivered, where and when, the latest from the field, the
+  // latest reports. A CSR head lifts lines from it into their own board report,
+  // so it states facts in sentences rather than as a dashboard.
+  //
+  // NEVER SUM ACROSS UNITS. 26 trials and 120 coaches is not 146 of anything.
+  // Each deliverable keeps its own line; months and places count activities,
+  // which are one kind of thing. No utilisation figure appears: financials are
+  // excluded from the funder payload by isolation policy.
+  const renderProject = () => {
+    const progress = grantProgress(project.startDate, project.endDate);
+    const months = monthStrip(project.startDate, project.endDate, activities);
+    const places = placesReached(activities);
+    const recent = latestFirst(activities, activityDate).slice(0, 3);
+    const recentReports = latestFirst(reports, (r) => r.createdAt).slice(0, 3);
+    const n = activities.length;
+    const dayFact = !progress ? null
+      : progress.state === 'running' ? `Day ${formatCount(progress.day)} of ${formatCount(progress.total)}`
+        : progress.state === 'upcoming' ? `Starts ${formatDate(project.startDate)}`
+          : `Ended ${formatDate(project.endDate)}`;
 
-          NEVER SUM ACROSS UNITS. 26 trials and 120 coaches is not 146 of
-          anything; trials are events and coaches are people. Each
-          deliverable keeps its own line and its own unit, the same rule
-          CSRDashboard states for the internal side. There is deliberately
-          no total here, and no percentage across deliverables.
+    return (
+      <article className="creport">
+        {project.description && <p className="cdek">{project.description}</p>}
 
-          Everything below comes from data the portal already fetches. No
-          utilisation figure appears: financials are excluded from the
-          funder payload by isolation policy, and adding one is a policy
-          change with an allowlist serializer attached, not a UI edit. */}
-      <section className="cpanel" aria-labelledby="cp-delivered">
-        <h2 className="ckicker" id="cp-delivered">Delivered so far</h2>
-        {deliverables.length === 0 ? (
-          <p className="clede">
-            {activities.length > 0
-              ? `${formatCount(activities.length)} activit${activities.length === 1 ? 'y' : 'ies'} ${
-                closed
-                  ? `${activities.length === 1 ? 'was' : 'were'} recorded under this grant.`
-                  : `${activities.length === 1 ? 'has' : 'have'} been recorded under this grant. Once the grant agreement is loaded, what was promised is tracked here against what has been delivered.`
-              }`
-              // A closed grant is history. "Appear here as they happen" promised
-              // a future this grant no longer has.
-              : closed
-                ? 'This grant has closed. Nothing was recorded against it.'
-                : 'Nothing has been recorded against this grant yet. Activities and delivery progress appear here as they happen.'}
-          </p>
-        ) : (
-          <ul className="crows">
-            {deliverables.map((d) => <DeliverableRow key={d.id} d={d} />)}
-          </ul>
+        <dl className="cline">
+          <div><dt>Funder</dt><dd>{project.clientName || 'Not recorded'}</dd></div>
+          <div><dt>Sanctioned</dt><dd className="cnum">{formatRupees(project.sanctionedAmount)}</dd></div>
+          <div><dt>Period</dt><dd>{formatRange(project.startDate, project.endDate) || 'Not set'}</dd></div>
+          <div><dt>Status</dt><dd>{project.status || 'Not recorded'}</dd></div>
+          {dayFact && <div><dt>Progress</dt><dd className="cnum">{dayFact}</dd></div>}
+        </dl>
+
+        <section aria-labelledby="cp-delivered">
+          <h2 className="csec" id="cp-delivered">What has been delivered</h2>
+          {deliverables.length === 0 ? (
+            <p className="clede">
+              {n > 0
+                ? closed
+                  ? `${formatCount(n)} activit${n === 1 ? 'y' : 'ies'} took place under this grant.`
+                  : `${formatCount(n)} activit${n === 1 ? 'y has' : 'ies have'} taken place so far. The targets this grant commits to will be set out here, each against what has been delivered.`
+                : closed
+                  ? 'This grant has closed. Nothing was recorded against it.'
+                  : 'Nothing has been recorded against this grant yet. Activities and delivery progress appear here as they happen.'}
+            </p>
+          ) : (
+            <ul className="cledger">
+              {deliverables.map((d) => <LedgerRow key={d.id} d={d} />)}
+            </ul>
+          )}
+        </section>
+
+        {(months.length > 0 || places.length > 0) && (
+          <section aria-labelledby="cp-where">
+            <h2 className="csec" id="cp-where">Where and when</h2>
+            {months.length > 0 && (
+              <ol className="cmonths" aria-label="Activities by month">
+                {months.map((m) => (
+                  <li key={m.key} className={`cmo ${m.state}`}>
+                    <span className="cmo-m">{m.label}<span className="cmo-y"> {m.year}</span></span>
+                    <span className="cmo-bars" aria-hidden="true">
+                      {Array.from({ length: Math.min(m.count, 6) }, (_, i) => <i key={i} />)}
+                    </span>
+                    <span className="cmo-c">
+                      {m.count > 0
+                        ? `${formatCount(m.count)} held`
+                        : m.state === 'ahead' ? 'Ahead' : 'None'}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            )}
+            {places.length > 0 && (
+              <ul className="cplaces" aria-label="Places reached">
+                {places.map((pl) => (
+                  <li key={pl.name} className="cplace">
+                    <span className="cplace-n">{pl.name}</span>
+                    <span className="cplace-c cnum">{formatCount(pl.count)}</span>
+                    <span className="cplace-s">
+                      {pl.count === 1 ? '1 activity' : `${formatCount(pl.count)} activities`}
+                      {pl.latest ? ` · latest ${formatDate(pl.latest)}` : ''}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
         )}
 
-        <div className="ccounts">
-          <div>
-            <div className="ccount-n">{formatCount(activities.length)}</div>
-            <div className="ccount-k">Activities recorded</div>
-          </div>
-          <div>
-            <div className="ccount-n">{formatCount(reports.length)}</div>
-            <div className="ccount-k">Reports available</div>
-          </div>
-        </div>
-      </section>
+        {recent.length > 0 && (
+          <section aria-labelledby="cp-field">
+            <h2 className="csec" id="cp-field">From the field</h2>
+            <ul className="citems">
+              {recent.map((a) => {
+                const when = (a.startDate || a.endDate) ? formatRange(a.startDate, a.endDate) : formatDate(a.date);
+                const meta = [a.activityType, a.location, when].filter(Boolean).join(' · ');
+                return (
+                  <li key={a.id} className="citem">
+                    <span className="citem-t">{a.title}</span>
+                    {meta && <span className="citem-s">{meta}</span>}
+                  </li>
+                );
+              })}
+            </ul>
+            {n > recent.length && (
+              <button type="button" className="cmore" onClick={() => selectTab('activities')}>
+                All {formatCount(n)} activities
+              </button>
+            )}
+          </section>
+        )}
 
-      <section className="cpanel" aria-labelledby="cp-grant">
-        <h2 className="ckicker" id="cp-grant">The grant</h2>
-        <dl className="cfacts">
-          <div className="cfact">
-            <dt className="cfact-k">Funder</dt>
-            <dd className="cfact-v">{project.clientName || '—'}</dd>
-          </div>
-          <div className="cfact">
-            <dt className="cfact-k">Sanctioned</dt>
-            <dd className="cfact-v">{formatRupees(project.sanctionedAmount)}</dd>
-          </div>
-          <div className="cfact">
-            <dt className="cfact-k">Status</dt>
-            <dd className="cfact-v">{project.status || '—'}</dd>
-          </div>
-          <div className="cfact">
-            <dt className="cfact-k">Period</dt>
-            <dd className="cfact-v">{formatRange(project.startDate, project.endDate) || '—'}</dd>
-          </div>
-        </dl>
-        {project.description && <p className="clede cdesc">{project.description}</p>}
-      </section>
-    </>
-  );
+        {recentReports.length > 0 && (
+          <section aria-labelledby="cp-reports">
+            <h2 className="csec" id="cp-reports">Latest reports</h2>
+            <ul className="citems">
+              {recentReports.map((r) => {
+                const name = (r.title && String(r.title).trim()) || r.fileName || 'Report';
+                const meta = [r.reportType, formatDate(r.createdAt)].filter(Boolean).join(' · ');
+                return (
+                  <li key={r.id} className="citem citem-row">
+                    <span className="citem-main">
+                      <span className="citem-t">{name}</span>
+                      {meta && <span className="citem-s">{meta}</span>}
+                    </span>
+                    {r.hasFile ? (
+                      <button
+                        type="button"
+                        className="cbtn"
+                        aria-label={`Open ${name}`}
+                        onClick={() => openUploadedReport(r, name)}
+                        disabled={fileBusy === r.id}
+                      >
+                        {fileBusy === r.id ? 'Opening…' : 'Open'}
+                      </button>
+                    ) : r.fileUrl ? (
+                      <a className="cbtn" href={r.fileUrl} target="_blank" rel="noopener noreferrer" aria-label={`Open ${name}`}>
+                        Open
+                      </a>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+            {reports.length > recentReports.length && (
+              <button type="button" className="cmore" onClick={() => selectTab('reports')}>
+                All {formatCount(reports.length)} reports
+              </button>
+            )}
+          </section>
+        )}
+
+        <footer className="csign">
+          <IkfMark />
+          {project.clientName && <span>Prepared for {project.clientName}</span>}
+        </footer>
+      </article>
+    );
+  };
 
   const renderActivities = () => (
     activities.length === 0 ? (
@@ -432,7 +570,7 @@ export default function ClientPortalPage() {
       <EmptyPanel>
         {closed
           ? 'No deliverables were recorded under this grant.'
-          : 'No deliverables recorded yet. Once the grant agreement is loaded, what was promised — and how much of it has been delivered — is tracked here.'}
+          : 'No deliverables recorded yet. What this grant promises, and how much of it has been delivered, will be tracked here.'}
       </EmptyPanel>
     ) : (
       <section className="cpanel" aria-label="Deliverables">
@@ -584,6 +722,9 @@ export default function ClientPortalPage() {
         {/* The grant's own name. With branding on, the bar carries the
             funder's display name, and before this the grant itself was named
             nowhere on its own page. */}
+        {project.clientName && (
+          <div className="ceyebrow">Programme report for {project.clientName} · as of {formatDate(new Date())}</div>
+        )}
         <h1 className="cgrant">{project.name || title}</h1>
 
         <div className="ctabs" role="tablist" aria-label="Your grant" onKeyDown={onTabKeyDown}>
@@ -642,11 +783,28 @@ export default function ClientPortalPage() {
               onError={() => setLogoBroken(true)}
             />
           )}
-          <span className="cbar-name">{title}</span>
+          <span className="cbar-name">{brand?.displayName || project?.clientName || title}</span>
         </div>
+        <span className="cbar-ikf"><IkfMark /></span>
         <div className="cbar-actions">
           <Button className="cbar-btn" onClick={() => setPwOpen(true)}>Change password</Button>
           <Button className="cbar-btn" onClick={logout}>Sign out</Button>
+        </div>
+        {/* On a phone the two actions sit behind one menu, so the funder's
+            name keeps the whole bar instead of wrapping onto a second row. */}
+        <div className="cbar-menu">
+          <IconButton
+            aria-label="Account menu"
+            aria-haspopup="true"
+            aria-expanded={menuAnchor ? 'true' : undefined}
+            onClick={(e) => setMenuAnchor(e.currentTarget)}
+          >
+            <MenuIcon />
+          </IconButton>
+          <Menu anchorEl={menuAnchor} open={!!menuAnchor} onClose={() => setMenuAnchor(null)}>
+            <MenuItem onClick={() => { setMenuAnchor(null); setPwOpen(true); }}>Change password</MenuItem>
+            <MenuItem onClick={() => { setMenuAnchor(null); logout(); }}>Sign out</MenuItem>
+          </Menu>
         </div>
       </header>
 

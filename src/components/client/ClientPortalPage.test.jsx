@@ -58,16 +58,16 @@ beforeEach(() => {
 test('the landing tab leads with what was delivered, in each deliverable own units', async () => {
   render(<ClientPortalPage />);
 
-  expect(await screen.findByText('Delivered so far')).toBeInTheDocument();
-  expect(screen.getByText('Trials conducted')).toBeInTheDocument();
-  expect(screen.getByText('Coaches trained')).toBeInTheDocument();
-  expect(screen.getByText('of 40')).toBeInTheDocument();
-  expect(screen.getByText('of 120')).toBeInTheDocument();
+  expect(await screen.findByText('What has been delivered')).toBeInTheDocument();
+  expect(screen.getByText('Trials conducted, against a target of 40.')).toBeInTheDocument();
+  expect(screen.getByText('Coaches trained, against a target of 120.')).toBeInTheDocument();
+  expect(screen.getByText('65% of target')).toBeInTheDocument();
+  expect(screen.getByText('Target met')).toBeInTheDocument();
 });
 
 test('nothing is summed across units', async () => {
   render(<ClientPortalPage />);
-  await screen.findByText('Delivered so far');
+  await screen.findByText('What has been delivered');
 
   // 26 + 120 = 146 completed, of 40 + 120 = 160 promised. Neither figure means
   // anything, and neither may appear.
@@ -78,15 +78,15 @@ test('nothing is summed across units', async () => {
 test('the grant facts stay on the landing tab, below the delivery', async () => {
   render(<ClientPortalPage />);
 
-  expect(await screen.findByText('Acme Foundation')).toBeInTheDocument();
+  expect((await screen.findAllByText('Acme Foundation')).length).toBeGreaterThan(1);
   expect(screen.getByText('₹9,21,000')).toBeInTheDocument();
-  expect(screen.getByText('Activities recorded')).toBeInTheDocument();
-  expect(screen.getByText('Reports available')).toBeInTheDocument();
+  expect(screen.getByText('Prepared for Acme Foundation')).toBeInTheDocument();
+  expect(screen.getAllByText('Delivered by India Khelo Football').length).toBeGreaterThan(0);
 });
 
 test('no utilisation figure reaches the funder from this page', async () => {
   render(<ClientPortalPage />);
-  await screen.findByText('Delivered so far');
+  await screen.findByText('What has been delivered');
 
   // Financials are excluded from the funder payload by isolation policy. The
   // sanctioned amount is the funder's own contribution and is theirs to see;
@@ -100,7 +100,7 @@ test('with no deliverables loaded the tab still says where the grant stands', as
   render(<ClientPortalPage />);
 
   expect(
-    await screen.findByText(/1 activity has been recorded under this grant/i)
+    await screen.findByText(/1 activity has taken place so far/i)
   ).toBeInTheDocument();
 });
 
@@ -113,15 +113,15 @@ test('with no deliverables loaded the tab still says where the grant stands', as
 
 test('the tabs actually switch — the bar is our own markup now, not MUI\'s', async () => {
   render(<ClientPortalPage />);
-  await screen.findByText(/Delivered so far/i);
+  await screen.findByText(/What has been delivered/i);
 
   // landing tab first
-  expect(screen.getByRole('tab', { name: /My Project/i })).toHaveAttribute('aria-selected', 'true');
+  expect(screen.getByRole('tab', { name: /Overview/i })).toHaveAttribute('aria-selected', 'true');
 
   fireEvent.click(screen.getByRole('tab', { name: /^Activities/i }));
   expect(await screen.findByText(/Trial at Bhilai/i)).toBeInTheDocument();
   expect(screen.getByRole('tab', { name: /^Activities/i })).toHaveAttribute('aria-selected', 'true');
-  expect(screen.getByRole('tab', { name: /My Project/i })).toHaveAttribute('aria-selected', 'false');
+  expect(screen.getByRole('tab', { name: /Overview/i })).toHaveAttribute('aria-selected', 'false');
 
   fireEvent.click(screen.getByRole('tab', { name: /^Reports/i }));
   expect(await screen.findByText(/q1\.pdf/i)).toBeInTheDocument();
@@ -129,7 +129,7 @@ test('the tabs actually switch — the bar is our own markup now, not MUI\'s', a
 
 test('every tab the funder is offered is reachable', async () => {
   render(<ClientPortalPage />);
-  await screen.findByText(/Delivered so far/i);
+  await screen.findByText(/What has been delivered/i);
 
   const tabs = screen.getAllByRole('tab');
   expect(tabs).toHaveLength(5);
@@ -161,7 +161,7 @@ test("the funder's own colour drives the portal", async () => {
     slug: 'acme', displayName: 'Acme Foundation CSR', primaryColor: '#1B3A6B',
   });
   render(<ClientPortalPage />);
-  await screen.findByText(/Delivered so far/i);
+  await screen.findByText(/What has been delivered/i);
 
   expect(brandVar()).toBe('#1B3A6B');
 });
@@ -169,7 +169,7 @@ test("the funder's own colour drives the portal", async () => {
 test('a funder with no colour recorded gets the neutral fallback, never a borrowed brand', async () => {
   clientAPI.myBranding.mockResolvedValue({ slug: 'acme', displayName: 'Acme Foundation CSR' });
   render(<ClientPortalPage />);
-  await screen.findByText(/Delivered so far/i);
+  await screen.findByText(/What has been delivered/i);
 
   // nothing inline: the stylesheet's graphite default holds, and in particular
   // no green leaks in from the internal system
@@ -194,7 +194,7 @@ test('a server failure shows one sentence and a Retry that re-runs the load, nev
   expect(screen.queryByText(/Django|REACT_APP_API_URL|Server error/)).not.toBeInTheDocument();
 
   fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
-  expect(await screen.findByText('Delivered so far')).toBeInTheDocument();
+  expect(await screen.findByText('What has been delivered')).toBeInTheDocument();
   expect(clientAPI.project).toHaveBeenCalledTimes(2);
 });
 
@@ -226,7 +226,7 @@ test('the grant is named as the page heading, inside main, and in the document t
 test('the document title prefers the funder display name', async () => {
   clientAPI.myBranding.mockResolvedValue({ slug: 'acme', displayName: 'Acme Foundation CSR' });
   render(<ClientPortalPage />);
-  await screen.findByText('Delivered so far');
+  await screen.findByText('What has been delivered');
   expect(document.title).toBe('Acme Foundation CSR · CSR Portal');
 });
 
@@ -243,13 +243,13 @@ test('delivery above target reads "318 of 300" with a note, and the bar stops at
   render(<ClientPortalPage />);
 
   expect(await screen.findByText('318')).toBeInTheDocument();
-  expect(screen.getByText('of 300')).toBeInTheDocument();
+  expect(screen.getByText('Players screened, against a target of 300.')).toBeInTheDocument();
   expect(screen.getByText('Target exceeded')).toBeInTheDocument();
   expect(screen.getByRole('progressbar', { name: /Players screened/ }))
     .toHaveAttribute('aria-valuenow', '100');
 });
 
-test('a closed grant with nothing recorded is written in the past tense, and counts read 0', async () => {
+test('a closed grant with nothing recorded is written in the past tense', async () => {
   clientAPI.project.mockResolvedValue([{ ...PROJECT, status: 'Closed' }]);
   clientAPI.activities.mockResolvedValue([]);
   clientAPI.reports.mockResolvedValue([]);
@@ -259,9 +259,6 @@ test('a closed grant with nothing recorded is written in the past tense, and cou
   expect(await screen.findByText('This grant has closed. Nothing was recorded against it.'))
     .toBeInTheDocument();
   expect(screen.queryByText(/appear here as they happen/)).not.toBeInTheDocument();
-  // The figure sits beside its label; an em dash here once read as "unknown".
-  // eslint-disable-next-line testing-library/no-node-access
-  expect(screen.getByText('Activities recorded').previousSibling).toHaveTextContent(/^0$/);
   expect(screen.queryByText('—')).not.toBeInTheDocument();
 });
 
@@ -353,7 +350,7 @@ test('the selected tab is kept in the hash, so a reload lands on it', async () =
 
 test('Back and Forward move between tabs through the hash', async () => {
   render(<ClientPortalPage />);
-  await screen.findByText('Delivered so far');
+  await screen.findByText('What has been delivered');
 
   act(() => {
     window.history.replaceState(null, '', '#reports');
@@ -364,7 +361,7 @@ test('Back and Forward move between tabs through the hash', async () => {
 
 test('the tabs are a real tabs widget: labelled, linked to panels, arrow keys and roving tabindex', async () => {
   render(<ClientPortalPage />);
-  await screen.findByText('Delivered so far');
+  await screen.findByText('What has been delivered');
 
   const list = screen.getByRole('tablist', { name: 'Your grant' });
   const tabs = within(list).getAllByRole('tab');
@@ -440,14 +437,14 @@ test('Try again re-fetches only the certificate and shows it once it loads', asy
 test.each(['blue', '#12'])('a brand colour %p that is not #RRGGBB leaves graphite in place', async (bad) => {
   clientAPI.myBranding.mockResolvedValue({ slug: 'acme', displayName: 'Acme', primaryColor: bad });
   render(<ClientPortalPage />);
-  await screen.findByText('Delivered so far');
+  await screen.findByText('What has been delivered');
   expect(brandVar()).toBe('');
 });
 
 test('a near-white brand is darkened into a visible bar, not painted as given', async () => {
   clientAPI.myBranding.mockResolvedValue({ slug: 'acme', displayName: 'Acme', primaryColor: '#F5F5F5 ' });
   render(<ClientPortalPage />);
-  await screen.findByText('Delivered so far');
+  await screen.findByText('What has been delivered');
   expect(brandVar()).toMatch(/^#[0-9A-F]{6}$/i);
   expect(brandVar().toUpperCase()).not.toBe('#F5F5F5');
 });
@@ -455,10 +452,64 @@ test('a near-white brand is darkened into a visible bar, not painted as given', 
 test('a brand legible as a bar but not as text gets its own text colour', async () => {
   clientAPI.myBranding.mockResolvedValue({ slug: 'acme', displayName: 'Acme', primaryColor: '#486AFF' });
   render(<ClientPortalPage />);
-  await screen.findByText('Delivered so far');
+  await screen.findByText('What has been delivered');
   // eslint-disable-next-line testing-library/no-node-access
   const shell = document.querySelector('.cportal');
   expect(shell.style.getPropertyValue('--brand')).toBe('#486AFF');
   expect(shell.style.getPropertyValue('--brand-text')).not.toBe('');
   expect(shell.style.getPropertyValue('--brand-text').toUpperCase()).not.toBe('#486AFF');
+});
+
+// ---------------------------------------------------------------------------
+// The Overview as a programme report (9 Oct redesign: B + D + E).
+// ---------------------------------------------------------------------------
+
+const FIELD = [
+  { id: 1, title: 'District trial, Sector 56', activityType: 'Trial', location: 'Gurugram', startDate: '2026-09-14', status: 'Completed' },
+  { id: 2, title: 'Coach certification', activityType: 'Training Programme', location: 'Faridabad', startDate: '2026-09-28', status: 'Completed' },
+  { id: 3, title: 'Second trial', activityType: 'Trial', location: ' gurugram ', startDate: '2026-10-04', status: 'Completed' },
+  { id: 4, title: 'Camp visit', activityType: 'Workshop', location: 'Sonipat', startDate: '2026-04-21', status: 'Completed' },
+];
+
+test('where and when lists each place once, most visited first, with its latest date', async () => {
+  clientAPI.activities.mockResolvedValue(FIELD);
+  render(<ClientPortalPage />);
+
+  const places = within(await screen.findByRole('list', { name: 'Places reached' })).getAllByRole('listitem');
+  expect(places.map((li) => li.textContent)).toEqual([
+    expect.stringMatching(/^Gurugram22 activities · latest 4 Oct 2026$/),
+    expect.stringMatching(/^Faridabad1/),
+    expect.stringMatching(/^Sonipat1/),
+  ]);
+  expect(screen.getByRole('list', { name: 'Activities by month' })).toBeInTheDocument();
+});
+
+test('from the field shows the three latest activities and links to the rest', async () => {
+  clientAPI.activities.mockResolvedValue(FIELD);
+  render(<ClientPortalPage />);
+  await screen.findByText('From the field');
+
+  expect(screen.getByText('Second trial')).toBeInTheDocument();
+  expect(screen.queryByText('Camp visit')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'All 4 activities' }));
+  expect(screen.getByRole('tab', { name: /^Activities/ })).toHaveAttribute('aria-selected', 'true');
+  expect(await screen.findByText('Camp visit')).toBeInTheDocument();
+});
+
+test('the funder never reads our internal process wording', async () => {
+  clientAPI.deliverables.mockResolvedValue([]);
+  render(<ClientPortalPage />);
+  await screen.findByText('What has been delivered');
+  expect(screen.queryByText(/grant agreement is loaded/i)).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('tab', { name: /^Deliverables/ }));
+  expect(await screen.findByText(/will be tracked here/)).toBeInTheDocument();
+  expect(screen.queryByText(/grant agreement is loaded/i)).not.toBeInTheDocument();
+});
+
+test('with no dated or placed activities the where-and-when section is left out, not shown empty', async () => {
+  clientAPI.project.mockResolvedValue([{ ...PROJECT, startDate: null, endDate: null }]);
+  render(<ClientPortalPage />);
+  await screen.findByText('What has been delivered');
+  expect(screen.queryByText('Where and when')).not.toBeInTheDocument();
 });
