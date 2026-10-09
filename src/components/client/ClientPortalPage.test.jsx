@@ -2,7 +2,7 @@
 // used to open with five facts the funder already knew -- funder, sanctioned,
 // status, start, end -- and put what was actually delivered two tabs away.
 import React from 'react';
-import { render, screen, fireEvent, within, act } from '@testing-library/react';
+import { render, screen, fireEvent, within, act, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
 jest.mock('react-router-dom', () => ({ __esModule: true, useNavigate: () => jest.fn() }), {
@@ -18,6 +18,7 @@ jest.mock('../../services/api', () => ({
     deliverables: jest.fn(),
     myBranding: jest.fn(),
     certificate: jest.fn(),
+    activityPhoto: jest.fn(),
   },
 }));
 
@@ -512,4 +513,34 @@ test('with no dated or placed activities the where-and-when section is left out,
   render(<ClientPortalPage />);
   await screen.findByText('What has been delivered');
   expect(screen.queryByText('Where and when')).not.toBeInTheDocument();
+});
+
+test('the latest activity photo leads the Overview, and recent activities become photo tiles', async () => {
+  URL.createObjectURL = jest.fn(() => 'blob:photo');
+  URL.revokeObjectURL = jest.fn();
+  clientAPI.activityPhoto.mockResolvedValue({ blob: new Blob(['x'], { type: 'image/jpeg' }) });
+  clientAPI.activities.mockResolvedValue([
+    { ...FIELD[0], photos: [{ id: 7, version: 'a1' }] },
+    { ...FIELD[2], photos: [] },
+    FIELD[1],
+  ]);
+  render(<ClientPortalPage />);
+
+  const hero = await screen.findByRole('figure');
+  expect(within(hero).getByRole('img')).toHaveAttribute('alt', 'District trial, Sector 56');
+  expect(hero).toHaveTextContent('Latest: District trial, Sector 56 · Gurugram · 14 Sep 2026');
+  expect(clientAPI.activityPhoto).toHaveBeenCalledWith(1, 7, 'a1');
+  // Second trial is the newest but has no photo: it still gets a tile, without a broken image.
+  expect(screen.getAllByRole('img', { name: 'District trial, Sector 56' }).length).toBe(2);
+  expect(screen.queryByRole('img', { name: 'Second trial' })).not.toBeInTheDocument();
+});
+
+test('a photo that fails to load is left out rather than shown broken', async () => {
+  clientAPI.activityPhoto.mockRejectedValue(new Error('404'));
+  clientAPI.activities.mockResolvedValue([{ ...FIELD[0], photos: [{ id: 7, version: 'a1' }] }]);
+  render(<ClientPortalPage />);
+  await screen.findByText('From the field');
+  await waitFor(() => expect(clientAPI.activityPhoto).toHaveBeenCalled());
+  expect(screen.queryByRole('figure')).not.toBeInTheDocument();
+  expect(screen.queryByRole('img')).not.toBeInTheDocument();
 });

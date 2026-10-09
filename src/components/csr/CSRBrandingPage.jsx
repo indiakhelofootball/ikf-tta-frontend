@@ -6,10 +6,13 @@ import {
   Box, InputAdornment,
 } from '@mui/material';
 
-import { csrAPI } from '../../services/api';
+import { csrAPI, brandImageUrl } from '../../services/api';
 import '../../styles/csrDesign.css';
+import '../../styles/clientPortal.css';
 import ConfirmDialog from '../common/ConfirmDialog';
 import { normaliseHex, isTooLightForText } from './brandColour';
+import { brandCssVars } from '../client/clientTheme';
+import { trimLogo, logoNotes, checkImageFile, suggestSlug } from './brandImage';
 
 const HEX_ERROR = 'Use a 6-digit hex colour, e.g. #2C6A4F.';
 const TOO_LIGHT = 'Too light for text on white; the portal will use a darker shade of it for text.';
@@ -21,6 +24,40 @@ const EMPTY = {
   projectId: '', slug: '', displayName: '',
   logoUrl: '', loginImageUrl: '', primaryColor: '', secondaryColor: '', isActive: true,
 };
+// A picked image waiting for Save: the file to send, a local preview, and what
+// the rules said about it. `remove` deletes the uploaded copy on Save.
+const NO_IMAGES = {
+  logo: { file: null, preview: '', notes: [], error: '', remove: false },
+  'login-image': { file: null, preview: '', notes: [], error: '', remove: false },
+};
+const fmtSize = (n) => (n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
+
+// What the funder will see, drawn with the portal's own stylesheet and the
+// same colour rules, so the preview cannot disagree with the real page.
+function BrandPreview({ name, colour, logo, loginImage }) {
+  const vars = brandCssVars(colour) || {};
+  const shown = name || 'Funder name';
+  return (
+    <div className="cportal bprev" style={vars}>
+      <div className={`bprev-login${loginImage ? ' photo' : ''}`} style={loginImage ? { backgroundImage: `url(${loginImage})` } : undefined}>
+        <span className="bprev-chip">{logo ? <img src={logo} alt="" /> : <b>{shown}</b>}</span>
+        <span className="bprev-title">Sign in to your programme report</span>
+      </div>
+      <div className="cbar bprev-bar">
+        <div className="cbar-id">
+          {logo && <img className="cbar-logo" src={logo} alt="" />}
+          <span className="cbar-name">{shown}</span>
+        </div>
+      </div>
+      <div className="bprev-body">
+        <div className="ceyebrow">Programme report for {shown}</div>
+        <div className="bprev-h">Football Changing Lives 2026</div>
+        <div className="ctrack"><div className="cfill" style={{ width: '64%' }} /></div>
+        <span className="cbtn bprev-btn">Open</span>
+      </div>
+    </div>
+  );
+}
 
 export default function CSRBrandingPage() {
   const navigate = useNavigate();
@@ -33,6 +70,8 @@ export default function CSRBrandingPage() {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
   const [confirmState, setConfirmState] = useState(null);
+  const [images, setImages] = useState(NO_IMAGES);
+  const [slugTouched, setSlugTouched] = useState(false);
 
   const notify = (message, severity = 'success') => setToast({ open: true, message, severity });
   const asList = (d) => (Array.isArray(d) ? d : d?.results || []);
@@ -52,7 +91,10 @@ export default function CSRBrandingPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const openCreate = () => { setForm(EMPTY); setErrors({}); setModal({ open: true, editing: null }); };
+  const openCreate = () => {
+    setForm(EMPTY); setErrors({}); setImages(NO_IMAGES); setSlugTouched(false);
+    setModal({ open: true, editing: null });
+  };
   const openEdit = (r) => {
     setForm({
       projectId: r.projectId ?? '', slug: r.slug || '', displayName: r.displayName || '',
@@ -61,7 +103,77 @@ export default function CSRBrandingPage() {
       isActive: r.isActive !== false,
     });
     setErrors({});
+    setImages(NO_IMAGES);
+    setSlugTouched(true);
     setModal({ open: true, editing: r });
+  };
+
+  const setDisplayName = (e) => {
+    const { value } = e.target;
+    setForm((f) => ({ ...f, displayName: value, ...(slugTouched ? {} : { slug: suggestSlug(value) }) }));
+  };
+
+  const pickImage = (kind) => async (e) => {
+    const picked = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!picked) return;
+    const error = checkImageFile(picked, kind);
+    if (error) {
+      setImages((m) => ({ ...m, [kind]: { ...NO_IMAGES[kind], error } }));
+      return;
+    }
+    let file = picked;
+    let notes = [];
+    if (kind === 'logo') {
+      try {
+        const t = await trimLogo(picked);
+        file = t.file;
+        notes = logoNotes(t);
+      } catch {
+        setImages((m) => ({ ...m, [kind]: { ...NO_IMAGES[kind], error: 'This image could not be read.' } }));
+        return;
+      }
+    }
+    setImages((m) => ({ ...m, [kind]: { file, preview: URL.createObjectURL(file), notes, error: '', remove: false } }));
+  };
+
+  // What the preview shows for an image: a newly picked file, else the copy
+  // already uploaded (unless it is being removed), else the pasted link.
+  const previewSrc = (kind, summaryKey, link) => {
+    const st = images[kind];
+    if (st.file) return st.preview;
+    const up = modal.editing?.[summaryKey];
+    if (up && !st.remove) return brandImageUrl(modal.editing.slug, kind, up.version);
+    return link || '';
+  };
+
+  const imageField = (kind, label, hint, uploaded) => {
+    const st = images[kind];
+    const current = !st.remove && uploaded;
+    return (
+      <div className="bimg">
+        <div className="bimg-l">{label}</div>
+        <div className="bimg-row">
+          <Button component="label" variant="outlined" size="small">
+            {st.file || current ? 'Replace' : 'Upload'}
+            <input hidden type="file" accept="image/png,image/jpeg,image/webp" aria-label={`${label} file`} onChange={pickImage(kind)} />
+          </Button>
+          {st.file ? <span className="bimg-n">{st.file.name}, {fmtSize(st.file.size)}, uploaded when you save</span>
+            : current ? <span className="bimg-n">{uploaded.name}, {fmtSize(uploaded.size)}</span>
+              : <span className="bimg-n">{hint}</span>}
+          {(st.file || current) && (
+            <Button
+              size="small"
+              onClick={() => setImages((m) => ({ ...m, [kind]: { ...NO_IMAGES[kind], remove: !!uploaded } }))}
+            >
+              Remove
+            </Button>
+          )}
+        </div>
+        {st.error && <div className="bimg-warn" role="alert">{st.error}</div>}
+        {st.notes.map((n) => <div key={n.text} className={n.level === 'warn' ? 'bimg-warn' : 'bimg-ok'}>{n.text}</div>)}
+      </div>
+    );
   };
 
   const setField = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -116,9 +228,22 @@ export default function CSRBrandingPage() {
         primaryColor: normaliseHex(form.primaryColor) || '',
         secondaryColor: normaliseHex(form.secondaryColor) || '',
       };
-      if (modal.editing) await csrAPI.branding.update(modal.editing.id, payload);
-      else await csrAPI.branding.create(payload);
-      notify('Branding saved.');
+      const saved = modal.editing
+        ? await csrAPI.branding.update(modal.editing.id, payload)
+        : await csrAPI.branding.create(payload);
+      const id = modal.editing ? modal.editing.id : saved?.id;
+      const failures = [];
+      for (const kind of ['logo', 'login-image']) {
+        const st = images[kind];
+        try {
+          if (st.file && id) await csrAPI.brandingImage.upload(id, kind, st.file);
+          else if (st.remove && id) await csrAPI.brandingImage.remove(id, kind);
+        } catch (err) {
+          failures.push(`${kind === 'logo' ? 'Logo' : 'Login image'}: ${err.message}`);
+        }
+      }
+      if (failures.length) notify(`Branding saved, but ${failures.join(' ')}`, 'warning');
+      else notify('Branding saved.');
       setModal({ open: false, editing: null });
       load();
     } catch (e) {
@@ -203,7 +328,7 @@ export default function CSRBrandingPage() {
         </div>
       )}
 
-      <Dialog open={modal.open} onClose={() => setModal({ open: false, editing: null })} fullWidth maxWidth="sm">
+      <Dialog open={modal.open} onClose={() => setModal({ open: false, editing: null })} fullWidth maxWidth="md">
         <DialogTitle>{modal.editing ? 'Edit Branding' : 'New Branding'}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -213,10 +338,24 @@ export default function CSRBrandingPage() {
             >
               {projects.map((p) => <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>)}
             </TextField>
-            <TextField label="Slug (URL key)" value={form.slug} onChange={setField('slug')} error={!!errors.slug} helperText={errors.slug || 'e.g. acme → /client/acme/login'} fullWidth />
-            <TextField label="Display name" value={form.displayName} onChange={setField('displayName')} error={!!errors.displayName} helperText={errors.displayName} fullWidth />
-            <TextField label="Logo URL" value={form.logoUrl} onChange={setField('logoUrl')} fullWidth />
-            <TextField label="Login image URL" value={form.loginImageUrl} onChange={setField('loginImageUrl')} fullWidth />
+            <TextField
+              label="Display name" value={form.displayName} onChange={setDisplayName}
+              error={!!errors.displayName} fullWidth slotProps={{ htmlInput: { maxLength: 60 } }}
+              helperText={errors.displayName || `${form.displayName.length} of 60 characters, so the header never wraps.`}
+            />
+            <TextField
+              label="Slug (URL key)" value={form.slug}
+              onChange={(e) => { setSlugTouched(true); setField('slug')(e); }}
+              disabled={!!modal.editing?.slugLocked}
+              error={!!errors.slug} fullWidth
+              helperText={errors.slug || (modal.editing?.slugLocked
+                ? `Locked: a funder has already signed in at /client/${form.slug}/login.`
+                : `Invitation link: /client/${form.slug || '<slug>'}/login. It locks once the funder signs in.`)}
+            />
+            {imageField('logo', 'Logo', 'PNG, JPG or WEBP, up to 1 MB. Empty edges are trimmed.', modal.editing?.logoFile)}
+            {imageField('login-image', 'Login image', 'Optional programme photo, up to 4 MB. A dark overlay keeps text readable.', modal.editing?.loginImageFile)}
+            <TextField label="Logo URL" value={form.logoUrl} onChange={setField('logoUrl')} fullWidth helperText="Only used when no logo is uploaded." />
+            <TextField label="Login image URL" value={form.loginImageUrl} onChange={setField('loginImageUrl')} fullWidth helperText="Only used when no login image is uploaded." />
             <Stack direction="row" spacing={2}>
               {colourField('primaryColor', 'Primary colour', '#0B5FFF')}
               {colourField('secondaryColor', 'Secondary colour', '#22C55E')}
@@ -226,6 +365,15 @@ export default function CSRBrandingPage() {
               <MenuItem value="inactive">Inactive</MenuItem>
             </TextField>
           </Stack>
+          <section className="bprev-wrap" aria-label="Preview">
+            <div className="bimg-l">Preview</div>
+            <BrandPreview
+              name={form.displayName.trim()}
+              colour={form.primaryColor}
+              logo={previewSrc('logo', 'logoFile', form.logoUrl)}
+              loginImage={previewSrc('login-image', 'loginImageFile', form.loginImageUrl)}
+            />
+          </section>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setModal({ open: false, editing: null })} disabled={saving}>Cancel</Button>

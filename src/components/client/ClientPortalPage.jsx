@@ -156,6 +156,45 @@ function IkfMark() {
   );
 }
 
+// The photos the Overview shows: the first photo of the latest activity that has
+// one (the large photo), and the first photo of each of the three latest
+// activities (the tiles). Photos sit behind the funder's login, so each is
+// fetched with the token and shown from a local object URL, released when the
+// page no longer needs it. A photo that fails to load is simply not shown.
+function useOverviewPhotos(activities, enabled) {
+  const [urls, setUrls] = useState({});
+  const recent = latestFirst(activities, activityDate);
+  const hero = recent.find((a) => a.photos && a.photos.length);
+  const wanted = [hero, ...recent.slice(0, 3)]
+    .filter((a) => a && a.photos && a.photos.length)
+    .map((a) => ({ a, ph: a.photos[0] }));
+  const key = wanted.map(({ a, ph }) => `${a.id}:${ph.id}:${ph.version}`).join('|');
+
+  useEffect(() => {
+    if (!enabled || !key) return undefined;
+    let active = true;
+    const made = [];
+    const seen = new Set();
+    wanted.forEach(({ a, ph }) => {
+      if (seen.has(ph.id)) return;
+      seen.add(ph.id);
+      clientAPI.activityPhoto(a.id, ph.id, ph.version)
+        .then(({ blob }) => {
+          if (!active) return;
+          const url = URL.createObjectURL(blob);
+          made.push(url);
+          setUrls((u) => ({ ...u, [a.id]: url }));
+        })
+        .catch(() => {});
+    });
+    return () => { active = false; made.forEach((u) => URL.revokeObjectURL(u)); setUrls({}); };
+    // `wanted` is derived from `key`; the key is the dependency that matters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, key]);
+
+  return { hero, urls };
+}
+
 function EmptyPanel({ title, children }) {
   return (
     <div className="cpanel">
@@ -187,6 +226,7 @@ export default function ClientPortalPage() {
   const [logoBroken, setLogoBroken] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState(null);
   const tabRefs = useRef({});
+  const photos = useOverviewPhotos(activities, tab === 'project');
 
   useEffect(() => {
     let active = true;
@@ -326,6 +366,15 @@ export default function ClientPortalPage() {
           {dayFact && <div><dt>Progress</dt><dd className="cnum">{dayFact}</dd></div>}
         </dl>
 
+        {photos.hero && photos.urls[photos.hero.id] && (
+          <figure className="cphoto">
+            <img src={photos.urls[photos.hero.id]} alt={photos.hero.title} />
+            <figcaption>
+              Latest: {[photos.hero.title, photos.hero.location, formatDate(activityDate(photos.hero))].filter(Boolean).join(' · ')}
+            </figcaption>
+          </figure>
+        )}
+
         <section aria-labelledby="cp-delivered">
           <h2 className="csec" id="cp-delivered">What has been delivered</h2>
           {deliverables.length === 0 ? (
@@ -385,12 +434,17 @@ export default function ClientPortalPage() {
         {recent.length > 0 && (
           <section aria-labelledby="cp-field">
             <h2 className="csec" id="cp-field">From the field</h2>
-            <ul className="citems">
+            <ul className={recent.some((a) => photos.urls[a.id]) ? 'ctiles' : 'citems'}>
               {recent.map((a) => {
                 const when = (a.startDate || a.endDate) ? formatRange(a.startDate, a.endDate) : formatDate(a.date);
                 const meta = [a.activityType, a.location, when].filter(Boolean).join(' · ');
+                const url = photos.urls[a.id];
                 return (
-                  <li key={a.id} className="citem">
+                  <li key={a.id} className={recent.some((x) => photos.urls[x.id]) ? 'ctile' : 'citem'}>
+                    {recent.some((x) => photos.urls[x.id]) && (
+                      url ? <img className="ctile-img" src={url} alt={a.title} />
+                        : <span className="ctile-img ctile-none" aria-hidden="true">{a.location || a.activityType || ''}</span>
+                    )}
                     <span className="citem-t">{a.title}</span>
                     {meta && <span className="citem-s">{meta}</span>}
                   </li>

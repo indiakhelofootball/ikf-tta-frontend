@@ -2930,3 +2930,13 @@
   .csrx .tfoot .pager,
   .csrx .tfoot .tfoot-pager{margin-left:0;width:100%;justify-content:space-between}
 }
+
+/* ---- activity photos (activity form) ------------------------------------ */
+.csrx .pform-sec--photos{--sec:#8A5A2B}
+.csrx .aphotos{display:flex;flex-direction:column;gap:10px}
+.csrx .aphotos-grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:10px}
+.csrx .aphoto{display:flex;flex-direction:column;gap:6px}
+.csrx .aphoto img,.csrx .aphoto-ph{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;background:var(--line)}
+.csrx .aphoto-x{align-self:flex-start}
+.csrx .aphotos-add{align-self:flex-start;cursor:pointer}
+.csrx .aphotos-add.is-off{opacity:.6;cursor:not-allowed}
