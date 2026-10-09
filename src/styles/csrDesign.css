@@ -2983,3 +2983,8 @@
   .csrx .stats > .stat{border-left:0}
   .csrx .panel{min-width:0;max-width:100%}
 }
+
+/* ---- Funders page: each funder's portal link -------------------------- */
+.csrx .portal-link{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-top:6px}
+.csrx .portal-path{display:block;font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.csrx .portal-link .portal-path{display:inline}
