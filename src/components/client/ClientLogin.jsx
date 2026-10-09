@@ -53,7 +53,13 @@ const INK = '#111827';
 const MUTED = '#5F6672';
 const LINE = '#E5E7EB';
 const PAPER = '#FFFFFF';
-const CANVAS = '#FAFAFB';
+// The same warm paper the Overview sits on, so the door and the report read as
+// one document.
+const CANVAS = 'oklch(0.972 0.006 85)';
+// Both self-hosted in fonts.css, which the funder bundle loads: the serif for
+// what reads like a document, Manrope for the controls.
+const SERIF = "'Source Serif 4', Georgia, 'Times New Roman', serif";
+const SANS = "'Manrope', system-ui, 'Segoe UI', Roboto, sans-serif";
 // The unbranded ground: graphite, and white on it measures 14.68:1.
 const GRAPHITE = '#243040';
 const ON_GRAPHITE = '#FFFFFF';
@@ -225,7 +231,7 @@ export default function ClientLogin() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: CANVAS, ...focusRingSx }}>
+      <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: CANVAS, fontFamily: SANS, ...focusRingSx }}>
 
         {/* ── HERO ────────────────────────────────────────────────
             The funder's own surface. Where they supplied a login image it runs
@@ -292,33 +298,45 @@ export default function ClientLogin() {
             <Typography
               component="p"
               sx={{
-                fontSize: 10,
+                fontFamily: SANS,
+                fontSize: 11,
                 fontWeight: 700,
-                letterSpacing: '0.2em',
+                letterSpacing: '0.14em',
                 textTransform: 'uppercase',
                 color: brand?.loginImageUrl ? '#FFFFFF' : onHero,
-                opacity: 0.78,
+                opacity: 0.82,
                 mb: 1.5,
               }}
             >
-              CSR Portal
+              Programme report
             </Typography>
             <Typography
               component="p"
               sx={{
-                fontSize: '2rem',
-                fontWeight: 700,
-                lineHeight: 1.15,
-                letterSpacing: '-0.02em',
+                fontFamily: SERIF,
+                fontSize: '2.5rem',
+                fontWeight: 400,
+                lineHeight: 1.1,
+                letterSpacing: '-0.01em',
                 color: brand?.loginImageUrl ? '#FFFFFF' : onHero,
               }}
             >
               {title}
             </Typography>
-            <Box sx={{
-              mt: 3, width: 56, height: 3, borderRadius: '2px',
-              bgcolor: brand?.loginImageUrl ? '#FFFFFF' : onHero, opacity: 0.55,
-            }} />
+            <Typography
+              component="p"
+              sx={{
+                fontFamily: SANS,
+                mt: 2,
+                fontSize: '0.9375rem',
+                lineHeight: 1.55,
+                maxWidth: '40ch',
+                color: brand?.loginImageUrl ? '#FFFFFF' : onHero,
+                opacity: 0.88,
+              }}
+            >
+              What your grant has delivered, where and when, with photos and reports, kept up to date by India Khelo Football.
+            </Typography>
           </Box>
         </Box>
 
@@ -339,28 +357,40 @@ export default function ClientLogin() {
         >
           <Box sx={{ width: '100%', maxWidth: 420 }}>
             {showLogo ? (
-              <Box
-                component="img"
-                src={brand.logoUrl}
-                alt={title}
-                onError={() => setLogoBroken(true)}
-                sx={{ maxHeight: 52, maxWidth: 220, display: 'block', mb: 4 }}
-              />
+              <Box sx={{ mb: 4 }}>
+                <Box
+                  component="img"
+                  src={brand.logoUrl}
+                  alt={title}
+                  onError={() => setLogoBroken(true)}
+                  sx={{ maxHeight: 48, maxWidth: 200, display: 'block' }}
+                />
+                {/* The hero carries the name on a desk; below lg it is hidden. */}
+                <Typography
+                  sx={{
+                    display: { xs: 'block', lg: 'none' },
+                    mt: 1.5, fontWeight: 600, color: INK, fontSize: '0.9375rem', fontFamily: SANS,
+                  }}
+                >
+                  {title}
+                </Typography>
+              </Box>
             ) : (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 4 }}>
                 <Avatar sx={{ bgcolor: heroFill, color: onHero, width: 40, height: 40, fontWeight: 700 }}>
                   {title.charAt(0)}
                 </Avatar>
-                <Typography sx={{ fontWeight: 700, color: INK, fontSize: '1rem' }}>{title}</Typography>
+                <Typography sx={{ fontWeight: 700, color: INK, fontSize: '1rem', fontFamily: SANS }}>{title}</Typography>
               </Box>
             )}
 
             <Typography
               component="h1"
               sx={{
-                fontSize: { xs: '2rem', md: '2.5rem' },
-                fontWeight: 700,
-                letterSpacing: '-0.025em',
+                fontFamily: SERIF,
+                fontSize: { xs: '2.25rem', md: '2.75rem' },
+                fontWeight: 400,
+                letterSpacing: '-0.01em',
                 lineHeight: 1.05,
                 color: INK,
                 mb: 1.5,
@@ -368,8 +398,8 @@ export default function ClientLogin() {
             >
               Sign in
             </Typography>
-            <Typography sx={{ color: MUTED, fontSize: '0.9375rem', lineHeight: 1.6, maxWidth: '38ch', mb: 4 }}>
-              View your CSR project activity and published reports.
+            <Typography sx={{ color: MUTED, fontFamily: SANS, fontSize: '0.9375rem', lineHeight: 1.6, maxWidth: '38ch', mb: 4 }}>
+              Use the email your invitation was sent to.
             </Typography>
 
             {slugUnknown && (
@@ -456,8 +486,17 @@ export default function ClientLogin() {
             <Box sx={{
               mt: 5, pt: 3, borderTop: `1px solid ${LINE}`,
               fontSize: '0.8125rem', color: MUTED,
+              display: 'flex', flexDirection: 'column', gap: 1.5,
             }}>
-              Forgotten your password? Ask your programme contact to reset it.
+              <span>Forgotten your password? Ask your programme contact to reset it.</span>
+              <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, color: MUTED }}>
+                <Box component="svg" viewBox="0 0 24 24" aria-hidden sx={{ width: 18, height: 18, flex: 'none' }}>
+                  <g fill="none" stroke="currentColor" strokeWidth="1.6">
+                    <circle cx="12" cy="12" r="9" /><path d="M12 3v18M3 12h18" /><circle cx="12" cy="12" r="3" />
+                  </g>
+                </Box>
+                Delivered by India Khelo Football
+              </Box>
             </Box>
           </Box>
         </Box>
