@@ -1158,6 +1158,12 @@ export const csrAPI = /*#__PURE__*/ {
         method: 'PATCH',
         body: JSON.stringify({ isActive }),
       }),
+    // Admin sets a forgotten funder's password; their open sessions end.
+    resetPassword: async (id, password) =>
+      apiService.request(`/csr/clients/${id}/password/`, {
+        method: 'POST',
+        body: JSON.stringify({ password }),
+      }),
   },
   // Server-authoritative Utilisation Certificate (totals computed server-side).
   utilisationCertificate: async (projectId) =>

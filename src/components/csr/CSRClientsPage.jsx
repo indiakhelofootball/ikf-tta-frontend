@@ -96,6 +96,44 @@ function OnboardModal({ open, projects, onClose, onSave, saving }) {
   );
 }
 
+function ResetPasswordModal({ client, onClose, onSave, saving }) {
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  useEffect(() => { if (client) { setPassword(''); setError(''); } }, [client]);
+
+  const handleSave = () => {
+    if (password.length < 8) { setError('At least 8 characters'); return; }
+    onSave(password);
+  };
+
+  return (
+    <Dialog open={!!client} onClose={onClose} fullWidth maxWidth="sm">
+      <DialogTitle>Reset password</DialogTitle>
+      <DialogContent>
+        <Stack spacing={2} sx={{ mt: 1 }}>
+          <Typography variant="body2" color="text.secondary">
+            Sets a new password for {client?.email}. They are signed out of any open
+            session and sign in again with this one.
+          </Typography>
+          <TextField
+            label="New Password" value={password} type="text" fullWidth
+            onChange={(e) => { setPassword(e.target.value); setError(''); }}
+            error={!!error}
+            helperText={error || 'Share this with the funder; they change it on the Profile page.'}
+          />
+        </Stack>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} disabled={saving}>Cancel</Button>
+        <Button onClick={handleSave} variant="contained" disabled={saving}>
+          {saving ? 'Saving…' : 'Reset Password'}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
 export default function CSRClientsPage() {
   const [clients, setClients] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -104,6 +142,7 @@ export default function CSRClientsPage() {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
   const [confirmState, setConfirmState] = useState(null);
+  const [resetFor, setResetFor] = useState(null);
 
   const notify = (message, severity = 'success') => setToast({ open: true, message, severity });
   const asList = (data) => (Array.isArray(data) ? data : data?.results || []);
@@ -147,6 +186,23 @@ export default function CSRClientsPage() {
         }
       },
     });
+  };
+
+  const handleReset = async (password) => {
+    setSaving(true);
+    try {
+      await csrAPI.clients.resetPassword(resetFor.id, password);
+      notify(`Password reset for ${resetFor.email}.`);
+      setResetFor(null);
+    } catch (e) {
+      const fieldErr = e?.response?.data?.errors;
+      const msg = fieldErr
+        ? Object.values(fieldErr).flat().join(' ')
+        : (e.message || 'Could not reset the password.');
+      notify(msg, 'error');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSave = async (payload) => {
@@ -211,6 +267,9 @@ export default function CSRClientsPage() {
                 <span className="t2">{c.projectName}</span>
                 <span className="lend">
                   {!c.isActive && <span className="pill wait">Revoked</span>}
+                  <button type="button" className="ghostbtn tight" onClick={() => setResetFor(c)}>
+                    Reset password
+                  </button>
                   <button type="button" className="ghostbtn tight" onClick={() => toggleAccess(c)}>
                     {c.isActive ? 'Revoke' : 'Restore'}
                   </button>
@@ -235,6 +294,13 @@ export default function CSRClientsPage() {
         projects={projects}
         onClose={() => setModalOpen(false)}
         onSave={handleSave}
+        saving={saving}
+      />
+
+      <ResetPasswordModal
+        client={resetFor}
+        onClose={() => setResetFor(null)}
+        onSave={handleReset}
         saving={saving}
       />
 

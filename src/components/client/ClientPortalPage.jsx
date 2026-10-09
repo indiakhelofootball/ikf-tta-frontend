@@ -128,6 +128,7 @@ export default function ClientPortalPage() {
   const [failed, setFailed] = useState(false);
   const [noGrant, setNoGrant] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const [certAttempt, setCertAttempt] = useState(0);
   const [tab, setTab] = useState(tabFromHash);
   const [pwOpen, setPwOpen] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
@@ -138,7 +139,6 @@ export default function ClientPortalPage() {
     setLoading(true);
     setFailed(false);
     setNoGrant(false);
-    setCert(null);
     (async () => {
       try {
         // Branding is fetched FIRST and on its own, not inside the Promise.all
@@ -149,13 +149,6 @@ export default function ClientPortalPage() {
         clientAPI.myBranding()
           .then((b) => { if (active) setBrand(b && b.slug ? b : null); })
           .catch(() => { /* unbranded is a valid state; the default theme holds */ });
-
-        // The certificate is fetched on its own for the same reason branding
-        // is: it is behind a tab, nothing above the fold waits on it, and a
-        // failure here must not blank the whole portal.
-        clientAPI.certificate()
-          .then((c) => { if (active) setCert(c); })
-          .catch(() => { if (active) setCert({ available: false, reason: 'error' }); });
 
         const [p, acts, reps, dels] = await Promise.all([
           clientAPI.project(), clientAPI.activities(), clientAPI.reports(),
@@ -180,6 +173,19 @@ export default function ClientPortalPage() {
     })();
     return () => { active = false; };
   }, [attempt]);
+
+  // The certificate is fetched on its own for the same reason branding is: it
+  // is behind a tab, nothing above the fold waits on it, and a failure here
+  // must not blank the whole portal. Its own effect so the tab's Try again
+  // re-fetches the certificate alone; the page-level Retry still re-runs it.
+  useEffect(() => {
+    let active = true;
+    setCert(null);
+    clientAPI.certificate()
+      .then((c) => { if (active) setCert(c); })
+      .catch(() => { if (active) setCert({ available: false, reason: 'error' }); });
+    return () => { active = false; };
+  }, [attempt, certAttempt]);
 
   // Back, Forward and a hand-edited hash all arrive here.
   useEffect(() => {
@@ -447,12 +453,24 @@ export default function ClientPortalPage() {
       return <div className="cloading"><CircularProgress size={24} /></div>;
     }
     if (!cert.available) {
+      if (cert.reason === 'error') {
+        return (
+          <div className="cpanel" role="alert">
+            <div className="cempty">
+              The certificate could not be loaded just now. This is usually brief.
+              <div className="cempty-act">
+                <Button variant="contained" onClick={() => setCertAttempt((n) => n + 1)}>
+                  Try again
+                </Button>
+              </div>
+            </div>
+          </div>
+        );
+      }
       const closesOn = formatDate(cert.endDate);
       return (
         <EmptyPanel>
-          {cert.reason === 'error'
-            ? 'The certificate could not be loaded just now. Please try again shortly.'
-            : `Your utilisation certificate is issued when this grant closes${closesOn ? `, on ${closesOn}` : ''}. Until then expenses are still being allocated against your contribution, so the figures would keep changing after you filed them. The grant is currently ${cert.projectStatus || project?.status || 'open'}.`}
+          {`Your utilisation certificate is issued when this grant closes${closesOn ? `, on ${closesOn}` : ''}. Until then expenses are still being allocated against your contribution, so the figures would keep changing after you filed them. The grant is currently ${cert.projectStatus || project?.status || 'open'}.`}
         </EmptyPanel>
       );
     }
