@@ -9,6 +9,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 
 import { csrAPI, trialsAPI } from '../../services/api';
+import ActivityPhotos from './ActivityPhotos';
 import { getWorkshopNames, getTrainingProgrammes } from '../../utils/adminStorage';
 import useConfigVersion from '../../hooks/useConfigVersion';
 import '../../styles/csrDesign.css';
@@ -532,6 +533,14 @@ export default function CSRActivityFormPage() {
             )}
           </section>
         )}
+
+        <section className="pform-sec pform-sec--photos" aria-labelledby="a-photos">
+          <h2 className="pform-legend" id="a-photos">Photos</h2>
+          <p className="pform-sub">The funder's Overview leads with the latest activity photo.</p>
+          {isEdit ? <ActivityPhotos activityId={id} /> : (
+            <p className="pform-help">Save the activity first, then open it again to add photos.</p>
+          )}
+        </section>
 
         {saveError ? <p className="pform-error" role="alert">{saveError}</p> : null}
 

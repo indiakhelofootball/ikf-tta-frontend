@@ -4,6 +4,21 @@ import { storedRole, redirectToLoginDoor } from '../auth/loginDoor';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
+// An uploaded branding image wins over a pasted link. The server sends only a
+// version for it; the address is built here, with the version in the query so a
+// replaced image is a new URL and never a stale cached one.
+export const brandImageUrl = (slug, kind, version) =>
+  `${API_BASE_URL}/client/branding/${encodeURIComponent(slug)}/${kind}/?v=${encodeURIComponent(version)}`;
+
+export const withBrandImages = (b) => {
+  if (!b || !b.slug) return b;
+  return {
+    ...b,
+    logoUrl: b.logoVersion ? brandImageUrl(b.slug, 'logo', b.logoVersion) : b.logoUrl,
+    loginImageUrl: b.loginImageVersion ? brandImageUrl(b.slug, 'login-image', b.loginImageVersion) : b.loginImageUrl,
+  };
+};
+
 // How long a single request may hang before it is abandoned.
 //
 // There was no timeout at all. `fetch` has no default one, so a stalled request
@@ -1138,6 +1153,39 @@ export const csrAPI = /*#__PURE__*/ {
       await apiService.rawFetch(`/csr/reports/${reportId}/file/`, { method: 'DELETE' });
     },
   },
+  // Photos from an activity, for the funder's Overview. Listing carries no
+  // bytes; each photo is fetched on its own.
+  activityPhotos: {
+    list: async (activityId) => apiService.request(`/csr/activities/${activityId}/photos/`),
+    upload: async (activityId, file) => {
+      const body = new FormData();
+      body.append('file', file);
+      const res = await apiService.rawFetch(
+        `/csr/activities/${activityId}/photos/`, { method: 'POST', body }, UPLOAD_TIMEOUT_MS,
+      );
+      return res.json();
+    },
+    remove: async (activityId, photoId) => {
+      await apiService.rawFetch(`/csr/activities/${activityId}/photos/${photoId}/`, { method: 'DELETE' });
+    },
+    file: async (activityId, photoId) => apiService.downloadFile(`/csr/activities/${activityId}/photos/${photoId}/`),
+  },
+  // A funder's uploaded logo or login image (kind: 'logo' | 'login-image').
+  // Returns the branding row with its logoFile / loginImageFile summaries.
+  brandingImage: {
+    upload: async (brandingId, kind, file) => {
+      const body = new FormData();
+      body.append('file', file);
+      const res = await apiService.rawFetch(
+        `/csr/branding/${brandingId}/image/${kind}/`, { method: 'POST', body }, UPLOAD_TIMEOUT_MS,
+      );
+      return res.json();
+    },
+    remove: async (brandingId, kind) => {
+      const res = await apiService.rawFetch(`/csr/branding/${brandingId}/image/${kind}/`, { method: 'DELETE' });
+      return res.json();
+    },
+  },
   // The funder's INBOUND grant contract and its promised outputs. Internal
   // surface only — there is deliberately no /api/client/ counterpart, so these
   // must never be reached from anything the funder portal renders.
@@ -1199,8 +1247,13 @@ export const clientAPI = {
   deliverables: async () => apiService.request('/client/deliverables/'),
   // White-label branding: public by slug (pre-auth login), and the funder's own
   // branding post-auth (skins the portal without a slug in the URL).
-  brandingBySlug: async (slug) => apiService.request(`/client/branding/${slug}/`),
-  myBranding: async () => apiService.request('/client/my-branding/'),
+  // One photo of an activity the funder can see, fetched with their token. The
+  // version is in the query so a replaced photo is never a stale cached one.
+  activityPhoto: async (activityId, photoId, version) => apiService.downloadFile(
+    `/client/activities/${activityId}/photos/${photoId}/?v=${encodeURIComponent(version || '')}`,
+  ),
+  brandingBySlug: async (slug) => withBrandImages(await apiService.request(`/client/branding/${slug}/`)),
+  myBranding: async () => withBrandImages(await apiService.request('/client/my-branding/')),
   // The funder's own Utilisation Certificate — the document they file as
   // statutory evidence. Takes no project id: the server reads the grant off the
   // login. Returns { available: false, reason } until the grant closes and the
