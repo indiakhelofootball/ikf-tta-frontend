@@ -534,7 +534,7 @@ export default function CSRProjectDetailPage() {
         {project.name}
       </Typography>
 
-      <Tabs value={tab} onChange={(e, v) => setTab(v)} sx={{ mb: 2 }}>
+      <Tabs value={tab} onChange={(e, v) => setTab(v)} variant="scrollable" scrollButtons={false} sx={{ mb: 2 }}>
         <Tab label="Overview" />
         <Tab label={`Contacts (${contacts.length})`} />
         <Tab label={`Activities (${activities.length})`} />

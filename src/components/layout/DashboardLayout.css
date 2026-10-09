@@ -118,6 +118,18 @@
 }
 
 @media (max-width: 768px) {
+  /* On a phone the TTA sidebar becomes a full-width bar (Sidebar.css), so it
+     sits ABOVE the content, not beside it. The content's left margin is an
+     inline style read from --rail-w, so it is zeroed through the variable; a
+     plain margin-left rule here never beat the inline style, which is how the
+     content ended up pushed off the right edge. A shell whose rail stays a
+     rail on a phone (CSR) sets its own value at higher specificity. */
+  .dashboard-layout {
+    flex-direction: column;
+    --rail-w: 0px;
+    --rail-w-collapsed: 0px;
+  }
+
   .dashboard-content {
     margin-left: 0;
   }
