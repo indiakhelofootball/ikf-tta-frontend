@@ -61,6 +61,21 @@ test('clicking a logged activity opens its grant on the Activities tab', async (
   expect(mockNavigate).toHaveBeenCalledWith('/csr/7', { state: { tab: 2 } });
 });
 
+test('the expanded detail names the partner, not a raw id', async () => {
+  csrAPI.activities.getAll.mockResolvedValue([
+    { ...ACTIVITY, deliveryMode: 'Partner', partnerId: 3, partnerName: 'A1 Classes' },
+    { ...ACTIVITY, id: 2, title: 'Nashik Trial', deliveryMode: 'Self', partnerId: null, partnerName: '' },
+  ]);
+  render(<CSRActivitiesPage />);
+
+  fireEvent.click(await screen.findByRole('button', { name: /Show details for Bhilai Trial/i }));
+  expect(screen.getByText('A1 Classes')).toBeInTheDocument();
+  expect(screen.queryByText(/Vendor #/)).toBeNull();
+
+  fireEvent.click(screen.getByRole('button', { name: /Show details for Nashik Trial/i }));
+  expect(screen.getByText('Delivered in-house')).toBeInTheDocument();
+});
+
 test('the footer states what is shown versus what is logged in total', async () => {
   render(<CSRActivitiesPage />);
 

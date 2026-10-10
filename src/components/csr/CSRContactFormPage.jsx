@@ -32,7 +32,13 @@ const CONTACT_TYPES = [
 const PARTNER_TYPE = 'Vendor';
 
 const EMPTY = {
-  name: '', designation: '', contactType: '', partnerCategoryId: '', email: '', phone: '',
+  name: '', designation: '', contactType: '', partnerCategoryId: '', partnerId: '', email: '', phone: '',
+};
+
+const fieldError = (data, key) => {
+  const v = data?.[key];
+  if (!v) return '';
+  return Array.isArray(v) ? v[0] : String(v);
 };
 
 export default function CSRContactFormPage() {
@@ -46,6 +52,10 @@ export default function CSRContactFormPage() {
   const [error, setError] = useState('');
   const [contact, setContact] = useState(null);
   const [knownContacts, setKnownContacts] = useState([]);
+  // The same list the activity form's partner picker reads: TTA Admin vendor
+  // names whose service type is Partner.
+  const [partners, setPartners] = useState([]);
+  const [partnerError, setPartnerError] = useState('');
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -74,6 +84,7 @@ export default function CSRContactFormPage() {
           designation: data.designation || '',
           contactType: data.contactType || '',
           partnerCategoryId: data.partnerCategoryId ?? '',
+          partnerId: data.partnerId ?? '',
           email: data.email || '',
           phone: data.phone || '',
         });
@@ -110,6 +121,22 @@ export default function CSRContactFormPage() {
     return () => { cancelled = true; };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    csrAPI.partners.getAll()
+      .then((data) => { if (active) setPartners(Array.isArray(data) ? data : data?.results || []); })
+      .catch(() => { if (active) setPartners([]); });
+    return () => { active = false; };
+  }, []);
+
+  // A contact can hold a partner whose Admin entry has since stopped being a
+  // Partner. It stays selectable for that contact, so an edit does not
+  // silently clear it.
+  const partnerOptions = contact?.partnerId
+    && !partners.some((p) => p.id === contact.partnerId)
+    ? [...partners, { id: contact.partnerId, name: contact.partnerName || `#${contact.partnerId}` }]
+    : partners;
+
   // The SAME catalog that classifies a partner vendor, read the same way the
   // activity form reads its workshop list. A second list for one question is
   // how two screens start disagreeing about what a partner does.
@@ -127,7 +154,9 @@ export default function CSRContactFormPage() {
       ...f,
       contactType,
       partnerCategoryId: contactType === PARTNER_TYPE ? f.partnerCategoryId : '',
+      partnerId: contactType === PARTNER_TYPE ? f.partnerId : '',
     }));
+    if (contactType !== PARTNER_TYPE) setPartnerError('');
   };
 
   // Picking a suggestion prefills the other fields but never carries the
@@ -172,6 +201,9 @@ export default function CSRContactFormPage() {
       partnerCategoryId: form.contactType === PARTNER_TYPE && form.partnerCategoryId !== ''
         ? Number(form.partnerCategoryId)
         : null,
+      partnerId: form.contactType === PARTNER_TYPE && form.partnerId !== ''
+        ? Number(form.partnerId)
+        : null,
       email: form.email.trim(),
       phone: form.phone.trim(),
     };
@@ -180,6 +212,7 @@ export default function CSRContactFormPage() {
     payload.projectId = projectId;
     setSaving(true);
     setSaveError('');
+    setPartnerError('');
     try {
       if (isEdit) await csrAPI.contacts.update(id, payload);
       else await csrAPI.contacts.create(payload);
@@ -189,6 +222,7 @@ export default function CSRContactFormPage() {
       // gets thrown out — the contact is gone and the person has nothing to
       // retry.
       setSaveError(err?.message || 'Could not save this contact. Please try again.');
+      setPartnerError(fieldError(err?.response?.data, 'partnerId'));
       setSaving(false);
     }
   };
@@ -268,24 +302,47 @@ export default function CSRContactFormPage() {
               skills, player development and education partners at the same
               time and their representatives are otherwise indistinguishable. */}
           {form.contactType === PARTNER_TYPE && (
-            <div className="pform-field">
-              <label htmlFor="c-partner-category">Partner Type</label>
-              <select
-                id="c-partner-category" className="sel" value={form.partnerCategoryId}
-                onChange={setField('partnerCategoryId')}
-                disabled={partnerCategories.length === 0}
-                aria-describedby="c-partner-category-help"
-              >
-                <option value="">— none —</option>
-                {partnerCategories.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-              <p id="c-partner-category-help" className="pform-help">
-                {partnerCategories.length === 0
-                  ? 'No partner types in the catalog yet — an admin adds them in TTA Admin → Setup.'
-                  : 'What this partner does, e.g. life skills, player development, education.'}
-              </p>
+            <div className="pform-row">
+              <div className="pform-field">
+                <label htmlFor="c-partner">Partner organisation</label>
+                <select
+                  id="c-partner" className="sel" value={form.partnerId}
+                  onChange={(e) => { setPartnerError(''); setField('partnerId')(e); }}
+                  disabled={partnerOptions.length === 0}
+                  aria-invalid={Boolean(partnerError)}
+                  aria-describedby="c-partner-help"
+                >
+                  <option value="">— none —</option>
+                  {partnerOptions.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name || `#${p.id}`}</option>
+                  ))}
+                </select>
+                <p id="c-partner-help" className={`pform-help${partnerError ? ' bad' : ''}`}>
+                  {partnerError || (partnerOptions.length === 0
+                    ? 'No partners yet. In TTA Admin, give a vendor name the service type Partner.'
+                    : 'Which partner this person represents.')}
+                </p>
+              </div>
+
+              <div className="pform-field">
+                <label htmlFor="c-partner-category">Partner Type</label>
+                <select
+                  id="c-partner-category" className="sel" value={form.partnerCategoryId}
+                  onChange={setField('partnerCategoryId')}
+                  disabled={partnerCategories.length === 0}
+                  aria-describedby="c-partner-category-help"
+                >
+                  <option value="">— none —</option>
+                  {partnerCategories.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+                <p id="c-partner-category-help" className="pform-help">
+                  {partnerCategories.length === 0
+                    ? 'No partner types in the catalog yet — an admin adds them in TTA Admin → Setup.'
+                    : 'What this partner does, e.g. life skills, player development, education.'}
+                </p>
+              </div>
             </div>
           )}
 

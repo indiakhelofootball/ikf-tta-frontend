@@ -1222,13 +1222,12 @@ export const csrAPI = /*#__PURE__*/ {
     apiService.request(`/csr/projects/${projectId}/trials/`),
   // White-label branding — admin-managed CRUD (SUPER_ADMIN/ADMIN).
   branding: /*#__PURE__*/ csrCrud('/csr/branding'),
-  // The vendors a workshop may name as its partner. Read-only on purpose, and
-  // deliberately NOT csrCrud: a CSR operator holds no vendors grant, so this is
-  // a narrow door onto three fields of the partner-flagged vendors, not the
-  // vendors module. Writing a vendor from CSR is out of scope in every agreed
-  // document, so there is no create/update/delete here to reach for.
-  partnerVendors: {
-    getAll: async () => apiService.request('/csr/partner-vendors/'),
+  // The partners an activity or a partner contact may name: the TTA Admin
+  // vendor-name master entries whose service type is Partner (owner, 10 Oct
+  // 2026). Read-only on purpose, and deliberately NOT csrCrud — the list is
+  // defined in TTA Admin, and CSR only picks from it.
+  partners: {
+    getAll: async () => apiService.request('/csr/partners/'),
   },
 };
 

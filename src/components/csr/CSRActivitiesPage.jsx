@@ -200,7 +200,7 @@ export default function CSRActivitiesPage() {
         <div className="loading"><div className="spin" /></div>
       ) : (
         <div className="twrap">
-          <div className="lgrid lgrid-head">
+          <div className="lgrid lgrid--acts lgrid-head">
             {['Date', 'Activity', 'Location', 'Grant', 'Status'].map((h) => <span key={h}>{h}</span>)}
           </div>
 
@@ -216,7 +216,7 @@ export default function CSRActivitiesPage() {
               <div
                 role="button"
                 tabIndex={0}
-                className="lgrid lrow"
+                className="lgrid lgrid--acts lrow"
                 aria-label={`Open ${a.title}, logged under ${projectName(a.projectId)}`}
                 onClick={() => navigate(`/csr/${a.projectId}`, { state: { tab: ACTIVITIES_TAB } })}
                 onKeyDown={(e) => {
@@ -272,7 +272,7 @@ export default function CSRActivitiesPage() {
                   </div>
                   <div>
                     <span className="dk">Partner</span>
-                    <span className="dv">{a.linkedVendorId ? `Vendor #${a.linkedVendorId}` : 'Delivered in-house'}</span>
+                    <span className="dv">{a.partnerName || 'Delivered in-house'}</span>
                   </div>
                   <div>
                     <span className="dk">Logged</span>
