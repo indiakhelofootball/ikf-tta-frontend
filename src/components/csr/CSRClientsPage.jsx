@@ -301,12 +301,12 @@ export default function CSRClientsPage() {
       {loading ? (
         <div className="loading"><div className="spin" /></div>
       ) : (
-        <div className="twrap funders-table">
+        <div className="twrap">
           {/* Grant sits fourth on purpose: the fourth cell carries the tinted
               identity band, and which grant a funder is tied to IS the record's
               identity here — a funder login exists only against one grant.
               The funder's own name stays prime in .t1, the grant secondary. */}
-          <div className="lgrid lgrid-head">
+          <div className="lgrid lgrid--funders lgrid-head">
             {['Onboarded', 'Funder', 'Email', 'Grant', 'Access'].map((h) => <span key={h}>{h}</span>)}
           </div>
 
@@ -318,7 +318,7 @@ export default function CSRClientsPage() {
             </div>
           ) : clients.map((c) => (
             <div className="lwrap" key={c.id}>
-              <div className="lgrid lrow">
+              <div className="lgrid lgrid--funders lrow">
                 <span className="fig nowrap">{fmtDay(c.createdAt)}</span>
                 <span className="t1">{c.name}</span>
                 <span className="t2">{c.email}</span>

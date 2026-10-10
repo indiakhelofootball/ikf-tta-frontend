@@ -223,7 +223,7 @@ export default function CSRReportsPage() {
         <div className="loading"><div className="spin" /></div>
       ) : (
         <div className="twrap">
-          <div className="lgrid lgrid-head">
+          <div className="lgrid lgrid--reports lgrid-head">
             {['Added', 'File', 'Activity', 'Grant', 'Gate'].map((h) => <span key={h}>{h}</span>)}
           </div>
 
@@ -239,7 +239,7 @@ export default function CSRReportsPage() {
               key={r.id}
               role="button"
               tabIndex={0}
-              className="lgrid lrow"
+              className="lgrid lgrid--reports lrow"
               aria-label={`Open ${r.fileName || 'Untitled'}, filed under ${projectName(r.projectId)}`}
               onClick={() => navigate(`/csr/${r.projectId}`, { state: { tab: REPORTS_TAB } })}
               onKeyDown={(e) => {

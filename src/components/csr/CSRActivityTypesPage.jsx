@@ -120,7 +120,7 @@ export default function CSRActivityTypesPage() {
           {/* Three columns is everything the catalog holds — the serializer
               ships id, name and isMaster and nothing else. Inventing a date or
               a usage count here would be fiction. */}
-          <div className="lgrid lgrid--3 lgrid-head">
+          <div className="lgrid lgrid--types lgrid--3 lgrid-head">
             {['Activity type', 'Scope', 'Manage'].map((h) => <span key={h}>{h}</span>)}
           </div>
 
@@ -132,7 +132,7 @@ export default function CSRActivityTypesPage() {
             </div>
           ) : types.map((t) => (
             <div className="lwrap" key={t.id}>
-              <div className="lgrid lgrid--3 lrow">
+              <div className="lgrid lgrid--types lgrid--3 lrow">
                 <span className="t1">{t.name}</span>
                 <span className="t2">
                   {t.isMaster

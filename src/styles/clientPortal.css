@@ -133,7 +133,7 @@
 
 .cportal .cmonths{
   list-style:none;margin:0 0 18px;padding:0;
-  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:6px;
 }
 .cportal .cmo{
   border:1px solid var(--line);border-radius:8px;padding:9px 8px;min-height:80px;
@@ -145,7 +145,7 @@
 .cportal .cmo-bars{display:flex;flex-direction:column;gap:3px}
 .cportal .cmo-bars i{display:block;height:6px;border-radius:3px;background:var(--brand)}
 .cportal .cmo-c{margin-top:auto}
-.cportal .cplaces{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr;column-gap:28px}
+.cportal .cplaces{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));column-gap:28px}
 .cportal .cplace{
   display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:12px;
   padding:11px 0;border-top:1px solid var(--line-soft);
@@ -159,7 +159,7 @@
   display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:12px;background:var(--line-soft);
 }
 .cportal .cphoto figcaption{font-size:12.5px;color:var(--soft);margin-top:8px;overflow-wrap:anywhere}
-.cportal .ctiles{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr;gap:14px}
+.cportal .ctiles{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
 .cportal .ctile{
   display:flex;flex-direction:column;gap:2px;border:1px solid var(--line);border-radius:12px;
   overflow:hidden;padding-bottom:12px;background:var(--card);
@@ -240,9 +240,11 @@
 }
 
 /* The fact strip — dividers between columns, never under them. A <dl>, so
-   each value is read with its label. */
+   each value is read with its label. Columns are `auto`, not equal shares:
+   the period needs about twice the width of an amount, and equal columns
+   wrapped "31 Mar / 2027" while the amounts sat in half-empty columns. */
 .cportal .cfacts{
-  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  display:grid;grid-template-columns:repeat(2,auto);
   border-top:1px solid var(--line);margin:18px 0 0;
 }
 .cportal .cfact{padding:14px 16px;border-left:1px solid var(--line-soft);min-width:0}
@@ -370,7 +372,7 @@
   .cportal .ctabs{margin:0 0 22px;padding:0}
   .cportal .ctab{padding:11px 16px}
   .cportal .cpanel{padding:22px 24px}
-  .cportal .cfacts{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .cportal .cfacts{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:auto}
   .cportal .cfact:nth-child(odd){border-left:1px solid var(--line-soft);padding-left:16px}
   .cportal .cfact:first-child{border-left:0;padding-left:0}
   .cportal .ccounts{gap:36px}
