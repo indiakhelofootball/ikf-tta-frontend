@@ -10,9 +10,10 @@ import {
   KeyboardArrowUp as KeyboardArrowUpIcon,
   Download as DownloadIcon,
   Language as WebIcon,
+  Close as CloseIcon,
 } from '@mui/icons-material';
 import { reportsAPI } from '../../services/api';
-import { downloadLogo, downloadMOU } from '../../utils/downloadHelpers';
+import { storedFile, useStoredFile, downloadRepFile } from '../rep/repFiles';
 import {
   countDocumentGaps, filterByGap, describeSkipped, MISSING_LOGO, MISSING_MOU,
 } from './reportDocumentGaps';
@@ -48,29 +49,28 @@ function SocialLink({ url, label }) {
 
 // ── REP Card ─────────────────────────────────────────────────────────────────
 
-function REPReportCard({ rep, selected, onSelect }) {
+function DownloadingNote() {
+  return (
+    <Button size="small" disabled
+      sx={{ textTransform: 'none', fontSize: '0.8rem', minWidth: 0, py: 0, px: 0.5 }}>
+      Downloading…
+    </Button>
+  );
+}
+
+function REPReportCard({ rep, selected, onSelect, onDownload, busy }) {
   const [expanded, setExpanded] = useState(false);
-  /** Keep document URLs once seen so download actions stay available (avoids flicker / blob / prop clears after download). */
-  const [stableMouUrl, setStableMouUrl] = useState(() => rep.mouDocumentUrl || '');
-  const [stableLogoUrl, setStableLogoUrl] = useState(() => rep.repLogoUrl || '');
-
-  useEffect(() => {
-    if (rep.mouDocumentUrl) setStableMouUrl(rep.mouDocumentUrl);
-  }, [rep.mouDocumentUrl]);
-
-  useEffect(() => {
-    if (rep.repLogoUrl) setStableLogoUrl(rep.repLogoUrl);
-  }, [rep.repLogoUrl]);
+  // The logo preview lives in the collapsed section, so an uploaded logo is
+  // fetched the first time the row is opened, and kept while it stays mounted.
+  const [opened, setOpened] = useState(false);
+  const mou = storedFile(rep, 'mou');
+  const logo = storedFile(rep, 'logo');
+  const logoPreview = useStoredFile(rep, 'logo', opened);
 
   const assignments = rep.cityAssignments || [];
   const uniqueCities = [...new Set(assignments.map(a => a.city).filter(Boolean))];
   const uniqueSeasons = [...new Set(assignments.map(a => a.trialSeason).filter(Boolean))];
   const uniqueProjects = [...new Set(assignments.map(a => a.trialType).filter(Boolean))];
-
-  const repForDocs = useMemo(
-    () => ({ ...rep, mouDocumentUrl: stableMouUrl, repLogoUrl: stableLogoUrl }),
-    [rep, stableMouUrl, stableLogoUrl]
-  );
 
   return (
     <Paper
@@ -138,14 +138,14 @@ function REPReportCard({ rep, selected, onSelect }) {
         <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1, bgcolor: '#f8fafc', px: 1.5, py: 0.5, borderRadius: 2, border: '1px solid #e5e7eb' }}>
           {/* MOU */}
           <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>MOU</Typography>
-          {stableMouUrl ? (
+          {mou.shown ? (busy.mou ? <DownloadingNote /> : (
             <IconButton size="small"
               aria-label="Download MOU"
-              onClick={(e) => { e.stopPropagation(); downloadMOU(repForDocs, assignments[0] || {}); }}
+              onClick={(e) => { e.stopPropagation(); onDownload(rep, 'mou'); }}
               sx={{ p: 0.5, color: '#3B82F6', '&:hover': { bgcolor: '#dbeafe' } }}>
               <DownloadIcon sx={{ fontSize: 18 }} />
             </IconButton>
-          ) : (
+          )) : (
             <Typography sx={{ fontSize: '0.85rem', color: '#5A6B82' }}>N/A</Typography>
           )}
 
@@ -153,14 +153,14 @@ function REPReportCard({ rep, selected, onSelect }) {
 
           {/* Logo */}
           <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>Logo</Typography>
-          {stableLogoUrl ? (
+          {logo.shown ? (busy.logo ? <DownloadingNote /> : (
             <IconButton size="small"
               aria-label="Download logo"
-              onClick={(e) => { e.stopPropagation(); downloadLogo(repForDocs, uniqueCities[0] || rep.repName); }}
+              onClick={(e) => { e.stopPropagation(); onDownload(rep, 'logo'); }}
               sx={{ p: 0.5, color: '#3B82F6', '&:hover': { bgcolor: '#dbeafe' } }}>
               <DownloadIcon sx={{ fontSize: 18 }} />
             </IconButton>
-          ) : (
+          )) : (
             <Typography sx={{ fontSize: '0.85rem', color: '#5A6B82' }}>N/A</Typography>
           )}
 
@@ -184,7 +184,7 @@ function REPReportCard({ rep, selected, onSelect }) {
           fullWidth
           disableElevation
           variant="text"
-          onClick={(e) => { e.stopPropagation(); setExpanded(true); }}
+          onClick={(e) => { e.stopPropagation(); setExpanded(true); setOpened(true); }}
           startIcon={<KeyboardArrowDownIcon sx={{ fontSize: 22 }} />}
           sx={{
             textTransform: 'none', fontWeight: 600, fontSize: '0.9rem',
@@ -203,10 +203,26 @@ function REPReportCard({ rep, selected, onSelect }) {
         <Box sx={{ px: 2.5, pb: 0, pt: 1, borderTop: '1px solid #e5e7eb' }}>
 
           {/* Logo preview */}
-          {stableLogoUrl && (
+          {logo.shown && (
             <Box sx={{ mt: 1.5, mb: 2.5 }}>
-              <Box component="img" src={stableLogoUrl} alt="Logo"
-                sx={{ height: 48, objectFit: 'contain', border: '1px solid #e5e7eb', borderRadius: 2, p: 1, bgcolor: '#f9fafb' }} />
+              {logoPreview.status === 'ready' && (
+                <Box component="img" src={logoPreview.src} alt="Logo"
+                  sx={{ height: 48, objectFit: 'contain', border: '1px solid #e5e7eb', borderRadius: 2, p: 1, bgcolor: '#f9fafb' }} />
+              )}
+              {/* Same height as the logo, so the row does not move when it lands. */}
+              {(logoPreview.status === 'loading' || logoPreview.status === 'idle') && (
+                <Box role="status" aria-label="Loading logo"
+                  sx={{ height: 48, width: 96, border: '1px solid #e5e7eb', borderRadius: 2, bgcolor: '#f1f5f9' }} />
+              )}
+              {logoPreview.status === 'error' && (
+                <Box sx={{ height: 48, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography sx={{ fontSize: '0.85rem', color: 'error.main' }}>Couldn't load</Typography>
+                  <Button size="small" onClick={logoPreview.retry}
+                    sx={{ textTransform: 'none', fontWeight: 600 }}>
+                    Retry
+                  </Button>
+                </Box>
+              )}
             </Box>
           )}
 
@@ -306,10 +322,15 @@ export default function SocialMediaReport() {
   const [filterSeason, setFilterSeason] = useState('');
   const [filterProject, setFilterProject] = useState('');
   const [downloading, setDownloading] = useState(false);
-  const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
+  // Download Selected progress: { current, total } while files are fetched.
+  const [progress, setProgress] = useState(null);
+  // Row download buttons in flight, keyed `${repId}:${kind}`.
+  const [busy, setBusy] = useState({});
+  const [toast, setToast] = useState({ open: false, message: '', severity: 'success', retry: null });
 
-  const showToast = (message, severity = 'success') =>
-    setToast({ open: true, message, severity });
+  const showToast = (message, severity = 'success', retry = null) =>
+    setToast({ open: true, message, severity, retry });
+  const closeToast = () => setToast(t => ({ ...t, open: false }));
 
   useEffect(() => {
     reportsAPI.socialMedia()
@@ -380,27 +401,82 @@ export default function SocialMediaReport() {
     }
   };
 
+  // Each file is fetched at the click. These name the ones that failed.
+  const fileLabel = ({ rep, kind }) => `${rep.repName} ${kind === 'logo' ? 'logo' : 'MoU'}`;
+  const failureText = (failed) => `Couldn't download ${failed.map(fileLabel).join(', ')}.`;
+
+  const handleRowDownload = async (rep, kind) => {
+    const key = `${rep.id}:${kind}`;
+    setBusy(b => ({ ...b, [key]: true }));
+    try {
+      await downloadRepFile(rep, kind);
+    } catch {
+      showToast(failureText([{ rep, kind }]), 'error', () => handleRowDownload(rep, kind));
+    } finally {
+      setBusy(b => {
+        const next = { ...b };
+        delete next[key];
+        return next;
+      });
+    }
+  };
+
+  // Download the given files in order, logo before MoU per REP, with a small
+  // delay between REPs to avoid browser blocking. Returns the ones that failed.
+  const downloadAll = async (items) => {
+    const failed = [];
+    for (let i = 0; i < items.length; i++) {
+      setProgress({ current: i + 1, total: items.length });
+      try {
+        await downloadRepFile(items[i].rep, items[i].kind);
+      } catch {
+        failed.push(items[i]);
+      }
+      const next = items[i + 1];
+      if (next && next.rep !== items[i].rep) await new Promise(r => setTimeout(r, 500));
+    }
+    return failed;
+  };
+
+  const retryFailed = async (items) => {
+    setDownloading(true);
+    try {
+      const failed = await downloadAll(items);
+      if (failed.length) showToast(failureText(failed), 'error', () => retryFailed(failed));
+      else showToast(`Downloaded ${items.length} file(s).`);
+    } finally {
+      setProgress(null);
+      setDownloading(false);
+    }
+  };
+
   // Bulk download
   const handleBulkDownload = async () => {
     const selectedReps = reps.filter(r => selected.has(r.id));
     if (selectedReps.length === 0) return;
     setDownloading(true);
     try {
-      let fileCount = 0;
+      const items = [];
       for (const rep of selectedReps) {
-        const cities = [...new Set((rep.cityAssignments || []).map(a => a.city).filter(Boolean))];
-        const city = cities[0] || rep.repName;
-        const assignment = (rep.cityAssignments || [])[0] || {};
-        if (rep.repLogoUrl) { await downloadLogo(rep, city); fileCount++; }
-        if (rep.mouDocumentUrl) { await downloadMOU(rep, assignment); fileCount++; }
-        // Small delay between REPs to avoid browser blocking
-        if (selectedReps.length > 1) await new Promise(r => setTimeout(r, 500));
+        for (const kind of ['logo', 'mou']) {
+          if (storedFile(rep, kind).shown) items.push({ rep, kind });
+        }
       }
+      const failed = await downloadAll(items);
+      const fileCount = items.length - failed.length;
       // Name what could not be included. The count alone made a gap invisible:
       // "12 file(s) from 10 REP(s)" needs arithmetic to notice 8 are absent,
       // and never said which — so missing paperwork read as a broken download.
       const skipped = describeSkipped(selectedReps);
-      if (fileCount > 0) {
+      if (failed.length > 0) {
+        showToast(
+          (fileCount > 0 ? `Downloaded ${fileCount} file(s) from ${selectedReps.length} REP(s). ` : '')
+          + failureText(failed)
+          + (skipped ? ` ${skipped}` : ''),
+          'error',
+          () => retryFailed(failed),
+        );
+      } else if (fileCount > 0) {
         showToast(
           `Downloaded ${fileCount} file(s) from ${selectedReps.length} REP(s).`
           + (skipped ? ` ${skipped}` : ''),
@@ -409,9 +485,8 @@ export default function SocialMediaReport() {
       } else {
         showToast(`No documents available for selected REPs. ${skipped}`.trim(), 'warning');
       }
-    } catch {
-      showToast('Some downloads may have failed', 'warning');
     } finally {
+      setProgress(null);
       setDownloading(false);
     }
   };
@@ -539,7 +614,9 @@ export default function SocialMediaReport() {
                 '&.Mui-disabled': { bgcolor: '#e5e7eb' },
               }}
             >
-              {downloading ? 'Downloading...' : `Download Selected (${selected.size})`}
+              {downloading
+                ? (progress && progress.total > 1 ? `Downloading ${progress.current} of ${progress.total}…` : 'Downloading…')
+                : `Download Selected (${selected.size})`}
             </Button>
           </Box>
         </Box>
@@ -554,6 +631,8 @@ export default function SocialMediaReport() {
               rep={rep}
               selected={selected.has(rep.id)}
               onSelect={toggleSelect}
+              onDownload={handleRowDownload}
+              busy={{ logo: !!busy[`${rep.id}:logo`], mou: !!busy[`${rep.id}:mou`] }}
             />
           ))
         ) : (
@@ -566,10 +645,23 @@ export default function SocialMediaReport() {
       {/* Toast */}
       {/* 3s was fine for "Downloaded 12 files". It is not long enough to read a
           list of organisation names, so a message that names them stays up. */}
-      <Snackbar open={toast.open} autoHideDuration={toast.severity === 'warning' ? 10000 : 3000}
-        onClose={() => setToast(t => ({ ...t, open: false }))}
+      {/* A failed download stays until it is retried or closed. */}
+      <Snackbar open={toast.open}
+        autoHideDuration={toast.retry ? null : (toast.severity === 'warning' ? 10000 : 3000)}
+        onClose={closeToast}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
-        <Alert severity={toast.severity} variant="filled" onClose={() => setToast(t => ({ ...t, open: false }))}>
+        <Alert severity={toast.severity} variant="filled" onClose={closeToast}
+          action={toast.retry ? (
+            <>
+              <Button color="inherit" size="small" onClick={() => { closeToast(); toast.retry(); }}
+                sx={{ textTransform: 'none', fontWeight: 700 }}>
+                Retry
+              </Button>
+              <IconButton color="inherit" size="small" aria-label="Close" onClick={closeToast}>
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            </>
+          ) : undefined}>
           {toast.message}
         </Alert>
       </Snackbar>

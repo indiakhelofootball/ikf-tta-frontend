@@ -20,6 +20,8 @@ import {
   InsertDriveFile as FileIcon,
 } from '@mui/icons-material';
 import useGrants from '../../auth/useGrants';
+import { storedFile, useStoredFile } from './repFiles';
+import { FileLoading, FileLoadFailed } from './StoredFileStatus';
 
 // ── shared styles (mirrors REPModal) ─────────────────────────────────────────
 
@@ -97,6 +99,10 @@ function Field({ label, value, mono = false, full = false, children }) {
 
 function REPDetailView({ rep, open, onClose, onEdit }) {
   const { canEdit } = useGrants();
+  // Fetched when the view opens. Whether each file exists comes from the row,
+  // so a REP with no file never shows a spinner.
+  const mouFile = useStoredFile(rep, 'mou');
+  const logoFile = useStoredFile(rep, 'logo');
   if (!rep) return null;
 
   const assignments = rep.cityAssignments || [];
@@ -110,7 +116,9 @@ function REPDetailView({ rep, open, onClose, onEdit }) {
   ].filter(f => rep[f.key] || rep[f.naKey]);
 
   const hasBackup = rep.backupContactName || rep.backupPhone || rep.backupEmail;
-  const hasDocs = rep.mouDocumentUrl || rep.repLogoUrl || rep.repLogoLink;
+  const mou = storedFile(rep, 'mou');
+  const logo = storedFile(rep, 'logo');
+  const hasDocs = mou.shown || logo.shown || rep.repLogoLink;
 
   return (
     <Dialog
@@ -264,13 +272,17 @@ function REPDetailView({ rep, open, onClose, onEdit }) {
           <Box sx={cardSx}>
             <Typography sx={sectionHeaderSx}>Documents & Branding</Typography>
             <Box sx={grid2}>
-              {rep.mouDocumentUrl && (
+              {mou.shown && (
                 <Box>
                   <Typography sx={labelSx}>Signed MoU / Agreement</Typography>
-                  {/^https?:\/\//.test(rep.mouDocumentUrl) ? (
+                  {mouFile.status === 'loading' ? (
+                    <FileLoading label="Loading MoU…" />
+                  ) : mouFile.status === 'error' ? (
+                    <FileLoadFailed label="Couldn't load MoU." onRetry={mouFile.retry} />
+                  ) : (mou.fetch || /^https?:\/\//.test(mouFile.src)) ? (
                     <Box
                       component="a"
-                      href={rep.mouDocumentUrl}
+                      href={mouFile.src}
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
@@ -284,24 +296,30 @@ function REPDetailView({ rep, open, onClose, onEdit }) {
                     </Box>
                   ) : (
                     <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, fontSize: '0.85rem', color: '#475569', fontWeight: 500 }}>
-                      <FileIcon fontSize="small" /> {rep.mouDocumentUrl}
+                      <FileIcon fontSize="small" /> {mouFile.src}
                     </Box>
                   )}
                 </Box>
               )}
-              {rep.repLogoUrl && (
+              {logo.shown && (
                 <Box>
                   <Typography sx={labelSx}>REP Logo</Typography>
-                  <Box
-                    component="img"
-                    src={rep.repLogoUrl}
-                    alt="REP Logo"
-                    sx={{
-                      height: 60, objectFit: 'contain',
-                      border: '1px solid #e5e7eb', borderRadius: 1,
-                      p: 1, bgcolor: '#f9fafb', display: 'block',
-                    }}
-                  />
+                  {logoFile.status === 'loading' ? (
+                    <FileLoading label="Loading logo…" />
+                  ) : logoFile.status === 'error' ? (
+                    <FileLoadFailed label="Couldn't load logo." onRetry={logoFile.retry} />
+                  ) : (
+                    <Box
+                      component="img"
+                      src={logoFile.src}
+                      alt="REP Logo"
+                      sx={{
+                        height: 60, objectFit: 'contain',
+                        border: '1px solid #e5e7eb', borderRadius: 1,
+                        p: 1, bgcolor: '#f9fafb', display: 'block',
+                      }}
+                    />
+                  )}
                 </Box>
               )}
               {rep.repLogoLink && (

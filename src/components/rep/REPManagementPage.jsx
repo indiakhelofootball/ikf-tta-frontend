@@ -104,7 +104,9 @@ function REPManagementPage() {
   const loadREPs = async ({ silent = false } = {}) => {
     try {
       if (!silent) setLoading(true);
-      const response = await repAPI.getAll({ limit: 100 });
+      // Without the logo/MoU contents: the detail view and the edit form fetch
+      // them when opened. With them, every visit was 25 MB (live, 2026-10-10).
+      const response = await repAPI.getAll({ limit: 100, withoutFiles: true });
       setReps(response.reps || []);
     } catch (error) {
       console.error('Load error:', error);

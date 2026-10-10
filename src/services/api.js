@@ -467,6 +467,9 @@ export const repAPI = {
     if (filters.sort) params.append('sort', filters.sort);
     if (filters.page) params.append('page', filters.page);
     if (filters.limit) params.append('limit', filters.limit);
+    // Rows without the logo/MoU contents, plus hasLogo/hasMou and
+    // repLogoText/mouDocumentText (see components/rep/repFiles.js).
+    if (filters.withoutFiles) params.append('files', '0');
     const qs = params.toString();
     return apiService.request(`/reps/${qs ? `?${qs}` : ''}`);
   },
@@ -513,6 +516,22 @@ export const repAPI = {
     } catch {
       return null;
     }
+  },
+
+  // One stored file ('logo' or 'mou') as a Blob, for display or download.
+  // Unlike getLogoDataUrl this THROWS on any failure: callers decide from the
+  // row's hasLogo/hasMou that the file exists, so a failure here is an error to
+  // show with a Retry, not an absence.
+  getFileBlob: async (id, kind, updatedAt) => {
+    const url = kind === 'mou' ? repAPI.mouUrl(id, updatedAt) : repAPI.logoUrl(id, updatedAt);
+    const send = () => {
+      const token = localStorage.getItem('tta_token');
+      return fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    };
+    let res = await send();
+    if (res.status === 401 && await apiService.refreshToken()) res = await send();
+    if (!res.ok) throw new Error(`File request failed (${res.status})`);
+    return res.blob();
   },
 
   getById: async (id) => {
@@ -639,6 +658,20 @@ export const vendorsAPI = {
   // ~26 MB, 99% of it base64 PAN card images that only the Vendors page shows.
   getOptions: async () => {
     return apiService.request('/vendors/options/');
+  },
+
+  // The Vendors page list: `getOptions` rows plus `hasPanCard` and
+  // `panCardImagePrefix`, so the page knows about a PAN card without carrying it.
+  getSlim: async () => {
+    return apiService.request('/vendors/slim/');
+  },
+
+  // One vendor's stored PAN card as { blob, contentType, fileName }. Pass the
+  // vendor's updatedAt: a replaced file changes it, so it is a new address.
+  getPanCard: async (id, updatedAt) => {
+    return apiService.downloadFile(
+      `/vendors/${id}/pan-card/?v=${encodeURIComponent(updatedAt || '')}`
+    );
   },
 
   getById: async (id) => {

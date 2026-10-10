@@ -1,5 +1,5 @@
 // src/components/rep/REPModal.jsx — Restructured for REP (org) + CityAssignment split
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -30,7 +30,15 @@ import { State } from 'country-state-city';
 import { buildCityOptions, filterCityOptions } from '../../utils/cityOptions';
 import { trialsAPI, repAPI } from '../../services/api';
 import { buildAddModePayload } from './repMergePayload';
+import { storedFile } from './repFiles';
+import { FileLoading, FileLoadFailed } from './StoredFileStatus';
 import { getStateFromPinCode } from '../../utils/pinCodeToState';
+
+// The edit preview for a stored MoU shows only its name, so the file itself is
+// never fetched here; this marks "a MoU is stored" where the old code held it.
+const STORED_MOU = 'stored-mou';
+// Only a file picked in this form is ever sent: FileReader gives a data URL.
+const isPickedFile = (preview) => typeof preview === 'string' && preview.startsWith('data:');
 
 // Set of "state|city" keys for cities already assigned to a REP
 let _repAssignedCities = new Set();
@@ -101,6 +109,10 @@ function REPModal({ open, onClose, onSave, editingREP }) {
   const [mouDocumentPreview, setMouDocumentPreview] = useState(null);
   const [repLogo, setRepLogo] = useState(null);
   const [repLogoPreview, setRepLogoPreview] = useState(null);
+  // The stored logo is fetched when the edit form opens: 'idle' | 'loading' | 'error'.
+  const [storedLogoStatus, setStoredLogoStatus] = useState('idle');
+  const storedLogoTicket = useRef(0);
+  const storedLogoObjectUrl = useRef('');
 
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -188,6 +200,34 @@ function REPModal({ open, onClose, onSave, editingREP }) {
     }).catch(() => {});
   }, [open]);
 
+  // A ticket per request: a response that arrives after the form moved on (a
+  // new file was picked, another REP opened) is dropped instead of shown.
+  const cancelStoredLogo = useCallback(() => {
+    storedLogoTicket.current += 1;
+    setStoredLogoStatus('idle');
+  }, []);
+
+  const loadStoredLogo = useCallback((rep) => {
+    const ticket = ++storedLogoTicket.current;
+    setStoredLogoStatus('loading');
+    repAPI.getFileBlob(rep.id, 'logo', rep.updatedAt)
+      .then((blob) => {
+        if (ticket !== storedLogoTicket.current) return;
+        if (storedLogoObjectUrl.current) URL.revokeObjectURL(storedLogoObjectUrl.current);
+        storedLogoObjectUrl.current = URL.createObjectURL(blob);
+        setRepLogoPreview(storedLogoObjectUrl.current);
+        setStoredLogoStatus('idle');
+      })
+      .catch(() => {
+        if (ticket === storedLogoTicket.current) setStoredLogoStatus('error');
+      });
+  }, []);
+
+  useEffect(() => () => {
+    storedLogoTicket.current += 1;
+    if (storedLogoObjectUrl.current) URL.revokeObjectURL(storedLogoObjectUrl.current);
+  }, []);
+
   // Reset on open
   useEffect(() => {
     if (!open) return;
@@ -209,9 +249,17 @@ function REPModal({ open, onClose, onSave, editingREP }) {
         mouStatus: editingREP.mouStatus || '',
         repLogoLink: editingREP.repLogoLink || '',
       });
-      if (editingREP.mouDocumentUrl) setMouDocumentPreview(editingREP.mouDocumentUrl);
-      if (editingREP.repLogoUrl) setRepLogoPreview(editingREP.repLogoUrl);
+      const mou = storedFile(editingREP, 'mou');
+      const logo = storedFile(editingREP, 'logo');
+      if (mou.shown) setMouDocumentPreview(mou.value || STORED_MOU);
+      if (logo.fetch) {
+        loadStoredLogo(editingREP);
+      } else {
+        cancelStoredLogo();
+        if (logo.shown) setRepLogoPreview(logo.value);
+      }
     } else {
+      cancelStoredLogo();
       setOrgData({
         repName: '', season: '',
         contactName: '', phone: '', email: '',
@@ -250,7 +298,7 @@ function REPModal({ open, onClose, onSave, editingREP }) {
     setAddCityDate(`${new Date().getFullYear()}-07-10`);
     setEditAssignmentId(null);
     setAddingNewAssignment(false);
-  }, [open, editingREP]);
+  }, [open, editingREP, loadStoredLogo, cancelStoredLogo]);
 
   // ── Handlers ──
   const handleOrgChange = (field) => (event) => {
@@ -429,6 +477,7 @@ function REPModal({ open, onClose, onSave, editingREP }) {
     setFileError('');
     if (!file.type.startsWith('image/')) { setFileError('REP logo must be an image file'); event.target.value = ''; return; }
     if (file.size > 2 * 1024 * 1024) { setFileError('REP logo must be less than 2MB'); event.target.value = ''; return; }
+    cancelStoredLogo();
     setRepLogo(file);
     const reader = new FileReader();
     reader.onloadend = () => setRepLogoPreview(reader.result);
@@ -513,8 +562,8 @@ function REPModal({ open, onClose, onSave, editingREP }) {
         // the existing base64 on every edit bloated the payload (multi-MB) and, if
         // the edit object ever lacked it, persisted a blank and wiped the logo.
         const repData = { ...orgData };
-        if (mouDocument) { repData.mouDocumentName = mouDocument.name; repData.mouDocumentUrl = mouDocumentPreview; }
-        if (repLogo)     { repData.repLogoName = repLogo.name; repData.repLogoUrl = repLogoPreview; }
+        if (mouDocument && isPickedFile(mouDocumentPreview)) { repData.mouDocumentName = mouDocument.name; repData.mouDocumentUrl = mouDocumentPreview; }
+        if (repLogo && isPickedFile(repLogoPreview))         { repData.repLogoName = repLogo.name; repData.repLogoUrl = repLogoPreview; }
         await onSave(repData);
       } else {
         // Add mode: org + assignment.
@@ -535,8 +584,8 @@ function REPModal({ open, onClose, onSave, editingREP }) {
         // match, nothing exists to clear and every blank is dropped.
         // Rule and reasoning live in ./repMergePayload so they can be tested.
         const repData = buildAddModePayload(orgData, existingRep);
-        if (mouDocument) { repData.mouDocumentName = mouDocument.name; repData.mouDocumentUrl = mouDocumentPreview; }
-        if (repLogo) { repData.repLogoName = repLogo.name; repData.repLogoUrl = repLogoPreview; }
+        if (mouDocument && isPickedFile(mouDocumentPreview)) { repData.mouDocumentName = mouDocument.name; repData.mouDocumentUrl = mouDocumentPreview; }
+        if (repLogo && isPickedFile(repLogoPreview)) { repData.repLogoName = repLogo.name; repData.repLogoUrl = repLogoPreview; }
 
         // Build trial IDs
         const trialIds = lookupProject ? [Number(lookupProject)] : [];
@@ -1355,7 +1404,11 @@ function REPModal({ open, onClose, onSave, editingREP }) {
                     Choose File
                     <input type="file" hidden accept="image/*" onChange={handleRepLogoUpload} />
                   </Button>
-                  {repLogoPreview && (
+                  {storedLogoStatus === 'loading' && <FileLoading label="Loading logo…" />}
+                  {storedLogoStatus === 'error' && (
+                    <FileLoadFailed label="Couldn't load logo." onRetry={() => loadStoredLogo(editingREP)} />
+                  )}
+                  {storedLogoStatus === 'idle' && repLogoPreview && (
                     <Box sx={{ position: 'relative', width: '100%' }}>
                       <Box component="img" src={repLogoPreview} alt="REP Logo Preview"
                         sx={{ width: '100%', height: 80, objectFit: 'contain', border: '1px solid #e5e7eb', borderRadius: 1, p: 1, bgcolor: '#f9fafb' }} />

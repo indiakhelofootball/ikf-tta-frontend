@@ -18,6 +18,7 @@ import {
 import { vendorsAPI } from '../../services/api';
 import { getVendorTypeNames, getEntityTypeNames, getFilteredVendorNames, getBankNamesList, getAccountTypesList, getPartnerCategoryNames } from '../../utils/adminStorage';
 import useConfigVersion from '../../hooks/useConfigVersion';
+import PanCardImage from './PanCardImage';
 import { getStateFromPinCode, getCitiesForState, INDIAN_STATES } from '../../utils/pinCodeToState';
 
 const initialFormData = {
@@ -58,6 +59,7 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
   const [errors, setErrors] = useState({});
   const [panCardImage, setPanCardImage] = useState(null);
   const [panCardImagePreview, setPanCardImagePreview] = useState(null);
+  const [storedPan, setStoredPan] = useState(null);
   const [fileError, setFileError] = useState('');
   const [confirmedVendorName, setConfirmedVendorName] = useState('');
 
@@ -76,7 +78,7 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
     if (open) {
       if (vendor) { populateForm(vendor); }
       else {
-        setFormData(initialFormData); setPanCardImage(null); setPanCardImagePreview(null);
+        setFormData(initialFormData); setPanCardImage(null); setPanCardImagePreview(null); setStoredPan(null);
         setSelectedVendor(null); setConfirmedVendorName('');
         setSearchServiceType(''); setSearchEntityType('');
         setSearchState(''); setSearchCity('');
@@ -100,7 +102,10 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
       accountType: v.accountType || '', ifscCode: v.ifscCode || '',
       bankPinCode: v.bankPinCode || '', branchAddress: v.branchAddress || '',
     });
+    // A bulk-add row still holds its picked file inline; a saved vendor from
+    // the list carries only hasPanCard, and its image is fetched when shown.
     setPanCardImagePreview(v.panCardImageUrl || null);
+    setStoredPan(!v.panCardImageUrl && v.hasPanCard ? v : null);
     setPanCardImage(null);
   };
 
@@ -141,7 +146,7 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
 
   const resetVendorSelection = () => {
     setSelectedVendor(null); setConfirmedVendorName('');
-    setFormData(initialFormData); setPanCardImage(null); setPanCardImagePreview(null);
+    setFormData(initialFormData); setPanCardImage(null); setPanCardImagePreview(null); setStoredPan(null);
   };
 
   const handleServiceTypeChange = (val) => { setSearchServiceType(val); setSearchEntityType(''); setSearchState(''); setSearchCity(''); resetVendorSelection(); };
@@ -182,7 +187,7 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
     e.target.value = '';
   };
 
-  const handleRemovePanCard = () => { setPanCardImage(null); setPanCardImagePreview(null); setFileError(''); };
+  const handleRemovePanCard = () => { setPanCardImage(null); setPanCardImagePreview(null); setStoredPan(null); setFileError(''); };
 
   const validate = () => {
     const e = {};
@@ -215,17 +220,21 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
       // re-verified any vendor whose phone or bank details were corrected.
       status: isEdit ? (vendor?.status || 'Verified') : 'Verified',
     };
+    // Only a newly picked file is sent. The list no longer carries the stored
+    // image, so echoing it back would write '' over it; an absent key leaves
+    // the stored PAN unchanged on the server.
     if (panCardImage) {
       data.panCardImageName = panCardImage.name;
       data.panCardImageUrl = panCardImagePreview;
-    } else if (isEdit) {
-      data.panCardImageName = vendor?.panCardImageName || '';
-      data.panCardImageUrl = vendor?.panCardImageUrl || '';
     }
     onSave(data, existingVendorId);
   };
 
-  const isPanCardPdf = panCardImagePreview && !panCardImagePreview.startsWith('data:image');
+  const storedPanPrefix = storedPan?.panCardImagePrefix || '';
+  const isPanCardPdf = panCardImagePreview
+    ? !panCardImagePreview.startsWith('data:image')
+    : !!storedPan && !storedPanPrefix.startsWith('data:image');
+  const panThumbSx = { width: 60, height: 36, objectFit: 'cover', border: '1px solid #e5e7eb', borderRadius: 1 };
 
   /* ═══════════════════════════ RENDER ═══════════════════════════ */
   return (
@@ -298,11 +307,11 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
                     else if (typeof value === 'string') {
                       setSelectedVendor(null); setConfirmedVendorName(value.trim());
                       setFormData({ ...initialFormData, vendorName: value.trim() });
-                      setPanCardImage(null); setPanCardImagePreview(null);
+                      setPanCardImage(null); setPanCardImagePreview(null); setStoredPan(null);
                     } else if (value._isAdminName) {
                       setSelectedVendor(null); setConfirmedVendorName(value.vendorName);
                       setFormData({ ...initialFormData, vendorName: value.vendorName });
-                      setPanCardImage(null); setPanCardImagePreview(null);
+                      setPanCardImage(null); setPanCardImagePreview(null); setStoredPan(null);
                     } else {
                       setSelectedVendor(value); setConfirmedVendorName(value.vendorName);
                       populateForm(value);
@@ -465,7 +474,7 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
                   Choose File
                   <input type="file" hidden accept="image/*,.pdf" onChange={handlePanCardUpload} />
                 </Button>
-                {panCardImagePreview && (
+                {(panCardImagePreview || storedPan) && (
                   isPanCardPdf ? (
                     <Stack direction="row" spacing={0.5} alignItems="center" sx={{ p: 0.5, bgcolor: '#f0f9ff', borderRadius: 1, flex: 1, minWidth: 0 }}>
                       <FileIcon fontSize="small" color="primary" />
@@ -474,8 +483,11 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
                     </Stack>
                   ) : (
                     <Box sx={{ position: 'relative' }}>
-                      <Box component="img" src={panCardImagePreview} alt="PAN"
-                        sx={{ width: 60, height: 36, objectFit: 'cover', border: '1px solid #e5e7eb', borderRadius: 1 }} />
+                      {panCardImagePreview ? (
+                        <Box component="img" src={panCardImagePreview} alt="PAN" sx={panThumbSx} />
+                      ) : (
+                        <PanCardImage vendor={storedPan} alt="PAN" imgSx={panThumbSx} />
+                      )}
                       <IconButton size="small" onClick={handleRemovePanCard}
                         sx={{ position: 'absolute', top: -8, right: -8, bgcolor: 'white', p: 0.25, '&:hover': { bgcolor: '#fee2e2' } }}>
                         <DeleteIcon sx={{ fontSize: 14 }} color="error" />

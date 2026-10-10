@@ -21,6 +21,7 @@ import {
   InsertDriveFile as FileIcon,
 } from '@mui/icons-material';
 import useGrants from '../../auth/useGrants';
+import PanCardImage from './PanCardImage';
 
 function VendorDetailView({ open, onClose, vendor, onEdit }) {
   const { canEdit } = useGrants();
@@ -48,7 +49,8 @@ function VendorDetailView({ open, onClose, vendor, onEdit }) {
   const captionSx = { display: 'block', color: '#5A6B82', fontSize: '0.82rem', mb: 0.25 };
   const valueSx = { color: '#334155', lineHeight: 1.6 };
 
-  const isPanCardPdf = vendor.panCardImageUrl && !vendor.panCardImageUrl.startsWith('data:image');
+  const panCardPrefix = vendor.panCardImagePrefix || '';
+  const isPanCardPdf = vendor.hasPanCard && !panCardPrefix.startsWith('data:image');
 
   return (
     <Dialog
@@ -126,7 +128,7 @@ function VendorDetailView({ open, onClose, vendor, onEdit }) {
                     <Typography variant="body2" fontWeight={600} sx={valueSx}>{vendor.tdsType}</Typography>
                   </Grid>
                 )}
-                {vendor.panCardImageUrl && (
+                {vendor.hasPanCard && (
                   <Grid item xs={12}>
                     <Typography variant="caption" sx={{ ...captionSx, mb: 0.5 }}>
                       PAN Card
@@ -136,17 +138,16 @@ function VendorDetailView({ open, onClose, vendor, onEdit }) {
                         sx={{ p: 1, bgcolor: '#f0f9ff', borderRadius: 1, maxWidth: 260 }}>
                         <FileIcon fontSize="small" color="primary" />
                         <Typography variant="caption" sx={{ fontSize: '0.75rem' }}>
-                          {vendor.panCardImageUrl.length > 30
-                            ? vendor.panCardImageUrl.substring(0, 30) + '...'
-                            : vendor.panCardImageUrl}
+                          {panCardPrefix.length > 30
+                            ? panCardPrefix.substring(0, 30) + '...'
+                            : panCardPrefix}
                         </Typography>
                       </Stack>
                     ) : (
-                      <Box
-                        component="img"
-                        src={vendor.panCardImageUrl}
+                      <PanCardImage
+                        vendor={vendor}
                         alt="PAN Card"
-                        sx={{
+                        imgSx={{
                           width: 200, height: 100, objectFit: 'cover',
                           border: '1px solid #e5e7eb', borderRadius: 1.5,
                         }}

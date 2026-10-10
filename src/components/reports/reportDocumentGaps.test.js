@@ -100,3 +100,41 @@ describe('what the download says it skipped', () => {
     expect(describeSkipped([{ repLogoUrl: 'x' }])).toBe('1 had no MoU: Unnamed');
   });
 });
+
+describe('slim rows: the backend flags follow this same rule', () => {
+  // Mirrors FLAG_CASES in tta_backend reps/test_slim.py, which checks
+  // stored_value_present() against the same values. Change both together.
+  const ch = (...codes) => String.fromCharCode(...codes);
+  const FLAG_CASES = [
+    ['data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', true],
+    ['data:application/pdf;base64,JVBERi0xLjQK', true],
+    ['Budge-Budge MOU-S6.pdf', true],
+    ['https://example.com/mou.pdf', true],
+    ['DATA:image/png;base64,AAAA', true],
+    [' data:image/png;base64,AAAA', true],
+    ['', false],
+    ['   ', false],
+    [ch(0x09), false],
+    [ch(0x0d, 0x0a, 0x20), false],
+    [ch(0xa0), false],
+    [ch(0xfeff), false],
+    [ch(0x3000, 0x2028), false],
+    [ch(0x1c), true],
+    [ch(0x85), true],
+  ];
+
+  test.each(FLAG_CASES)('%j present = %s on a full row', (value, present) => {
+    expect(hasLogo({ repLogoUrl: value })).toBe(present);
+    expect(hasMou({ mouDocumentUrl: value })).toBe(present);
+  });
+
+  test('a slim row is judged by its flags, which the counts and filters use', () => {
+    const slimRows = [
+      { repName: 'A', hasLogo: true, hasMou: false, repLogoText: '', mouDocumentText: '   ' },
+      { repName: 'B', hasLogo: false, hasMou: true, repLogoText: '', mouDocumentText: '' },
+    ];
+    expect(countDocumentGaps(slimRows)).toEqual({ missingLogo: 1, missingMou: 1, total: 2 });
+    expect(filterByGap(slimRows, MISSING_MOU).map(r => r.repName)).toEqual(['A']);
+    expect(describeSkipped(slimRows)).toBe('1 had no logo: B. 1 had no MoU: A');
+  });
+});

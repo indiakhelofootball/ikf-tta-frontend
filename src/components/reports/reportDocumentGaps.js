@@ -21,8 +21,14 @@ export const MISSING_MOU = 'missing-mou';
 // holding ' ' is not a document, and the backend stores '' for "none".
 const has = (value) => typeof value === 'string' && value.trim() !== '';
 
-export const hasLogo = (rep) => has(rep && rep.repLogoUrl);
-export const hasMou = (rep) => has(rep && rep.mouDocumentUrl);
+// The report's rows no longer carry the files. The backend sends hasLogo /
+// hasMou computed with this same rule (reps/serializers.py
+// stored_value_present); a row that still carries the file is judged here.
+const flagOrHas = (rep, flag, key) =>
+  (rep && typeof rep[flag] === 'boolean' ? rep[flag] : has(rep && rep[key]));
+
+export const hasLogo = (rep) => flagOrHas(rep, 'hasLogo', 'repLogoUrl');
+export const hasMou = (rep) => flagOrHas(rep, 'hasMou', 'mouDocumentUrl');
 
 export function countDocumentGaps(reps) {
   const list = Array.isArray(reps) ? reps : [];
