@@ -301,7 +301,7 @@ export default function CSRClientsPage() {
       {loading ? (
         <div className="loading"><div className="spin" /></div>
       ) : (
-        <div className="twrap">
+        <div className="twrap funders-table">
           {/* Grant sits fourth on purpose: the fourth cell carries the tinted
               identity band, and which grant a funder is tied to IS the record's
               identity here — a funder login exists only against one grant.
