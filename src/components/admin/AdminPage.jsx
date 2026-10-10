@@ -1,6 +1,6 @@
 // src/components/admin/AdminPage.jsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box, Container, Typography, Paper, Stack, TextField,
@@ -236,8 +236,11 @@ function OptionPanel({ title, subtitle, items, onSave, onRename = null, autoCode
 }
 
 /* ── Vendor Name Panel (with Service Type + Entity Type tags) ── */
-function VendorNamePanel({ items, onSave, serviceTypes, entityTypes }) {
+function VendorNamePanel({ items, onSave, onUpdate, serviceTypes, entityTypes }) {
   const [list, setList] = useState(items);
+  // Ids minted here for rows not yet re-read from the server. Only a row with
+  // a real server id can be edited in place.
+  const localIds = useRef(new Set());
   const [newName, setNewName] = useState('');
   const [newServiceType, setNewServiceType] = useState('');
   const [newEntityType, setNewEntityType] = useState('');
@@ -271,7 +274,9 @@ function VendorNamePanel({ items, onSave, serviceTypes, entityTypes }) {
       return;
     }
     setDupeError('');
-    persist([...list, { id: Date.now(), name, serviceType: newServiceType, entityType: newEntityType }]);
+    const id = Date.now();
+    localIds.current.add(id);
+    persist([...list, { id, name, serviceType: newServiceType, entityType: newEntityType }]);
     setNewName(''); setNewServiceType(''); setNewEntityType('');
   };
 
@@ -291,6 +296,15 @@ function VendorNamePanel({ items, onSave, serviceTypes, entityTypes }) {
       return;
     }
     setDupeError('');
+    // The bulk save is get_or_create on the name, so through it a rename adds a
+    // second row and a service-type change on an existing name is skipped. A
+    // saved row is therefore updated in place by its id.
+    const original = list.find(item => item.id === editingId);
+    if (onUpdate && original && typeof original.id === 'number' && !localIds.current.has(original.id)) {
+      onUpdate(original, { name, serviceType: editServiceType, entityType: editEntityType });
+      setEditingId(null);
+      return;
+    }
     persist(list.map(item =>
       item.id === editingId ? { ...item, name, serviceType: editServiceType, entityType: editEntityType } : item
     ));
@@ -309,6 +323,8 @@ function VendorNamePanel({ items, onSave, serviceTypes, entityTypes }) {
         <Typography sx={{ fontSize: '1rem', fontWeight: 700, color: '#1d1d1f' }}>Vendor Names</Typography>
         <Typography sx={{ fontSize: '0.82rem', color: '#6e6e73', mt: 0.25 }}>
           Pre-approved vendor names, tagged with their service type and entity type.
+          A vendor name with service type Partner appears as a partner in CSR, on
+          activities and on partner contacts.
         </Typography>
       </Box>
 
@@ -591,6 +607,36 @@ export default function AdminPage() {
     }
   };
 
+  // A saved vendor name is edited in place by id, so a rename or a change of
+  // service type changes that row instead of adding a second one. This is how
+  // an entry becomes (or stops being) a CSR partner.
+  const handleVendorNameUpdate = async (item, { name, serviceType, entityType }) => {
+    setSaveError(''); setRenameInfo('');
+    try {
+      await configAPI.update(item.id, {
+        category: 'vendor_name', value: name, serviceType, entityType, isActive: true,
+      });
+      await refreshAllFromAPI();
+      setVendorNames(getVendorNames());
+    } catch (err) {
+      setSaveError(err?.message || `Could not save "${name}".`);
+      setVendorNames([...getVendorNames()]);
+    }
+  };
+
+  // After an add, re-read so the new row carries its server id and a later
+  // edit of it can go through handleVendorNameUpdate.
+  const handleVendorNamesSave = (updated) => {
+    setVendorNames(updated);
+    setSaveError('');
+    saveVendorNames(updated)
+      .then(() => refreshAllFromAPI())
+      .then(() => setVendorNames(getVendorNames()))
+      .catch(() => {
+        setSaveError('Failed to save — changes are local only. Check your connection and try again.');
+      });
+  };
+
   useEffect(() => {
     // Load defaults immediately, then fetch from API
     setProjectNames(getProjectNames());
@@ -702,7 +748,8 @@ export default function AdminPage() {
             />
             <VendorNamePanel
               items={vendorNames}
-              onSave={handleSave(setVendorNames, saveVendorNames)}
+              onSave={handleVendorNamesSave}
+              onUpdate={handleVendorNameUpdate}
               serviceTypes={vendorTypes.map(v => v.name)}
               entityTypes={entityTypes.map(v => v.name)}
             />

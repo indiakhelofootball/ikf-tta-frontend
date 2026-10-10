@@ -42,23 +42,23 @@ function kindOfTypeName(name) {
 // the field outright.
 const KIND_FIELDS = {
   trial: ['linkedTrialId'],
-  workshop: ['workshopId', 'deliveryMode', 'linkedVendorId'],
+  workshop: ['workshopId', 'deliveryMode', 'partnerId'],
   // Training carries Self/Partner too. 26 Aug, 15:39-15:47, immediately after
   // listing a training programme's own fields: «उसके बाद जो होगा partner कौन है
   // इसका? self है या कौन है?» — "after that, who is its partner? Is it self or
   // who?" The first cut of this cascade gave the pair to workshop only, which
   // made a partner-delivered training impossible to record at all.
-  training: ['trainingProgrammeId', 'deliveryMode', 'linkedVendorId'],
-  generic: ['deliveryMode', 'linkedVendorId'],
+  training: ['trainingProgrammeId', 'deliveryMode', 'partnerId'],
+  generic: ['deliveryMode', 'partnerId'],
 };
 const ALL_KIND_FIELDS = [
-  'linkedTrialId', 'workshopId', 'trainingProgrammeId', 'deliveryMode', 'linkedVendorId',
+  'linkedTrialId', 'workshopId', 'trainingProgrammeId', 'deliveryMode', 'partnerId',
 ];
 
 const EMPTY = {
   title: '', activityTypeId: '', startDate: '', endDate: '',
   location: '', status: 'Planned', linkedTrialId: '',
-  workshopId: '', trainingProgrammeId: '', linkedVendorId: '',
+  workshopId: '', trainingProgrammeId: '', partnerId: '',
   deliveryMode: '',
   visibleToClient: true,
 };
@@ -81,11 +81,9 @@ export default function CSRActivityFormPage() {
   const [activity, setActivity] = useState(null);
   const [activityTypes, setActivityTypes] = useState([]);
   const [trials, setTrials] = useState([]);
-  // Partner vendors: vendor type Partner, or a partner category (owner, 8 Oct
-  // 2026). An ordinary supplier or a REP must not be offered.
-  // The narrowing is the endpoint's, not this component's: /csr/partner-vendors/
-  // returns partner vendors only, through the csr grant this operator
-  // already holds, so nobody needs the vendors module to fill this picker.
+  // Partners are the TTA Admin vendor-name entries whose service type is
+  // Partner (owner, 10 Oct 2026) — not Vendor-module records. The narrowing is
+  // the endpoint's, not this component's.
   const [partners, setPartners] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -126,7 +124,7 @@ export default function CSRActivityFormPage() {
           linkedTrialId: data.linkedTrialId ?? '',
           workshopId: data.workshopId ?? '',
           trainingProgrammeId: data.trainingProgrammeId ?? '',
-          linkedVendorId: data.linkedVendorId ?? '',
+          partnerId: data.partnerId ?? '',
           deliveryMode: data.deliveryMode || '',
           visibleToClient: data.visibleToClient !== false,
         });
@@ -158,7 +156,7 @@ export default function CSRActivityFormPage() {
 
   useEffect(() => {
     let active = true;
-    csrAPI.partnerVendors.getAll()
+    csrAPI.partners.getAll()
       .then((data) => {
         if (!active) return;
         setPartners(Array.isArray(data) ? data : data?.results || []);
@@ -175,6 +173,14 @@ export default function CSRActivityFormPage() {
   const cfgVersion = useConfigVersion();
   const workshops = useMemo(() => getWorkshopNames(), [cfgVersion]);
   const programmes = useMemo(() => getTrainingProgrammes(), [cfgVersion]);
+
+  // An activity can hold a partner whose Admin entry has since stopped being a
+  // Partner. It stays selectable for that activity, so an edit does not
+  // silently clear it.
+  const partnerOptions = activity?.partnerId
+    && !partners.some((p) => p.id === activity.partnerId)
+    ? [...partners, { id: activity.partnerId, name: activity.partnerName || `#${activity.partnerId}` }]
+    : partners;
 
   const setField = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
@@ -199,8 +205,8 @@ export default function CSRActivityFormPage() {
     if (!form.activityTypeId) next.activityTypeId = 'Pick an activity type';
     // Mirrors the serializer's rule. Caught here too so the user is told
     // before the round trip, not after it.
-    if (form.deliveryMode === 'Partner' && !form.linkedVendorId) {
-      next.linkedVendorId = 'Name the partner, or set delivery to Self.';
+    if (form.deliveryMode === 'Partner' && !form.partnerId) {
+      next.partnerId = 'Name the partner, or set delivery to Self.';
     }
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -233,7 +239,7 @@ export default function CSRActivityFormPage() {
       workshopId: form.workshopId === '' ? null : Number(form.workshopId),
       trainingProgrammeId:
         form.trainingProgrammeId === '' ? null : Number(form.trainingProgrammeId),
-      linkedVendorId: form.linkedVendorId === '' ? null : Number(form.linkedVendorId),
+      partnerId: form.partnerId === '' ? null : Number(form.partnerId),
       deliveryMode: form.deliveryMode,
       visibleToClient: form.visibleToClient,
     };
@@ -251,6 +257,12 @@ export default function CSRActivityFormPage() {
       // gets thrown out — the activity is gone and the person has nothing to
       // retry.
       setSaveError(err?.message || 'Could not save this activity. Please try again.');
+      const partnerErr = err?.response?.data?.partnerId;
+      if (partnerErr) {
+        setErrors((prev) => ({
+          ...prev, partnerId: Array.isArray(partnerErr) ? partnerErr[0] : String(partnerErr),
+        }));
+      }
       setSaving(false);
     }
   };
@@ -416,7 +428,7 @@ export default function CSRActivityFormPage() {
             who delivered it, a training gets the programme. Showing all four
             regardless of type was the exact complaint. */}
         {(showField('workshopId') || showField('deliveryMode')
-          || showField('linkedVendorId') || showField('trainingProgrammeId')
+          || showField('partnerId') || showField('trainingProgrammeId')
           || showField('linkedTrialId')) && (
           <section className="pform-sec pform-sec--detail">
             <h2 className="pform-legend">Delivery</h2>
@@ -483,7 +495,7 @@ export default function CSRActivityFormPage() {
               </div>
             )}
 
-            {(showField('deliveryMode') || showField('linkedVendorId')) && (
+            {(showField('deliveryMode') || showField('partnerId')) && (
               <div className="pform-row">
                 {showField('deliveryMode') && (
                   <div className="pform-field">
@@ -503,29 +515,27 @@ export default function CSRActivityFormPage() {
                   </div>
                 )}
 
-                {showField('linkedVendorId') && (
+                {showField('partnerId') && (
                   <div className="pform-field">
                     <label htmlFor="a-partner">Partner</label>
                     <select
-                      id="a-partner" className="sel" value={form.linkedVendorId}
-                      onChange={setField('linkedVendorId')}
+                      id="a-partner" className="sel" value={form.partnerId}
+                      onChange={setField('partnerId')}
                       disabled={form.deliveryMode === 'Self'}
-                      aria-invalid={Boolean(errors.linkedVendorId)}
+                      aria-invalid={Boolean(errors.partnerId)}
                       aria-describedby="a-partner-help"
                     >
                       <option value="">— none —</option>
-                      {partners.map((v) => (
-                        <option key={v.id} value={v.id}>
-                          {v.vendorName || `#${v.id}`}{v.partnerCategory ? ` · ${v.partnerCategory}` : ''}
-                        </option>
+                      {partnerOptions.map((p) => (
+                        <option key={p.id} value={p.id}>{p.name || `#${p.id}`}</option>
                       ))}
                     </select>
-                    <p id="a-partner-help" className={`pform-help${errors.linkedVendorId ? ' bad' : ''}`}>
-                      {errors.linkedVendorId || (form.deliveryMode === 'Self'
+                    <p id="a-partner-help" className={`pform-help${errors.partnerId ? ' bad' : ''}`}>
+                      {errors.partnerId || (form.deliveryMode === 'Self'
                         ? 'Not needed — this one was delivered by TTA.'
-                        : partners.length === 0
-                          ? 'No partners yet. In TTA, add a vendor with vendor type Partner (or a Partner Category).'
-                          : 'The partner who delivered this. Only vendors of type Partner, or with a Partner Category, appear.')}
+                        : partnerOptions.length === 0
+                          ? 'No partners yet. In TTA Admin, give a vendor name the service type Partner.'
+                          : 'The partner who delivered this. Vendor names with service type Partner in TTA Admin appear here.')}
                     </p>
                   </div>
                 )}

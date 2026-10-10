@@ -72,9 +72,11 @@ const CONTACT_TYPE_LABELS = { Client: 'Client', IKF: 'IKF', Vendor: 'Partner' };
 // column carries the identity band on every table in this module. "Partner"
 // alone cannot tell a life-skills partner from an education one, which is the
 // whole reason the category was asked for.
+// The partner organisation, when recorded, sits between the two: "Partner \u00b7
+// A1 Classes \u00b7 Life skill".
 const contactTypeLabel = (c) => {
   const base = c.contactType ? CONTACT_TYPE_LABELS[c.contactType] || c.contactType : '\u2014';
-  return c.partnerCategoryName ? `${base} \u00b7 ${c.partnerCategoryName}` : base;
+  return [base, c.partnerName, c.partnerCategoryName].filter(Boolean).join(' \u00b7 ');
 };
 
 // Why a tag is not on the certificate. Payment status first: money that never
@@ -202,7 +204,7 @@ function GrantTrials({ project }) {
           {/* Season takes the 4th cell and its identity band: inside one
               project, the season is what a trial belongs to. Rows open
               nothing -- a CSR operator holds no trials grant to open them in. */}
-          <div className="lgrid lgrid--6 lgrid-head">
+          <div className="lgrid lgrid--trials lgrid--6 lgrid-head">
             {['Code', 'Trial', 'Cities', 'Season', 'Dates', 'Status'].map((h) => <span key={h}>{h}</span>)}
           </div>
 
@@ -210,7 +212,7 @@ function GrantTrials({ project }) {
             <div className="empty"><h3>No trials found for {scope || 'this project'}</h3></div>
           ) : trials.map((t) => (
             <div className="lwrap" key={t.id}>
-              <div className="lgrid lgrid--6 lrow">
+              <div className="lgrid lgrid--trials lgrid--6 lrow">
                 <span className="fig nowrap">{t.trialCode}</span>
                 <span className="t1">{t.trialName}</span>
                 <span className="t2">
@@ -565,7 +567,7 @@ export default function CSRProjectDetailPage() {
                 collapsed panel used to hold — name, role, email, phone — are
                 the four columns, so the panel is gone rather than repeating
                 the row back to the reader. */}
-            <div className="lgrid lgrid--6 lgrid-head">
+            <div className="lgrid lgrid--contacts lgrid--6 lgrid-head">
               {['Phone', 'Contact', 'Role', 'Type', 'Email', 'Manage'].map((h) => <span key={h}>{h}</span>)}
             </div>
 
@@ -578,7 +580,7 @@ export default function CSRProjectDetailPage() {
                     Read-only: there is nothing to edit into and nothing left to
                     disclose, so the row stays a row. */}
                 <div
-                  className="lgrid lgrid--6 lrow"
+                  className="lgrid lgrid--contacts lgrid--6 lrow"
                   {...rowActivation(
                     editable ? `Edit contact ${c.name}` : null,
                     editable ? () => navigate(`/csr/contacts/${c.id}/edit`) : null,
@@ -654,7 +656,7 @@ export default function CSRProjectDetailPage() {
                 they printed over the identity band. Location is the field that
                 yielded its column for the status and moved into the row's
                 detail; it is the least load-bearing of the four. */}
-            <div className="lgrid lgrid-head">
+            <div className="lgrid lgrid--gacts lgrid-head">
               {['When', 'Activity', 'Location', 'Type', 'Status'].map((h) => <span key={h}>{h}</span>)}
             </div>
 
@@ -667,7 +669,7 @@ export default function CSRProjectDetailPage() {
               return (
                 <div className="lwrap" key={a.id}>
                   <div
-                    className="lgrid lrow"
+                    className="lgrid lgrid--gacts lrow"
                     {...rowActivation(
                       editable ? `Edit activity ${a.title}` : `Show details for activity ${a.title}`,
                       editable
@@ -796,7 +798,7 @@ export default function CSRProjectDetailPage() {
 
                 Both fields the collapsed panel held, the linked activity and the
                 gate, are now on the row, so there is nothing left to disclose. */}
-            <div className="lgrid lgrid-head">
+            <div className="lgrid lgrid--greports lgrid-head">
               {['Added', 'Report', 'Type', 'Activity', 'Gate'].map((h) => <span key={h}>{h}</span>)}
             </div>
 
@@ -807,7 +809,7 @@ export default function CSRProjectDetailPage() {
               return (
                 <div className="lwrap" key={r.id}>
                   <div
-                    className="lgrid lrow"
+                    className="lgrid lgrid--greports lrow"
                     {...rowActivation(
                       editable ? `Edit report ${r.fileName}` : null,
                       editable ? () => navigate(`/csr/reports/${r.id}/edit`) : null,
@@ -990,7 +992,7 @@ export default function CSRProjectDetailPage() {
                 exists, so the figure is a column and the reason a tag is or is
                 not counted is the trailing state, never a footnote. All three
                 fields the collapsed panel carried are on the row now. */}
-            <div className="lgrid lgrid--4 lgrid-head">
+            <div className="lgrid lgrid--expenses lgrid--4 lgrid-head">
               {['Amount', 'Payment', 'Note', 'Counted'].map((h) => <span key={h}>{h}</span>)}
             </div>
 
@@ -1001,7 +1003,7 @@ export default function CSRProjectDetailPage() {
                 {/* No edit view exists for a tag — the server keeps these
                     audit-bound and write-once — so the row opens nothing and is
                     not offered as a control. */}
-                <div className="lgrid lgrid--4 lrow">
+                <div className="lgrid lgrid--expenses lgrid--4 lrow">
                   <span className="fig nowrap">{rupees(x.amount)}</span>
                   <span className="t1">{x.paymentLabel || 'Manual'}</span>
                   <span className="t2">{x.note || '—'}</span>

@@ -24,7 +24,7 @@ jest.mock('../../services/api', () => ({
   csrAPI: {
     activities: { getById: jest.fn(), create: jest.fn(), update: jest.fn() },
     activityTypes: { getAll: jest.fn() },
-    partnerVendors: { getAll: jest.fn() },
+    partners: { getAll: jest.fn() },
   },
   trialsAPI: { getAll: jest.fn() },
 }));
@@ -48,7 +48,7 @@ const ACTIVITY = {
   title: 'Bhilai Trial', activityTypeId: 10,
   startDate: '2026-06-14', endDate: '', location: 'Bhilai',
   status: 'Planned', linkedTrialId: '', workshopId: '',
-  trainingProgrammeId: '', linkedVendorId: '', deliveryMode: '',
+  trainingProgrammeId: '', partnerId: '', deliveryMode: '',
 };
 
 beforeEach(() => {
@@ -56,7 +56,7 @@ beforeEach(() => {
   mockParams = {};
   mockSearch = new URLSearchParams();
   csrAPI.activityTypes.getAll.mockResolvedValue(TYPES);
-  csrAPI.partnerVendors.getAll.mockResolvedValue([]);
+  csrAPI.partners.getAll.mockResolvedValue([]);
   trialsAPI.getAll.mockResolvedValue([]);
 });
 
@@ -118,13 +118,68 @@ describe('creating an activity', () => {
     expect(screen.queryByLabelText(/linked trial/i)).toBeNull();
   });
 
-  test('an empty partner list says how to add a partner in TTA', async () => {
+  test('an empty partner list says how to add a partner in TTA Admin', async () => {
     render(<CSRActivityFormPage />);
     await screen.findByText('District Trial');
     await userEvent.selectOptions(screen.getByLabelText(/activity type/i), '11');
     expect(await screen.findByText(
-      'No partners yet. In TTA, add a vendor with vendor type Partner (or a Partner Category).',
+      'No partners yet. In TTA Admin, give a vendor name the service type Partner.',
     )).toBeInTheDocument();
+  });
+
+  test('partners come from the Admin partner list, and the pick is sent as partnerId', async () => {
+    csrAPI.partners.getAll.mockResolvedValue({
+      results: [{ id: 3, name: 'A1 Classes' }, { id: 4, name: 'Kick Academy' }],
+    });
+    csrAPI.activities.create.mockResolvedValue({});
+    render(<CSRActivityFormPage />);
+    await screen.findByText('District Trial');
+
+    await userEvent.type(screen.getByLabelText(/title/i), 'Life skills session');
+    await userEvent.selectOptions(screen.getByLabelText(/activity type/i), '11');
+    await userEvent.selectOptions(screen.getByLabelText(/delivered by/i), 'Partner');
+    const picker = screen.getByLabelText(/^partner$/i);
+    await waitFor(() => expect(within(picker).getAllByRole('option')).toHaveLength(3));
+    expect(within(picker).getAllByRole('option').map((o) => o.textContent))
+      .toEqual(['— none —', 'A1 Classes', 'Kick Academy']);
+    await userEvent.selectOptions(picker, '4');
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+    await waitFor(() => expect(csrAPI.activities.create).toHaveBeenCalled());
+    const payload = csrAPI.activities.create.mock.calls[0][0];
+    expect(payload.partnerId).toBe(4);
+    expect(payload).not.toHaveProperty('linkedVendorId');
+  });
+
+  test('Partner delivery with no partner named is stopped before the round trip', async () => {
+    render(<CSRActivityFormPage />);
+    await screen.findByText('District Trial');
+    await userEvent.type(screen.getByLabelText(/title/i), 'Life skills session');
+    await userEvent.selectOptions(screen.getByLabelText(/activity type/i), '11');
+    await userEvent.selectOptions(screen.getByLabelText(/delivered by/i), 'Partner');
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+    expect(await screen.findByText('Name the partner, or set delivery to Self.')).toBeInTheDocument();
+    expect(csrAPI.activities.create).not.toHaveBeenCalled();
+  });
+
+  test('a server refusal on partnerId is shown under the partner field', async () => {
+    csrAPI.partners.getAll.mockResolvedValue([{ id: 3, name: 'A1 Classes' }]);
+    const err = new Error('partnerId: Not a partner.');
+    err.response = { status: 400, data: { partnerId: ['Not a partner.'] } };
+    csrAPI.activities.create.mockRejectedValue(err);
+    render(<CSRActivityFormPage />);
+    await screen.findByText('District Trial');
+
+    await userEvent.type(screen.getByLabelText(/title/i), 'Life skills session');
+    await userEvent.selectOptions(screen.getByLabelText(/activity type/i), '11');
+    await userEvent.selectOptions(screen.getByLabelText(/delivered by/i), 'Partner');
+    await waitFor(() => expect(screen.getByRole('option', { name: 'A1 Classes' })).toBeInTheDocument());
+    await userEvent.selectOptions(screen.getByLabelText(/^partner$/i), '3');
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+    expect(await screen.findByText('Not a partner.')).toBeInTheDocument();
+    expect(screen.getByLabelText(/^partner$/i)).toHaveAttribute('aria-invalid', 'true');
   });
 
   test('exactly two date fields exist, never three: Start and End only', async () => {
@@ -155,6 +210,26 @@ describe('editing an activity', () => {
     await waitFor(() => expect(csrAPI.activities.getById).toHaveBeenCalledWith('5'));
     expect(await screen.findByDisplayValue('Bhilai Trial')).toBeInTheDocument();
     expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  test('a partner no longer in the Admin partner list stays selected, and is sent back', async () => {
+    csrAPI.partners.getAll.mockResolvedValue([{ id: 3, name: 'A1 Classes' }]);
+    csrAPI.activities.getById.mockResolvedValue({
+      ...ACTIVITY, activityTypeId: 11, deliveryMode: 'Partner',
+      partnerId: 99, partnerName: 'Old Partner Trust',
+    });
+    csrAPI.activities.update.mockResolvedValue({});
+    render(<CSRActivityFormPage />);
+    await screen.findByDisplayValue('Bhilai Trial');
+
+    const picker = await screen.findByLabelText(/^partner$/i);
+    await waitFor(() => expect(within(picker).getByRole('option', { name: 'A1 Classes' })).toBeInTheDocument());
+    expect(picker).toHaveValue('99');
+    expect(within(picker).getByRole('option', { name: 'Old Partner Trust' })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+    await waitFor(() => expect(csrAPI.activities.update).toHaveBeenCalled());
+    expect(csrAPI.activities.update.mock.calls[0][1].partnerId).toBe(99);
   });
 
   test('a record that will not load stops, rather than offering an empty form', async () => {
