@@ -26,6 +26,50 @@ import { ROLES, REPORT_KEYS } from '../../auth/roles';
 import useGrants from '../../auth/useGrants';
 import { trialsAPI, repAPI, vendorsAPI, workOrdersAPI, paymentRequestsAPI } from '../../services/api';
 
+// One request and one summary per card. A card whose request fails says so and
+// offers Retry: showing 0 would read as a real count. Vendors are counted from
+// /vendors/options/ (no PAN images); /vendors/?limit=1 carried one 2.4 MB image.
+const STAT_SOURCES = {
+  trials: {
+    load: () => trialsAPI.getAll(),
+    summarise: (r) => {
+      const trials = r?.trials || [];
+      const active = trials.filter(t => t.status === 'Active' || t.status === 'Scheduled').length;
+      return { value: trials.length, sub: `${active} active` };
+    },
+  },
+  reps: {
+    load: () => repAPI.getOptions(),
+    summarise: (r) => ({ value: (r?.reps || []).length, sub: 'registered' }),
+  },
+  vendors: {
+    load: () => vendorsAPI.getOptions(),
+    summarise: (r) => ({ value: r?.total || 0, sub: 'total' }),
+  },
+  workorders: {
+    load: () => workOrdersAPI.getAll(),
+    summarise: (r) => {
+      const workOrders = r?.workOrders || [];
+      const active = workOrders.filter(w => w.status !== 'Cancelled' && w.status !== 'Completed').length;
+      return { value: workOrders.length, sub: `${active} active` };
+    },
+  },
+  payments: {
+    load: () => paymentRequestsAPI.getAll(),
+    summarise: (r) => {
+      const payments = r?.paymentRequests || [];
+      const pending = payments.filter(p => p.status === 'Draft' || p.status === 'Sent to Accounts').length;
+      return { value: payments.length, sub: `${pending} pending` };
+    },
+  },
+};
+
+const settle = (module, outcome) => (
+  outcome.status === 'fulfilled'
+    ? { status: 'ok', ...STAT_SOURCES[module].summarise(outcome.value) }
+    : { status: 'failed' }
+);
+
 export default function DashboardHome() {
   const { user, perms, permsLoading } = useAuth();
   const { canView, canEdit } = useGrants();
@@ -36,38 +80,12 @@ export default function DashboardHome() {
 
   useEffect(() => {
     if (permsLoading) return;
-    const skip = Promise.resolve(null);
     const fetchStats = async () => {
       try {
         // Only hit endpoints the user can view — the rest would 403.
-        const [trialsRes, repsRes, vendorsRes, workOrdersRes, paymentsRes] = await Promise.allSettled([
-          canView('trials') ? trialsAPI.getAll() : skip,
-          canView('reps') ? repAPI.getOptions() : skip,
-          canView('vendors') ? vendorsAPI.getAll({ limit: 1 }) : skip,
-          canView('workorders') ? workOrdersAPI.getAll() : skip,
-          canView('payments') ? paymentRequestsAPI.getAll() : skip,
-        ]);
-
-        const trials = trialsRes.status === 'fulfilled' ? (trialsRes.value?.trials || []) : [];
-        const reps = repsRes.status === 'fulfilled' ? (repsRes.value?.reps || []) : [];
-        const vendors = vendorsRes.status === 'fulfilled' ? (vendorsRes.value?.total || 0) : 0;
-        const workOrders = workOrdersRes.status === 'fulfilled' ? (workOrdersRes.value?.workOrders || []) : [];
-        const payments = paymentsRes.status === 'fulfilled' ? (paymentsRes.value?.paymentRequests || []) : [];
-
-        const activeTrials = trials.filter(t => t.status === 'Active' || t.status === 'Scheduled').length;
-        const activeWOs = workOrders.filter(w => w.status !== 'Cancelled' && w.status !== 'Completed').length;
-        const pendingPayments = payments.filter(p => p.status === 'Draft' || p.status === 'Sent to Accounts').length;
-
-        setStats({
-          totalTrials: trials.length,
-          activeTrials,
-          totalReps: reps.length,
-          totalVendors: vendors,
-          totalWorkOrders: workOrders.length,
-          activeWorkOrders: activeWOs,
-          totalPayments: payments.length,
-          pendingPayments,
-        });
+        const modules = Object.keys(STAT_SOURCES).filter((m) => canView(m));
+        const outcomes = await Promise.allSettled(modules.map((m) => STAT_SOURCES[m].load()));
+        setStats(Object.fromEntries(modules.map((m, i) => [m, settle(m, outcomes[i])])));
       } catch (err) {
         console.error('[Dashboard] Failed to load stats:', err.message || err);
         setStats(null);
@@ -81,15 +99,23 @@ export default function DashboardHome() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [permsLoading, perms]);
 
+  const retryStat = async (module) => {
+    setStats((prev) => ({ ...prev, [module]: { status: 'loading' } }));
+    const [outcome] = await Promise.allSettled([STAT_SOURCES[module].load()]);
+    setStats((prev) => ({ ...prev, [module]: settle(module, outcome) }));
+  };
+
   const getStatCards = () => {
     if (!stats) return [];
     return [
-      { module: 'trials', label: 'Projects', value: stats.totalTrials, sub: `${stats.activeTrials} active`, icon: LocationCity, color: '#22C55E', bgColor: '#DCFCE7' },
-      { module: 'reps', label: 'REPs', value: stats.totalReps, sub: 'registered', icon: People, color: '#FBBF24', bgColor: '#FEF3C7' },
-      { module: 'vendors', label: 'Vendors', value: stats.totalVendors, sub: 'total', icon: StoreIcon, color: '#3B82F6', bgColor: '#DBEAFE' },
-      { module: 'workorders', label: 'Work Orders', value: stats.totalWorkOrders, sub: `${stats.activeWorkOrders} active`, icon: Assignment, color: '#8B5CF6', bgColor: '#EDE9FE' },
-      { module: 'payments', label: 'Payment Requests', value: stats.totalPayments, sub: `${stats.pendingPayments} pending`, icon: PaymentIcon, color: '#F59E0B', bgColor: '#FEF3C7' },
-    ].filter((stat) => canView(stat.module));
+      { module: 'trials', label: 'Projects', icon: LocationCity, color: '#22C55E', bgColor: '#DCFCE7' },
+      { module: 'reps', label: 'REPs', icon: People, color: '#FBBF24', bgColor: '#FEF3C7' },
+      { module: 'vendors', label: 'Vendors', icon: StoreIcon, color: '#3B82F6', bgColor: '#DBEAFE' },
+      { module: 'workorders', label: 'Work Orders', icon: Assignment, color: '#8B5CF6', bgColor: '#EDE9FE' },
+      { module: 'payments', label: 'Payment Requests', icon: PaymentIcon, color: '#F59E0B', bgColor: '#FEF3C7' },
+    ]
+      .filter((stat) => canView(stat.module) && stats[stat.module])
+      .map((stat) => ({ ...stat, ...stats[stat.module] }));
   };
 
   const statCards = getStatCards();
@@ -175,18 +201,39 @@ export default function DashboardHome() {
                         >
                           {stat.label}
                         </Typography>
-                        <Typography
-                          variant="h3"
-                          fontWeight={700}
-                          sx={{
-                            color: '#1d1d1f',
-                            fontSize: '2rem',
-                            lineHeight: 1.2,
-                            letterSpacing: '-0.025em',
-                          }}
-                        >
-                          {stat.value}
-                        </Typography>
+                        {stat.status === 'ok' && (
+                          <Typography
+                            variant="h3"
+                            fontWeight={700}
+                            sx={{
+                              color: '#1d1d1f',
+                              fontSize: '2rem',
+                              lineHeight: 1.2,
+                              letterSpacing: '-0.025em',
+                            }}
+                          >
+                            {stat.value}
+                          </Typography>
+                        )}
+                        {stat.status === 'loading' && (
+                          <CircularProgress size={24} sx={{ color: stat.color }} aria-label={`Loading ${stat.label}`} />
+                        )}
+                        {stat.status === 'failed' && (
+                          <Box role="alert" sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                            <Typography variant="body2" fontWeight={600} sx={{ color: '#B42318' }}>
+                              Couldn't load.
+                            </Typography>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              onClick={() => retryStat(stat.module)}
+                              aria-label={`Retry loading ${stat.label}`}
+                              sx={{ textTransform: 'none', borderRadius: 2, py: 0, minWidth: 0 }}
+                            >
+                              Retry
+                            </Button>
+                          </Box>
+                        )}
                       </Box>
                       <Box
                         sx={{
@@ -204,7 +251,7 @@ export default function DashboardHome() {
                       </Box>
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1 }}>
-                      <Typography variant="caption" sx={{ color: '#6e6e73' }}>{stat.sub}</Typography>
+                      <Typography variant="caption" sx={{ color: '#6e6e73' }}>{stat.status === 'ok' ? stat.sub : ' '}</Typography>
                     </Box>
                   </Box>
                 </CardContent>

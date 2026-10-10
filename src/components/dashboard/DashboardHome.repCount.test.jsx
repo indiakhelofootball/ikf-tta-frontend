@@ -3,7 +3,7 @@
 // /reps/options/, which returns every REP without logos or MoUs.
 
 import React from 'react';
-import { render, screen, within, waitFor } from '@testing-library/react';
+import { render, screen, within, waitFor, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
 import { trialsAPI, repAPI, vendorsAPI, workOrdersAPI, paymentRequestsAPI } from '../../services/api';
@@ -19,7 +19,7 @@ jest.mock('../../auth/AuthContext', () => ({ useAuth: () => mockAuth }));
 jest.mock('../../services/api', () => ({
   trialsAPI: { getAll: jest.fn() },
   repAPI: { getAll: jest.fn(), getOptions: jest.fn() },
-  vendorsAPI: { getAll: jest.fn() },
+  vendorsAPI: { getAll: jest.fn(), getOptions: jest.fn() },
   workOrdersAPI: { getAll: jest.fn() },
   paymentRequestsAPI: { getAll: jest.fn() },
 }));
@@ -37,7 +37,9 @@ beforeEach(() => {
     permsLoading: false,
   };
   trialsAPI.getAll.mockResolvedValue({ trials: [] });
-  vendorsAPI.getAll.mockResolvedValue({ vendors: [], total: 3 });
+  vendorsAPI.getOptions.mockResolvedValue({ vendors: [], total: 3 });
+  // What the old call returned: one vendor (with its PAN image) and the total.
+  vendorsAPI.getAll.mockResolvedValue({ vendors: [{ id: 1 }], total: 3 });
   workOrdersAPI.getAll.mockResolvedValue({ workOrders: [] });
   paymentRequestsAPI.getAll.mockResolvedValue({ paymentRequests: [] });
   repAPI.getOptions.mockResolvedValue({ reps: makeReps(81) });
@@ -63,11 +65,54 @@ test('the REPs card shows every REP returned by getOptions (81), not the first p
   expect(repAPI.getAll).not.toHaveBeenCalled();
 });
 
-test('the other counts are unchanged (vendors still come from the list total)', async () => {
+test('the Vendors card counts from the image-free vendor list, never the full list', async () => {
   render(<DashboardHome />);
   const vendorsCard = await statCard('Vendors');
   expect(within(vendorsCard).getByText('3')).toBeInTheDocument();
-  expect(vendorsAPI.getAll).toHaveBeenCalledWith({ limit: 1 });
+  expect(vendorsAPI.getOptions).toHaveBeenCalledTimes(1);
+  expect(vendorsAPI.getAll).not.toHaveBeenCalled();
+});
+
+test('a failed count says it could not load, with Retry, instead of showing 0; other cards still show numbers', async () => {
+  vendorsAPI.getOptions.mockRejectedValueOnce(new Error('Network error'));
+  render(<DashboardHome />);
+  const vendorsCard = await statCard('Vendors');
+  await waitFor(() => expect(within(vendorsCard).getByText("Couldn't load.")).toBeInTheDocument());
+  expect(within(vendorsCard).queryByText('0')).not.toBeInTheDocument();
+  expect(within(vendorsCard).queryByText('total')).not.toBeInTheDocument();
+  expect(within(vendorsCard).getByRole('button', { name: 'Retry loading Vendors' })).toBeInTheDocument();
+  const repsCard = await statCard('REPs');
+  expect(within(repsCard).getByText('81')).toBeInTheDocument();
+  expect(within(repsCard).queryByText("Couldn't load.")).not.toBeInTheDocument();
+});
+
+test('Retry reloads only the failed count and then shows it', async () => {
+  vendorsAPI.getOptions.mockRejectedValueOnce(new Error('Network error'));
+  render(<DashboardHome />);
+  const vendorsCard = await statCard('Vendors');
+  const retry = await waitFor(() => within(vendorsCard).getByRole('button', { name: 'Retry loading Vendors' }));
+  fireEvent.click(retry);
+  await waitFor(() => expect(within(vendorsCard).getByText('3')).toBeInTheDocument());
+  expect(within(vendorsCard).queryByText("Couldn't load.")).not.toBeInTheDocument();
+  expect(vendorsAPI.getOptions).toHaveBeenCalledTimes(2);
+  expect(repAPI.getOptions).toHaveBeenCalledTimes(1);
+  expect(trialsAPI.getAll).toHaveBeenCalledTimes(1);
+});
+
+test('the summaries under each number are unchanged', async () => {
+  trialsAPI.getAll.mockResolvedValue({ trials: [{ status: 'Active' }, { status: 'Draft' }] });
+  workOrdersAPI.getAll.mockResolvedValue({ workOrders: [{ status: 'Active' }, { status: 'Cancelled' }, { status: 'Completed' }] });
+  paymentRequestsAPI.getAll.mockResolvedValue({ paymentRequests: [{ status: 'Draft' }, { status: 'Payment Done' }] });
+  render(<DashboardHome />);
+  const projects = await statCard('Projects');
+  expect(within(projects).getByText('2')).toBeInTheDocument();
+  expect(within(projects).getByText('1 active')).toBeInTheDocument();
+  const wos = await statCard('Work Orders');
+  expect(within(wos).getByText('3')).toBeInTheDocument();
+  expect(within(wos).getByText('1 active')).toBeInTheDocument();
+  const prs = await statCard('Payment Requests');
+  expect(within(prs).getByText('2')).toBeInTheDocument();
+  expect(within(prs).getByText('1 pending')).toBeInTheDocument();
 });
 
 test('without view access to REPs, neither REP endpoint is called and no card renders', async () => {
