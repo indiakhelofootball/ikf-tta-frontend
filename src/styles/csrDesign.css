@@ -2988,3 +2988,15 @@
 .csrx .portal-link{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-top:6px}
 .csrx .portal-path{display:block;font-size:12px;color:var(--muted);overflow-wrap:anywhere}
 .csrx .portal-link .portal-path{display:inline}
+
+/* The five tracks need 954px (834 + 4 gaps + row padding). Below that the
+   table scrolled sideways and hid Reset password and Revoke off the right
+   edge. Measured on the table's own box, not the window, because the rail's
+   open/closed state moves that box by ~150px at the same window width. */
+.csrx .funders-table{container-type:inline-size}
+@container (max-width:953px){
+  .csrx .funders-table .lgrid{grid-template-columns:minmax(0,1fr);gap:4px}
+  .csrx .funders-table .lgrid > *{min-width:0;overflow-wrap:anywhere}
+  .csrx .funders-table .lgrid > *:last-child{justify-self:start}
+  .csrx .funders-table .lgrid-head{display:none}
+}
