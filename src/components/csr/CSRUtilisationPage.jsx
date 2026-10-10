@@ -218,7 +218,7 @@ export default function CSRUtilisationPage() {
               grant secondary. The grant keeps the 4th cell, so the identity band
               still lands on what the row is about, and the certificate state
               stays last with its control, as on every other table. */}
-          <div className="lgrid lgrid-head">
+          <div className="lgrid lgrid--util lgrid-head">
             {/* .lnum is the numeric-cell role: right-aligned, tabular figures.
                 It goes on the heading as well as the cell, or the label floats
                 left of the column of digits it names. Money reads right-aligned
@@ -260,7 +260,7 @@ export default function CSRUtilisationPage() {
                 <div
                   role="button"
                   tabIndex={0}
-                  className="lgrid lrow"
+                  className="lgrid lgrid--util lrow"
                   aria-label={`Open ${project.name}, funded by ${funder}`}
                   onClick={openGrant}
                   onKeyDown={(e) => {

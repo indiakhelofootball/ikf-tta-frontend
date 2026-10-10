@@ -2989,14 +2989,133 @@
 .csrx .portal-path{display:block;font-size:12px;color:var(--muted);overflow-wrap:anywhere}
 .csrx .portal-link .portal-path{display:inline}
 
-/* The five tracks need 954px (834 + 4 gaps + row padding). Below that the
-   table scrolled sideways and hid Reset password and Revoke off the right
-   edge. Measured on the table's own box, not the window, because the rail's
-   open/closed state moves that box by ~150px at the same window width. */
-.csrx .funders-table{container-type:inline-size}
-@container (max-width:953px){
-  .csrx .funders-table .lgrid{grid-template-columns:minmax(0,1fr);gap:4px}
-  .csrx .funders-table .lgrid > *{min-width:0;overflow-wrap:anywhere}
-  .csrx .funders-table .lgrid > *:last-child{justify-self:start}
-  .csrx .funders-table .lgrid-head{display:none}
+/* =========================================================================
+   EACH TABLE SIZES ITS OWN COLUMNS, AND STACKS WHEN ITS BOX IS TOO NARROW.
+
+   Every table above shared the Activities tracks (date range / title / short
+   location / grant / status), so other tables poured their values into the
+   wrong widths: a rupee figure alone in a 407px track, an email broken
+   mid-word in a 116px one, the funder's grant and link wrapping to five lines.
+   And between 900 and 1100px the head was hidden while the rows stayed in
+   columns, so the table scrolled sideways with no headings and cut off its
+   last column.
+
+   Tracks are measured against live-shaped values: fixed widths only for
+   fixed-format values (dates, phone, money, actions), fr for text.
+
+   Each table stacks into one value per line when the box (not the window) is
+   narrower than its tracks + gaps (20px) + row padding (2 x 20px). The box
+   moves ~150px with the rail open or shut at the same window width. The
+   thresholds below are those sums; change a track and its threshold together.
+   ========================================================================= */
+.csrx .twrap{container-type:inline-size}
+.csrx .twrap > .lgrid-head{display:grid}
+.csrx .twrap .lgrid > .lnum{text-align:right}
+
+.csrx .lgrid.lgrid--funders {grid-template-columns:110px minmax(130px,.8fr) minmax(200px,1.1fr) minmax(240px,1.3fr) 210px}
+.csrx .lgrid.lgrid--acts    {grid-template-columns:180px minmax(200px,1.5fr) minmax(90px,.5fr) minmax(170px,1fr) 150px}
+.csrx .lgrid.lgrid--reports {grid-template-columns:110px minmax(220px,1.6fr) minmax(140px,1fr) minmax(170px,1fr) 130px}
+.csrx .lgrid.lgrid--util    {grid-template-columns:minmax(150px,1fr) 140px 120px minmax(200px,1.4fr) 160px}
+.csrx .lgrid.lgrid--trials  {grid-template-columns:110px minmax(160px,1.4fr) 80px minmax(100px,.8fr) 180px 110px}
+.csrx .lgrid.lgrid--contacts{grid-template-columns:110px minmax(130px,1fr) minmax(130px,1fr) 100px minmax(200px,1.3fr) 90px}
+.csrx .lgrid.lgrid--gacts   {grid-template-columns:180px minmax(200px,1.5fr) minmax(90px,.5fr) minmax(130px,.8fr) 220px}
+.csrx .lgrid.lgrid--greports{grid-template-columns:110px minmax(220px,1.6fr) minmax(90px,.5fr) minmax(150px,1fr) 200px}
+.csrx .lgrid.lgrid--expenses{grid-template-columns:130px minmax(120px,.8fr) minmax(220px,1.6fr) 150px}
+.csrx .lgrid.lgrid--types   {grid-template-columns:minmax(200px,1.6fr) minmax(110px,.8fr) 100px}
+
+/* The funder's grant cell holds the grant, then its link and Copy: one under
+   the other, not squeezed side by side by the band's row layout. */
+.csrx .twrap .lrow.lgrid--funders > *:nth-child(4){flex-direction:column;align-items:flex-start;justify-content:center}
+
+/* Stacked, a row is a compact card: its name on the first line, the other
+   values flowing across the next, state and actions at the end. One value per
+   line left an 880px-wide card holding 230px of text, five cards to a screen. */
+@container (max-width:1009px){
+  .csrx .twrap .lgrid-head:is(.lgrid--funders){display:none}
+  .csrx .twrap .lrow:is(.lgrid--funders){display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px}
+  .csrx .twrap .lrow:is(.lgrid--funders) > *{min-width:0;overflow-wrap:anywhere}
+  .csrx .twrap .lrow:is(.lgrid--funders) > :is(.t1,.t1wrap,:has(> .t1)){order:-1;flex:1 0 100%}
+  .csrx .twrap .lrow:is(.lgrid--funders) > *:last-child{margin-left:auto}
+  .csrx .twrap .lrow:is(.lgrid--funders) > .lnum{text-align:left}
+  .csrx .twrap .lrow:is(.lgrid--funders):not(.lgrid--3):not(.lgrid--4) > *:nth-child(4){display:block;margin-block:0;padding:0;background:none;border:0;color:var(--muted);font-weight:400}
 }
+@container (max-width:939px){
+  .csrx .twrap .lgrid-head:is(.lgrid--gacts){display:none}
+  .csrx .twrap .lrow:is(.lgrid--gacts){display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px}
+  .csrx .twrap .lrow:is(.lgrid--gacts) > *{min-width:0;overflow-wrap:anywhere}
+  .csrx .twrap .lrow:is(.lgrid--gacts) > :is(.t1,.t1wrap,:has(> .t1)){order:-1;flex:1 0 100%}
+  .csrx .twrap .lrow:is(.lgrid--gacts) > *:last-child{margin-left:auto}
+  .csrx .twrap .lrow:is(.lgrid--gacts) > .lnum{text-align:left}
+  .csrx .twrap .lrow:is(.lgrid--gacts):not(.lgrid--3):not(.lgrid--4) > *:nth-child(4){display:block;margin-block:0;padding:0;background:none;border:0;color:var(--muted);font-weight:400}
+}
+@container (max-width:909px){
+  .csrx .twrap .lgrid-head:is(.lgrid--acts,.lgrid--reports,.lgrid--util,.lgrid--trials,.lgrid--contacts,.lgrid--greports){display:none}
+  .csrx .twrap .lrow:is(.lgrid--acts,.lgrid--reports,.lgrid--util,.lgrid--trials,.lgrid--contacts,.lgrid--greports){display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px}
+  .csrx .twrap .lrow:is(.lgrid--acts,.lgrid--reports,.lgrid--util,.lgrid--trials,.lgrid--contacts,.lgrid--greports) > *{min-width:0;overflow-wrap:anywhere}
+  .csrx .twrap .lrow:is(.lgrid--acts,.lgrid--reports,.lgrid--util,.lgrid--trials,.lgrid--contacts,.lgrid--greports) > :is(.t1,.t1wrap,:has(> .t1)){order:-1;flex:1 0 100%}
+  .csrx .twrap .lrow:is(.lgrid--acts,.lgrid--reports,.lgrid--util,.lgrid--trials,.lgrid--contacts,.lgrid--greports) > *:last-child{margin-left:auto}
+  .csrx .twrap .lrow:is(.lgrid--acts,.lgrid--reports,.lgrid--util,.lgrid--trials,.lgrid--contacts,.lgrid--greports) > .lnum{text-align:left}
+  .csrx .twrap .lrow:is(.lgrid--acts,.lgrid--reports,.lgrid--util,.lgrid--trials,.lgrid--contacts,.lgrid--greports):not(.lgrid--3):not(.lgrid--4) > *:nth-child(4){display:block;margin-block:0;padding:0;background:none;border:0;color:var(--muted);font-weight:400}
+}
+@container (max-width:719px){
+  .csrx .twrap .lgrid-head:is(.lgrid--expenses){display:none}
+  .csrx .twrap .lrow:is(.lgrid--expenses){display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px}
+  .csrx .twrap .lrow:is(.lgrid--expenses) > *{min-width:0;overflow-wrap:anywhere}
+  .csrx .twrap .lrow:is(.lgrid--expenses) > :is(.t1,.t1wrap,:has(> .t1)){order:-1;flex:1 0 100%}
+  .csrx .twrap .lrow:is(.lgrid--expenses) > *:last-child{margin-left:auto}
+  .csrx .twrap .lrow:is(.lgrid--expenses) > .lnum{text-align:left}
+  .csrx .twrap .lrow:is(.lgrid--expenses):not(.lgrid--3):not(.lgrid--4) > *:nth-child(4){display:block;margin-block:0;padding:0;background:none;border:0;color:var(--muted);font-weight:400}
+}
+@container (max-width:489px){
+  .csrx .twrap .lgrid-head:is(.lgrid--types){display:none}
+  .csrx .twrap .lrow:is(.lgrid--types){display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px}
+  .csrx .twrap .lrow:is(.lgrid--types) > *{min-width:0;overflow-wrap:anywhere}
+  .csrx .twrap .lrow:is(.lgrid--types) > :is(.t1,.t1wrap,:has(> .t1)){order:-1;flex:1 0 100%}
+  .csrx .twrap .lrow:is(.lgrid--types) > *:last-child{margin-left:auto}
+  .csrx .twrap .lrow:is(.lgrid--types) > .lnum{text-align:left}
+  .csrx .twrap .lrow:is(.lgrid--types):not(.lgrid--3):not(.lgrid--4) > *:nth-child(4){display:block;margin-block:0;padding:0;background:none;border:0;color:var(--muted);font-weight:400}
+}
+
+/* =========================================================================
+   PAGE CHROME OUTSIDE THE TABLES NEVER RUNS PAST THE WINDOW.
+
+   Rows of controls wrap when they run out of room instead of pushing the last
+   one off the right edge. Measured before: Reports' sort select ended at 968px
+   in a 900px window (the whole page scrolled sideways from 960 down to 770);
+   Activity Types' Add button left its panel below 480px; the Branding header's
+   New button and the Projects detail actions left the window below 370px.
+   ========================================================================= */
+.csrx .toolbar{flex-wrap:wrap}
+.csrx .addrow{flex-wrap:wrap}
+
+/* A title block and its buttons share a line while both fit; when they do
+   not, the buttons drop under the title rather than squeezing it into a
+   one-word column or running off the edge. */
+.csrx .ph{flex-wrap:wrap}
+.csrx .ph > div:first-child{flex:1 1 260px}
+.csrx .dh{flex-wrap:wrap}
+.csrx .dh > div:first-child{flex:1 1 200px;min-width:0}
+
+/* A fact value (an email, a long role) wraps inside its cell instead of
+   pushing the cell past the panel edge. */
+.csrx .fc{min-width:0}
+.csrx .fc .fv{overflow-wrap:anywhere}
+
+/* The dashboard on a phone. The max-width:999px block places .quick in column 1
+   and .flow in column 2 at a higher specificity than the phone's one-column
+   rule, so under 640px .flow made an implicit second track and the action
+   panel (New Project, Activities, Reports, Utilisation) shrank to 0px wide. */
+@media (max-width:640px){
+  .csrx .dash > .stats,
+  .csrx .dash > .quick,
+  .csrx .dash > .flow,
+  .csrx .dash > .statistic{grid-column:1;grid-row:auto}
+}
+
+/* The grant's fact strip. As a grid, a wrapped row left the strip's grey seam
+   colour filling every empty track (six tracks of grey beside "Certificate" at
+   1024px) while the TTA project value broke onto three lines in a 139px cell.
+   As a wrapping flex row each fact starts at its own width and every row fills
+   edge to edge, so the seams stay 1px wherever the cells reflow. */
+.csrx .ovw-strip{display:flex;flex-wrap:wrap}
+.csrx .ovw-strip > .ovf{flex:1 1 auto}
