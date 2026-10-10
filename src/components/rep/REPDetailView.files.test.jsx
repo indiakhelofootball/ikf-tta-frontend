@@ -3,7 +3,7 @@
 // one never shows a spinner, and values that are not uploaded files (a bare
 // filename, a link, whitespace) render exactly as the full row rendered them.
 import React from 'react';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
 jest.mock('../../auth/useGrants', () => ({
@@ -57,9 +57,28 @@ test('uploaded files: "Loading logo…" / "Loading MoU…", then the files', asy
   expect(repAPI.getFileBlob).toHaveBeenCalledWith(7, 'mou', '2026-10-09T10:00:00Z');
 
   await act(async () => { logo.resolve(new Blob(['png'])); mou.resolve(new Blob(['pdf'])); });
-  expect(screen.queryByText(/Loading/)).toBeNull();
+  await screen.findByAltText('REP Logo');
+  await waitFor(() => expect(screen.queryByText(/Loading/)).toBeNull());
   expect(screen.getByAltText('REP Logo').getAttribute('src')).toMatch(/^blob:file-/);
-  expect(screen.getByText('View Document').closest('a').getAttribute('href')).toMatch(/^blob:file-/);
+});
+
+// The detail view printed an uploaded MoU's stored value as text and never
+// linked to it. The slim row fetches the file and must print the same text.
+test('an uploaded MoU prints exactly what the full row printed, not a link', async () => {
+  const pdfBytes = '%PDF-1.4 signed agreement';
+  const stored = `data:application/pdf;base64,${btoa(pdfBytes)}`;
+  repAPI.getFileBlob.mockImplementation((id, kind) => Promise.resolve(kind === 'mou'
+    ? new Blob([pdfBytes], { type: 'application/pdf' })
+    : new Blob(['png'], { type: 'image/png' })));
+
+  const before = view(full('', stored));
+  const mouBefore = screen.getByText('Signed MoU / Agreement').parentElement.innerHTML;
+  before.unmount();
+
+  view(slim('', stored));
+  expect(await screen.findByText(stored)).toBeInTheDocument();
+  expect(screen.queryByText('View Document')).toBeNull();
+  expect(screen.getByText('Signed MoU / Agreement').parentElement.innerHTML).toBe(mouBefore);
 });
 
 test("a failed load says so, and Retry refetches only that file", async () => {

@@ -101,7 +101,7 @@ function REPDetailView({ rep, open, onClose, onEdit }) {
   const { canEdit } = useGrants();
   // Fetched when the view opens. Whether each file exists comes from the row,
   // so a REP with no file never shows a spinner.
-  const mouFile = useStoredFile(rep, 'mou');
+  const mouFile = useStoredFile(rep, 'mou', true, { asText: true });
   const logoFile = useStoredFile(rep, 'logo');
   if (!rep) return null;
 
@@ -279,7 +279,7 @@ function REPDetailView({ rep, open, onClose, onEdit }) {
                     <FileLoading label="Loading MoU…" />
                   ) : mouFile.status === 'error' ? (
                     <FileLoadFailed label="Couldn't load MoU." onRetry={mouFile.retry} />
-                  ) : (mou.fetch || /^https?:\/\//.test(mouFile.src)) ? (
+                  ) : /^https?:\/\//.test(mouFile.src) ? (
                     <Box
                       component="a"
                       href={mouFile.src}

@@ -44,7 +44,16 @@ export function storedFile(rep, kind) {
 //   'idle'    an uploaded file not asked for yet (enabled is false)
 // Fetched on mount and whenever the REP's updatedAt changes; nothing is kept
 // once the component goes away.
-export function useStoredFile(rep, kind, enabled = true) {
+// asText: src is the file as the data-URI text the row used to carry, for a
+// screen that printed the stored value rather than linking to it.
+const readAsDataUri = (blob) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(reader.result);
+  reader.onerror = () => reject(reader.error);
+  reader.readAsDataURL(blob);
+});
+
+export function useStoredFile(rep, kind, enabled = true, { asText = false } = {}) {
   const file = storedFile(rep, kind);
   const id = rep ? rep.id : null;
   const updatedAt = rep ? rep.updatedAt : null;
@@ -58,9 +67,14 @@ export function useStoredFile(rep, kind, enabled = true) {
     let cancelled = false;
     let objectUrl = '';
     repAPI.getFileBlob(id, kind, updatedAt)
-      .then((blob) => {
+      .then((blob) => (asText ? readAsDataUri(blob) : blob))
+      .then((result) => {
         if (cancelled) return;
-        objectUrl = URL.createObjectURL(blob);
+        if (asText) {
+          setLoaded({ key, status: 'ready', url: result });
+          return;
+        }
+        objectUrl = URL.createObjectURL(result);
         setLoaded({ key, status: 'ready', url: objectUrl });
       })
       .catch(() => {
@@ -70,7 +84,7 @@ export function useStoredFile(rep, kind, enabled = true) {
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [wanted, id, kind, updatedAt, key]);
+  }, [wanted, id, kind, updatedAt, key, asText]);
 
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
 
