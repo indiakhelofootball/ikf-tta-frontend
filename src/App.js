@@ -35,6 +35,7 @@ import TrialsReport from "./components/reports/TrialsReport";
 import CourierManagementPage from "./components/courier/CourierManagementPage";
 import { CSRLogin, CSRDashboard, CSRProjectManagementPage, CSRProjectFormPage, CSRActivityFormPage, CSRReportFormPage, CSRContactFormPage, CSRExpenseTagFormPage, CSRProjectDetailPage, CSRActivitiesPage, CSRReportsPage, CSRUtilisationPage, CSRActivityTypesPage, CSRClientsPage, CSRBrandingPage, CSRAccountPage } from "./components/csr";
 import ClientPortalPage from "./components/client/ClientPortalPage";
+import FunderPreviewPage from "./components/client/FunderPreviewPage";
 import ClientLogin from "./components/client/ClientLogin";
 import FunderRoute from "./auth/FunderRoute";
 import PermissionsManagementPage from "./components/permissions/PermissionsManagementPage";
@@ -337,6 +338,15 @@ function App() {
             </GrantedRoute>
           } />
           </Route>
+
+          {/* Preview as funder (D-018): the funder portal for one grant, shown
+              to staff full width in the portal's own shell, not the CSR one.
+              Three segments, so /csr/:id cannot swallow it. */}
+          <Route path="/csr/:id/funder-preview" element={
+            <GrantedRoute module="csr">
+              <FunderPreviewPage />
+            </GrantedRoute>
+          } />
         </Route>
 
         {/* External CSR funder portal — own shell, no TTA sidebar. Outside

@@ -492,7 +492,7 @@ test('from the field shows the three latest activities and links to the rest', a
 
   expect(screen.getByText('Second trial')).toBeInTheDocument();
   expect(screen.queryByText('Camp visit')).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'All 4 activities' }));
+  fireEvent.click(screen.getByRole('button', { name: 'All activities (4 delivered · 0 upcoming)' }));
   expect(screen.getByRole('tab', { name: /^Activities/ })).toHaveAttribute('aria-selected', 'true');
   expect(await screen.findByText('Camp visit')).toBeInTheDocument();
 });
@@ -561,8 +561,10 @@ test('a Planned activity is listed on the Activities tab, labelled Planned', asy
   render(<ClientPortalPage />);
   fireEvent.click(await screen.findByRole('tab', { name: /^Activities/ }));
 
-  const panel = await screen.findByRole('region', { name: 'Activities' });
-  const rows = within(panel).getAllByRole('listitem');
+  const rows = [
+    ...within(await screen.findByRole('region', { name: 'Upcoming' })).getAllByRole('listitem'),
+    ...within(screen.getByRole('region', { name: 'Delivered' })).getAllByRole('listitem'),
+  ];
   const row = rows.find((li) => within(li).queryByText('Coaching clinic'));
   expect(within(row).getByText('Planned')).toBeInTheDocument();
   expect(within(row).queryByText('Completed')).not.toBeInTheDocument();
@@ -582,8 +584,8 @@ test('the Overview counts, tiles, months and places leave a Planned activity out
   expect(places.map((li) => li.textContent).some((t) => t.startsWith('Rohtak'))).toBe(false);
   const months = within(screen.getByRole('list', { name: 'Activities by month' })).getAllByRole('listitem');
   expect(months.find((li) => li.textContent.startsWith('Oct 2026'))).toHaveTextContent('1 held');
-  // The link still names everything the Activities tab lists.
-  expect(screen.getByRole('button', { name: 'All 5 activities' })).toBeInTheDocument();
+  // The link still names everything the Activities tab lists, in the one count.
+  expect(screen.getByRole('button', { name: 'All activities (4 delivered · 1 upcoming)' })).toBeInTheDocument();
 });
 
 test('no photo is requested for a Planned activity', async () => {
@@ -601,4 +603,165 @@ test('no photo is requested for a Planned activity', async () => {
   expect(clientAPI.activityPhoto).toHaveBeenCalledWith(1, 7, 'a1');
   expect(clientAPI.activityPhoto).not.toHaveBeenCalledWith(5, expect.anything(), expect.anything());
   expect(clientAPI.activityPhoto).toHaveBeenCalledTimes(1);
+});
+
+// ---------------------------------------------------------------------------
+// D-018: the Activities tab split into Upcoming and Delivered, one count
+// everywhere, a silent re-check on return to the tab, and "Updated <time>".
+// ---------------------------------------------------------------------------
+
+const PLANNED_2 = {
+  id: 6, title: 'Girls camp', activityType: 'Camp', location: 'Panipat',
+  startDate: '2026-11-02', status: 'Planned',
+};
+
+test('the Activities tab lists Upcoming (Planned) first, then Delivered (Completed)', async () => {
+  clientAPI.activities.mockResolvedValue([FIELD[0], PLANNED, FIELD[1], PLANNED_2]);
+  window.history.replaceState(null, '', '#activities');
+  render(<ClientPortalPage />);
+
+  const up = await screen.findByRole('region', { name: 'Upcoming' });
+  const done = screen.getByRole('region', { name: 'Delivered' });
+  expect(within(up).getByRole('heading', { level: 2, name: 'Upcoming' })).toBeInTheDocument();
+  expect(within(done).getByRole('heading', { level: 2, name: 'Delivered' })).toBeInTheDocument();
+  const upRows = within(up).getAllByRole('listitem');
+  expect(upRows).toHaveLength(2);
+  expect(within(upRows[0]).getByText('Coaching clinic')).toBeInTheDocument();
+  expect(within(upRows[1]).getByText('Girls camp')).toBeInTheDocument();
+  expect(within(done).getAllByRole('listitem')).toHaveLength(2);
+  expect(within(done).getByText('District trial, Sector 56')).toBeInTheDocument();
+  expect(within(done).getByText('Coach certification')).toBeInTheDocument();
+  // Upcoming comes first on the page.
+  const sections = screen.getAllByRole('region');
+  expect(sections.indexOf(up)).toBeLessThan(sections.indexOf(done));
+});
+
+test('with only delivered activities there is no empty Upcoming section', async () => {
+  clientAPI.activities.mockResolvedValue(FIELD);
+  window.history.replaceState(null, '', '#activities');
+  render(<ClientPortalPage />);
+
+  expect(await screen.findByRole('region', { name: 'Delivered' })).toBeInTheDocument();
+  expect(screen.queryByRole('region', { name: 'Upcoming' })).not.toBeInTheDocument();
+  expect(screen.queryByText('Upcoming')).not.toBeInTheDocument();
+});
+
+test('with only upcoming activities there is no empty Delivered section', async () => {
+  clientAPI.activities.mockResolvedValue([PLANNED]);
+  window.history.replaceState(null, '', '#activities');
+  render(<ClientPortalPage />);
+
+  expect(await screen.findByRole('region', { name: 'Upcoming' })).toBeInTheDocument();
+  expect(screen.queryByRole('region', { name: 'Delivered' })).not.toBeInTheDocument();
+  expect(screen.queryByText(/Nothing published yet/)).not.toBeInTheDocument();
+});
+
+test('the Activities tab label carries the same count as the Overview link', async () => {
+  clientAPI.activities.mockResolvedValue([...FIELD, PLANNED]);
+  render(<ClientPortalPage />);
+  await screen.findByText('From the field');
+
+  expect(screen.getByRole('tab', { name: 'Activities (4 delivered · 1 upcoming)' })).toBeInTheDocument();
+  expect(screen.queryByRole('tab', { name: 'Activities (5)' })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'All activities (4 delivered · 1 upcoming)' })).toBeInTheDocument();
+});
+
+test('a single delivered activity is counted, with nothing upcoming', async () => {
+  render(<ClientPortalPage />);
+  await screen.findByText('What has been delivered');
+  expect(screen.getByRole('tab', { name: 'Activities (1 delivered · 0 upcoming)' })).toBeInTheDocument();
+});
+
+test('the empty Activities tab no longer says activities are never scheduled in advance', async () => {
+  clientAPI.activities.mockResolvedValue([]);
+  window.history.replaceState(null, '', '#activities');
+  render(<ClientPortalPage />);
+
+  expect(await screen.findByText(
+    'Nothing published yet. Trials, workshops and training sessions under this grant appear here, both those coming up and those delivered.',
+  )).toBeInTheDocument();
+  expect(screen.queryByText(/not scheduled in advance/)).not.toBeInTheDocument();
+  expect(screen.getByRole('tab', { name: 'Activities (0 delivered · 0 upcoming)' })).toBeInTheDocument();
+});
+
+test('the header says when the page was last updated, not today\'s date', async () => {
+  render(<ClientPortalPage />);
+  await screen.findByText('What has been delivered');
+
+  expect(screen.getByText(/^Programme report for Acme Foundation · Updated \d{1,2}:\d{2} (am|pm)$/))
+    .toBeInTheDocument();
+  expect(screen.queryByText(/as of/)).not.toBeInTheDocument();
+});
+
+// The hook keeps 30 seconds between checks, timed from mount; step the clock
+// past that and return to the tab.
+const returnToTab = (afterMs) => {
+  const real = Date.now();
+  const spy = jest.spyOn(Date, 'now').mockReturnValue(real + afterMs);
+  act(() => { window.dispatchEvent(new Event('focus')); });
+  spy.mockRestore();
+};
+
+test('returning to the tab re-checks quietly: no spinner, the page stays up, then the new data shows', async () => {
+  window.history.replaceState(null, '', '#activities');
+  render(<ClientPortalPage />);
+  expect(await screen.findByText('Trial at Bhilai')).toBeInTheDocument();
+  expect(clientAPI.activities).toHaveBeenCalledTimes(1);
+
+  let release;
+  clientAPI.activities.mockReturnValueOnce(new Promise((r) => { release = r; }));
+  returnToTab(31 * 1000);
+
+  expect(clientAPI.activities).toHaveBeenCalledTimes(2);
+  // While the check runs the page keeps what it had, and shows no spinner.
+  expect(screen.getByText('Trial at Bhilai')).toBeInTheDocument();
+  // eslint-disable-next-line testing-library/no-node-access
+  expect(document.querySelector('.cloading')).toBeNull();
+
+  await act(async () => {
+    release([
+      { id: 1, title: 'Trial at Bhilai', status: 'Completed' },
+      { id: 2, title: 'Trial at Durg', status: 'Planned' },
+    ]);
+  });
+  expect(await screen.findByText('Trial at Durg')).toBeInTheDocument();
+  expect(screen.getByRole('tab', { name: 'Activities (1 delivered · 1 upcoming)' })).toBeInTheDocument();
+});
+
+test('a quiet re-check that fails leaves the page exactly as it was', async () => {
+  window.history.replaceState(null, '', '#activities');
+  render(<ClientPortalPage />);
+  expect(await screen.findByText('Trial at Bhilai')).toBeInTheDocument();
+  const updated = screen.getByText(/· Updated /).textContent;
+
+  clientAPI.activities.mockRejectedValueOnce(httpError(500, {}));
+  clientAPI.certificate.mockRejectedValueOnce(httpError(500, {}));
+  returnToTab(31 * 1000);
+  await waitFor(() => expect(clientAPI.activities).toHaveBeenCalledTimes(2));
+  await act(async () => {});
+
+  expect(screen.getByText('Trial at Bhilai')).toBeInTheDocument();
+  expect(screen.queryByText(/couldn.t load your grant/)).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument();
+  expect(screen.getByText(/· Updated /).textContent).toBe(updated);
+});
+
+test('returning to the tab within 30 seconds does not re-check', async () => {
+  render(<ClientPortalPage />);
+  await screen.findByText('What has been delivered');
+
+  returnToTab(10 * 1000);
+  expect(clientAPI.project).toHaveBeenCalledTimes(1);
+  expect(clientAPI.activities).toHaveBeenCalledTimes(1);
+});
+
+test('the funder keeps their own account controls and sees no preview banner', async () => {
+  render(<ClientPortalPage />);
+  await screen.findByText('What has been delivered');
+
+  expect(screen.getAllByText('Change password').length).toBeGreaterThan(0);
+  expect(screen.getAllByText('Sign out').length).toBeGreaterThan(0);
+  expect(screen.getByRole('button', { name: 'Account menu' })).toBeInTheDocument();
+  expect(screen.queryByText(/^Preview/)).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Back' })).not.toBeInTheDocument();
 });

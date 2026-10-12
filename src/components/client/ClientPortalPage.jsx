@@ -8,7 +8,10 @@ import { downloadCertificatePdf } from '../../utils/certificatePdf';
 import { openDownloadedFile } from '../../utils/reportFile';
 import { useAuth } from '../../auth/AuthContext';
 import clientThemeFrom, { brandCssVars } from './clientTheme';
-import { formatDate, formatRange, formatCount, formatRupees } from './clientFormat';
+import useRefetchOnFocus from '../../hooks/useRefetchOnFocus';
+import {
+  formatDate, formatRange, formatCount, formatRupees, formatUpdated, formatActivityCount,
+} from './clientFormat';
 import { grantProgress, monthStrip, placesReached, latestFirst, activityDate } from './clientReport';
 import '../../styles/clientPortal.css';
 import ClientChangePasswordDialog from './ClientChangePasswordDialog';
@@ -18,7 +21,7 @@ import ClientChangePasswordDialog from './ClientChangePasswordDialog';
 // they were instead of being thrown to the landing tab.
 const TABS = [
   { key: 'project', label: () => 'Overview' },
-  { key: 'activities', label: (c) => `Activities (${formatCount(c.activities)})` },
+  { key: 'activities', label: (c) => `Activities (${c.activities})` },
   { key: 'reports', label: (c) => `Reports (${formatCount(c.reports)})` },
   { key: 'deliverables', label: (c) => `Deliverables (${formatCount(c.deliverables)})` },
   { key: 'certificate', label: () => 'Certificate' },
@@ -54,7 +57,29 @@ const isNoGrant = (err) => {
 // variant is what enforces the isolation boundary — see certificatePdf.js.
 const downloadCertificate = (cert) => downloadCertificatePdf(cert, { variant: 'funder' });
 
-const asList = (d) => (Array.isArray(d) ? d : d?.results || []);
+export const asList = (d) => (Array.isArray(d) ? d : d?.results || []);
+
+// Where the portal's data comes from. The funder's own portal reads the
+// /api/client/ endpoints; the staff preview (FunderPreviewPage) passes its own
+// source with the same five calls, so both render through this one page.
+export const funderSource = {
+  branding: () => clientAPI.myBranding(),
+  data: async () => {
+    const [p, acts, reps, dels] = await Promise.all([
+      clientAPI.project(), clientAPI.activities(), clientAPI.reports(),
+      clientAPI.deliverables(),
+    ]);
+    return {
+      project: asList(p)[0] || null,
+      activities: asList(acts),
+      reports: asList(reps),
+      deliverables: asList(dels),
+    };
+  },
+  certificate: () => clientAPI.certificate(),
+  activityPhoto: (activityId, photoId, version) => clientAPI.activityPhoto(activityId, photoId, version),
+  reportFile: (reportId) => clientAPI.reportFile(reportId),
+};
 
 // One deliverable as a row. The same row on the landing tab and on the
 // Deliverables tab, so the two cannot drift apart; `detailed` adds the due
@@ -161,7 +186,7 @@ function IkfMark() {
 // activities (the tiles). Photos sit behind the funder's login, so each is
 // fetched with the token and shown from a local object URL, released when the
 // page no longer needs it. A photo that fails to load is simply not shown.
-function useOverviewPhotos(activities, enabled) {
+function useOverviewPhotos(activities, enabled, source) {
   const [urls, setUrls] = useState({});
   const recent = latestFirst(activities, activityDate);
   const hero = recent.find((a) => a.photos && a.photos.length);
@@ -178,7 +203,7 @@ function useOverviewPhotos(activities, enabled) {
     wanted.forEach(({ a, ph }) => {
       if (seen.has(ph.id)) return;
       seen.add(ph.id);
-      clientAPI.activityPhoto(a.id, ph.id, ph.version)
+      source.activityPhoto(a.id, ph.id, ph.version)
         .then(({ blob }) => {
           if (!active) return;
           const url = URL.createObjectURL(blob);
@@ -190,7 +215,7 @@ function useOverviewPhotos(activities, enabled) {
     return () => { active = false; made.forEach((u) => URL.revokeObjectURL(u)); setUrls({}); };
     // `wanted` is derived from `key`; the key is the dependency that matters.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, key]);
+  }, [enabled, key, source]);
 
   return { hero, urls };
 }
@@ -206,7 +231,11 @@ function EmptyPanel({ title, children }) {
   );
 }
 
-export default function ClientPortalPage() {
+// `source` is where the data comes from (funderSource unless a preview passes
+// its own). `preview`, when set, is the staff "Preview as funder" view: it
+// shows a banner with a Back button and leaves out the funder's own account
+// controls, since the person looking is not that funder.
+export default function ClientPortalPage({ source = funderSource, preview = null }) {
   const { logout } = useAuth();
   const [project, setProject] = useState(null);
   const [activities, setActivities] = useState([]);
@@ -221,48 +250,65 @@ export default function ClientPortalPage() {
   const [noGrant, setNoGrant] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [certAttempt, setCertAttempt] = useState(0);
+  const [updatedAt, setUpdatedAt] = useState(null);
   const [tab, setTab] = useState(tabFromHash);
   const [pwOpen, setPwOpen] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState(null);
   const tabRefs = useRef({});
+  // Every load, shown or silent, takes a number; only the newest may write
+  // to the page, so a slow earlier answer can never overwrite a later one.
+  const loadSeq = useRef(0);
+  const certSeq = useRef(0);
+  const mounted = useRef(true);
   // The funder sees Planned and Completed activities (owner decision D-016),
   // but only Completed ones are delivered work: the Overview and its photos
-  // are built from these alone.
+  // are built from these alone. The Activities tab lists both, split (D-018).
   const delivered = activities.filter((a) => a.status === 'Completed');
-  const photos = useOverviewPhotos(delivered, tab === 'project');
+  const upcoming = activities.filter((a) => a.status === 'Planned');
+  const activityCount = formatActivityCount(delivered.length, upcoming.length);
+  const photos = useOverviewPhotos(delivered, tab === 'project', source);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
+
+  const applyData = useCallback((d) => {
+    setProject(d.project);
+    setActivities(d.activities);
+    setReports(d.reports);
+    setDeliverables(d.deliverables);
+    setUpdatedAt(new Date());
+  }, []);
 
   useEffect(() => {
     let active = true;
+    const seq = ++loadSeq.current;
+    const current = () => active && seq === loadSeq.current;
     setLoading(true);
     setFailed(false);
     setNoGrant(false);
     (async () => {
       try {
-        // Branding is fetched FIRST and on its own, not inside the Promise.all
+        // Branding is fetched FIRST and on its own, not inside the data call
         // below. It decides the funder's colours and logo -- the one thing on
         // this page whose job is to look like it was made for them -- and
         // bundling it with four data calls meant the brand could not paint
         // until the slowest query returned.
-        clientAPI.myBranding()
-          .then((b) => { if (active) setBrand(b && b.slug ? b : null); })
+        source.branding()
+          .then((b) => { if (current()) setBrand(b && b.slug ? b : null); })
           .catch(() => { /* unbranded is a valid state; the default theme holds */ });
 
-        const [p, acts, reps, dels] = await Promise.all([
-          clientAPI.project(), clientAPI.activities(), clientAPI.reports(),
-          clientAPI.deliverables(),
-        ]);
-        if (!active) return;
-        setProject(asList(p)[0] || null);
-        setActivities(asList(acts));
-        setReports(asList(reps));
-        setDeliverables(asList(dels));
+        const d = await source.data();
+        if (!current()) return;
+        applyData(d);
       } catch (e) {
         // The raw message is never shown. api.js writes for developers — a 500
         // reads "check Django logs ... REACT_APP_API_URL" — and a funder can do
         // nothing with that except lose confidence. They get one sentence and a
         // Retry that re-runs this whole load.
-        if (!active) return;
+        if (!current()) return;
         if (isNoGrant(e)) setNoGrant(true);
         else setFailed(true);
       } finally {
@@ -270,7 +316,7 @@ export default function ClientPortalPage() {
       }
     })();
     return () => { active = false; };
-  }, [attempt]);
+  }, [attempt, source, applyData]);
 
   // The certificate is fetched on its own for the same reason branding is: it
   // is behind a tab, nothing above the fold waits on it, and a failure here
@@ -278,12 +324,38 @@ export default function ClientPortalPage() {
   // re-fetches the certificate alone; the page-level Retry still re-runs it.
   useEffect(() => {
     let active = true;
+    const seq = ++certSeq.current;
+    const current = () => active && seq === certSeq.current;
     setCert(null);
-    clientAPI.certificate()
-      .then((c) => { if (active) setCert(c); })
-      .catch(() => { if (active) setCert({ available: false, reason: 'error' }); });
+    source.certificate()
+      .then((c) => { if (current()) setCert(c); })
+      .catch(() => { if (current()) setCert({ available: false, reason: 'error' }); });
     return () => { active = false; };
-  }, [attempt, certAttempt]);
+  }, [attempt, certAttempt, source]);
+
+  // Coming back to the tab re-checks everything quietly (D-018): no spinner,
+  // nothing cleared while it runs, and a failure leaves what is on screen as
+  // it was. The hook keeps at least 30 seconds between checks.
+  useRefetchOnFocus(() => {
+    if (loading) return;
+    const seq = ++loadSeq.current;
+    const current = () => mounted.current && seq === loadSeq.current;
+    source.branding()
+      .then((b) => { if (current()) setBrand(b && b.slug ? b : null); })
+      .catch(() => {});
+    source.data()
+      .then((d) => {
+        if (!current()) return;
+        applyData(d);
+        setFailed(false);
+        setNoGrant(false);
+      })
+      .catch(() => {});
+    const cseq = ++certSeq.current;
+    source.certificate()
+      .then((c) => { if (mounted.current && cseq === certSeq.current) setCert(c); })
+      .catch(() => {});
+  });
 
   // Back, Forward and a hand-edited hash all arrive here.
   useEffect(() => {
@@ -334,7 +406,7 @@ export default function ClientPortalPage() {
   const cssVars = brandCssVars(brand?.primaryColor);
   const closed = project?.status === 'Closed';
   const counts = {
-    activities: activities.length, reports: reports.length, deliverables: deliverables.length,
+    activities: activityCount, reports: reports.length, deliverables: deliverables.length,
   };
 
   // The Overview is written as a programme report for the funder, read top to
@@ -455,9 +527,9 @@ export default function ClientPortalPage() {
                 );
               })}
             </ul>
-            {activities.length > recent.length && (
+            {delivered.length + upcoming.length > recent.length && (
               <button type="button" className="cmore" onClick={() => selectTab('activities')}>
-                All {formatCount(activities.length)} activities
+                All activities ({activityCount})
               </button>
             )}
           </section>
@@ -511,37 +583,49 @@ export default function ClientPortalPage() {
     );
   };
 
+  const activityRow = (a) => {
+    const when = (a.startDate || a.endDate)
+      ? formatRange(a.startDate, a.endDate)
+      : formatDate(a.date);
+    const meta = [a.activityType, when, a.location].filter(Boolean).join(' · ');
+    return (
+      <li className="crow" key={a.id}>
+        <div className="crow-main">
+          <div className="crow-t">{a.title}</div>
+          {meta && <div className="crow-s">{meta}</div>}
+        </div>
+        {a.status && (
+          <div className="crow-end">
+            <span className={`cpill${a.status === 'Completed' ? ' ok' : ''}`}>{a.status}</span>
+          </div>
+        )}
+      </li>
+    );
+  };
+
+  // Split by status (D-018): what is coming, then what has been delivered. A
+  // group with nothing in it is left out rather than shown empty.
+  const activityGroups = [
+    { key: 'upcoming', heading: 'Upcoming', list: upcoming },
+    { key: 'delivered', heading: 'Delivered', list: delivered },
+  ].filter((g) => g.list.length > 0);
+
   const renderActivities = () => (
-    activities.length === 0 ? (
+    activityGroups.length === 0 ? (
       <EmptyPanel>
         {closed
           ? 'No activities were published under this grant.'
-          : 'Nothing published yet. Trials, workshops and training sessions run under this grant appear here as they happen — they are recorded after the event, not scheduled in advance.'}
+          : 'Nothing published yet. Trials, workshops and training sessions under this grant appear here, both those coming up and those delivered.'}
       </EmptyPanel>
     ) : (
-      <section className="cpanel" aria-label="Activities">
-        <ul className="crows">
-          {activities.map((a) => {
-            const when = (a.startDate || a.endDate)
-              ? formatRange(a.startDate, a.endDate)
-              : formatDate(a.date);
-            const meta = [a.activityType, when, a.location].filter(Boolean).join(' · ');
-            return (
-              <li className="crow" key={a.id}>
-                <div className="crow-main">
-                  <div className="crow-t">{a.title}</div>
-                  {meta && <div className="crow-s">{meta}</div>}
-                </div>
-                {a.status && (
-                  <div className="crow-end">
-                    <span className={`cpill${a.status === 'Completed' ? ' ok' : ''}`}>{a.status}</span>
-                  </div>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      </section>
+      activityGroups.map((g) => (
+        <section className="cpanel" aria-labelledby={`cp-acts-${g.key}`} key={g.key}>
+          <h2 className="csec" id={`cp-acts-${g.key}`}>{g.heading}</h2>
+          <ul className="crows">
+            {g.list.map(activityRow)}
+          </ul>
+        </section>
+      ))
     )
   );
 
@@ -552,7 +636,7 @@ export default function ClientPortalPage() {
     setFileBusy(r.id);
     setFileErrors((prev) => ({ ...prev, [r.id]: '' }));
     try {
-      openDownloadedFile(await clientAPI.reportFile(r.id), name);
+      openDownloadedFile(await source.reportFile(r.id), name);
     } catch {
       setFileErrors((prev) => ({ ...prev, [r.id]: 'The file could not be opened. Please try again.' }));
     } finally {
@@ -781,7 +865,7 @@ export default function ClientPortalPage() {
             funder's display name, and before this the grant itself was named
             nowhere on its own page. */}
         {project.clientName && (
-          <div className="ceyebrow">Programme report for {project.clientName} · as of {formatDate(new Date())}</div>
+          <div className="ceyebrow">Programme report for {project.clientName} · {formatUpdated(updatedAt)}</div>
         )}
         <h1 className="cgrant">{project.name || title}</h1>
 
@@ -844,30 +928,46 @@ export default function ClientPortalPage() {
           <span className="cbar-name">{brand?.displayName || project?.clientName || title}</span>
         </div>
         <span className="cbar-ikf"><IkfMark /></span>
-        <div className="cbar-actions">
-          <Button className="cbar-btn" onClick={() => setPwOpen(true)}>Change password</Button>
-          <Button className="cbar-btn" onClick={logout}>Sign out</Button>
-        </div>
-        {/* On a phone the two actions sit behind one menu, so the funder's
-            name keeps the whole bar instead of wrapping onto a second row. */}
-        <div className="cbar-menu">
-          <IconButton
-            aria-label="Account menu"
-            aria-haspopup="true"
-            aria-expanded={menuAnchor ? 'true' : undefined}
-            onClick={(e) => setMenuAnchor(e.currentTarget)}
-          >
-            <MenuIcon />
-          </IconButton>
-          <Menu anchorEl={menuAnchor} open={!!menuAnchor} onClose={() => setMenuAnchor(null)}>
-            <MenuItem onClick={() => { setMenuAnchor(null); setPwOpen(true); }}>Change password</MenuItem>
-            <MenuItem onClick={() => { setMenuAnchor(null); logout(); }}>Sign out</MenuItem>
-          </Menu>
-        </div>
+        {!preview && (
+          <>
+            <div className="cbar-actions">
+              <Button className="cbar-btn" onClick={() => setPwOpen(true)}>Change password</Button>
+              <Button className="cbar-btn" onClick={logout}>Sign out</Button>
+            </div>
+            {/* On a phone the two actions sit behind one menu, so the funder's
+                name keeps the whole bar instead of wrapping onto a second row. */}
+            <div className="cbar-menu">
+              <IconButton
+                aria-label="Account menu"
+                aria-haspopup="true"
+                aria-expanded={menuAnchor ? 'true' : undefined}
+                onClick={(e) => setMenuAnchor(e.currentTarget)}
+              >
+                <MenuIcon />
+              </IconButton>
+              <Menu anchorEl={menuAnchor} open={!!menuAnchor} onClose={() => setMenuAnchor(null)}>
+                <MenuItem onClick={() => { setMenuAnchor(null); setPwOpen(true); }}>Change password</MenuItem>
+                <MenuItem onClick={() => { setMenuAnchor(null); logout(); }}>Sign out</MenuItem>
+              </Menu>
+            </div>
+          </>
+        )}
       </header>
 
-      <main className="cwrap">{body}</main>
-      <ClientChangePasswordDialog open={pwOpen} onClose={() => setPwOpen(false)} />
+      <main className="cwrap">
+        {preview && (
+          <aside className="cpanel" aria-label="Preview">
+            <div className="chead">
+              <div className="ctitle">
+                {`Preview — this is what the funder of ${project?.name || 'this grant'} sees`}
+              </div>
+              <Button variant="contained" onClick={preview.onBack}>Back</Button>
+            </div>
+          </aside>
+        )}
+        {body}
+      </main>
+      {!preview && <ClientChangePasswordDialog open={pwOpen} onClose={() => setPwOpen(false)} />}
     </div>
     </ThemeProvider>
   );
