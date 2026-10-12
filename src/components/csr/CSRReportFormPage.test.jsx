@@ -281,3 +281,26 @@ describe('editing a report that has an uploaded file', () => {
     await waitFor(() => expect(csrAPI.reportFile.remove).toHaveBeenCalledWith('9'));
   });
 });
+
+// Owner decision D-016: a new report is visible to the funder unless staff
+// switch it off; an existing report keeps whatever was stored.
+test('a new report starts visible to the client, and is sent that way', async () => {
+  mockSearch = new URLSearchParams({ project: '11' });
+  csrAPI.reports.create.mockResolvedValue({});
+  render(<CSRReportFormPage />);
+  expect(await screen.findByRole('checkbox', { name: /visible to client/i })).toBeChecked();
+
+  await userEvent.type(screen.getByLabelText(/report name/i), 'Q2 Utilisation Statement');
+  await userEvent.type(screen.getByLabelText(/document link/i), 'https://drive.example.com/q2');
+  await userEvent.click(screen.getByRole('button', { name: /save/i }));
+  await waitFor(() => expect(csrAPI.reports.create).toHaveBeenCalled());
+  expect(csrAPI.reports.create.mock.calls[0][0].visibleToClient).toBe(true);
+});
+
+test.each([false, true])('editing keeps the stored visibility (%p)', async (stored) => {
+  mockParams = { id: '9' };
+  csrAPI.reports.getById.mockResolvedValue({ ...REPORT, visibleToClient: stored });
+  render(<CSRReportFormPage />);
+  await screen.findByDisplayValue('Nashik Trial Summary');
+  expect(screen.getByRole('checkbox', { name: /visible to client/i }).checked).toBe(stored);
+});

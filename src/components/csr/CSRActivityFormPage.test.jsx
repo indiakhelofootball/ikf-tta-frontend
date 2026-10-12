@@ -301,21 +301,18 @@ describe('visible to funder', () => {
     expect(csrAPI.activities.update.mock.calls[0][1].projectId).toBe(ACTIVITY.projectId);
   });
 
-  test('the helper says Planned is not shown, and Completed is', async () => {
+  test('the helper says the funder sees the activity, Planned or Completed, unless switched off', async () => {
     mockSearch = new URLSearchParams({ project: '11' });
     render(<CSRActivityFormPage />);
     await screen.findByText('District Trial');
 
     const sw = screen.getByRole('switch', { name: 'Visible to funder' });
-    expect(sw).toHaveAccessibleDescription(
-      'Planned activities are not shown to the funder until marked Completed.',
-    );
+    const helper = 'The funder sees this activity, labelled Planned or Completed, unless you switch this off.';
+    expect(sw).toHaveAccessibleDescription(helper);
     expect(sw).toBeEnabled();
 
     await userEvent.selectOptions(screen.getByLabelText(/status/i), 'Completed');
-    expect(sw).toHaveAccessibleDescription(
-      'The funder sees this activity on their portal once it is marked Completed.',
-    );
+    expect(sw).toHaveAccessibleDescription(helper);
   });
 });
 

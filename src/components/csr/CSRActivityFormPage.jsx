@@ -434,9 +434,7 @@ export default function CSRActivityFormPage() {
               Visible to funder
             </label>
             <p id="a-visible-help" className="pform-help">
-              {form.status === 'Planned'
-                ? 'Planned activities are not shown to the funder until marked Completed.'
-                : 'The funder sees this activity on their portal once it is marked Completed.'}
+              The funder sees this activity, labelled Planned or Completed, unless you switch this off.
             </p>
           </div>
         </section>

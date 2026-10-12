@@ -544,3 +544,61 @@ test('a photo that fails to load is left out rather than shown broken', async ()
   expect(screen.queryByRole('figure')).not.toBeInTheDocument();
   expect(screen.queryByRole('img')).not.toBeInTheDocument();
 });
+
+// ---------------------------------------------------------------------------
+// Owner decision D-016: the funder sees Planned and Completed activities, each
+// labelled. Only Completed ones are delivered work: the Overview and its photos
+// are built from those alone.
+// ---------------------------------------------------------------------------
+
+const PLANNED = {
+  id: 5, title: 'Coaching clinic', activityType: 'Workshop', location: 'Rohtak',
+  startDate: '2026-10-10', status: 'Planned', photos: [{ id: 9, version: 'p1' }],
+};
+
+test('a Planned activity is listed on the Activities tab, labelled Planned', async () => {
+  clientAPI.activities.mockResolvedValue([...FIELD, PLANNED]);
+  render(<ClientPortalPage />);
+  fireEvent.click(await screen.findByRole('tab', { name: /^Activities/ }));
+
+  const panel = await screen.findByRole('region', { name: 'Activities' });
+  const rows = within(panel).getAllByRole('listitem');
+  const row = rows.find((li) => within(li).queryByText('Coaching clinic'));
+  expect(within(row).getByText('Planned')).toBeInTheDocument();
+  expect(within(row).queryByText('Completed')).not.toBeInTheDocument();
+  const done = rows.find((li) => within(li).queryByText('Camp visit'));
+  expect(within(done).getByText('Completed')).toBeInTheDocument();
+});
+
+test('the Overview counts, tiles, months and places leave a Planned activity out', async () => {
+  clientAPI.deliverables.mockResolvedValue([]);
+  clientAPI.activities.mockResolvedValue([...FIELD, PLANNED]);
+  render(<ClientPortalPage />);
+  await screen.findByText('From the field');
+
+  expect(screen.getByText(/^4 activities have taken place so far\./)).toBeInTheDocument();
+  expect(screen.queryByText('Coaching clinic')).not.toBeInTheDocument();
+  const places = within(screen.getByRole('list', { name: 'Places reached' })).getAllByRole('listitem');
+  expect(places.map((li) => li.textContent).some((t) => t.startsWith('Rohtak'))).toBe(false);
+  const months = within(screen.getByRole('list', { name: 'Activities by month' })).getAllByRole('listitem');
+  expect(months.find((li) => li.textContent.startsWith('Oct 2026'))).toHaveTextContent('1 held');
+  // The link still names everything the Activities tab lists.
+  expect(screen.getByRole('button', { name: 'All 5 activities' })).toBeInTheDocument();
+});
+
+test('no photo is requested for a Planned activity', async () => {
+  URL.createObjectURL = jest.fn(() => 'blob:photo');
+  URL.revokeObjectURL = jest.fn();
+  clientAPI.activityPhoto.mockResolvedValue({ blob: new Blob(['x'], { type: 'image/jpeg' }) });
+  clientAPI.activities.mockResolvedValue([
+    { ...FIELD[0], photos: [{ id: 7, version: 'a1' }] },
+    PLANNED,
+  ]);
+  render(<ClientPortalPage />);
+
+  const hero = await screen.findByRole('figure');
+  expect(hero).toHaveTextContent('Latest: District trial, Sector 56');
+  expect(clientAPI.activityPhoto).toHaveBeenCalledWith(1, 7, 'a1');
+  expect(clientAPI.activityPhoto).not.toHaveBeenCalledWith(5, expect.anything(), expect.anything());
+  expect(clientAPI.activityPhoto).toHaveBeenCalledTimes(1);
+});

@@ -24,7 +24,7 @@ const REPORT_TYPES = ['Trial', 'Workshop', 'Training Programme', 'Overall', 'Oth
 
 const EMPTY = {
   title: '', reportType: '', fileName: '', fileUrl: '', activityId: '',
-  visibleToClient: false,
+  visibleToClient: true,
 };
 
 export default function CSRReportFormPage() {

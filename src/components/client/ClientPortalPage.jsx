@@ -226,7 +226,11 @@ export default function ClientPortalPage() {
   const [logoBroken, setLogoBroken] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState(null);
   const tabRefs = useRef({});
-  const photos = useOverviewPhotos(activities, tab === 'project');
+  // The funder sees Planned and Completed activities (owner decision D-016),
+  // but only Completed ones are delivered work: the Overview and its photos
+  // are built from these alone.
+  const delivered = activities.filter((a) => a.status === 'Completed');
+  const photos = useOverviewPhotos(delivered, tab === 'project');
 
   useEffect(() => {
     let active = true;
@@ -344,11 +348,11 @@ export default function ClientPortalPage() {
   // excluded from the funder payload by isolation policy.
   const renderProject = () => {
     const progress = grantProgress(project.startDate, project.endDate);
-    const months = monthStrip(project.startDate, project.endDate, activities);
-    const places = placesReached(activities);
-    const recent = latestFirst(activities, activityDate).slice(0, 3);
+    const months = monthStrip(project.startDate, project.endDate, delivered);
+    const places = placesReached(delivered);
+    const recent = latestFirst(delivered, activityDate).slice(0, 3);
     const recentReports = latestFirst(reports, (r) => r.createdAt).slice(0, 3);
-    const n = activities.length;
+    const n = delivered.length;
     const dayFact = !progress ? null
       : progress.state === 'running' ? `Day ${formatCount(progress.day)} of ${formatCount(progress.total)}`
         : progress.state === 'upcoming' ? `Starts ${formatDate(project.startDate)}`
@@ -451,9 +455,9 @@ export default function ClientPortalPage() {
                 );
               })}
             </ul>
-            {n > recent.length && (
+            {activities.length > recent.length && (
               <button type="button" className="cmore" onClick={() => selectTab('activities')}>
-                All {formatCount(n)} activities
+                All {formatCount(activities.length)} activities
               </button>
             )}
           </section>

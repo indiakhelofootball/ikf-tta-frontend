@@ -1,5 +1,6 @@
-// Each activity row on a grant says whether the funder can see it: only a
-// Completed activity whose "Visible to funder" switch is on reaches the portal.
+// Each activity row on a grant says whether the funder can see it: any
+// activity, Planned or Completed, whose "Visible to funder" switch is on
+// reaches the portal (owner decision D-016).
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
@@ -64,5 +65,5 @@ test('each activity row says whether the funder sees it', async () => {
   await screen.findByText('Done and shown');
   expect(row('Done and shown')).toHaveTextContent('Shown to funder');
   expect(row('Done but switched off')).toHaveTextContent('Hidden from funder');
-  expect(row('Still planned')).toHaveTextContent('Hidden from funder');
+  expect(row('Still planned')).toHaveTextContent('Shown to funder');
 });
