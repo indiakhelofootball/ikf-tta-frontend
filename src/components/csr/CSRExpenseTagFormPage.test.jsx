@@ -160,3 +160,23 @@ describe('with a grant in the query param', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/csr/11', undefined);
   });
 });
+
+describe('the expense amount', () => {
+  beforeEach(() => { mockSearch = new URLSearchParams({ project: '11' }); });
+
+  test.each(['0', '-100'])('%s is refused before anything is sent', async (amount) => {
+    render(<CSRExpenseTagFormPage />);
+    await userEvent.type(screen.getByLabelText(/amount/i), amount);
+    await userEvent.click(screen.getByRole('button', { name: /tag/i }));
+    expect(await screen.findByText('The expense amount must be more than ₹0.')).toBeInTheDocument();
+    expect(csrAPI.expenseTags.create).not.toHaveBeenCalled();
+  });
+
+  test('a small positive amount still saves', async () => {
+    csrAPI.expenseTags.create.mockResolvedValue({});
+    render(<CSRExpenseTagFormPage />);
+    await userEvent.type(screen.getByLabelText(/amount/i), '0.5');
+    await userEvent.click(screen.getByRole('button', { name: /tag/i }));
+    await waitFor(() => expect(csrAPI.expenseTags.create).toHaveBeenCalled());
+  });
+});

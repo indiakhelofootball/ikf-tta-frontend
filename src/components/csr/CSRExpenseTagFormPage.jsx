@@ -95,6 +95,10 @@ export default function CSRExpenseTagFormPage() {
       setError('Enter an amount');
       return;
     }
+    if (Number(manualAmount) <= 0) {
+      setError('The expense amount must be more than ₹0.');
+      return;
+    }
     if (!expenseDate) {
       setDateError('Enter the date this expense was incurred');
       return;
@@ -154,7 +158,7 @@ export default function CSRExpenseTagFormPage() {
 
           <div className="pform-field">
             <label htmlFor="x-amount">Amount (₹) <span className="pform-req" aria-hidden="true">*</span></label>
-            <div className={`pform-input${manualAmount !== '' && !Number.isNaN(Number(manualAmount)) ? ' ok' : ''}`}>
+            <div className={`pform-input${manualAmount !== '' && Number(manualAmount) > 0 ? ' ok' : ''}`}>
               <input
                 id="x-amount" type="number" value={manualAmount}
                 onChange={(e) => { setManualAmount(e.target.value); setError(''); }}

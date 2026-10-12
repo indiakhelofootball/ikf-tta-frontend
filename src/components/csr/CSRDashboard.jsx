@@ -122,10 +122,15 @@ const ic = (d) => (
 // completed, invisible in every other total on this screen — sanctioned does
 // not include it, utilised excludes it by definition, and remaining counts it
 // as unspent.
-const STATS = (sanctioned, utilised, remaining, excluded, excludedCount, utilPct, openCount) => [
+// With no open grant there is no sanction to measure against, so the three
+// grant figures read "—" rather than a ₹0 that looks like a real total.
+const STATS = (sanctioned, utilised, remaining, excluded, excludedCount, utilPct, openCount) => {
+  const none = openCount === 0;
+  const money = (n) => (none ? '—' : fmtINR(n));
+  return [
   {
     k: 'Total Sanctioned',
-    v: fmtINR(sanctioned),
+    v: money(sanctioned),
     trend: `${openCount} open ${openCount === 1 ? 'grant' : 'grants'}`,
     tone: 'neutral',
     hue: 'n',
@@ -133,16 +138,16 @@ const STATS = (sanctioned, utilised, remaining, excluded, excludedCount, utilPct
   },
   {
     k: 'Utilised',
-    v: fmtINR(utilised || 0),
-    trend: `${Math.round(utilPct)}% of sanction`,
+    v: money(utilised || 0),
+    trend: none ? 'no open grants' : `${Math.round(utilPct)}% of sanction`,
     tone: utilPct > 100 ? 'bad' : 'good',
     hue: 'g',
     icon: ic(<><path d="M3 3v18h18" /><path d="M7 14l4-4 3 3 5-6" /></>),
   },
   {
     k: 'Remaining',
-    v: fmtINR(remaining),
-    trend: remaining < 0 ? 'overspent' : `${Math.round(100 - Math.min(100, utilPct))}% left`,
+    v: money(remaining),
+    trend: none ? 'no open grants' : remaining < 0 ? 'overspent' : `${Math.round(100 - Math.min(100, utilPct))}% left`,
     tone: remaining < 0 ? 'bad' : 'info',
     hue: 'b',
     icon: ic(<><rect x="2" y="6" width="20" height="13" rx="2" /><path d="M2 11h20" /></>),
@@ -157,7 +162,8 @@ const STATS = (sanctioned, utilised, remaining, excluded, excludedCount, utilPct
     hue: 'o',
     icon: ic(<><circle cx="12" cy="12" r="9" /><path d="M12 8v5M12 16h.01" /></>),
   },
-];
+  ];
+};
 
 // Four things an operator actually starts from. Every one is a real route.
 const ACTIONS = [
@@ -222,6 +228,7 @@ export default function CSRDashboard() {
   const sanctioned = openP.reduce((s, p) => s + (Number(p.sanctionedAmount) || 0), 0);
   const utilPct = sanctioned > 0 ? ((utilised || 0) / sanctioned) * 100 : 0;
   const remaining = sanctioned - (utilised || 0);
+  const grantMoney = (n) => (openP.length === 0 ? '—' : fmtINR(n));
   // Sanctioned against utilised, per grant — the pair the reference charts.
   const series = useMemo(() => {
     const rows = openP
@@ -291,10 +298,10 @@ export default function CSRDashboard() {
                 <span className="stat-when">By funder</span>
               </div>
               <div className="stat-pair">
-                <div><span>Utilised</span><span className="fig">{fmtINR(utilised || 0)}</span></div>
-                <div><span>Remaining</span><span className="fig">{fmtINR(remaining)}</span></div>
+                <div><span>Utilised</span><span className="fig">{grantMoney(utilised || 0)}</span></div>
+                <div><span>Remaining</span><span className="fig">{grantMoney(remaining)}</span></div>
               </div>
-              <Donut segments={byFunder} centre={fmtINR(sanctioned)} />
+              <Donut segments={byFunder} centre={grantMoney(sanctioned)} />
               <div className="legend">
                 {byFunder.length === 0 ? (
                   <div className="panel-empty">No grants yet.</div>
@@ -330,7 +337,7 @@ export default function CSRDashboard() {
                   />
                 </div>
                 <div className="limit-sub fig">
-                  {fmtINR(utilised || 0)} counted of {fmtINR(sanctioned)}
+                  {grantMoney(utilised || 0)} counted of {grantMoney(sanctioned)}
                 </div>
                 {excluded.count > 0 && (
                   <div className="limit-warn">{fmtINR(excluded.amount)} tagged, not yet counted</div>
@@ -344,7 +351,7 @@ export default function CSRDashboard() {
                 <span className="stat-when">Open grants</span>
               </div>
               <div className="flow-k">Total sanctioned</div>
-              <div className="flow-total fig">{fmtINR(sanctioned)}</div>
+              <div className="flow-total fig">{grantMoney(sanctioned)}</div>
               {/* Colour now means WHICH GRANT, so the key cannot use a colour to
                   mean "sanctioned" — it would be claiming green is a series
                   when green is Grassroots. The key states the convention that

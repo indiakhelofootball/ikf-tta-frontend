@@ -13,6 +13,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { csrAPI } from '../../services/api';
 import { getProjectNames, getSeasons } from '../../utils/adminStorage';
 import useConfigVersion from '../../hooks/useConfigVersion';
+import ConfirmDialog from '../common/ConfirmDialog';
 import '../../styles/csrDesign.css';
 
 const STATUS_OPTIONS = ['Active', 'Closed'];
@@ -32,7 +33,7 @@ const EMPTY = {
 const filled = (f) => ({
   name: f.name.trim() !== '',
   clientName: f.clientName.trim() !== '',
-  sanctionedAmount: f.sanctionedAmount !== '' && !Number.isNaN(Number(f.sanctionedAmount)),
+  sanctionedAmount: f.sanctionedAmount !== '' && !Number.isNaN(Number(f.sanctionedAmount)) && Number(f.sanctionedAmount) >= 0,
   startDate: f.startDate !== '',
   endDate: f.endDate !== '',
 });
@@ -41,6 +42,9 @@ const TRACKED_COUNT = 5;
 const END_BEFORE_START = 'End date must be on or after the start date.';
 // ISO yyyy-mm-dd strings order the same way the dates do.
 const endsBeforeStart = (f) => f.startDate !== '' && f.endDate !== '' && f.endDate < f.startDate;
+// A grant of ₹0 is possible but rarely meant, so it is confirmed rather than
+// refused. An already-saved ₹0 was confirmed once and is not asked again.
+const needsZeroConfirm = (amount, saved) => Number(amount) === 0 && Number(saved) !== 0;
 
 export default function CSRProjectFormPage() {
   const { id } = useParams();
@@ -54,6 +58,7 @@ export default function CSRProjectFormPage() {
   const [loadFailed, setLoadFailed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [confirmZero, setConfirmZero] = useState(false);
 
   // The record is loaded here rather than handed down, so the edit route is
   // reachable directly — a bookmark, a refresh, a link in a mail. A form that
@@ -126,6 +131,8 @@ export default function CSRProjectFormPage() {
     if (!form.clientName.trim()) next.clientName = 'Required';
     if (form.sanctionedAmount === '' || Number.isNaN(Number(form.sanctionedAmount))) {
       next.sanctionedAmount = 'Enter an amount';
+    } else if (Number(form.sanctionedAmount) < 0) {
+      next.sanctionedAmount = "The sanctioned amount can't be negative.";
     }
     if (endsBeforeStart(form)) next.endDate = END_BEFORE_START;
     setErrors(next);
@@ -142,9 +149,18 @@ export default function CSRProjectFormPage() {
     [navigate],
   );
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     if (!validate()) return;
+    if (needsZeroConfirm(form.sanctionedAmount, isEdit ? project?.sanctionedAmount : undefined)) {
+      setConfirmZero(true);
+      return;
+    }
+    save();
+  };
+
+  const save = async () => {
+    setConfirmZero(false);
     const payload = {
       name: form.name.trim(),
       clientName: form.clientName.trim(),
@@ -433,6 +449,16 @@ export default function CSRProjectFormPage() {
             </button>
           </div>
         </form>
+        <ConfirmDialog
+          open={confirmZero}
+          title="Save a ₹0 grant?"
+          message="The sanctioned amount is ₹0. Is that right?"
+          confirmLabel="Yes, save"
+          cancelLabel="Change amount"
+          destructive={false}
+          onConfirm={save}
+          onClose={() => setConfirmZero(false)}
+        />
 
         <aside className="pform-rail" aria-label="Setup progress">
           <h2 className="pform-rail-h">Setup progress</h2>

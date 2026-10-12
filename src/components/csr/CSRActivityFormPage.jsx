@@ -8,7 +8,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 
-import { csrAPI, trialsAPI } from '../../services/api';
+import { csrAPI } from '../../services/api';
 import ActivityPhotos from './ActivityPhotos';
 import { getWorkshopNames, getTrainingProgrammes } from '../../utils/adminStorage';
 import useConfigVersion from '../../hooks/useConfigVersion';
@@ -146,13 +146,16 @@ export default function CSRActivityFormPage() {
     return () => { active = false; };
   }, []);
 
+  // The grant's own trials. /api/trials/ is closed to CSR staff (csr grant,
+  // not trials), and for admins it listed every trial in TTA.
   useEffect(() => {
+    if (!projectId) return undefined;
     let active = true;
-    trialsAPI.getAll()
+    csrAPI.grantTrials(projectId)
       .then((data) => { if (active) setTrials(Array.isArray(data) ? data : data?.results || []); })
       .catch(() => { if (active) setTrials([]); });
     return () => { active = false; };
-  }, []);
+  }, [projectId]);
 
   useEffect(() => {
     let active = true;
@@ -207,6 +210,10 @@ export default function CSRActivityFormPage() {
     // before the round trip, not after it.
     if (form.deliveryMode === 'Partner' && !form.partnerId) {
       next.partnerId = 'Name the partner, or set delivery to Self.';
+    }
+    // ISO yyyy-mm-dd strings order the same way the dates do.
+    if (form.startDate && form.endDate && form.endDate < form.startDate) {
+      next.endDate = 'End date must be on or after the start date.';
     }
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -271,6 +278,11 @@ export default function CSRActivityFormPage() {
   const selectedType = activityTypes.find((t) => t.id === Number(form.activityTypeId));
   const kind = kindOfTypeName(selectedType?.name);
   const showField = (name) => KIND_FIELDS[kind].includes(name);
+  // A saved link to a trial outside this grant's list stays visible as itself,
+  // so the select does not show "none" while the record still holds it.
+  const trialOptions = form.linkedTrialId !== '' && !trials.some((t) => t.id === Number(form.linkedTrialId))
+    ? [...trials, { id: Number(form.linkedTrialId) }]
+    : trials;
 
   if (loading) {
     return (
@@ -388,7 +400,14 @@ export default function CSRActivityFormPage() {
             </div>
             <div className="pform-field">
               <label htmlFor="a-end">End Date</label>
-              <input id="a-end" type="date" value={form.endDate} onChange={setField('endDate')} />
+              <input
+                id="a-end" type="date" value={form.endDate} onChange={setField('endDate')}
+                aria-invalid={Boolean(errors.endDate)}
+                aria-describedby={errors.endDate ? 'a-end-help' : undefined}
+              />
+              {errors.endDate ? (
+                <p id="a-end-help" className="pform-help bad">{errors.endDate}</p>
+              ) : null}
             </div>
             <div className="pform-field">
               <label htmlFor="a-status">Status</label>
@@ -483,7 +502,7 @@ export default function CSRActivityFormPage() {
                   onChange={setField('linkedTrialId')} aria-describedby="a-trial-help"
                 >
                   <option value="">— none —</option>
-                  {trials.map((t) => (
+                  {trialOptions.map((t) => (
                     <option key={t.id} value={t.id}>
                       {t.trialCode ? `${t.trialCode} — ` : ''}{t.trialName || `#${t.id}`}
                     </option>

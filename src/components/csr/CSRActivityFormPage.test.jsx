@@ -4,7 +4,7 @@
 // cascade that was the whole reason the modal existed: which fields show
 // depends on the activity type selected.
 import React from 'react';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor, within, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import CSRActivityFormPage from './CSRActivityFormPage';
@@ -25,6 +25,7 @@ jest.mock('../../services/api', () => ({
     activities: { getById: jest.fn(), create: jest.fn(), update: jest.fn() },
     activityTypes: { getAll: jest.fn() },
     partners: { getAll: jest.fn() },
+    grantTrials: jest.fn(),
   },
   trialsAPI: { getAll: jest.fn() },
 }));
@@ -58,6 +59,7 @@ beforeEach(() => {
   csrAPI.activityTypes.getAll.mockResolvedValue(TYPES);
   csrAPI.partners.getAll.mockResolvedValue([]);
   trialsAPI.getAll.mockResolvedValue([]);
+  csrAPI.grantTrials.mockResolvedValue([]);
 });
 
 describe('no grant to attach to', () => {
@@ -314,5 +316,63 @@ describe('visible to funder', () => {
     expect(sw).toHaveAccessibleDescription(
       'The funder sees this activity on their portal once it is marked Completed.',
     );
+  });
+});
+
+describe('linked trial', () => {
+  const GRANT_TRIALS = [{ id: 7, trialCode: 'BH-01', trialName: 'Bhilai Trial' }];
+
+  test("lists the grant's own trials, not every trial in TTA", async () => {
+    mockSearch = new URLSearchParams({ project: '11' });
+    csrAPI.grantTrials.mockResolvedValue(GRANT_TRIALS);
+    render(<CSRActivityFormPage />);
+    await screen.findByText('District Trial');
+    await userEvent.selectOptions(screen.getByLabelText(/activity type/i), '10');
+
+    const select = screen.getByLabelText(/linked trial/i);
+    expect(within(select).getByRole('option', { name: 'BH-01 — Bhilai Trial' })).toBeInTheDocument();
+    expect(csrAPI.grantTrials).toHaveBeenCalledWith(11);
+    expect(trialsAPI.getAll).not.toHaveBeenCalled();
+  });
+
+  test('a saved link to a trial outside the list still shows as itself', async () => {
+    mockParams = { id: '5' };
+    csrAPI.activities.getById.mockResolvedValue({ ...ACTIVITY, linkedTrialId: 99 });
+    csrAPI.grantTrials.mockResolvedValue(GRANT_TRIALS);
+    render(<CSRActivityFormPage />);
+
+    const select = await screen.findByLabelText(/linked trial/i);
+    await waitFor(() => expect(select).toHaveValue('99'));
+    expect(within(select).getByRole('option', { name: '#99' })).toBeInTheDocument();
+  });
+});
+
+describe('activity dates', () => {
+  beforeEach(() => { mockSearch = new URLSearchParams({ project: '11' }); });
+
+  const fill = async (start, end) => {
+    render(<CSRActivityFormPage />);
+    await screen.findByText('District Trial');
+    await userEvent.type(screen.getByLabelText(/title/i), 'Dated');
+    await userEvent.selectOptions(screen.getByLabelText(/activity type/i), '10');
+    fireEvent.change(screen.getByLabelText(/start date/i), { target: { value: start } });
+    fireEvent.change(screen.getByLabelText(/end date/i), { target: { value: end } });
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+  };
+
+  test('an end date before the start is refused before anything is sent', async () => {
+    await fill('2026-10-14', '2026-10-12');
+    expect(await screen.findByText('End date must be on or after the start date.')).toBeInTheDocument();
+    expect(csrAPI.activities.create).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    ['same day', '2026-10-12', '2026-10-12'],
+    ['no end date', '2026-10-12', ''],
+    ['forward range', '2026-10-12', '2026-10-14'],
+  ])('%s still saves', async (_, start, end) => {
+    csrAPI.activities.create.mockResolvedValue({});
+    await fill(start, end);
+    await waitFor(() => expect(csrAPI.activities.create).toHaveBeenCalled());
   });
 });

@@ -224,3 +224,54 @@ test('cancel leaves without writing anything', async () => {
   // event through as one, which is what a bare onClick={leave} would do.
   expect(mockNavigate).toHaveBeenCalledWith('/csr/projects', undefined);
 });
+
+describe('the sanctioned amount', () => {
+  const create = async (amount) => {
+    render(<CSRProjectFormPage />);
+    await userEvent.type(screen.getByLabelText(/project name/i), 'Khelo Girls');
+    await userEvent.type(screen.getByLabelText(/client \/ funder/i), 'Tata Trusts');
+    await userEvent.type(screen.getByLabelText(/sanctioned amount/i), amount);
+    await userEvent.click(screen.getByRole('button', { name: /^save$/i }));
+  };
+
+  test('a negative amount is refused before anything is sent', async () => {
+    await create('-100');
+    expect(await screen.findByText("The sanctioned amount can't be negative.")).toBeInTheDocument();
+    expect(csrAPI.projects.create).not.toHaveBeenCalled();
+  });
+
+  test('₹0 asks first, and Change amount sends nothing', async () => {
+    await create('0');
+    expect(await screen.findByText('The sanctioned amount is ₹0. Is that right?')).toBeInTheDocument();
+    expect(csrAPI.projects.create).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole('button', { name: 'Change amount' }));
+    await waitFor(() => expect(screen.queryByText('The sanctioned amount is ₹0. Is that right?')).toBeNull());
+    expect(csrAPI.projects.create).not.toHaveBeenCalled();
+  });
+
+  test('₹0 saves once confirmed', async () => {
+    csrAPI.projects.create.mockResolvedValue({});
+    await create('0');
+    await userEvent.click(await screen.findByRole('button', { name: 'Yes, save' }));
+    await waitFor(() => expect(csrAPI.projects.create).toHaveBeenCalled());
+    expect(csrAPI.projects.create.mock.calls[0][0].sanctionedAmount).toBe('0');
+  });
+
+  test('a positive amount saves without asking', async () => {
+    csrAPI.projects.create.mockResolvedValue({});
+    await create('1200000');
+    await waitFor(() => expect(csrAPI.projects.create).toHaveBeenCalled());
+    expect(screen.queryByText(/Is that right\?/)).toBeNull();
+  });
+
+  test('an already-saved ₹0 grant is not asked about again', async () => {
+    mockParams = { id: '11' };
+    csrAPI.projects.getById.mockResolvedValue({ ...GRANT, sanctionedAmount: '0.00' });
+    csrAPI.projects.update.mockResolvedValue({});
+    render(<CSRProjectFormPage />);
+    await screen.findByDisplayValue('Grassroots Football — Maharashtra');
+    await userEvent.click(screen.getByRole('button', { name: /^save$/i }));
+    await waitFor(() => expect(csrAPI.projects.update).toHaveBeenCalled());
+    expect(screen.queryByText(/Is that right\?/)).toBeNull();
+  });
+});
