@@ -79,7 +79,8 @@ export function monthStrip(start, end, activities, today) {
 export function placesReached(activities) {
   const byKey = new Map();
   (activities || []).forEach((a) => {
-    const name = String(a?.location || '').replace(/\s+/g, ' ').trim();
+    // D-019: the grant city the activity names, else its free-text location.
+    const name = String(a?.city || a?.location || '').replace(/\s+/g, ' ').trim();
     if (!name) return;
     const key = name.toLowerCase();
     const when = toParts(activityDate(a));
@@ -106,4 +107,14 @@ export function latestFirst(items, dateOf) {
     if (!pb) return -1;
     return dayNumber(pb) - dayNumber(pa);
   });
+}
+
+// D-019: where an activity was, as the funder reads it: its city, then the
+// venue text when that says something the city does not.
+export function activityPlace(a) {
+  const city = String(a?.city || '').trim();
+  const loc = String(a?.location || '').trim();
+  if (!city) return loc;
+  if (!loc || loc.toLowerCase() === city.toLowerCase()) return city;
+  return `${city}, ${loc}`;
 }

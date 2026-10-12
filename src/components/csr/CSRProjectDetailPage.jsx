@@ -135,6 +135,13 @@ const ChevronGlyph = () => (
   </svg>
 );
 
+// D-019: the grant funds some of a trial's cities, never by default all of them.
+const trialCities = (t) => {
+  const all = t.cityCount ?? 0;
+  const noun = all === 1 ? 'city' : 'cities';
+  return `${t.grantCityCount ?? 0} of ${all} ${noun}`;
+};
+
 const trialDates = (t) => {
   if (!t.firstCityDate && !t.lastCityDate) return '—';
   if (t.firstCityDate === t.lastCityDate || !t.lastCityDate) return fmtDay(t.firstCityDate);
@@ -175,6 +182,13 @@ function GrantTrials({ project }) {
         <p className="ovw-note">
           This grant has no season set, so trials from every season
           of {project.ttaProjectName || 'its TTA project'} are listed.
+        </p>
+      )}
+      {linked && (
+        <p className="ovw-note">
+          {project.cities?.length
+            ? `Cities this grant funds: ${project.cities.map((c) => c.cityName).join(', ')}`
+            : 'No cities chosen for this grant yet. Edit the grant to pick the cities it funds.'}
         </p>
       )}
 
@@ -218,9 +232,7 @@ function GrantTrials({ project }) {
               <div className="lgrid lgrid--trials lgrid--6 lrow">
                 <span className="fig nowrap">{t.trialCode}</span>
                 <span className="t1">{t.trialName}</span>
-                <span className="t2">
-                  {t.cityCount ?? 0} {t.cityCount === 1 ? 'city' : 'cities'}
-                </span>
+                <span className="t2">{trialCities(t)}</span>
                 <span className="t2">{t.season || '—'}</span>
                 <span className="t2">{trialDates(t)}</span>
                 <span className="lend">

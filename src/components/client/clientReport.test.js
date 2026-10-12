@@ -1,4 +1,4 @@
-import { grantProgress, monthStrip, placesReached, latestFirst, activityDate } from './clientReport';
+import { grantProgress, monthStrip, placesReached, latestFirst, activityDate, activityPlace } from './clientReport';
 
 const TODAY = '2026-10-09';
 
@@ -62,4 +62,22 @@ test('an activity is dated by its start, then its single date, then its end', ()
   expect(activityDate({ date: 'b', endDate: 'c' })).toBe('b');
   expect(activityDate({ endDate: 'c' })).toBe('c');
   expect(activityDate({})).toBeNull();
+});
+
+describe('D-019: an activity place leads with its grant city', () => {
+  test('places group by city when one is named', () => {
+    const places = placesReached([
+      { city: 'Pune', location: 'Balewadi', startDate: '2026-05-01' },
+      { city: 'Pune', location: 'Shivaji Nagar', startDate: '2026-05-03' },
+      { location: 'Nagpur', startDate: '2026-05-02' },
+    ]);
+    expect(places.map((p) => [p.name, p.count])).toEqual([['Pune', 2], ['Nagpur', 1]]);
+  });
+
+  test('city, then venue, without repeating the city', () => {
+    expect(activityPlace({ city: 'Pune', location: 'Balewadi' })).toBe('Pune, Balewadi');
+    expect(activityPlace({ city: 'Pune', location: 'pune' })).toBe('Pune');
+    expect(activityPlace({ city: '', location: 'Bhilai' })).toBe('Bhilai');
+    expect(activityPlace({})).toBe('');
+  });
 });

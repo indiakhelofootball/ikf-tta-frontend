@@ -26,6 +26,7 @@ jest.mock('../../services/api', () => ({
       create: jest.fn(),
       update: jest.fn(),
     },
+    grantCityOptions: jest.fn(),
   },
 }));
 
@@ -54,6 +55,7 @@ const GRANT = {
 beforeEach(() => {
   jest.clearAllMocks();
   mockParams = {};
+  csrAPI.grantCityOptions.mockResolvedValue([]);
 });
 
 describe('creating a grant', () => {
@@ -316,4 +318,84 @@ describe('show cancelled and overdue activities to the funder', () => {
     await screen.findByDisplayValue('Tata Trusts');
     expect(screen.getByRole('switch', { name: SWITCH })).not.toBeChecked();
   });
+});
+
+describe('D-019: the grant picks the cities it funds', () => {
+  const CITIES = [
+    { id: 1, cityName: 'Pune', state: 'MH', trialId: 3, trialCode: 'S6' },
+    { id: 2, cityName: 'Wardha', state: 'MH', trialId: 3, trialCode: 'S6' },
+  ];
+
+  const fillRequired = async () => {
+    await userEvent.type(screen.getByLabelText(/project name/i), 'Vardhman');
+    await userEvent.type(screen.getByLabelText(/client \/ funder/i), 'Vardhman');
+    await userEvent.type(screen.getByLabelText(/sanctioned amount/i), '500000');
+  };
+
+  test('no picker until a TTA project is chosen', () => {
+    render(<CSRProjectFormPage />);
+    expect(screen.queryByText(/cities this grant funds/i)).toBeNull();
+    expect(csrAPI.grantCityOptions).not.toHaveBeenCalled();
+  });
+
+  test('a linked grant must pick at least one city, and sends the ones picked', async () => {
+    csrAPI.grantCityOptions.mockResolvedValue(CITIES);
+    csrAPI.projects.create.mockResolvedValue({ id: 1 });
+    render(<CSRProjectFormPage />);
+    await fillRequired();
+    await userEvent.selectOptions(screen.getByLabelText(/tta project/i), '7');
+    await userEvent.selectOptions(screen.getByLabelText(/season/i), 'Season 5');
+    const pune = await screen.findByRole('checkbox', { name: 'Pune, MH' });
+    expect(csrAPI.grantCityOptions).toHaveBeenLastCalledWith('7', 'Season 5');
+
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+    expect(await screen.findByText('Pick the cities this grant funds.')).toBeInTheDocument();
+    expect(csrAPI.projects.create).not.toHaveBeenCalled();
+
+    await userEvent.click(pune);
+    expect(screen.getByText('1 of 2 selected')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+    await waitFor(() => expect(csrAPI.projects.create).toHaveBeenCalled());
+    expect(csrAPI.projects.create.mock.calls[0][0].cityIds).toEqual([1]);
+  });
+
+  test('changing the season clears the cities picked', async () => {
+    csrAPI.grantCityOptions.mockResolvedValue(CITIES);
+    render(<CSRProjectFormPage />);
+    await userEvent.selectOptions(screen.getByLabelText(/tta project/i), '7');
+    await userEvent.click(await screen.findByRole('checkbox', { name: 'Pune, MH' }));
+    expect(screen.getByText('1 of 2 selected')).toBeInTheDocument();
+    await userEvent.selectOptions(screen.getByLabelText(/season/i), 'Season 1');
+    expect(await screen.findByText('0 of 2 selected')).toBeInTheDocument();
+  });
+
+  test('a project and season with no trial cities says so, and does not block the save', async () => {
+    csrAPI.projects.create.mockResolvedValue({ id: 1 });
+    render(<CSRProjectFormPage />);
+    await fillRequired();
+    await userEvent.selectOptions(screen.getByLabelText(/tta project/i), '7');
+    expect(await screen.findByText(/has no trial cities yet/i)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+    await waitFor(() => expect(csrAPI.projects.create).toHaveBeenCalled());
+  });
+
+  test('editing loads the cities already held as ticked', async () => {
+    mockParams = { id: '11' };
+    csrAPI.projects.getById.mockResolvedValue({ ...GRANT, cities: [CITIES[1]] });
+    csrAPI.grantCityOptions.mockResolvedValue(CITIES);
+    render(<CSRProjectFormPage />);
+    expect(await screen.findByRole('checkbox', { name: 'Wardha, MH' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Pune, MH' })).not.toBeChecked();
+  });
+});
+
+test('D-019: the city error clears once a city is ticked', async () => {
+  csrAPI.grantCityOptions.mockResolvedValue([{ id: 1, cityName: 'Pune', state: 'MH', trialId: 3, trialCode: 'S6' }]);
+  render(<CSRProjectFormPage />);
+  await userEvent.selectOptions(screen.getByLabelText(/tta project/i), '7');
+  const pune = await screen.findByRole('checkbox', { name: 'Pune, MH' });
+  await userEvent.click(screen.getByRole('button', { name: /save/i }));
+  expect(await screen.findByText('Pick the cities this grant funds.')).toBeInTheDocument();
+  await userEvent.click(pune);
+  expect(screen.queryByText('Pick the cities this grant funds.')).toBeNull();
 });

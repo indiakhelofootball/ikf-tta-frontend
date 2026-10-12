@@ -58,7 +58,7 @@ const ALL_KIND_FIELDS = [
 
 const EMPTY = {
   title: '', activityTypeId: '', startDate: '', endDate: '',
-  location: '', status: 'Completed', linkedTrialId: '',
+  location: '', status: 'Completed', linkedTrialId: '', trialCityId: '',
   workshopId: '', trainingProgrammeId: '', partnerId: '',
   deliveryMode: '',
   visibleToClient: true,
@@ -85,6 +85,8 @@ export default function CSRActivityFormPage() {
   const [activity, setActivity] = useState(null);
   const [activityTypes, setActivityTypes] = useState([]);
   const [trials, setTrials] = useState([]);
+  // D-019: the cities the grant funds; an activity picks one of them.
+  const [grantCities, setGrantCities] = useState([]);
   // Partners are the TTA Admin vendor-name entries whose service type is
   // Partner (owner, 10 Oct 2026) — not Vendor-module records. The narrowing is
   // the endpoint's, not this component's.
@@ -128,6 +130,7 @@ export default function CSRActivityFormPage() {
           location: data.location || '',
           status: data.status || 'Planned',
           linkedTrialId: data.linkedTrialId ?? '',
+          trialCityId: data.trialCityId ?? '',
           workshopId: data.workshopId ?? '',
           trainingProgrammeId: data.trainingProgrammeId ?? '',
           partnerId: data.partnerId ?? '',
@@ -160,6 +163,15 @@ export default function CSRActivityFormPage() {
     csrAPI.grantTrials(projectId)
       .then((data) => { if (active) setTrials(Array.isArray(data) ? data : data?.results || []); })
       .catch(() => { if (active) setTrials([]); });
+    return () => { active = false; };
+  }, [projectId]);
+
+  useEffect(() => {
+    if (!projectId) return undefined;
+    let active = true;
+    csrAPI.projects.getById(projectId)
+      .then((data) => { if (active) setGrantCities(data?.cities || []); })
+      .catch(() => { if (active) setGrantCities([]); });
     return () => { active = false; };
   }, [projectId]);
 
@@ -263,6 +275,7 @@ export default function CSRActivityFormPage() {
       location: form.location.trim(),
       status: form.status,
       linkedTrialId: form.linkedTrialId === '' ? null : Number(form.linkedTrialId),
+      trialCityId: form.trialCityId === '' ? null : Number(form.trialCityId),
       workshopId: form.workshopId === '' ? null : Number(form.workshopId),
       trainingProgrammeId:
         form.trainingProgrammeId === '' ? null : Number(form.trainingProgrammeId),
@@ -303,6 +316,10 @@ export default function CSRActivityFormPage() {
   const trialOptions = form.linkedTrialId !== '' && !trials.some((t) => t.id === Number(form.linkedTrialId))
     ? [...trials, { id: Number(form.linkedTrialId) }]
     : trials;
+  // Same for a stored city the grant has since dropped.
+  const cityOptions = form.trialCityId !== '' && !grantCities.some((c) => c.id === Number(form.trialCityId))
+    ? [...grantCities, { id: Number(form.trialCityId), cityName: activity?.trialCityName || `#${form.trialCityId}` }]
+    : grantCities;
 
   if (loading) {
     return (
@@ -437,6 +454,25 @@ export default function CSRActivityFormPage() {
                 ))}
               </select>
             </div>
+          </div>
+
+          <div className="pform-field">
+            <label htmlFor="a-city">City</label>
+            <select
+              id="a-city" className="sel" value={form.trialCityId}
+              onChange={setField('trialCityId')} aria-describedby="a-city-help"
+              disabled={cityOptions.length === 0}
+            >
+              <option value="">—</option>
+              {cityOptions.map((c) => (
+                <option key={c.id} value={c.id}>{c.state ? `${c.cityName}, ${c.state}` : c.cityName}</option>
+              ))}
+            </select>
+            <p id="a-city-help" className="pform-help">
+              {cityOptions.length === 0
+                ? 'This grant has no cities yet. Pick them on the grant first.'
+                : 'One of the cities this grant funds.'}
+            </p>
           </div>
 
           <div className="pform-field">

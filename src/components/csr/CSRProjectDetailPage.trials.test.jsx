@@ -56,7 +56,8 @@ const TRIAL = {
   trialCode: 'TRL-S6-TTF-001',
   season: 'Season 6',
   status: 'Active',
-  cityCount: 3,
+  cityCount: 79,
+  grantCityCount: 2,
   firstCityDate: '2026-11-01',
   lastCityDate: '2026-11-03',
 };
@@ -90,7 +91,7 @@ test('lists each trial with its code, season, status and cities', async () => {
   render(<CSRProjectDetailPage />);
   expect(await screen.findByText('Ranchi Trial')).toBeInTheDocument();
   expect(screen.getByText('TRL-S6-TTF-001')).toBeInTheDocument();
-  expect(screen.getByText('3 cities')).toBeInTheDocument();
+  expect(screen.getByText('2 of 79 cities')).toBeInTheDocument();
   expect(screen.getAllByText('Season 6').length).toBeGreaterThan(0);
   expect(screen.getAllByText('Active').length).toBeGreaterThan(0);
 });
@@ -150,4 +151,19 @@ test('a grant with no season says every season is listed', async () => {
   render(<CSRProjectDetailPage />);
   await waitFor(() => expect(csrAPI.grantTrials).toHaveBeenCalled());
   expect(await screen.findByText(/no season set, so trials from every season/)).toBeInTheDocument();
+});
+
+test('D-019: names the cities this grant funds', async () => {
+  csrAPI.projects.getById.mockResolvedValue({
+    ...GRANT, cities: [{ id: 1, cityName: 'Pune' }, { id: 2, cityName: 'Wardha' }],
+  });
+  render(<CSRProjectDetailPage />);
+  expect(await screen.findByText('Cities this grant funds: Pune, Wardha')).toBeInTheDocument();
+});
+
+test('D-019: a linked grant with no cities says to pick them', async () => {
+  render(<CSRProjectDetailPage />);
+  expect(
+    await screen.findByText('No cities chosen for this grant yet. Edit the grant to pick the cities it funds.'),
+  ).toBeInTheDocument();
 });

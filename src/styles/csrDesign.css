@@ -2223,6 +2223,22 @@
 .csrx .pform-field .sel{width:100%;min-width:0;height:auto;padding:9px 34px 9px 12px}
 .csrx .pform-help{font-size:13px;color:var(--muted);margin:0;line-height:1.7}
 .csrx .pform-help.bad{color:var(--red)}
+/* D-019: a season can run in 80 cities, so the list scrolls inside a bounded box. */
+.csrx .pform-cities{
+  display:grid;grid-template-columns:1fr;gap:var(--sp-2) var(--sp-4);
+  max-height:18rem;overflow-y:auto;
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r-ctl);
+  padding:var(--sp-3) var(--sp-4);
+}
+@media (min-width:640px){.csrx .pform-cities{grid-template-columns:repeat(auto-fill,minmax(11rem,1fr))}}
+.csrx .pform-cities .chk{align-items:flex-start;line-height:1.5}
+/* .pform-field input sizes text inputs to the column; a checkbox inside a
+   .chk label keeps its own size, or it stretches away from its label. */
+.csrx .pform-field .chk input{width:15px;height:15px;padding:0;flex:none}
+.csrx .pform-field .pform-cities .chk input{margin-top:3px}
+.csrx .pform-cities-tools{display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap}
+.csrx .pform-cities-tools input{flex:1;min-width:10rem}
+.csrx .pform-cities-state{margin:0;font-size:13.5px;color:var(--muted);line-height:1.7}
 .csrx .pform-wide{
   background:var(--card);border:1px solid var(--line);border-radius:var(--r-card);
   padding:18px 20px;

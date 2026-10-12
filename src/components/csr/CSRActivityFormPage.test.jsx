@@ -24,6 +24,7 @@ jest.mock('react-router-dom', () => ({
 jest.mock('../../services/api', () => ({
   csrAPI: {
     activities: { getById: jest.fn(), create: jest.fn(), update: jest.fn() },
+    projects: { getById: jest.fn() },
     activityTypes: { getAll: jest.fn() },
     partners: { getAll: jest.fn() },
     grantTrials: jest.fn(),
@@ -61,6 +62,7 @@ beforeEach(() => {
   csrAPI.partners.getAll.mockResolvedValue([]);
   trialsAPI.getAll.mockResolvedValue([]);
   csrAPI.grantTrials.mockResolvedValue([]);
+  csrAPI.projects.getById.mockResolvedValue({ id: 11, cities: [] });
 });
 
 describe('no grant to attach to', () => {
@@ -523,5 +525,44 @@ describe('D-018: the line beside Save says whether the funder will see it', () =
     setDate(/start date/i, YESTERDAY);
     expect(status()).toHaveValue('Completed');
     expect(line()).toHaveTextContent(SHOWN);
+  });
+});
+
+describe('D-019: the activity city comes from the grant', () => {
+  beforeEach(() => { mockSearch = new URLSearchParams({ project: '11' }); });
+
+  test('lists only the grant cities and sends the one picked', async () => {
+    csrAPI.projects.getById.mockResolvedValue({
+      id: 11, cities: [{ id: 7, cityName: 'Pune', state: 'MH' }, { id: 8, cityName: 'Wardha', state: 'MH' }],
+    });
+    csrAPI.activities.create.mockResolvedValue({ id: 1 });
+    render(<CSRActivityFormPage />);
+    await screen.findByText('District Trial');
+    const city = await screen.findByLabelText(/^city$/i);
+    await waitFor(() => expect(within(city).getAllByRole('option')).toHaveLength(3));
+    expect(within(city).getByRole('option', { name: 'Pune, MH' })).toBeInTheDocument();
+    expect(csrAPI.projects.getById).toHaveBeenCalledWith(11);
+    await userEvent.type(screen.getByLabelText(/title/i), 'Pune Trial');
+    await userEvent.selectOptions(screen.getByLabelText(/activity type/i), '10');
+    await userEvent.selectOptions(city, '7');
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+    await waitFor(() => expect(csrAPI.activities.create).toHaveBeenCalled());
+    expect(csrAPI.activities.create.mock.calls[0][0].trialCityId).toBe(7);
+  });
+
+  test('a grant with no cities says to pick them on the grant', async () => {
+    render(<CSRActivityFormPage />);
+    expect(await screen.findByText('This grant has no cities yet. Pick them on the grant first.')).toBeInTheDocument();
+    expect(screen.getByLabelText(/^city$/i)).toBeDisabled();
+  });
+
+  test('a stored city the grant has dropped still shows as itself', async () => {
+    mockParams = { id: '5' };
+    csrAPI.activities.getById.mockResolvedValue({ ...ACTIVITY, trialCityId: 9, trialCityName: 'Akola' });
+    csrAPI.projects.getById.mockResolvedValue({ id: 11, cities: [{ id: 7, cityName: 'Pune', state: 'MH' }] });
+    render(<CSRActivityFormPage />);
+    const city = await screen.findByLabelText(/^city$/i);
+    await waitFor(() => expect(city).toHaveValue('9'));
+    expect(within(city).getByRole('option', { name: 'Akola' })).toBeInTheDocument();
   });
 });

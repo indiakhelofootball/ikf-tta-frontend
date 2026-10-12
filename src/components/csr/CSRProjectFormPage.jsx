@@ -14,6 +14,7 @@ import { csrAPI } from '../../services/api';
 import { getProjectNames, getSeasons } from '../../utils/adminStorage';
 import useConfigVersion from '../../hooks/useConfigVersion';
 import ConfirmDialog from '../common/ConfirmDialog';
+import GrantCityPicker from './GrantCityPicker';
 import '../../styles/csrDesign.css';
 
 const STATUS_OPTIONS = ['Active', 'Closed'];
@@ -21,7 +22,7 @@ const STATUS_OPTIONS = ['Active', 'Closed'];
 const EMPTY = {
   name: '', clientName: '', sanctionedAmount: '',
   startDate: '', endDate: '', status: 'Active', description: '',
-  projectRefId: '', season: '', showHeldBackToFunder: false,
+  projectRefId: '', season: '', showHeldBackToFunder: false, cityIds: [],
 };
 
 // The five fields the completion bar tracks. Three of them are what the form
@@ -59,6 +60,8 @@ export default function CSRProjectFormPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [confirmZero, setConfirmZero] = useState(false);
+  // null until the picker has loaded the project + season's cities.
+  const [cityOptions, setCityOptions] = useState(null);
 
   // The record is loaded here rather than handed down, so the edit route is
   // reachable directly — a bookmark, a refresh, a link in a mail. A form that
@@ -91,6 +94,7 @@ export default function CSRProjectFormPage() {
           projectRefId: data.projectRefId ?? '',
           season: data.season || '',
           showHeldBackToFunder: Boolean(data.showHeldBackToFunder),
+          cityIds: (data.cities || []).map((c) => c.id),
         });
         setLoading(false);
       })
@@ -120,6 +124,13 @@ export default function CSRProjectFormPage() {
     const { value } = e.target;
     setForm((f) => ({ ...f, [k]: value }));
   };
+  // A city belongs to one project + season, so changing either clears them.
+  const setIdentity = (k) => (e) => {
+    const { value } = e.target;
+    setForm((f) => ({ ...f, [k]: value, cityIds: [] }));
+    setCityOptions(null);
+  };
+  const onCityOptions = useCallback((opts) => setCityOptions(opts), []);
 
   const progress = filled(form);
   const endDateError = endsBeforeStart(form) ? END_BEFORE_START : '';
@@ -136,6 +147,9 @@ export default function CSRProjectFormPage() {
       next.sanctionedAmount = "The sanctioned amount can't be negative.";
     }
     if (endsBeforeStart(form)) next.endDate = END_BEFORE_START;
+    if (form.projectRefId !== '' && cityOptions?.length && form.cityIds.length === 0) {
+      next.cityIds = 'Pick the cities this grant funds.';
+    }
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -189,6 +203,7 @@ export default function CSRProjectFormPage() {
       // project instead of naming half of one.
       season: form.season,
       showHeldBackToFunder: form.showHeldBackToFunder,
+      cityIds: form.projectRefId === '' ? [] : form.cityIds,
     };
     setSaving(true);
     setSaveError('');
@@ -267,7 +282,10 @@ export default function CSRProjectFormPage() {
     {
       n: 4, label: 'TTA link', hint: 'Optional',
       done: form.projectRefId !== '',
-      summary: selectedTTAProject ? selectedTTAProject.name : '',
+      summary: selectedTTAProject
+        ? [selectedTTAProject.name, form.cityIds.length ? `${form.cityIds.length} ${form.cityIds.length === 1 ? 'city' : 'cities'}` : '']
+          .filter(Boolean).join(' · ')
+        : '',
     },
   ];
   // The ring is drawn from the same count the steps read, so the number and the
@@ -412,7 +430,7 @@ export default function CSRProjectFormPage() {
                 <select
                   id="csr-tta" className="sel"
                   value={form.projectRefId === '' ? '' : String(form.projectRefId)}
-                  onChange={(e) => setForm((f) => ({ ...f, projectRefId: e.target.value }))}
+                  onChange={setIdentity('projectRefId')}
                   aria-describedby="csr-tta-help"
                 >
                   <option value="">None</option>
@@ -432,7 +450,7 @@ export default function CSRProjectFormPage() {
                 <select
                   id="csr-season" className="sel"
                   value={form.season}
-                  onChange={setField('season')}
+                  onChange={setIdentity('season')}
                   aria-describedby="csr-season-help"
                 >
                   <option value="">None</option>
@@ -452,6 +470,20 @@ export default function CSRProjectFormPage() {
                 </p>
               </div>
             </div>
+
+            {form.projectRefId !== '' && (
+              <GrantCityPicker
+                projectRefId={form.projectRefId}
+                season={form.season}
+                value={form.cityIds}
+                onChange={(cityIds) => {
+                  setForm((f) => ({ ...f, cityIds }));
+                  if (cityIds.length) setErrors((e) => ({ ...e, cityIds: undefined }));
+                }}
+                onOptions={onCityOptions}
+                error={errors.cityIds}
+              />
+            )}
           </section>
 
           {saveError ? <p className="pform-error" role="alert">{saveError}</p> : null}

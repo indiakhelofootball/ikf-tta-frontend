@@ -1253,6 +1253,11 @@ export const csrAPI = /*#__PURE__*/ {
   // operator holds the csr grant, not trials, so /trials/ answers them 403.
   grantTrials: async (projectId) =>
     apiService.request(`/csr/projects/${projectId}/trials/`),
+  // D-019: the cities a grant on this TTA project + season may fund.
+  grantCityOptions: async (projectRefId, season) =>
+    apiService.request(
+      `/csr/projects/city-options/?projectRefId=${encodeURIComponent(projectRefId)}&season=${encodeURIComponent(season || '')}`,
+    ),
   // Exactly what this grant's funder would get, in one call, for "Preview as
   // funder": { project, activities, reports, deliverables, certificate, branding }.
   funderView: async (projectId) =>

@@ -12,7 +12,7 @@ import useRefetchOnFocus from '../../hooks/useRefetchOnFocus';
 import {
   formatDate, formatRange, formatCount, formatRupees, formatUpdated, formatActivityCount,
 } from './clientFormat';
-import { grantProgress, monthStrip, placesReached, latestFirst, activityDate } from './clientReport';
+import { grantProgress, monthStrip, placesReached, activityPlace, latestFirst, activityDate } from './clientReport';
 import '../../styles/clientPortal.css';
 import ClientChangePasswordDialog from './ClientChangePasswordDialog';
 
@@ -446,13 +446,16 @@ export default function ClientPortalPage({ source = funderSource, preview = null
           <div><dt>Period</dt><dd>{formatRange(project.startDate, project.endDate) || 'Not set'}</dd></div>
           <div><dt>Status</dt><dd>{project.status || 'Not recorded'}</dd></div>
           {dayFact && <div><dt>Progress</dt><dd className="cnum">{dayFact}</dd></div>}
+          {project.cities?.length > 0 && (
+            <div><dt>Cities</dt><dd>{project.cities.map((c) => c.name).join(', ')}</dd></div>
+          )}
         </dl>
 
         {photos.hero && photos.urls[photos.hero.id] && (
           <figure className="cphoto">
             <img src={photos.urls[photos.hero.id]} alt={photos.hero.title} />
             <figcaption>
-              Latest: {[photos.hero.title, photos.hero.location, formatDate(activityDate(photos.hero))].filter(Boolean).join(' · ')}
+              Latest: {[photos.hero.title, activityPlace(photos.hero), formatDate(activityDate(photos.hero))].filter(Boolean).join(' · ')}
             </figcaption>
           </figure>
         )}
@@ -519,13 +522,13 @@ export default function ClientPortalPage({ source = funderSource, preview = null
             <ul className={recent.some((a) => photos.urls[a.id]) ? 'ctiles' : 'citems'}>
               {recent.map((a) => {
                 const when = (a.startDate || a.endDate) ? formatRange(a.startDate, a.endDate) : formatDate(a.date);
-                const meta = [a.activityType, a.location, when].filter(Boolean).join(' · ');
+                const meta = [a.activityType, activityPlace(a), when].filter(Boolean).join(' · ');
                 const url = photos.urls[a.id];
                 return (
                   <li key={a.id} className={recent.some((x) => photos.urls[x.id]) ? 'ctile' : 'citem'}>
                     {recent.some((x) => photos.urls[x.id]) && (
                       url ? <img className="ctile-img" src={url} alt={a.title} />
-                        : <span className="ctile-img ctile-none" aria-hidden="true">{a.location || a.activityType || ''}</span>
+                        : <span className="ctile-img ctile-none" aria-hidden="true">{activityPlace(a) || a.activityType || ''}</span>
                     )}
                     <span className="citem-t">{a.title}</span>
                     {meta && <span className="citem-s">{meta}</span>}
@@ -593,7 +596,7 @@ export default function ClientPortalPage({ source = funderSource, preview = null
     const when = (a.startDate || a.endDate)
       ? formatRange(a.startDate, a.endDate)
       : formatDate(a.date);
-    const meta = [a.activityType, when, a.location].filter(Boolean).join(' · ');
+    const meta = [a.activityType, when, activityPlace(a)].filter(Boolean).join(' · ');
     return (
       <li className="crow" key={a.id}>
         <div className="crow-main">

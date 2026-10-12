@@ -809,3 +809,21 @@ test('without the switch (no such activities) neither extra section appears', as
   expect(screen.queryByRole('region', { name: 'Cancelled' })).not.toBeInTheDocument();
   expect(screen.getByRole('tab', { name: /Activities/ })).toHaveTextContent('1 delivered · 1 upcoming');
 });
+
+test('D-019: the funder sees the cities their grant funds, and each activity city', async () => {
+  clientAPI.project.mockResolvedValue([{
+    ...PROJECT, cities: [{ name: 'Pune', state: 'MH' }, { name: 'Wardha', state: 'MH' }],
+  }]);
+  clientAPI.activities.mockResolvedValue([
+    { id: 1, title: 'Trial at Pune', status: 'Completed', city: 'Pune', location: 'Balewadi Ground', startDate: '2026-05-02' },
+  ]);
+  render(<ClientPortalPage />);
+  expect(await screen.findByText('Pune, Wardha')).toBeInTheDocument();
+  expect(screen.getAllByText(/Pune, Balewadi Ground/).length).toBeGreaterThan(0);
+});
+
+test('D-019: a grant with no cities shows no Cities line', async () => {
+  render(<ClientPortalPage />);
+  await screen.findByText('What has been delivered');
+  expect(screen.queryByText('Cities')).not.toBeInTheDocument();
+});
