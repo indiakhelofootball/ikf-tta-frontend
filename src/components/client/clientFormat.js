@@ -49,11 +49,34 @@ export function formatRange(start, end) {
   return '';
 }
 
+// '3:05 pm', on the reader's own clock. Spelled out by hand for the same
+// reason as the months: ICU versions disagree on 'pm' versus 'PM'.
+export function formatTime(value) {
+  const dt = value instanceof Date ? value : new Date(value);
+  if (value == null || Number.isNaN(dt.getTime())) return '';
+  const h = dt.getHours();
+  const m = String(dt.getMinutes()).padStart(2, '0');
+  return `${h % 12 || 12}:${m} ${h < 12 ? 'am' : 'pm'}`;
+}
+
+// When the page last loaded successfully: the time alone if that was today,
+// the date as well if the page has been open since an earlier day.
+export function formatUpdated(value, now = new Date()) {
+  const time = formatTime(value);
+  if (!time) return '';
+  return formatDate(value) === formatDate(now) ? `Updated ${time}` : `Updated ${formatDate(value)}, ${time}`;
+}
+
 // A count of things. Blank or unreadable is 0: a count the funder sees is
 // never a dash.
 export function formatCount(value) {
   const n = Number(value);
   return (Number.isFinite(n) ? n : 0).toLocaleString('en-IN', { maximumFractionDigits: 0 });
+}
+
+// The one way activities are counted for the funder (D-018): '4 delivered · 1 upcoming'.
+export function formatActivityCount(delivered, upcoming) {
+  return `${formatCount(delivered)} delivered · ${formatCount(upcoming)} upcoming`;
 }
 
 // Rupees. Whole rupees unless there are paise, then exactly two places — so

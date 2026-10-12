@@ -1,4 +1,6 @@
-import { formatDate, formatRange, formatCount, formatRupees } from './clientFormat';
+import {
+  formatDate, formatRange, formatCount, formatRupees, formatTime, formatUpdated, formatActivityCount,
+} from './clientFormat';
 
 describe('formatDate', () => {
   it('writes a calendar day as day, short month, year', () => {
@@ -84,5 +86,48 @@ describe('formatRupees', () => {
 
   it('reads blank as zero rupees', () => {
     expect(formatRupees(null)).toBe('₹0');
+  });
+});
+
+describe('formatTime', () => {
+  it('writes the reader\'s clock time as h:mm am/pm', () => {
+    expect(formatTime(new Date(2026, 9, 12, 15, 5))).toBe('3:05 pm');
+    expect(formatTime(new Date(2026, 9, 12, 9, 30))).toBe('9:30 am');
+  });
+
+  it('puts midnight and noon on either side of the boundary', () => {
+    expect(formatTime(new Date(2026, 9, 12, 0, 0))).toBe('12:00 am');
+    expect(formatTime(new Date(2026, 9, 12, 11, 59))).toBe('11:59 am');
+    expect(formatTime(new Date(2026, 9, 12, 12, 0))).toBe('12:00 pm');
+  });
+
+  it('is empty for nothing or nonsense', () => {
+    expect(formatTime(null)).toBe('');
+    expect(formatTime('not a date')).toBe('');
+  });
+});
+
+describe('formatUpdated', () => {
+  const now = new Date(2026, 9, 12, 16, 0);
+
+  it('gives the time alone for a load earlier today', () => {
+    expect(formatUpdated(new Date(2026, 9, 12, 15, 5), now)).toBe('Updated 3:05 pm');
+    expect(formatUpdated(new Date(2026, 9, 12, 0, 0), now)).toBe('Updated 12:00 am');
+  });
+
+  it('adds the date for a load on an earlier day', () => {
+    expect(formatUpdated(new Date(2026, 9, 11, 23, 59), now)).toBe('Updated 11 Oct 2026, 11:59 pm');
+  });
+
+  it('is empty before anything has loaded', () => {
+    expect(formatUpdated(null, now)).toBe('');
+  });
+});
+
+describe('formatActivityCount', () => {
+  it('always names both groups, delivered first', () => {
+    expect(formatActivityCount(4, 1)).toBe('4 delivered · 1 upcoming');
+    expect(formatActivityCount(0, 0)).toBe('0 delivered · 0 upcoming');
+    expect(formatActivityCount(1200, 3)).toBe('1,200 delivered · 3 upcoming');
   });
 });

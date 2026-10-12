@@ -1253,6 +1253,10 @@ export const csrAPI = /*#__PURE__*/ {
   // operator holds the csr grant, not trials, so /trials/ answers them 403.
   grantTrials: async (projectId) =>
     apiService.request(`/csr/projects/${projectId}/trials/`),
+  // Exactly what this grant's funder would get, in one call, for "Preview as
+  // funder": { project, activities, reports, deliverables, certificate, branding }.
+  funderView: async (projectId) =>
+    apiService.request(`/csr/projects/${projectId}/funder-view/`),
   // White-label branding — admin-managed CRUD (SUPER_ADMIN/ADMIN).
   branding: /*#__PURE__*/ csrCrud('/csr/branding'),
   // The partners an activity or a partner contact may name: the TTA Admin
