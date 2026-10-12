@@ -76,7 +76,7 @@ export default function CSRReportsPage() {
   const [projectFilter, setProjectFilter] = useState('All');
   // Opens on the queue, not on everything. The complete list is one click away;
   // the outstanding work should not be.
-  const [view, setView] = useState('Internal');
+  const [view, setView] = useState('All');
   const [sortKey, setSortKey] = useState(DEFAULT_REPORT_SORT);
   const [page, setPage] = useState(1);
 

@@ -275,3 +275,45 @@ describe('the sanctioned amount', () => {
     expect(screen.queryByText(/Is that right\?/)).toBeNull();
   });
 });
+
+// D-018 owner answer: one switch per grant shows the funder its Cancelled and
+// date-passed Planned activities. Off unless someone turns it on.
+describe('show cancelled and overdue activities to the funder', () => {
+  const SWITCH = /show cancelled and overdue activities to the funder/i;
+
+  test('a new grant starts with it off and sends false', async () => {
+    csrAPI.projects.create.mockResolvedValue({});
+    render(<CSRProjectFormPage />);
+
+    expect(screen.getByRole('switch', { name: SWITCH })).not.toBeChecked();
+    await userEvent.type(screen.getByLabelText(/project name/i), 'Khelo Girls');
+    await userEvent.type(screen.getByLabelText(/client \/ funder/i), 'Tata Trusts');
+    await userEvent.type(screen.getByLabelText(/sanctioned amount/i), '1200000');
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+    await waitFor(() => expect(csrAPI.projects.create).toHaveBeenCalled());
+    expect(csrAPI.projects.create.mock.calls[0][0].showHeldBackToFunder).toBe(false);
+  });
+
+  test('an edit shows the stored value and sends what the user set', async () => {
+    mockParams = { id: '11' };
+    csrAPI.projects.getById.mockResolvedValue({ ...GRANT, showHeldBackToFunder: true });
+    csrAPI.projects.update.mockResolvedValue({});
+    render(<CSRProjectFormPage />);
+
+    const sw = await screen.findByRole('switch', { name: SWITCH });
+    await waitFor(() => expect(sw).toBeChecked());
+    await userEvent.click(sw);
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+    await waitFor(() => expect(csrAPI.projects.update).toHaveBeenCalled());
+    expect(csrAPI.projects.update.mock.calls[0][1].showHeldBackToFunder).toBe(false);
+  });
+
+  test('a grant saved before the switch existed reads as off', async () => {
+    mockParams = { id: '11' };
+    csrAPI.projects.getById.mockResolvedValue(GRANT);
+    render(<CSRProjectFormPage />);
+
+    await screen.findByDisplayValue('Tata Trusts');
+    expect(screen.getByRole('switch', { name: SWITCH })).not.toBeChecked();
+  });
+});

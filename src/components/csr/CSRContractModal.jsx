@@ -48,6 +48,8 @@ export default function CSRContractModal({ open, contract, onClose, onSave, savi
     }
     if (form.amount === '' || Number.isNaN(Number(form.amount))) {
       next.amount = 'Enter an amount';
+    } else if (Number(form.amount) < 0) {
+      next.amount = "The amount can't be negative.";
     }
     if (form.startDate && form.endDate && form.endDate < form.startDate) {
       next.endDate = 'End date is before the start date';

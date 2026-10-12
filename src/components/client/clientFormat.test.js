@@ -130,4 +130,11 @@ describe('formatActivityCount', () => {
     expect(formatActivityCount(0, 0)).toBe('0 delivered · 0 upcoming');
     expect(formatActivityCount(1200, 3)).toBe('1,200 delivered · 3 upcoming');
   });
+  it('adds awaiting update and cancelled only when there are any', () => {
+    expect(formatActivityCount(4, 1, { awaiting: 0, cancelled: 0 })).toBe('4 delivered · 1 upcoming');
+    expect(formatActivityCount(4, 1, { awaiting: 2 })).toBe('4 delivered · 1 upcoming · 2 awaiting update');
+    expect(formatActivityCount(4, 0, { cancelled: 1 })).toBe('4 delivered · 0 upcoming · 1 cancelled');
+    expect(formatActivityCount(1, 1, { awaiting: 1, cancelled: 3 }))
+      .toBe('1 delivered · 1 upcoming · 1 awaiting update · 3 cancelled');
+  });
 });

@@ -765,3 +765,47 @@ test('the funder keeps their own account controls and sees no preview banner', a
   expect(screen.queryByText(/^Preview/)).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Back' })).not.toBeInTheDocument();
 });
+
+// D-018 owner answer: with the grant's switch on, the funder also receives
+// Cancelled and date-passed Planned activities; each gets its own section.
+const OVERDUE = {
+  id: 8, title: 'Village clinic', activityType: 'Clinic', location: 'Sonipat',
+  startDate: '2026-09-01', status: 'Planned', datePassed: true,
+};
+const CANCELLED = {
+  id: 9, title: 'Rained-off trial', activityType: 'Trial', location: 'Karnal',
+  startDate: '2026-09-05', status: 'Cancelled', datePassed: false,
+};
+
+test('overdue Planned and Cancelled get their own sections, not Upcoming or Delivered', async () => {
+  clientAPI.activities.mockResolvedValue([FIELD[0], PLANNED, OVERDUE, CANCELLED]);
+  window.history.replaceState(null, '', '#activities');
+  render(<ClientPortalPage />);
+
+  const up = await screen.findByRole('region', { name: 'Upcoming' });
+  const awaiting = screen.getByRole('region', { name: 'Awaiting update' });
+  const done = screen.getByRole('region', { name: 'Delivered' });
+  const cancelled = screen.getByRole('region', { name: 'Cancelled' });
+  expect(within(up).queryByText('Village clinic')).not.toBeInTheDocument();
+  expect(within(awaiting).getByText('Village clinic')).toBeInTheDocument();
+  expect(within(awaiting).getByText('Planned')).toBeInTheDocument();
+  expect(within(cancelled).getByText('Rained-off trial')).toBeInTheDocument();
+  expect(within(done).queryByText('Rained-off trial')).not.toBeInTheDocument();
+  const sections = screen.getAllByRole('region');
+  expect(sections.map((s) => s.getAttribute('aria-labelledby'))).toEqual([
+    'cp-acts-upcoming', 'cp-acts-awaiting', 'cp-acts-delivered', 'cp-acts-cancelled',
+  ]);
+  expect(screen.getByRole('tab', { name: /Activities/ }))
+    .toHaveTextContent('1 delivered · 1 upcoming · 1 awaiting update · 1 cancelled');
+});
+
+test('without the switch (no such activities) neither extra section appears', async () => {
+  clientAPI.activities.mockResolvedValue([FIELD[0], PLANNED]);
+  window.history.replaceState(null, '', '#activities');
+  render(<ClientPortalPage />);
+
+  await screen.findByRole('region', { name: 'Upcoming' });
+  expect(screen.queryByRole('region', { name: 'Awaiting update' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('region', { name: 'Cancelled' })).not.toBeInTheDocument();
+  expect(screen.getByRole('tab', { name: /Activities/ })).toHaveTextContent('1 delivered · 1 upcoming');
+});

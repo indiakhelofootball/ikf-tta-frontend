@@ -21,7 +21,7 @@ const STATUS_OPTIONS = ['Active', 'Closed'];
 const EMPTY = {
   name: '', clientName: '', sanctionedAmount: '',
   startDate: '', endDate: '', status: 'Active', description: '',
-  projectRefId: '', season: '',
+  projectRefId: '', season: '', showHeldBackToFunder: false,
 };
 
 // The five fields the completion bar tracks. Three of them are what the form
@@ -90,6 +90,7 @@ export default function CSRProjectFormPage() {
           description: data.description || '',
           projectRefId: data.projectRefId ?? '',
           season: data.season || '',
+          showHeldBackToFunder: Boolean(data.showHeldBackToFunder),
         });
         setLoading(false);
       })
@@ -187,6 +188,7 @@ export default function CSRProjectFormPage() {
       // TTA's own wizard uses, so the stored pair matches what TTA considers a
       // project instead of naming half of one.
       season: form.season,
+      showHeldBackToFunder: form.showHeldBackToFunder,
     };
     setSaving(true);
     setSaveError('');
@@ -342,6 +344,20 @@ export default function CSRProjectFormPage() {
                   <p id="csr-amount-help" className="pform-help bad">{errors.sanctionedAmount}</p>
                 ) : null}
               </div>
+            </div>
+
+            <div className="pform-field">
+              <label className="chk">
+                <input
+                  type="checkbox" role="switch" checked={form.showHeldBackToFunder}
+                  aria-describedby="csr-heldback-help"
+                  onChange={(e) => setForm((f) => ({ ...f, showHeldBackToFunder: e.target.checked }))}
+                />
+                Show cancelled and overdue activities to the funder
+              </label>
+              <p id="csr-heldback-help" className="pform-help">
+                Off: the funder does not see cancelled activities, or planned ones whose date has passed. On: they see them, labelled with their status.
+              </p>
             </div>
           </section>
 

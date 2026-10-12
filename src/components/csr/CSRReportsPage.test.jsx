@@ -86,3 +86,30 @@ test('the footer states what is shown versus what is filed in total', async () =
     expect(screen.getByText(/Showing 1 of 1 report filed in total/i)).toBeInTheDocument();
   });
 });
+
+// With reports visible to the funder by default (D-016), opening on "Not yet
+// released" hid most of the list behind a filter. The page opens on All.
+test('opens on All reports, listing released and unreleased together', async () => {
+  csrAPI.reports.getAll.mockResolvedValue([
+    REPORT,
+    { ...REPORT, id: 2, fileName: 'Released summary', visibleToClient: true },
+  ]);
+  render(<CSRReportsPage />);
+
+  expect(await screen.findByRole('button', { name: /Open Q2 utilisation summary/i })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /Open Released summary/i })).toBeInTheDocument();
+  expect(screen.getByRole('combobox', { name: 'Gate' })).toHaveValue('All');
+});
+
+test('Not yet released is still one choice away', async () => {
+  csrAPI.reports.getAll.mockResolvedValue([
+    REPORT,
+    { ...REPORT, id: 2, fileName: 'Released summary', visibleToClient: true },
+  ]);
+  render(<CSRReportsPage />);
+
+  await screen.findByRole('button', { name: /Open Released summary/i });
+  fireEvent.change(screen.getByRole('combobox', { name: 'Gate' }), { target: { value: 'Internal' } });
+  expect(screen.queryByRole('button', { name: /Open Released summary/i })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /Open Q2 utilisation summary/i })).toBeInTheDocument();
+});

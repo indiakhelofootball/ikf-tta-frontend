@@ -265,8 +265,14 @@ export default function ClientPortalPage({ source = funderSource, preview = null
   // but only Completed ones are delivered work: the Overview and its photos
   // are built from these alone. The Activities tab lists both, split (D-018).
   const delivered = activities.filter((a) => a.status === 'Completed');
-  const upcoming = activities.filter((a) => a.status === 'Planned');
-  const activityCount = formatActivityCount(delivered.length, upcoming.length);
+  const upcoming = activities.filter((a) => a.status === 'Planned' && !a.datePassed);
+  // These two arrive only when the grant's "Show cancelled and overdue
+  // activities to the funder" switch is on (D-018); otherwise both are empty.
+  const awaiting = activities.filter((a) => a.status === 'Planned' && a.datePassed);
+  const cancelled = activities.filter((a) => a.status === 'Cancelled');
+  const activityCount = formatActivityCount(delivered.length, upcoming.length, {
+    awaiting: awaiting.length, cancelled: cancelled.length,
+  });
   const photos = useOverviewPhotos(delivered, tab === 'project', source);
 
   useEffect(() => {
@@ -527,7 +533,7 @@ export default function ClientPortalPage({ source = funderSource, preview = null
                 );
               })}
             </ul>
-            {delivered.length + upcoming.length > recent.length && (
+            {activities.length > recent.length && (
               <button type="button" className="cmore" onClick={() => selectTab('activities')}>
                 All activities ({activityCount})
               </button>
@@ -607,7 +613,9 @@ export default function ClientPortalPage({ source = funderSource, preview = null
   // group with nothing in it is left out rather than shown empty.
   const activityGroups = [
     { key: 'upcoming', heading: 'Upcoming', list: upcoming },
+    { key: 'awaiting', heading: 'Awaiting update', list: awaiting },
     { key: 'delivered', heading: 'Delivered', list: delivered },
+    { key: 'cancelled', heading: 'Cancelled', list: cancelled },
   ].filter((g) => g.list.length > 0);
 
   const renderActivities = () => (

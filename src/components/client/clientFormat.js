@@ -75,8 +75,13 @@ export function formatCount(value) {
 }
 
 // The one way activities are counted for the funder (D-018): '4 delivered · 1 upcoming'.
-export function formatActivityCount(delivered, upcoming) {
-  return `${formatCount(delivered)} delivered · ${formatCount(upcoming)} upcoming`;
+// Awaiting update and cancelled are added only when there are any, which is
+// only when the grant shows them to the funder.
+export function formatActivityCount(delivered, upcoming, { awaiting = 0, cancelled = 0 } = {}) {
+  const parts = [`${formatCount(delivered)} delivered`, `${formatCount(upcoming)} upcoming`];
+  if (awaiting > 0) parts.push(`${formatCount(awaiting)} awaiting update`);
+  if (cancelled > 0) parts.push(`${formatCount(cancelled)} cancelled`);
+  return parts.join(' · ');
 }
 
 // Rupees. Whole rupees unless there are paise, then exactly two places — so
