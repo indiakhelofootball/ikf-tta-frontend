@@ -25,6 +25,8 @@ import { Alert } from '@mui/material';
 import { csrAPI } from '../../services/api';
 import useGrants from '../../auth/useGrants';
 import useRefetchOnFocus from '../../hooks/useRefetchOnFocus';
+import DatePassedPrompt from './DatePassedPrompt';
+import { activityStatusPillClass, needsDatePassedPrompt } from './activityVisibility';
 import '../../styles/csrDesign.css';
 
 const asList = (data) => (Array.isArray(data) ? data : data?.results || []);
@@ -61,7 +63,7 @@ const whenLabel = (a) => {
 // rather than moss, because moss means money and an activity is not money.
 function StatusChip({ status }) {
   return (
-    <span className={`pill ${status === 'Planned' ? 'wait' : 'closed'}`}>
+    <span className={`pill ${activityStatusPillClass(status)}`}>
       {status || 'Unknown'}
     </span>
   );
@@ -69,7 +71,7 @@ function StatusChip({ status }) {
 
 export default function CSRActivitiesPage() {
   const navigate = useNavigate();
-  const { canView } = useGrants();
+  const { canView, canEdit } = useGrants();
 
   const [activities, setActivities] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -114,6 +116,16 @@ export default function CSRActivitiesPage() {
 
   useEffect(() => { load(); }, [load]);
   useRefetchOnFocus(() => load(true));
+
+  const setActivityStatus = async (activity, status) => {
+    try {
+      await csrAPI.activities.patch(activity.id, { status });
+    } catch (e) {
+      setError(e.message || 'Could not update this activity.');
+      return;
+    }
+    await load(true);
+  };
 
   const typeName = useMemo(() => {
     const map = new Map(activityTypes.map((t) => [String(t.id), t.name]));
@@ -244,6 +256,14 @@ export default function CSRActivitiesPage() {
                   </button>
                 </span>
               </div>
+
+              {canEdit('csr') && needsDatePassedPrompt(a) && (
+                <DatePassedPrompt
+                  activity={a}
+                  onSetStatus={setActivityStatus}
+                  onChangeDate={(act) => navigate(`/csr/activities/${act.id}/edit`)}
+                />
+              )}
 
               {/* Only fields the serializer actually returns. It ships ids, not
                   names, and carries no description — a row of em dashes for

@@ -14,6 +14,7 @@ import {
   openDownloadedFile,
   reportFileError,
 } from '../../utils/reportFile';
+import { reportFormFunderLine } from './activityVisibility';
 import '../../styles/csrDesign.css';
 
 // The kinds the 26 Aug review asked to distinguish: "what is the report of the
@@ -379,6 +380,7 @@ export default function CSRReportFormPage() {
           <button type="submit" className="newbtn" disabled={saving}>
             {saving ? 'Saving…' : 'Save'}
           </button>
+          <p className="pform-help" aria-live="polite">{reportFormFunderLine(form)}</p>
         </div>
       </form>
     </div>

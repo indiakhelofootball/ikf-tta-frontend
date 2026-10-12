@@ -8,6 +8,7 @@ import { render, screen, waitFor, within, fireEvent } from '@testing-library/rea
 import userEvent from '@testing-library/user-event';
 
 import CSRActivityFormPage from './CSRActivityFormPage';
+import { localToday } from './activityVisibility';
 
 const mockNavigate = jest.fn();
 let mockParams = {};
@@ -194,11 +195,11 @@ describe('creating an activity', () => {
     expect(screen.queryByLabelText(/^date$/i)).toBeNull();
   });
 
-  test('status offers Planned and Completed only', async () => {
+  test('status offers Planned, Completed and Cancelled (D-018)', async () => {
     render(<CSRActivityFormPage />);
     await screen.findByText('District Trial');
     const options = within(screen.getByLabelText(/status/i)).getAllByRole('option');
-    expect(options.map((o) => o.textContent)).toEqual(['Planned', 'Completed']);
+    expect(options.map((o) => o.textContent)).toEqual(['Planned', 'Completed', 'Cancelled']);
   });
 });
 
@@ -371,5 +372,156 @@ describe('activity dates', () => {
     csrAPI.activities.create.mockResolvedValue({});
     await fill(start, end);
     await waitFor(() => expect(csrAPI.activities.create).toHaveBeenCalled());
+  });
+});
+
+// D-018. Days are relative to the real today, so each boundary is tested on
+// both sides whatever day the suite runs.
+const dayFromToday = (offset) => {
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  return localToday(d);
+};
+const TODAY = dayFromToday(0);
+const YESTERDAY = dayFromToday(-1);
+const TOMORROW = dayFromToday(1);
+
+describe("D-018: a new activity's status follows its start date until picked", () => {
+  beforeEach(() => { mockSearch = new URLSearchParams({ project: '11' }); });
+
+  const status = () => screen.getByLabelText(/status/i);
+  const setStart = (v) => fireEvent.change(screen.getByLabelText(/start date/i), { target: { value: v } });
+
+  test('no date starts as Completed', async () => {
+    render(<CSRActivityFormPage />);
+    await screen.findByText('District Trial');
+    expect(status()).toHaveValue('Completed');
+  });
+
+  test.each([
+    ['tomorrow', TOMORROW, 'Planned'],
+    ['today', TODAY, 'Completed'],
+    ['yesterday', YESTERDAY, 'Completed'],
+  ])('a start date of %s gives %s', async (_, start, expected) => {
+    render(<CSRActivityFormPage />);
+    await screen.findByText('District Trial');
+    setStart(start);
+    expect(status()).toHaveValue(expected);
+  });
+
+  test('the default keeps following while the date moves, and is what is saved', async () => {
+    csrAPI.activities.create.mockResolvedValue({});
+    render(<CSRActivityFormPage />);
+    await screen.findByText('District Trial');
+    setStart(TOMORROW);
+    expect(status()).toHaveValue('Planned');
+    setStart(TODAY);
+    expect(status()).toHaveValue('Completed');
+    setStart('');
+    expect(status()).toHaveValue('Completed');
+    setStart(TOMORROW);
+
+    await userEvent.type(screen.getByLabelText(/title/i), 'Nashik Trial');
+    await userEvent.selectOptions(screen.getByLabelText(/activity type/i), '10');
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+    await waitFor(() => expect(csrAPI.activities.create).toHaveBeenCalled());
+    expect(csrAPI.activities.create.mock.calls[0][0].status).toBe('Planned');
+  });
+
+  test('once the user picks a status, a date change leaves it alone', async () => {
+    render(<CSRActivityFormPage />);
+    await screen.findByText('District Trial');
+    await userEvent.selectOptions(status(), 'Completed');
+    setStart(TOMORROW);
+    expect(status()).toHaveValue('Completed');
+
+    await userEvent.selectOptions(status(), 'Planned');
+    setStart(YESTERDAY);
+    expect(status()).toHaveValue('Planned');
+  });
+
+  test('an edit keeps the stored Planned when the date moves into the past', async () => {
+    mockParams = { id: '5' };
+    csrAPI.activities.getById.mockResolvedValue({ ...ACTIVITY, status: 'Planned', startDate: TOMORROW });
+    render(<CSRActivityFormPage />);
+    await waitFor(() => expect(status()).toHaveValue('Planned'));
+    setStart(YESTERDAY);
+    expect(status()).toHaveValue('Planned');
+  });
+
+  test('an edit keeps the stored Completed when the date moves into the future', async () => {
+    mockParams = { id: '5' };
+    csrAPI.activities.getById.mockResolvedValue({ ...ACTIVITY, status: 'Completed', startDate: YESTERDAY });
+    render(<CSRActivityFormPage />);
+    await waitFor(() => expect(status()).toHaveValue('Completed'));
+    setStart(TOMORROW);
+    expect(status()).toHaveValue('Completed');
+  });
+});
+
+describe('D-018: the line beside Save says whether the funder will see it', () => {
+  beforeEach(() => { mockSearch = new URLSearchParams({ project: '11' }); });
+
+  const SHOWN = 'The funder will see this';
+  const HIDDEN = 'Hidden from the funder';
+  const status = () => screen.getByLabelText(/status/i);
+  const setDate = (label, v) => fireEvent.change(screen.getByLabelText(label), { target: { value: v } });
+  const line = () => screen.getByRole('button', { name: /save/i }).parentElement;
+
+  test('switch on, Completed: shown; switch off: hidden', async () => {
+    render(<CSRActivityFormPage />);
+    await screen.findByText('District Trial');
+    expect(line()).toHaveTextContent(SHOWN);
+    await userEvent.click(screen.getByRole('switch', { name: 'Visible to funder' }));
+    expect(line()).toHaveTextContent(HIDDEN);
+    expect(line()).not.toHaveTextContent(SHOWN);
+  });
+
+  test('Cancelled is hidden even with the switch on', async () => {
+    render(<CSRActivityFormPage />);
+    await screen.findByText('District Trial');
+    await userEvent.selectOptions(status(), 'Cancelled');
+    expect(line()).toHaveTextContent(HIDDEN);
+    await userEvent.selectOptions(status(), 'Completed');
+    expect(line()).toHaveTextContent(SHOWN);
+  });
+
+  test.each([
+    ['yesterday', YESTERDAY, HIDDEN],
+    ['today', TODAY, SHOWN],
+    ['tomorrow', TOMORROW, SHOWN],
+  ])('Planned starting %s: %s', async (_, start, expected) => {
+    render(<CSRActivityFormPage />);
+    await screen.findByText('District Trial');
+    await userEvent.selectOptions(status(), 'Planned');
+    setDate(/start date/i, start);
+    expect(line()).toHaveTextContent(expected);
+  });
+
+  test.each([
+    ['yesterday', YESTERDAY, HIDDEN],
+    ['today', TODAY, SHOWN],
+  ])('a Planned span is judged by its end date: ending %s gives %s', async (_, end, expected) => {
+    render(<CSRActivityFormPage />);
+    await screen.findByText('District Trial');
+    await userEvent.selectOptions(status(), 'Planned');
+    setDate(/start date/i, dayFromToday(-5));
+    setDate(/end date/i, end);
+    expect(line()).toHaveTextContent(expected);
+  });
+
+  test('Planned with no date is shown', async () => {
+    render(<CSRActivityFormPage />);
+    await screen.findByText('District Trial');
+    await userEvent.selectOptions(status(), 'Planned');
+    expect(line()).toHaveTextContent(SHOWN);
+  });
+
+  test('Completed with a past date is shown', async () => {
+    render(<CSRActivityFormPage />);
+    await screen.findByText('District Trial');
+    setDate(/start date/i, YESTERDAY);
+    expect(status()).toHaveValue('Completed');
+    expect(line()).toHaveTextContent(SHOWN);
   });
 });

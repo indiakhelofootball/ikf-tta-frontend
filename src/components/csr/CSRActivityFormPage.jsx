@@ -10,11 +10,12 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 
 import { csrAPI } from '../../services/api';
 import ActivityPhotos from './ActivityPhotos';
+import { activityFormFunderLine, defaultStatusFor, localToday } from './activityVisibility';
 import { getWorkshopNames, getTrainingProgrammes } from '../../utils/adminStorage';
 import useConfigVersion from '../../hooks/useConfigVersion';
 import '../../styles/csrDesign.css';
 
-const STATUS_OPTIONS = ['Planned', 'Completed'];
+const STATUS_OPTIONS = ['Planned', 'Completed', 'Cancelled'];
 
 // Who delivered it. Asked for four times on the 26 Aug review -- "either a self
 // or a partner, there will be no option". Blank remains selectable because
@@ -57,7 +58,7 @@ const ALL_KIND_FIELDS = [
 
 const EMPTY = {
   title: '', activityTypeId: '', startDate: '', endDate: '',
-  location: '', status: 'Planned', linkedTrialId: '',
+  location: '', status: 'Completed', linkedTrialId: '',
   workshopId: '', trainingProgrammeId: '', partnerId: '',
   deliveryMode: '',
   visibleToClient: true,
@@ -77,6 +78,9 @@ export default function CSRActivityFormPage() {
   const projectIdFromQuery = searchParams.get('project');
 
   const [form, setForm] = useState(EMPTY);
+  // On a new activity the status follows the start date until the user picks
+  // one. An edit keeps what is stored, so it counts as picked from the start.
+  const [statusPicked, setStatusPicked] = useState(isEdit);
   const [errors, setErrors] = useState({});
   const [activity, setActivity] = useState(null);
   const [activityTypes, setActivityTypes] = useState([]);
@@ -100,6 +104,7 @@ export default function CSRActivityFormPage() {
     if (!isEdit) {
       setActivity(null);
       setForm(EMPTY);
+      setStatusPicked(false);
       setErrors({});
       setLoading(false);
       setLoadFailed(false);
@@ -112,6 +117,7 @@ export default function CSRActivityFormPage() {
       .then((data) => {
         if (cancelled) return;
         setActivity(data);
+        setStatusPicked(true);
         setForm({
           title: data.title || '',
           activityTypeId: data.activityTypeId ?? '',
@@ -186,6 +192,20 @@ export default function CSRActivityFormPage() {
     : partners;
 
   const setField = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  const handleStartDateChange = (e) => {
+    const startDate = e.target.value;
+    setForm((f) => ({
+      ...f,
+      startDate,
+      status: statusPicked ? f.status : defaultStatusFor(startDate, localToday()),
+    }));
+  };
+
+  const handleStatusChange = (e) => {
+    setStatusPicked(true);
+    setField('status')(e);
+  };
 
   // Changing the type changes which category fields apply. Clearing the ones
   // that no longer belong (rather than just hiding them) matters because the
@@ -396,7 +416,7 @@ export default function CSRActivityFormPage() {
           <div className="pform-row pform-row3">
             <div className="pform-field">
               <label htmlFor="a-start">Start Date</label>
-              <input id="a-start" type="date" value={form.startDate} onChange={setField('startDate')} />
+              <input id="a-start" type="date" value={form.startDate} onChange={handleStartDateChange} />
             </div>
             <div className="pform-field">
               <label htmlFor="a-end">End Date</label>
@@ -411,7 +431,7 @@ export default function CSRActivityFormPage() {
             </div>
             <div className="pform-field">
               <label htmlFor="a-status">Status</label>
-              <select id="a-status" className="sel" value={form.status} onChange={setField('status')}>
+              <select id="a-status" className="sel" value={form.status} onChange={handleStatusChange}>
                 {STATUS_OPTIONS.map((s) => (
                   <option key={s} value={s}>{s}</option>
                 ))}
@@ -578,6 +598,7 @@ export default function CSRActivityFormPage() {
           <button type="submit" className="newbtn" disabled={saving || noTypes}>
             {saving ? 'Saving…' : 'Save'}
           </button>
+          <p className="pform-help" aria-live="polite">{activityFormFunderLine(form, localToday())}</p>
         </div>
       </form>
     </div>

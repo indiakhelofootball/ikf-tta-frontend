@@ -16,7 +16,10 @@ import ConfirmDialog from '../common/ConfirmDialog';
 import { certificateFreezeState } from './csrContractRules';
 import { DEFAULT_REPORT_SORT, reportSortOptions, sortReports } from './reportSort';
 import ReportFileButton from './ReportFileButton';
-import { funderVisibilityLabel } from './activityVisibility';
+import {
+  activityStatusPillClass, funderVisibilityLabel, needsDatePassedPrompt,
+} from './activityVisibility';
+import DatePassedPrompt from './DatePassedPrompt';
 import { csrAPI } from '../../services/api';
 import '../../styles/csrDesign.css';
 import useGrants from '../../auth/useGrants';
@@ -344,6 +347,17 @@ export default function CSRProjectDetailPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Mark completed / Cancelled save the status alone, then re-read this
+  // grant's activities only; the rest of the page stays as it is.
+  const setActivityStatus = async (activity, status) => {
+    try {
+      await csrAPI.activities.patch(activity.id, { status });
+      setActivities(asList(await csrAPI.activities.getAll({ project: id })));
+    } catch (e) {
+      notify(e.message || 'Could not update this activity.', 'error');
+    }
+  };
+
   const deleteActivity = (a) => setConfirmState({
     title: 'Delete activity',
     message: `Delete activity "${a.title}"?`,
@@ -535,6 +549,12 @@ export default function CSRProjectDetailPage() {
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         {project.name}
       </Typography>
+      <Button
+        size="small" variant="outlined" sx={{ mb: 2 }}
+        onClick={() => navigate(`/csr/${id}/funder-preview`)}
+      >
+        Preview as funder
+      </Button>
 
       <Tabs value={tab} onChange={(e, v) => setTab(v)} variant="scrollable" scrollButtons={false} sx={{ mb: 2 }}>
         <Tab label="Overview" />
@@ -690,7 +710,7 @@ export default function CSRProjectDetailPage() {
                     <span className="t2">{a.location || '—'}</span>
                     <span className="t2">{activityType?.name || '—'}</span>
                     <span className="lend">
-                      <span className={`pill ${a.status === 'Planned' ? 'wait' : 'closed'}`}>
+                      <span className={`pill ${activityStatusPillClass(a.status)}`}>
                         {a.status || 'Unknown'}
                       </span>
                       {editable && (
@@ -727,6 +747,14 @@ export default function CSRProjectDetailPage() {
                       </button>
                     </span>
                   </div>
+
+                  {editable && needsDatePassedPrompt(a) && (
+                    <DatePassedPrompt
+                      activity={a}
+                      onSetStatus={setActivityStatus}
+                      onChangeDate={(act) => navigate(`/csr/activities/${act.id}/edit`)}
+                    />
+                  )}
 
                   {open && (
                     <div className="ldetail">

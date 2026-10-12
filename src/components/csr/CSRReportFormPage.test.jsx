@@ -304,3 +304,24 @@ test.each([false, true])('editing keeps the stored visibility (%p)', async (stor
   await screen.findByDisplayValue('Nashik Trial Summary');
   expect(screen.getByRole('checkbox', { name: /visible to client/i }).checked).toBe(stored);
 });
+
+describe('D-018: the line beside Save follows the switch', () => {
+  const line = () => screen.getByRole('button', { name: /save/i }).parentElement;
+
+  test('a new report: shown, then hidden once switched off', async () => {
+    mockSearch = new URLSearchParams({ project: '11' });
+    render(<CSRReportFormPage />);
+    expect(line()).toHaveTextContent('The funder will see this');
+    await userEvent.click(screen.getByRole('checkbox', { name: /visible to client/i }));
+    expect(line()).toHaveTextContent('Hidden from the funder');
+    expect(line()).not.toHaveTextContent('The funder will see this');
+  });
+
+  test('an edit of a hidden report says hidden', async () => {
+    mockParams = { id: '9' };
+    csrAPI.reports.getById.mockResolvedValue(REPORT);
+    render(<CSRReportFormPage />);
+    await screen.findByDisplayValue('Nashik Trial Summary');
+    expect(line()).toHaveTextContent('Hidden from the funder');
+  });
+});
