@@ -43,6 +43,8 @@ function timeoutSignal(ms) {
 // 60s ordinary-request backstop.
 const UPLOAD_TIMEOUT_MS = 300000;
 
+const SERVER_UNREACHABLE_MESSAGE = "Can't reach the server right now. Please try again.";
+
 export function fileNameFromDisposition(header) {
   if (!header) return '';
   const star = /filename\*=UTF-8''([^;]+)/i.exec(header);
@@ -243,20 +245,31 @@ class APIService {
     // which the caller reads as "session expired" and force-logs-out a user whose
     // session is perfectly valid. Collapsing concurrent callers onto one in-flight
     // request means the rotation happens exactly once and everyone reads the result.
+    //
+    // Only the refresh endpoint saying no (400/401), or no refresh token at all,
+    // ends the session: that resolves false and the caller logs out. A dropped
+    // connection, a timeout or a 5xx during a backend restart says nothing about
+    // the session, so it rejects with an error instead and the tokens are kept —
+    // the next request simply tries the refresh again.
     if (this._refreshInFlight) return this._refreshInFlight;
 
-    this._refreshInFlight = (async () => {
-      const refresh = localStorage.getItem('tta_refresh');
-      if (!refresh) return false;
+    // Checked before the shared promise exists: returning from inside it before
+    // its first await left that settled `false` stored as "in flight" for good.
+    const refresh = localStorage.getItem('tta_refresh');
+    if (!refresh) return false;
 
+    this._refreshInFlight = (async () => {
+      const t = timeoutSignal(REQUEST_TIMEOUT_MS);
       try {
         const res = await fetch(`${API_BASE_URL}/auth/token/refresh/`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ refresh }),
+          signal: t.signal,
         });
 
-        if (!res.ok) return false;
+        if (res.status === 400 || res.status === 401) return false;
+        if (!res.ok) throw new Error(SERVER_UNREACHABLE_MESSAGE);
 
         const data = await res.json();
         localStorage.setItem('tta_token', data.access);
@@ -264,9 +277,13 @@ class APIService {
           localStorage.setItem('tta_refresh', data.refresh);
         }
         return true;
-      } catch {
-        return false;
+      } catch (err) {
+        if (err.name === 'AbortError') {
+          throw new Error('The server took too long to respond. Please try again.');
+        }
+        throw new Error(SERVER_UNREACHABLE_MESSAGE);
       } finally {
+        t.clear();
         // Cleared only after the result is settled, so a later 401 can refresh again.
         this._refreshInFlight = null;
       }

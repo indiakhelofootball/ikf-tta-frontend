@@ -26,17 +26,25 @@ import { ROLES, REPORT_KEYS } from '../../auth/roles';
 import useGrants from '../../auth/useGrants';
 import { trialsAPI, repAPI, vendorsAPI, workOrdersAPI, paymentRequestsAPI } from '../../services/api';
 
-// One request and one summary per card. A card whose request fails says so and
+// One load and one summary per card. A card whose load fails says so and
 // offers Retry: showing 0 would read as a real count. Vendors are counted from
 // /vendors/options/ (no PAN images); /vendors/?limit=1 carried one 2.4 MB image.
 const STAT_SOURCES = {
+  // The trials list is paginated (20 by default), so counting its rows capped
+  // the card at 20. Each count is the server's `total` for a one-row page.
   trials: {
-    load: () => trialsAPI.getAll(),
-    summarise: (r) => {
-      const trials = r?.trials || [];
-      const active = trials.filter(t => t.status === 'Active' || t.status === 'Scheduled').length;
-      return { value: trials.length, sub: `${active} active` };
+    load: async () => {
+      const [all, active, scheduled] = await Promise.all([
+        trialsAPI.getAll({ limit: 1 }),
+        trialsAPI.getAll({ status: 'Active', limit: 1 }),
+        trialsAPI.getAll({ status: 'Scheduled', limit: 1 }),
+      ]);
+      if (![all, active, scheduled].every((r) => typeof r?.total === 'number')) {
+        throw new Error('The project count came back without a total.');
+      }
+      return { all: all.total, active: active.total + scheduled.total };
     },
+    summarise: (r) => ({ value: r.all, sub: `${r.active} active` }),
   },
   reps: {
     load: () => repAPI.getOptions(),

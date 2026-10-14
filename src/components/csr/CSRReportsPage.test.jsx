@@ -113,3 +113,26 @@ test('Not yet released is still one choice away', async () => {
   expect(screen.queryByRole('button', { name: /Open Released summary/i })).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: /Open Q2 utilisation summary/i })).toBeInTheDocument();
 });
+
+describe('a failed load', () => {
+  test('shows the error with Retry, and neither the empty copy nor a zero count', async () => {
+    csrAPI.reports.getAll.mockRejectedValueOnce(new Error('Server error (502)'));
+    render(<CSRReportsPage />);
+
+    expect(await screen.findByText('Server error (502)')).toBeInTheDocument();
+    expect(screen.queryByText('No reports yet')).not.toBeInTheDocument();
+    expect(screen.queryByText(/written but not yet/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByRole('button', { name: /Open Q2 utilisation summary/i })).toBeInTheDocument();
+    expect(screen.queryByText('Server error (502)')).not.toBeInTheDocument();
+  });
+
+  test('unchanged: a list that loads empty still says "No reports yet"', async () => {
+    csrAPI.reports.getAll.mockResolvedValue([]);
+    render(<CSRReportsPage />);
+    expect(await screen.findByText('No reports yet')).toBeInTheDocument();
+    expect(screen.getByText(/written but not yet/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument();
+  });
+});

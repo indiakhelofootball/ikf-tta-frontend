@@ -36,7 +36,7 @@ beforeEach(() => {
     perms: { isSuperAdmin: true, grants: {} },
     permsLoading: false,
   };
-  trialsAPI.getAll.mockResolvedValue({ trials: [] });
+  trialsAPI.getAll.mockResolvedValue({ trials: [], total: 0 });
   vendorsAPI.getOptions.mockResolvedValue({ vendors: [], total: 3 });
   // What the old call returned: one vendor (with its PAN image) and the total.
   vendorsAPI.getAll.mockResolvedValue({ vendors: [{ id: 1 }], total: 3 });
@@ -96,17 +96,16 @@ test('Retry reloads only the failed count and then shows it', async () => {
   expect(within(vendorsCard).queryByText("Couldn't load.")).not.toBeInTheDocument();
   expect(vendorsAPI.getOptions).toHaveBeenCalledTimes(2);
   expect(repAPI.getOptions).toHaveBeenCalledTimes(1);
-  expect(trialsAPI.getAll).toHaveBeenCalledTimes(1);
+  // One load of the Projects card is three count calls; it is not reloaded.
+  expect(trialsAPI.getAll).toHaveBeenCalledTimes(3);
 });
 
+// The Projects card is counted from server totals now; its own tests are in
+// DashboardHome.trialsCount.test.jsx.
 test('the summaries under each number are unchanged', async () => {
-  trialsAPI.getAll.mockResolvedValue({ trials: [{ status: 'Active' }, { status: 'Draft' }] });
   workOrdersAPI.getAll.mockResolvedValue({ workOrders: [{ status: 'Active' }, { status: 'Cancelled' }, { status: 'Completed' }] });
   paymentRequestsAPI.getAll.mockResolvedValue({ paymentRequests: [{ status: 'Draft' }, { status: 'Payment Done' }] });
   render(<DashboardHome />);
-  const projects = await statCard('Projects');
-  expect(within(projects).getByText('2')).toBeInTheDocument();
-  expect(within(projects).getByText('1 active')).toBeInTheDocument();
   const wos = await statCard('Work Orders');
   expect(within(wos).getByText('3')).toBeInTheDocument();
   expect(within(wos).getByText('1 active')).toBeInTheDocument();

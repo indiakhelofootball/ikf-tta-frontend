@@ -152,3 +152,25 @@ describe('the names an activity carries', () => {
     expect(screen.queryByRole('button', { name: /Open Nashik Workshop/i })).toBeNull();
   });
 });
+
+describe('a failed load', () => {
+  test('shows the error with Retry and never the empty-state copy', async () => {
+    csrAPI.activities.getAll.mockRejectedValueOnce(new Error('Server error (502)'));
+    render(<CSRActivitiesPage />);
+
+    expect(await screen.findByText('Server error (502)')).toBeInTheDocument();
+    expect(screen.queryByText('Nothing logged yet')).not.toBeInTheDocument();
+    expect(screen.queryByText('No activities match')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByRole('button', { name: /Open Bhilai Trial/i })).toBeInTheDocument();
+    expect(screen.queryByText('Server error (502)')).not.toBeInTheDocument();
+  });
+
+  test('unchanged: a log that loads empty still says "Nothing logged yet"', async () => {
+    csrAPI.activities.getAll.mockResolvedValue([]);
+    render(<CSRActivitiesPage />);
+    expect(await screen.findByText('Nothing logged yet')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument();
+  });
+});

@@ -20,7 +20,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Alert } from '@mui/material';
+import { Alert, Button } from '@mui/material';
 
 import { csrAPI } from '../../services/api';
 import useGrants from '../../auth/useGrants';
@@ -87,6 +87,9 @@ export default function CSRActivitiesPage() {
   const [activityTypes, setActivityTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  // Set only by a failed load, never by a failed action: an empty list it
+  // leaves behind is not "nothing here", so the empty copy must not show.
+  const [loadFailed, setLoadFailed] = useState(false);
   const [search, setSearch] = useState('');
   const [projectFilter, setProjectFilter] = useState('All');
   const [page, setPage] = useState(1);
@@ -115,7 +118,9 @@ export default function CSRActivitiesPage() {
       setProjects(asList(projs));
       setActivityTypes(asList(types));
       setError('');
+      setLoadFailed(false);
     } catch (e) {
+      setLoadFailed(true);
       setError(e.message || 'Could not load activities.');
     } finally {
       if (!silent) setLoading(false);
@@ -194,7 +199,17 @@ export default function CSRActivitiesPage() {
         </div>
       </div>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {error && (
+        <Alert
+          severity="error"
+          sx={{ mb: 2 }}
+          action={loadFailed
+            ? <Button color="inherit" size="small" onClick={() => load()}>Retry</Button>
+            : undefined}
+        >
+          {error}
+        </Alert>
+      )}
 
       <div className="toolbar">
         <label className="sb">
@@ -227,14 +242,14 @@ export default function CSRActivitiesPage() {
             {['Date', 'Activity', 'Type', 'Grant', 'Location', 'Status'].map((h) => <span key={h}>{h}</span>)}
           </div>
 
-          {rows.length === 0 ? (
+          {rows.length === 0 ? (loadFailed ? null : (
             <div className="empty">
               <h3>{activities.length === 0 ? 'Nothing logged yet' : 'No activities match'}</h3>
               {activities.length === 0
                 ? 'An activity is a thing that happened against a grant — a trial, a workshop, a camp.'
                 : 'Clear the search or change the filter.'}
             </div>
-          ) : pageRows.map((a) => (
+          )) : pageRows.map((a) => (
             <div className="lwrap" key={a.id}>
               <div
                 role="button"

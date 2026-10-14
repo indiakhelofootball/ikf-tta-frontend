@@ -280,6 +280,9 @@ export default function CSRProjectDetailPage() {
   const [expenses, setExpenses] = useState([]);
   const [activityTypes, setActivityTypes] = useState([]);
   const [loading, setLoading] = useState(true);
+  // null | 'notFound' | 'failed' -- for the grant itself.
+  const [loadError, setLoadError] = useState(null);
+  const [listFailed, setListFailed] = useState({ activities: false, reports: false, contacts: false });
   // A row opened from the cross-grant Activities/Reports log (CSRActivitiesPage,
   // CSRReportsPage) arrives with the tab it belongs to in navigation state, so
   // "open" lands you on the record instead of back on the Overview tab.
@@ -326,26 +329,37 @@ export default function CSRProjectDetailPage() {
 
   const asList = (data) => (Array.isArray(data) ? data : data?.results || []);
 
+  // Each call settles on its own, so one failed list cannot take the grant
+  // down with it, and a failure is never drawn as "not found" or as an empty
+  // list. Only a 404 from the grant itself means the grant does not exist.
+  // The type catalogue is optional: every activity carries activityTypeName.
   const load = useCallback(async () => {
     setLoading(true);
-    try {
-      const [p, acts, reps, cons, types] = await Promise.all([
-        csrAPI.projects.getById(id),
-        csrAPI.activities.getAll({ project: id }),
-        csrAPI.reports.getAll({ project: id }),
-        csrAPI.contacts.getAll({ project: id }),
-        csrAPI.activityTypes.getAll(),
-      ]);
-      setProject(p);
-      setActivities(asList(acts));
-      setReports(asList(reps));
-      setContacts(asList(cons));
-      setActivityTypes(asList(types));
-    } catch (e) {
-      notify(e.message || 'Failed to load project.', 'error');
-    } finally {
-      setLoading(false);
+    const [p, acts, reps, cons, types] = await Promise.allSettled([
+      csrAPI.projects.getById(id),
+      csrAPI.activities.getAll({ project: id }),
+      csrAPI.reports.getAll({ project: id }),
+      csrAPI.contacts.getAll({ project: id }),
+      csrAPI.activityTypes.getAll().catch(() => []),
+    ]);
+    const listOf = (r) => (r.status === 'fulfilled' ? asList(r.value) : []);
+    if (p.status === 'fulfilled') {
+      setProject(p.value);
+      setLoadError(null);
+    } else {
+      setProject(null);
+      setLoadError(p.reason?.response?.status === 404 ? 'notFound' : 'failed');
     }
+    setActivities(listOf(acts));
+    setReports(listOf(reps));
+    setContacts(listOf(cons));
+    setActivityTypes(listOf(types));
+    setListFailed({
+      activities: acts.status === 'rejected',
+      reports: reps.status === 'rejected',
+      contacts: cons.status === 'rejected',
+    });
+    setLoading(false);
     // Expense tags require the stricter csr_certificate grant — fetch separately
     // so a csr-only user still sees the rest of the project.
     if (canViewCert) {
@@ -527,6 +541,21 @@ export default function CSRProjectDetailPage() {
     );
   }
 
+  if (loadError === 'failed') {
+    return (
+      <Container maxWidth="md" sx={{ py: 4 }}>
+        <Button startIcon={<BackIcon />} onClick={() => navigate('/csr')}>Back</Button>
+        <Alert
+          severity="error"
+          sx={{ mt: 2 }}
+          action={<Button color="inherit" size="small" onClick={load}>Retry</Button>}
+        >
+          Could not load this grant.
+        </Alert>
+      </Container>
+    );
+  }
+
   if (!project) {
     return (
       <Container maxWidth="md" sx={{ py: 4 }}>
@@ -535,6 +564,16 @@ export default function CSRProjectDetailPage() {
       </Container>
     );
   }
+
+  const listError = (what) => (
+    <Alert
+      severity="error"
+      action={<Button color="inherit" size="small" onClick={load}>Retry</Button>}
+    >
+      Could not load {what}.
+    </Alert>
+  );
+  const tabCount = (label, list, failed) => (failed ? label : `${label} (${list.length})`);
 
   return (
     <Container className="csrx" maxWidth="lg" sx={{ py: 3 }}>
@@ -570,9 +609,9 @@ export default function CSRProjectDetailPage() {
 
       <Tabs value={tab} onChange={(e, v) => setTab(v)} variant="scrollable" scrollButtons={false} sx={{ mb: 2 }}>
         <Tab label="Overview" />
-        <Tab label={`Contacts (${contacts.length})`} />
-        <Tab label={`Activities (${activities.length})`} />
-        <Tab label={`Reports (${reports.length})`} />
+        <Tab label={tabCount('Contacts', contacts, listFailed.contacts)} />
+        <Tab label={tabCount('Activities', activities, listFailed.activities)} />
+        <Tab label={tabCount('Reports', reports, listFailed.reports)} />
         <Tab label="Contracts" />
         {canViewCert && <Tab label="Utilisation" />}
       </Tabs>
@@ -593,6 +632,7 @@ export default function CSRProjectDetailPage() {
               Add Contact
             </Button>
           )}
+          {listFailed.contacts ? listError('contacts') : (
           <div className="twrap">
             {/* Role takes the 4th cell and its identity band: a contact's role
                 is what identifies them on this grant. The four fields the
@@ -662,6 +702,7 @@ export default function CSRProjectDetailPage() {
               </div>
             )}
           </div>
+          )}
         </Box>
       )}
 
@@ -675,6 +716,7 @@ export default function CSRProjectDetailPage() {
               Add Activity
             </Button>
           )}
+          {listFailed.activities ? listError('activities') : (
           <div className="twrap">
             {/* Type takes the 4th cell and its identity band — the catalogue row
                 an activity points at is what the activity IS, which is the only
@@ -799,6 +841,7 @@ export default function CSRProjectDetailPage() {
               </div>
             )}
           </div>
+          )}
         </Box>
       )}
 
@@ -826,6 +869,7 @@ export default function CSRProjectDetailPage() {
               </select>
             </div>
           )}
+          {listFailed.reports ? listError('reports') : (
           <div className="twrap">
             {/* The activity takes the 4th cell and its identity band: inside one
                 grant, what a report is a report OF is what identifies it — the
@@ -919,6 +963,7 @@ export default function CSRProjectDetailPage() {
               </div>
             )}
           </div>
+          )}
         </Box>
       )}
 

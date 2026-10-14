@@ -75,9 +75,10 @@ test('adding a type saves it under the utilisation_type category', async () => {
   fireEvent.change(field, { target: { value: 'Periodic' } });
   fireEvent.keyDown(field, { key: 'Enter' });
 
+  // Only the new row is sent. Re-sending the whole list was how one admin's
+  // save could revive or delete rows another admin had changed.
   await waitFor(() => expect(configAPI.bulk).toHaveBeenCalled());
-  expect(configAPI.bulk.mock.calls[0][0]).toEqual(expect.arrayContaining([
+  expect(configAPI.bulk.mock.calls[0][0]).toEqual([
     expect.objectContaining({ category: 'utilisation_type', value: 'Periodic' }),
-    expect.objectContaining({ category: 'utilisation_type', value: 'Final / Closure' }),
-  ]));
+  ]);
 });

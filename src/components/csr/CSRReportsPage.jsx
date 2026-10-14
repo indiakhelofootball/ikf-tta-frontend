@@ -16,7 +16,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Alert } from '@mui/material';
+import { Alert, Button } from '@mui/material';
 
 import { csrAPI } from '../../services/api';
 import useGrants from '../../auth/useGrants';
@@ -72,6 +72,9 @@ export default function CSRReportsPage() {
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  // Set only by a failed load, never by a failed action: an empty list it
+  // leaves behind is not "nothing here", so the empty copy must not show.
+  const [loadFailed, setLoadFailed] = useState(false);
   const [search, setSearch] = useState('');
   const [projectFilter, setProjectFilter] = useState('All');
   // Opens on the queue, not on everything. The complete list is one click away;
@@ -94,7 +97,9 @@ export default function CSRReportsPage() {
       setProjects(asList(projs));
       setActivities(asList(acts));
       setError('');
+      setLoadFailed(false);
     } catch (e) {
+      setLoadFailed(true);
       setError(e.message || 'Could not load reports.');
     } finally {
       if (!silent) setLoading(false);
@@ -173,11 +178,21 @@ export default function CSRReportsPage() {
         </div>
       </div>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {error && (
+        <Alert
+          severity="error"
+          sx={{ mb: 2 }}
+          action={loadFailed
+            ? <Button color="inherit" size="small" onClick={() => load()}>Retry</Button>
+            : undefined}
+        >
+          {error}
+        </Alert>
+      )}
 
       {/* The gate, stated as a figure. A count of things waiting on you is the
           one number this page exists to keep at zero. */}
-      {!loading && (
+      {!loading && !loadFailed && (
         <div className={`gate${pending > 0 ? ' hot' : ''}`}>
           <span className="gate-n fig">{pending}</span>
           <span className="gate-t">
@@ -227,14 +242,14 @@ export default function CSRReportsPage() {
             {['Added', 'File', 'Activity', 'Grant', 'Gate'].map((h) => <span key={h}>{h}</span>)}
           </div>
 
-          {rows.length === 0 ? (
+          {rows.length === 0 ? (loadFailed ? null : (
             <div className="empty">
               <h3>{reports.length === 0 ? 'No reports yet' : 'No reports match'}</h3>
               {reports.length === 0
                 ? 'A report is a document filed against a grant or one of its activities.'
                 : 'Clear the search or change the filter.'}
             </div>
-          ) : pageRows.map((r) => (
+          )) : pageRows.map((r) => (
             <div
               key={r.id}
               role="button"

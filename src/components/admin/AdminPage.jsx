@@ -23,24 +23,35 @@ import {
   ArrowForward as GoIcon,
 } from '@mui/icons-material';
 import {
-  getProjectNames, saveProjectNames,
-  getSeasons, saveSeasons,
-  getVendorTypes, saveVendorTypes,
-  getEntityTypes, saveEntityTypes,
-  getVendorNames, saveVendorNames,
-  getBankNames, saveBankNames,
-  getAccountTypes, saveAccountTypes,
-  getCourierItems, saveCourierItems,
-  getPartnerCategories, savePartnerCategories,
-  getWorkshopNames, saveWorkshopNames,
-  getTrainingProgrammes, saveTrainingProgrammes,
-  getUtilisationTypes, saveUtilisationTypes,
+  getProjectNames,
+  getSeasons,
+  getVendorTypes,
+  getEntityTypes,
+  getVendorNames,
+  getBankNames,
+  getAccountTypes,
+  getCourierItems,
+  getPartnerCategories,
+  getWorkshopNames,
+  getTrainingProgrammes,
+  getUtilisationTypes,
   refreshAllFromAPI,
+  addConfigOption,
+  editConfigOption,
+  deleteConfigOption,
 } from '../../utils/adminStorage';
 import { configAPI } from '../../services/api';
 
 const fieldSx = {
   '& .MuiOutlinedInput-root': { borderRadius: '12px', fontSize: '0.95rem' },
+};
+
+// A row shown before the server has answered. A string, so it can never be
+// mistaken for a server id and sent to the delete endpoint.
+let localSeq = 0;
+const localId = () => {
+  localSeq += 1;
+  return `local-${Date.now()}-${localSeq}`;
 };
 
 function OptionPanel({ title, subtitle, items, onSave, onRename = null, autoCode = false }) {
@@ -52,9 +63,9 @@ function OptionPanel({ title, subtitle, items, onSave, onRename = null, autoCode
 
   useEffect(() => { setList(items); }, [items]);
 
-  const persist = (updated) => {
+  const persist = (action, updated) => {
     setList(updated);
-    onSave(updated);
+    onSave(action, updated);
   };
 
   const isDuplicate = (name, excludeId = null) => {
@@ -76,15 +87,14 @@ function OptionPanel({ title, subtitle, items, onSave, onRename = null, autoCode
     // this, a future rename of this project would have nothing to preserve and the
     // trial-code prefix would drift the moment the name changes.
     const newItem = autoCode
-      ? { id: Date.now(), name, comment: name.substring(0, 3).toUpperCase() }
-      : { id: Date.now(), name };
-    const updated = [...list, newItem];
-    persist(updated);
+      ? { id: localId(), name, comment: name.substring(0, 3).toUpperCase() }
+      : { id: localId(), name };
+    persist({ type: 'add', item: newItem }, [...list, newItem]);
     setNewName('');
   };
 
-  const handleDelete = (id) => {
-    persist(list.filter(item => item.id !== id));
+  const handleDelete = (target) => {
+    persist({ type: 'delete', item: target }, list.filter(item => item.id !== target.id));
   };
 
   const startEdit = (item) => {
@@ -109,9 +119,12 @@ function OptionPanel({ title, subtitle, items, onSave, onRename = null, autoCode
       setEditingId(null);
       return;
     }
-    persist(list.map(item =>
-      item.id === editingId ? { ...item, name } : item
-    ));
+    if (!original || original.name === name) {
+      setEditingId(null);
+      return;
+    }
+    const edited = { ...original, name };
+    persist({ type: 'edit', item: edited }, list.map(item => (item.id === editingId ? edited : item)));
     setEditingId(null);
   };
 
@@ -180,7 +193,7 @@ function OptionPanel({ title, subtitle, items, onSave, onRename = null, autoCode
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Delete">
-                        <IconButton size="small" onClick={() => handleDelete(item.id)}
+                        <IconButton size="small" onClick={() => handleDelete(item)}
                           sx={{ color: '#5A6B82', '&:hover': { bgcolor: '#fef2f2', color: '#ef4444' } }}>
                           <DeleteIcon sx={{ fontSize: 16 }} />
                         </IconButton>
@@ -238,9 +251,6 @@ function OptionPanel({ title, subtitle, items, onSave, onRename = null, autoCode
 /* ── Vendor Name Panel (with Service Type + Entity Type tags) ── */
 function VendorNamePanel({ items, onSave, onUpdate, serviceTypes, entityTypes }) {
   const [list, setList] = useState(items);
-  // Ids minted here for rows not yet re-read from the server. Only a row with
-  // a real server id can be edited in place.
-  const localIds = useRef(new Set());
   const [newName, setNewName] = useState('');
   const [newServiceType, setNewServiceType] = useState('');
   const [newEntityType, setNewEntityType] = useState('');
@@ -252,7 +262,7 @@ function VendorNamePanel({ items, onSave, onUpdate, serviceTypes, entityTypes })
 
   useEffect(() => { setList(items); }, [items]);
 
-  const persist = (updated) => { setList(updated); onSave(updated); };
+  const persist = (action, updated) => { setList(updated); onSave(action, updated); };
 
   const isDuplicate = (name, serviceType, entityType, excludeId = null) => {
     const lower = name.toLowerCase().trim();
@@ -274,13 +284,15 @@ function VendorNamePanel({ items, onSave, onUpdate, serviceTypes, entityTypes })
       return;
     }
     setDupeError('');
-    const id = Date.now();
-    localIds.current.add(id);
-    persist([...list, { id, name, serviceType: newServiceType, entityType: newEntityType }]);
+    const newItem = { id: localId(), name, serviceType: newServiceType, entityType: newEntityType };
+    persist({ type: 'add', item: newItem }, [...list, newItem]);
     setNewName(''); setNewServiceType(''); setNewEntityType('');
   };
 
-  const handleDelete = (id) => persist(list.filter(item => item.id !== id));
+  const handleDelete = (target) => persist(
+    { type: 'delete', item: target },
+    list.filter(item => item.id !== target.id),
+  );
 
   const startEdit = (item) => {
     setEditingId(item.id); setEditName(item.name);
@@ -298,16 +310,20 @@ function VendorNamePanel({ items, onSave, onUpdate, serviceTypes, entityTypes })
     setDupeError('');
     // The bulk save is get_or_create on the name, so through it a rename adds a
     // second row and a service-type change on an existing name is skipped. A
-    // saved row is therefore updated in place by its id.
+    // saved row is therefore updated in place by its id. Only a server row has
+    // a numeric id; a row still waiting on its add carries a local string id.
     const original = list.find(item => item.id === editingId);
-    if (onUpdate && original && typeof original.id === 'number' && !localIds.current.has(original.id)) {
+    if (onUpdate && original && typeof original.id === 'number') {
       onUpdate(original, { name, serviceType: editServiceType, entityType: editEntityType });
       setEditingId(null);
       return;
     }
-    persist(list.map(item =>
-      item.id === editingId ? { ...item, name, serviceType: editServiceType, entityType: editEntityType } : item
-    ));
+    if (!original) {
+      setEditingId(null);
+      return;
+    }
+    const edited = { ...original, name, serviceType: editServiceType, entityType: editEntityType };
+    persist({ type: 'edit', item: edited }, list.map(item => (item.id === editingId ? edited : item)));
     setEditingId(null);
   };
 
@@ -411,7 +427,7 @@ function VendorNamePanel({ items, onSave, onUpdate, serviceTypes, entityTypes })
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Delete">
-                        <IconButton size="small" onClick={() => handleDelete(item.id)}
+                        <IconButton size="small" onClick={() => handleDelete(item)}
                           sx={{ color: '#5A6B82', '&:hover': { bgcolor: '#fef2f2', color: '#ef4444' } }}>
                           <DeleteIcon sx={{ fontSize: 16 }} />
                         </IconButton>
@@ -532,12 +548,32 @@ export default function AdminPage() {
   const [saveError, setSaveError] = useState('');
   const [renameInfo, setRenameInfo] = useState('');
 
-  const handleSave = (setter, saveFn) => (updated) => {
-    setter(updated);
+  // Only the latest action on a category may set its list, so an earlier
+  // action's answer cannot briefly undo a later one still in flight.
+  const actionSeq = useRef({});
+
+  // Sends just the row the admin added, edited or deleted, then shows the
+  // server's rows for that category. On failure the page goes back to the
+  // server's list and says what happened.
+  const handleSave = (cacheKey, setter, getter) => (action, optimistic) => {
+    setter(optimistic);
     setSaveError('');
-    saveFn(updated).catch(() => {
-      setSaveError('Failed to save — changes are local only. Check your connection and try again.');
-    });
+    const seq = (actionSeq.current[cacheKey] || 0) + 1;
+    actionSeq.current[cacheKey] = seq;
+    const isLatest = () => actionSeq.current[cacheKey] === seq;
+    const write = {
+      add: addConfigOption,
+      edit: editConfigOption,
+      delete: deleteConfigOption,
+    }[action.type];
+    write(cacheKey, action.item)
+      .then((serverRows) => { if (isLatest()) setter(serverRows); })
+      .catch((err) => {
+        setSaveError(err && err.stage === 'reload'
+          ? 'Saved, but the updated list could not be loaded. Reload the page to see it.'
+          : 'Failed to save — the change was not saved. Check your connection and try again.');
+        if (isLatest()) setter(getter());
+      });
   };
 
   // Rename a project name through the backend so it cascades to every record that
@@ -623,19 +659,6 @@ export default function AdminPage() {
     }
   };
 
-  // After an add, re-read so the new row carries its server id and a later
-  // edit of it can go through handleVendorNameUpdate.
-  const handleVendorNamesSave = (updated) => {
-    setVendorNames(updated);
-    setSaveError('');
-    saveVendorNames(updated)
-      .then(() => refreshAllFromAPI())
-      .then(() => setVendorNames(getVendorNames()))
-      .catch(() => {
-        setSaveError('Failed to save — changes are local only. Check your connection and try again.');
-      });
-  };
-
   useEffect(() => {
     // Load defaults immediately, then fetch from API
     setProjectNames(getProjectNames());
@@ -705,7 +728,7 @@ export default function AdminPage() {
               title="Project Names"
               subtitle="These appear in the Project Name dropdown. Renaming a project updates it everywhere it's used — trials, trial cities and work orders."
               items={projectNames}
-              onSave={handleSave(setProjectNames, saveProjectNames)}
+              onSave={handleSave('projectNames', setProjectNames, getProjectNames)}
               onRename={handleProjectRename}
               autoCode
             />
@@ -713,7 +736,7 @@ export default function AdminPage() {
               title="Seasons"
               subtitle="These appear in the Season dropdown when creating a new project."
               items={seasons}
-              onSave={handleSave(setSeasons, saveSeasons)}
+              onSave={handleSave('seasons', setSeasons, getSeasons)}
             />
           </SectionGroup>
 
@@ -728,26 +751,26 @@ export default function AdminPage() {
               title="Service Types"
               subtitle="Service types available when adding a vendor (e.g. Photography, Videography, Printing). Renaming one updates every vendor already using it."
               items={vendorTypes}
-              onSave={handleSave(setVendorTypes, saveVendorTypes)}
+              onSave={handleSave('vendorTypes', setVendorTypes, getVendorTypes)}
               onRename={handleVendorTagRename('service_type', setVendorTypes, getVendorTypes)}
             />
             <OptionPanel
               title="Entity Types"
               subtitle="Company/entity types available when adding a vendor (e.g. Individual, Private Limited, LLP). Renaming one updates every vendor already using it."
               items={entityTypes}
-              onSave={handleSave(setEntityTypes, saveEntityTypes)}
+              onSave={handleSave('entityTypes', setEntityTypes, getEntityTypes)}
               onRename={handleVendorTagRename('entity_type', setEntityTypes, getEntityTypes)}
             />
             <OptionPanel
               title="Partner Categories"
               subtitle="Classifications for vendors who deliver CSR work (e.g. Workshop Partner, Training Partner). A vendor flagged with one becomes selectable as the partner who ran a CSR workshop. Renaming one updates every vendor already using it."
               items={partnerCategories}
-              onSave={handleSave(setPartnerCategories, savePartnerCategories)}
+              onSave={handleSave('partnerCategories', setPartnerCategories, getPartnerCategories)}
               onRename={handleVendorTagRename('partner_category', setPartnerCategories, getPartnerCategories)}
             />
             <VendorNamePanel
               items={vendorNames}
-              onSave={handleVendorNamesSave}
+              onSave={handleSave('vendorNames', setVendorNames, getVendorNames)}
               onUpdate={handleVendorNameUpdate}
               serviceTypes={vendorTypes.map(v => v.name)}
               entityTypes={entityTypes.map(v => v.name)}
@@ -765,13 +788,13 @@ export default function AdminPage() {
               title="Bank Names"
               subtitle="Banks available in the Bank Name dropdown when adding vendor bank details."
               items={bankNames}
-              onSave={handleSave(setBankNames, saveBankNames)}
+              onSave={handleSave('bankNames', setBankNames, getBankNames)}
             />
             <OptionPanel
               title="Account Types"
               subtitle="Account types available in the Account Type dropdown (e.g. Savings, Current, Overdraft)."
               items={accountTypes}
-              onSave={handleSave(setAccountTypes, saveAccountTypes)}
+              onSave={handleSave('accountTypes', setAccountTypes, getAccountTypes)}
             />
           </SectionGroup>
 
@@ -786,7 +809,7 @@ export default function AdminPage() {
               title="Courier Items"
               subtitle='Items selectable in the "+ Add Item" dropdown when creating a courier shipment. Only items added here can be picked.'
               items={courierItems}
-              onSave={handleSave(setCourierItems, saveCourierItems)}
+              onSave={handleSave('courierItems', setCourierItems, getCourierItems)}
             />
           </SectionGroup>
 
@@ -801,21 +824,21 @@ export default function AdminPage() {
               title="Workshop Names"
               subtitle="The workshops CSR staff can pick from when logging a workshop activity. CSR reads this list and cannot edit it, so a workshop only exists once it is added here. Renaming one updates every activity that references it."
               items={workshopNames}
-              onSave={handleSave(setWorkshopNames, saveWorkshopNames)}
+              onSave={handleSave('workshopNames', setWorkshopNames, getWorkshopNames)}
               onRename={handleCatalogRename('workshop_name', 'workshop', setWorkshopNames, getWorkshopNames)}
             />
             <OptionPanel
               title="Training Programmes"
               subtitle="The training programmes CSR staff can pick from when logging a training activity. Same rule: CSR reads this list and cannot edit it. Renaming one updates every activity that references it."
               items={trainingProgrammes}
-              onSave={handleSave(setTrainingProgrammes, saveTrainingProgrammes)}
+              onSave={handleSave('trainingProgrammes', setTrainingProgrammes, getTrainingProgrammes)}
               onRename={handleCatalogRename('training_programme', 'training programme', setTrainingProgrammes, getTrainingProgrammes)}
             />
             <OptionPanel
               title="Utilisation Certificate Types"
               subtitle="The kinds of Utilisation Certificate a grant can issue (e.g. Tranche / Interim, Final / Closure, Periodic). CSR staff pick one on a grant's Utilisation tab and it is printed on the certificate. Renaming one updates every grant that references it."
               items={utilisationTypes}
-              onSave={handleSave(setUtilisationTypes, saveUtilisationTypes)}
+              onSave={handleSave('utilisationTypes', setUtilisationTypes, getUtilisationTypes)}
               onRename={handleCatalogRename('utilisation_type', 'certificate type', setUtilisationTypes, getUtilisationTypes, 'CSR grant')}
             />
             <Paper elevation={0} sx={{ border: '1.5px solid #e8e8e8', borderRadius: '20px', overflow: 'hidden' }}>

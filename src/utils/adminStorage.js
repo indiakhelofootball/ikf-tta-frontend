@@ -143,6 +143,7 @@ export function clearConfigCache() {
   Object.keys(_cache).forEach((k) => {
     _cache[k] = null;
     _status[k] = 'idle';
+    _loadedThisSession[k] = false;
   });
   try {
     localStorage.removeItem(LS_KEY);
@@ -153,10 +154,21 @@ export function clearConfigCache() {
   _subscribers.forEach((fn) => fn());
 }
 
+// Keys whose list came from the server during this page session (not from the
+// localStorage warm start). A refetch of such a key keeps returning that list
+// until the new one lands; dropping to seeds mid-fetch flashed made-up values.
+const _loadedThisSession = {};
+
+// Per-key fetch counter. A response is applied only if no later fetch of the
+// same key has started, so a slow refresh that began before an admin write
+// cannot put the pre-write list back into the cache.
+const _fetchSeq = {};
+
 function getFromCache(key) {
   // Trust the cache only after a successful load, so a server-confirmed empty
   // list renders as empty while a failed or pending load still shows seeds.
   if (_status[key] === 'loaded') return _cache[key];
+  if (_loadedThisSession[key]) return _cache[key];
   // Stable synthetic ids — Date.now() minted a NEW id on every call, which broke
   // React keys and MUI Autocomplete option equality for seeded values.
   return DEFAULTS[key].map((name, i) => ({ id: `seed-${key}-${i}`, name, comment: '' }));
@@ -186,53 +198,126 @@ function localToApi(category, localItem) {
 
 // ── Generic fetch ───────────────────────────────────────────────────
 
-async function fetchCategory(cacheKey, category) {
+async function fetchCategory(cacheKey, category, { rethrow = false } = {}) {
+  const seq = (_fetchSeq[cacheKey] || 0) + 1;
+  _fetchSeq[cacheKey] = seq;
   _status[cacheKey] = 'loading';
   try {
     const res = await configAPI.getByCategory(category);
     const items = (res || []).map(apiToLocal);
-    // Cache the server's answer verbatim, including an empty list — that IS the
-    // truth and must not be overwritten with seeds.
-    _cache[cacheKey] = items;
-    _status[cacheKey] = 'loaded';
-    _bump();
+    if (seq === _fetchSeq[cacheKey]) {
+      // Cache the server's answer verbatim, including an empty list — that IS
+      // the truth and must not be overwritten with seeds.
+      _cache[cacheKey] = items;
+      _status[cacheKey] = 'loaded';
+      _loadedThisSession[cacheKey] = true;
+      _bump();
+    }
     return items;
   } catch (err) {
     console.error(`[adminStorage] Failed to fetch "${category}":`, err.message || err);
-    // Leave _cache untouched. A key that already holds a good value keeps it —
-    // a transient failure must never downgrade real data to seeds. Otherwise
-    // mark 'error', which keeps getFromCache on seeds and leaves the key
-    // retryable instead of freezing a blank for the session. (Checking _cache,
-    // not _status: this function sets _status to 'loading' on entry.)
-    _status[cacheKey] = _cache[cacheKey] ? 'loaded' : 'error';
-    _bump();
+    if (seq === _fetchSeq[cacheKey]) {
+      // Leave _cache untouched. A key that already holds a good value keeps it —
+      // a transient failure must never downgrade real data to seeds. Otherwise
+      // mark 'error', which keeps getFromCache on seeds and leaves the key
+      // retryable instead of freezing a blank for the session. (Checking _cache,
+      // not _status: this function sets _status to 'loading' on entry.)
+      _status[cacheKey] = _cache[cacheKey] ? 'loaded' : 'error';
+      _bump();
+    }
+    if (rethrow) throw err;
     return null;
   }
 }
 
-async function saveCategory(cacheKey, category, list) {
-  const previous = _cache[cacheKey] || [];
-  const newIds = new Set(list.map((item) => item.id));
-  const removed = previous.filter((item) => !newIds.has(item.id));
+// ── Admin writes: one call per user action ──────────────────────────
+// Each write sends only the row the admin touched, then re-reads that category
+// and returns the server's rows. The old save diffed the editor's whole list
+// against _cache and deleted whatever the list lacked; _cache is refreshed on
+// focus and can be newer than the Admin page, so an option another admin had
+// just added was soft-deleted by an unrelated add.
 
-  _cache[cacheKey] = list;
-  _status[cacheKey] = 'loaded';
-  _bump();
+const _writeQueue = {};
 
-  await Promise.all(
-    removed.map((item) => configAPI.delete(item.id).catch((err) => {
-      console.error(`[adminStorage] Failed to delete config item ${item.id}:`, err.message || err);
-    }))
-  );
+// Writes to one category run in order, so a delete clicked while an add is in
+// flight runs after that add has landed and been re-read.
+function enqueue(cacheKey, run) {
+  const prev = _writeQueue[cacheKey] || Promise.resolve();
+  const next = prev.then(run);
+  _writeQueue[cacheKey] = next.catch(() => {});
+  return next;
+}
 
+function stageError(stage, err) {
+  const wrapped = new Error((err && err.message) || String(err));
+  wrapped.stage = stage;
+  wrapped.cause = err;
+  return wrapped;
+}
+
+function isServerId(id) {
+  return typeof id === 'number';
+}
+
+function sameOption(a, b) {
+  return a.name === b.name
+    && (a.serviceType || '') === (b.serviceType || '')
+    && (a.entityType || '') === (b.entityType || '');
+}
+
+async function reloadAfterWrite(cacheKey) {
   try {
-    if (list.length === 0) return;
-    const items = list.map((item) => localToApi(category, item));
-    await configAPI.bulk(items);
+    return await fetchCategory(cacheKey, CATEGORY_MAP[cacheKey], { rethrow: true });
+  } catch (err) {
+    throw stageError('reload', err);
+  }
+}
+
+async function bulkOne(cacheKey, item) {
+  const category = CATEGORY_MAP[cacheKey];
+  try {
+    await configAPI.bulk([localToApi(category, item)]);
   } catch (err) {
     console.error(`[adminStorage] Failed to save "${category}":`, err.message || err);
-    throw err;
+    throw stageError('write', err);
   }
+}
+
+// bulk is get_or_create on (category, value): it creates the name, revives it
+// if it was soft-deleted, or skips it if it is already active.
+export function addConfigOption(cacheKey, item) {
+  return enqueue(cacheKey, async () => {
+    await bulkOne(cacheKey, item);
+    return reloadAfterWrite(cacheKey);
+  });
+}
+
+// An edit that is not routed through configAPI.rename or configAPI.update. It
+// goes through bulk exactly as before, so it adds the new name and leaves the
+// old row active; the difference is that only this row is sent.
+export function editConfigOption(cacheKey, item) {
+  return addConfigOption(cacheKey, item);
+}
+
+// A row added a moment ago may still carry the page's local id. By the time
+// this runs the add has been re-read, so the server row is found by its value.
+export function deleteConfigOption(cacheKey, item) {
+  return enqueue(cacheKey, async () => {
+    let id = isServerId(item.id) ? item.id : null;
+    if (id === null && _loadedThisSession[cacheKey]) {
+      const match = (_cache[cacheKey] || []).find((row) => sameOption(row, item));
+      if (match) id = match.id;
+    }
+    if (id !== null) {
+      try {
+        await configAPI.delete(id);
+      } catch (err) {
+        console.error(`[adminStorage] Failed to delete config item ${id}:`, err.message || err);
+        throw stageError('write', err);
+      }
+    }
+    return reloadAfterWrite(cacheKey);
+  });
 }
 
 // ── Public API (sync — reads from in-memory cache) ──────────────────
@@ -241,56 +326,28 @@ export function getProjectNames() {
   return getFromCache('projectNames');
 }
 
-export function saveProjectNames(list) {
-  return saveCategory('projectNames', CATEGORY_MAP.projectNames, list);
-}
-
 export function getSeasons() {
   return getFromCache('seasons');
-}
-
-export function saveSeasons(list) {
-  return saveCategory('seasons', CATEGORY_MAP.seasons, list);
 }
 
 export function getVendorTypes() {
   return getFromCache('vendorTypes');
 }
 
-export function saveVendorTypes(list) {
-  return saveCategory('vendorTypes', CATEGORY_MAP.vendorTypes, list);
-}
-
 export function getEntityTypes() {
   return getFromCache('entityTypes');
-}
-
-export function saveEntityTypes(list) {
-  return saveCategory('entityTypes', CATEGORY_MAP.entityTypes, list);
 }
 
 export function getVendorNames() {
   return getFromCache('vendorNames');
 }
 
-export function saveVendorNames(list) {
-  return saveCategory('vendorNames', CATEGORY_MAP.vendorNames, list);
-}
-
 export function getBankNames() {
   return getFromCache('bankNames');
 }
 
-export function saveBankNames(list) {
-  return saveCategory('bankNames', CATEGORY_MAP.bankNames, list);
-}
-
 export function getAccountTypes() {
   return getFromCache('accountTypes');
-}
-
-export function saveAccountTypes(list) {
-  return saveCategory('accountTypes', CATEGORY_MAP.accountTypes, list);
 }
 
 export function getBankNamesList() {
@@ -305,10 +362,6 @@ export function getCourierItems() {
   return getFromCache('courierItems');
 }
 
-export function saveCourierItems(list) {
-  return saveCategory('courierItems', CATEGORY_MAP.courierItems, list);
-}
-
 export function getCourierItemNames() {
   return getCourierItems().map(item => item.name);
 }
@@ -319,28 +372,20 @@ export function getPartnerCategories() {
   return getFromCache('partnerCategories');
 }
 
-export function savePartnerCategories(list) {
-  return saveCategory('partnerCategories', CATEGORY_MAP.partnerCategories, list);
-}
-
 export function getPartnerCategoryNames() {
   return getPartnerCategories().map(item => item.name);
 }
 
 // The two CSR activity catalogs. TTA owns them; CSR only reads them, so the
-// save pair below exists here and deliberately does not exist in the CSR app.
+// writes go through TTA Admin and deliberately do not exist in the CSR app.
 //
-// A rename of either MUST go through configAPI.rename, not through this save
-// path. CSRActivity.workshop and .training_programme are ForeignKeys to the
-// ConfigOption row, and saveCategory renames by removing the old id and
-// re-adding the new name, which would leave the activity pointing at the old
-// row. AdminPage wires onRename for exactly this reason.
+// A rename of either MUST go through configAPI.rename, not through the bulk
+// write. CSRActivity.workshop and .training_programme are ForeignKeys to the
+// ConfigOption row, and bulk adds the new name as a second row, which would
+// leave the activity pointing at the old row. AdminPage wires onRename for
+// exactly this reason.
 export function getWorkshopNames() {
   return getFromCache('workshopNames');
-}
-
-export function saveWorkshopNames(list) {
-  return saveCategory('workshopNames', CATEGORY_MAP.workshopNames, list);
 }
 
 export function getWorkshopNameList() {
@@ -349,10 +394,6 @@ export function getWorkshopNameList() {
 
 export function getTrainingProgrammes() {
   return getFromCache('trainingProgrammes');
-}
-
-export function saveTrainingProgrammes(list) {
-  return saveCategory('trainingProgrammes', CATEGORY_MAP.trainingProgrammes, list);
 }
 
 export function getTrainingProgrammeList() {
@@ -365,10 +406,6 @@ export function getTrainingProgrammeList() {
 // holds the row by ForeignKey.
 export function getUtilisationTypes() {
   return getFromCache('utilisationTypes');
-}
-
-export function saveUtilisationTypes(list) {
-  return saveCategory('utilisationTypes', CATEGORY_MAP.utilisationTypes, list);
 }
 
 // ── Helper: return just name strings ─────────────────────────────────
