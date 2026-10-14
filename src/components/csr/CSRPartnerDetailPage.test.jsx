@@ -27,7 +27,7 @@ beforeEach(() => {
   csrAPI.partnerRecords.getById.mockResolvedValue({
     id: 5, vendorNameId: 31, name: 'A1 Classes', serviceType: 'Coaching',
     partnerCategoryId: 7, partnerCategoryName: 'Life Skills',
-    address: '12 MG Road, Pune', isActive: true, activityCount: 1, contactCount: 0,
+    isActive: true, activityCount: 1, contactCount: 0,
   });
   csrAPI.partnerRecords.delivered.mockResolvedValue({
     activities: [{

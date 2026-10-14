@@ -138,10 +138,6 @@ export default function CSRPartnerDetailPage() {
             <div className={`fv${partner.partnerCategoryName ? '' : ' em'}`}>{partner.partnerCategoryName || 'Not set'}</div>
           </div>
           <div className="fc">
-            <div className="fl">Address</div>
-            <div className={`fv pt-addr${partner.address ? '' : ' em'}`}>{partner.address || 'Not recorded'}</div>
-          </div>
-          <div className="fc">
             <div className="fl">Status</div>
             <div className="fv">
               <span className={`pill ${partner.isActive ? 'act' : 'closed'}`}>

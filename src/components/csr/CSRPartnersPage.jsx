@@ -8,12 +8,6 @@ import '../../styles/csrDesign.css';
 
 const asList = (data) => (Array.isArray(data) ? data : data?.results || []);
 
-const shortAddress = (value) => {
-  const text = String(value || '').replace(/\s+/g, ' ').trim();
-  if (!text) return '—';
-  return text.length > 60 ? `${text.slice(0, 57)}…` : text;
-};
-
 export default function CSRPartnersPage() {
   const navigate = useNavigate();
   const { canView, canEdit } = useGrants();
@@ -41,7 +35,7 @@ export default function CSRPartnersPage() {
     const q = search.trim().toLowerCase();
     const sorted = [...partners].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     if (!q) return sorted;
-    return sorted.filter((p) => [p.name, p.partnerCategoryName, p.address]
+    return sorted.filter((p) => [p.name, p.partnerCategoryName]
       .filter(Boolean)
       .some((v) => String(v).toLowerCase().includes(q)));
   }, [partners, search]);
@@ -76,7 +70,7 @@ export default function CSRPartnersPage() {
         <label className="sb">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4-4" /></svg>
           <input
-            placeholder="Search name, partner type or address"
+            placeholder="Search name or partner type"
             aria-label="Search partners"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -89,7 +83,7 @@ export default function CSRPartnersPage() {
       ) : (
         <div className="twrap">
           <div className="lgrid lgrid--partners lgrid-head">
-            {['Partner', 'Partner type', 'Address', 'Activities', 'Contacts', 'Status'].map((h) => <span key={h}>{h}</span>)}
+            {['Partner', 'Partner type', 'Activities', 'Contacts', 'Status'].map((h) => <span key={h}>{h}</span>)}
           </div>
 
           {rows.length === 0 ? (
@@ -115,7 +109,6 @@ export default function CSRPartnersPage() {
               >
                 <span className="t1">{p.name}</span>
                 <span className="t2">{p.partnerCategoryName || '—'}</span>
-                <span className="t2">{shortAddress(p.address)}</span>
                 <span className="fig nowrap">{p.activityCount ?? 0} {p.activityCount === 1 ? 'activity' : 'activities'}</span>
                 <span className="fig nowrap">{p.contactCount ?? 0} {p.contactCount === 1 ? 'contact' : 'contacts'}</span>
                 <span className="lend">

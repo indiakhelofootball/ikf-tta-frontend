@@ -54,16 +54,16 @@ describe('adding a partner', () => {
     expect(await screen.findByRole('option', { name: 'A1 Classes · Coaching' })).toBeInTheDocument();
   });
 
-  test('saves the picked vendor, type and address, then opens the partner', async () => {
+  test('saves the picked vendor and type, with no address, then opens the partner', async () => {
     csrAPI.partnerRecords.create.mockResolvedValue({ id: 9 });
     render(<CSRPartnerFormPage />);
     await userEvent.selectOptions(await screen.findByLabelText(/^vendor/i), '31');
     await userEvent.selectOptions(screen.getByLabelText(/partner type/i), '7');
-    await userEvent.type(screen.getByLabelText(/address/i), '12 MG Road, Pune');
+    expect(screen.queryByLabelText(/address/i)).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     await waitFor(() => expect(csrAPI.partnerRecords.create).toHaveBeenCalledWith({
-      vendorNameId: 31, partnerCategoryId: 7, address: '12 MG Road, Pune',
+      vendorNameId: 31, partnerCategoryId: 7,
     }));
     expect(mockNavigate).toHaveBeenCalledWith('/csr/partners/9', expect.anything());
   });
@@ -102,11 +102,11 @@ describe('editing a partner', () => {
     mockParams = { id: '5' };
     csrAPI.partnerRecords.getById.mockResolvedValue({
       id: 5, vendorNameId: 31, name: 'A1 Classes', serviceType: 'Coaching',
-      partnerCategoryId: 7, partnerCategoryName: 'Life Skills', address: 'Pune', isActive: true,
+      partnerCategoryId: 7, partnerCategoryName: 'Life Skills', isActive: true,
     });
   });
 
-  test('the vendor is read-only and the PATCH carries type, address and state', async () => {
+  test('the vendor is read-only and the PATCH carries type and state', async () => {
     csrAPI.partnerRecords.update.mockResolvedValue({ id: 5 });
     render(<CSRPartnerFormPage />);
     const vendor = await screen.findByLabelText(/^vendor/i);
@@ -116,7 +116,7 @@ describe('editing a partner', () => {
     await userEvent.click(screen.getByLabelText(/active/i));
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
     await waitFor(() => expect(csrAPI.partnerRecords.update).toHaveBeenCalledWith('5', {
-      partnerCategoryId: 7, address: 'Pune', isActive: false,
+      partnerCategoryId: 7, isActive: false,
     }));
     expect(csrAPI.partnerRecords.vendorOptions).not.toHaveBeenCalled();
   });

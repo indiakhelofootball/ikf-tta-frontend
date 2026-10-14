@@ -1,6 +1,7 @@
 // D-021: a CSR partner is a vendor picked from the TTA Admin vendor-name list,
-// never typed, plus a partner type and an address. The vendor is fixed once
-// the partner exists; only the type, address and active state change.
+// never typed, plus a partner type. The vendor is fixed once the partner
+// exists; only the type and active state change. Address, PAN and bank stay
+// on the TTA vendor record.
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -27,7 +28,7 @@ export default function CSRPartnerFormPage() {
   const [partner, setPartner] = useState(null);
   const [vendorOptions, setVendorOptions] = useState([]);
   const [vendorQuery, setVendorQuery] = useState('');
-  const [form, setForm] = useState({ vendorNameId: '', partnerCategoryId: '', address: '', isActive: true });
+  const [form, setForm] = useState({ vendorNameId: '', partnerCategoryId: '', isActive: true });
   const [errors, setErrors] = useState({});
   const [saveError, setSaveError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -51,7 +52,6 @@ export default function CSRPartnerFormPage() {
           setForm({
             vendorNameId: data.vendorNameId ?? '',
             partnerCategoryId: data.partnerCategoryId ?? '',
-            address: data.address || '',
             isActive: data.isActive !== false,
           });
         } else {
@@ -97,7 +97,6 @@ export default function CSRPartnerFormPage() {
 
     const body = {
       partnerCategoryId: Number(form.partnerCategoryId),
-      address: form.address.trim(),
     };
     if (isEdit) body.isActive = form.isActive;
     else body.vendorNameId = Number(form.vendorNameId);
@@ -114,7 +113,6 @@ export default function CSRPartnerFormPage() {
       const fields = {
         vendorNameId: fieldError(data, 'vendorNameId'),
         partnerCategoryId: fieldError(data, 'partnerCategoryId'),
-        address: fieldError(data, 'address'),
       };
       setErrors(fields);
       if (!Object.values(fields).some(Boolean)) {
@@ -223,16 +221,6 @@ export default function CSRPartnerFormPage() {
                 ? 'No partner types in the catalog yet. An admin adds them in TTA Admin.'
                 : 'What this partner does, e.g. life skills, player development, education.')}
             </p>
-          </div>
-
-          <div className="pform-field">
-            <label htmlFor="p-address">Address</label>
-            <textarea
-              id="p-address" value={form.address} onChange={setField('address')}
-              aria-invalid={Boolean(errors.address)}
-              aria-describedby={errors.address ? 'p-address-help' : undefined}
-            />
-            {errors.address ? <p id="p-address-help" className="pform-help bad">{errors.address}</p> : null}
           </div>
 
           {isEdit && (

@@ -23,7 +23,7 @@ const { csrAPI } = require('../../services/api');
 const PARTNER = {
   id: 5, vendorNameId: 31, name: 'A1 Classes', serviceType: 'Coaching',
   partnerCategoryId: 7, partnerCategoryName: 'Life Skills',
-  address: '12 MG Road, Pune', isActive: true, activityCount: 3, contactCount: 1,
+  isActive: true, activityCount: 3, contactCount: 1,
 };
 
 beforeEach(() => {

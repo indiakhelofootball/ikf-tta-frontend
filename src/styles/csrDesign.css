@@ -3166,7 +3166,7 @@
    partners 800+100+40 = 940, delivered activities 770+100+40 = 910,
    partner contacts 700+80+40 = 820.
    ========================================================================= */
-.csrx .lgrid.lgrid--partners {grid-template-columns:minmax(180px,1.4fr) minmax(130px,.9fr) minmax(180px,1.3fr) 100px 100px 110px}
+.csrx .lgrid.lgrid--partners {grid-template-columns:minmax(180px,1.6fr) minmax(130px,1fr) 110px 110px 110px}
 .csrx .lgrid.lgrid--pacts    {grid-template-columns:110px minmax(180px,1.4fr) minmax(110px,.7fr) minmax(150px,1fr) minmax(90px,.5fr) 130px}
 .csrx .lgrid.lgrid--pcontacts{grid-template-columns:minmax(140px,1fr) minmax(110px,.7fr) minmax(180px,1.2fr) minmax(150px,1fr) 120px}
 
@@ -3206,7 +3206,6 @@
 .csrx .pt-facts{margin-bottom:var(--sp-6)}
 .csrx .pt-facts .facts{grid-template-columns:1fr}
 .csrx .pt-facts .fc{border-left:0;padding-left:0}
-.csrx .pt-addr{white-space:pre-line}
 @media (min-width:640px){
   .csrx .pt-facts .facts{grid-template-columns:repeat(3,1fr)}
   .csrx .pt-facts .fc + .fc{border-left:1px solid var(--line2);padding-left:var(--sp-4)}
