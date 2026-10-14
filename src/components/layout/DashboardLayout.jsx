@@ -38,6 +38,8 @@ const pageTitles = {
   "/csr": "CSR Dashboard",
   "/csr/projects": "Projects",
   "/csr/activities": "Activities",
+  "/csr/partners": "Partners",
+  "/csr/partners/new": "New Partner",
   "/csr/reports": "Reports",
   "/csr/utilisation": "Work Utilisation",
   "/csr/clients": "Funders",
@@ -73,6 +75,8 @@ const dynamicRoutePatterns = [
   { pattern: /^\/csr\/activities\/[^/]+\/edit$/, title: "Edit Activity" },
   { pattern: /^\/csr\/reports\/[^/]+\/edit$/, title: "Edit Report" },
   { pattern: /^\/csr\/contacts\/[^/]+\/edit$/, title: "Edit Contact" },
+  { pattern: /^\/csr\/partners\/[^/]+$/, title: "Partner" },
+  { pattern: /^\/csr\/partners\/[^/]+\/edit$/, title: "Edit Partner" },
 ];
 
 function resolveTitle(pathname) {

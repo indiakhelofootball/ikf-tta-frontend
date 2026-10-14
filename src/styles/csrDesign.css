@@ -3135,3 +3135,89 @@
    edge to edge, so the seams stay 1px wherever the cells reflow. */
 .csrx .ovw-strip{display:flex;flex-wrap:wrap}
 .csrx .ovw-strip > .ovf{flex:1 1 auto}
+
+/* =========================================================================
+   THE ACTIVITIES LOG CARRIES ITS TYPE.
+
+   Six tracks: date, activity, type, grant, location, status. The grant stays
+   the fourth cell so it keeps the identity band, and it holds two lines -- the
+   grant, then the TTA project and season it is tied to.
+
+   Threshold: 180+200+110+170+90+150 = 900, + 5 gaps of 20 + 2 x 20 row
+   padding = 1040, so the table stacks below a 1040px box rather than at 910.
+   ========================================================================= */
+.csrx .lgrid.lgrid--acts{grid-template-columns:180px minmax(200px,1.4fr) minmax(110px,.7fr) minmax(170px,1fr) minmax(90px,.5fr) 150px}
+.csrx .twrap .lrow.lgrid--acts > .act-grant{flex-direction:column;align-items:flex-start;justify-content:center;gap:2px}
+.csrx .act-ref{display:block;font-size:12px;font-weight:400;color:var(--muted)}
+
+@container (max-width:1039px){
+  .csrx .twrap .lgrid-head.lgrid--acts{display:none}
+  .csrx .twrap .lrow.lgrid--acts{display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px}
+  .csrx .twrap .lrow.lgrid--acts > *{min-width:0;overflow-wrap:anywhere}
+  .csrx .twrap .lrow.lgrid--acts > :is(.t1,.t1wrap,:has(> .t1)){order:-1;flex:1 0 100%}
+  .csrx .twrap .lrow.lgrid--acts > *:last-child{margin-left:auto}
+  .csrx .twrap .lrow.lgrid--acts:not(.lgrid--3):not(.lgrid--4) > *:nth-child(4){display:block;margin-block:0;padding:0;background:none;border:0;color:var(--muted);font-weight:400}
+}
+
+/* =========================================================================
+   CSR PARTNERS (D-021): the list, and a partner's own page.
+
+   Thresholds are tracks + gaps (20px) + row padding (2 x 20px), as above:
+   partners 800+100+40 = 940, delivered activities 770+100+40 = 910,
+   partner contacts 700+80+40 = 820.
+   ========================================================================= */
+.csrx .lgrid.lgrid--partners {grid-template-columns:minmax(180px,1.4fr) minmax(130px,.9fr) minmax(180px,1.3fr) 100px 100px 110px}
+.csrx .lgrid.lgrid--pacts    {grid-template-columns:110px minmax(180px,1.4fr) minmax(110px,.7fr) minmax(150px,1fr) minmax(90px,.5fr) 130px}
+.csrx .lgrid.lgrid--pcontacts{grid-template-columns:minmax(140px,1fr) minmax(110px,.7fr) minmax(180px,1.2fr) minmax(150px,1fr) 120px}
+
+/* The partner list has no grant, so its fourth cell (an activity count) is not
+   the identity column and does not take the band. */
+.csrx .lrow.lgrid--partners:not(.lgrid--3):not(.lgrid--4) > *:nth-child(4){
+  display:block;margin-block:0;padding:0;background:none;border:0;color:var(--soft);font-weight:400;
+}
+
+@container (max-width:939px){
+  .csrx .twrap .lgrid-head.lgrid--partners{display:none}
+  .csrx .twrap .lrow.lgrid--partners{display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px}
+  .csrx .twrap .lrow.lgrid--partners > *{min-width:0;overflow-wrap:anywhere}
+  .csrx .twrap .lrow.lgrid--partners > .t1{order:-1;flex:1 0 100%;white-space:normal}
+  .csrx .twrap .lrow.lgrid--partners > *:last-child{margin-left:auto}
+}
+@container (max-width:909px){
+  .csrx .twrap .lgrid-head.lgrid--pacts{display:none}
+  .csrx .twrap .lrow.lgrid--pacts{display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px}
+  .csrx .twrap .lrow.lgrid--pacts > *{min-width:0;overflow-wrap:anywhere}
+  .csrx .twrap .lrow.lgrid--pacts > .t1{order:-1;flex:1 0 100%;white-space:normal}
+  .csrx .twrap .lrow.lgrid--pacts > *:last-child{margin-left:auto}
+  .csrx .twrap .lrow.lgrid--pacts:not(.lgrid--3):not(.lgrid--4) > *:nth-child(4){display:block;margin-block:0;padding:0;background:none;border:0;color:var(--muted);font-weight:400}
+}
+@container (max-width:819px){
+  .csrx .twrap .lgrid-head.lgrid--pcontacts{display:none}
+  .csrx .twrap .lrow.lgrid--pcontacts{display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px}
+  .csrx .twrap .lrow.lgrid--pcontacts > *{min-width:0;overflow-wrap:anywhere}
+  .csrx .twrap .lrow.lgrid--pcontacts > .t1{order:-1;flex:1 0 100%;white-space:normal}
+  .csrx .twrap .lrow.lgrid--pcontacts > *:last-child{margin-left:auto}
+  .csrx .twrap .lrow.lgrid--pcontacts:not(.lgrid--3):not(.lgrid--4) > *:nth-child(4){display:block;margin-block:0;padding:0;background:none;border:0;color:var(--muted);font-weight:400}
+}
+
+.csrx .pt-alert{margin-bottom:var(--sp-4)}
+.csrx .pt-acts{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap}
+.csrx .pt-acts .newbtn{margin-left:0}
+.csrx .pt-facts{margin-bottom:var(--sp-6)}
+.csrx .pt-facts .facts{grid-template-columns:1fr}
+.csrx .pt-facts .fc{border-left:0;padding-left:0}
+.csrx .pt-addr{white-space:pre-line}
+@media (min-width:640px){
+  .csrx .pt-facts .facts{grid-template-columns:repeat(3,1fr)}
+  .csrx .pt-facts .fc + .fc{border-left:1px solid var(--line2);padding-left:var(--sp-4)}
+}
+.csrx .pt-sec{margin-bottom:var(--sp-6)}
+.csrx .pt-h{
+  font-family:var(--disp);font-size:13px;font-weight:700;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 var(--sp-3);
+}
+.csrx .pt-link{
+  background:none;border:0;padding:0;font:inherit;color:inherit;text-align:left;
+  cursor:pointer;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px;
+}
+.csrx .pt-link:hover{color:var(--g-deep);text-decoration-color:currentColor}

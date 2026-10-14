@@ -22,6 +22,7 @@ import {
   GroupAdd as FundersIcon,
   Category as CatalogIcon,
   Palette as BrandingIcon,
+  HandshakeOutlined as PartnersIcon,
 } from '@mui/icons-material';
 import { Menu, MenuItem, ListItemIcon } from '@mui/material';
 import {
@@ -54,6 +55,10 @@ const CSR_ROUTES = [
   { path: '/csr/activities' },
   { path: '/csr/activities/new' },
   { path: '/csr/activities/:id/edit' },
+  { path: '/csr/partners' },
+  { path: '/csr/partners/new' },
+  { path: '/csr/partners/:id' },
+  { path: '/csr/partners/:id/edit' },
   { path: '/csr/reports' },
   { path: '/csr/reports/new' },
   { path: '/csr/reports/:id/edit' },
@@ -207,11 +212,12 @@ export default function CSRSidebar({ collapsed, onToggle }) {
       {item({ to: '/csr', icon: <CSRIcon fontSize="small" />, label: 'Dashboard', end: true })}
       {canView('csr') && item({ to: '/csr/projects', icon: <ProjectsIcon fontSize="small" />, label: 'Projects', forceActive: onProjectDetail })}
       {canView('csr') && item({ to: '/csr/activities', icon: <ActivitiesIcon fontSize="small" />, label: 'Activities' })}
+      {canView('csr') && item({ to: '/csr/partners', icon: <PartnersIcon fontSize="small" />, label: 'Partners' })}
       {canView('csr') && item({ to: '/csr/reports', icon: <ReportsIcon fontSize="small" />, label: 'Reports' })}
       {(canView('csr_certificate') || canView('csr')) && item({ to: '/csr/utilisation', icon: <UtilisationIcon fontSize="small" />, label: 'Work Utilisation' })}
       {showSetup && <div className="sidebar-divider" role="presentation" />}
       {showSetup && item({ to: '/csr/clients', icon: <FundersIcon fontSize="small" />, label: 'Funders' })}
-      {showSetup && item({ to: '/csr/activity-types', icon: <CatalogIcon fontSize="small" />, label: 'Activity Types' })}
+      {(showSetup || canView('csr')) && item({ to: '/csr/activity-types', icon: <CatalogIcon fontSize="small" />, label: 'Activity Types' })}
       {showSetup && item({ to: '/csr/branding', icon: <BrandingIcon fontSize="small" />, label: 'Branding' })}
     </SidebarFrame>
   );

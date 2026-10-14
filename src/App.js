@@ -33,7 +33,7 @@ import VendorAuditReport from "./components/reports/VendorAuditReport";
 import TrialSpendReport from "./components/reports/TrialSpendReport";
 import TrialsReport from "./components/reports/TrialsReport";
 import CourierManagementPage from "./components/courier/CourierManagementPage";
-import { CSRLogin, CSRDashboard, CSRProjectManagementPage, CSRProjectFormPage, CSRActivityFormPage, CSRReportFormPage, CSRContactFormPage, CSRExpenseTagFormPage, CSRProjectDetailPage, CSRActivitiesPage, CSRReportsPage, CSRUtilisationPage, CSRActivityTypesPage, CSRClientsPage, CSRBrandingPage, CSRAccountPage } from "./components/csr";
+import { CSRLogin, CSRDashboard, CSRProjectManagementPage, CSRProjectFormPage, CSRActivityFormPage, CSRReportFormPage, CSRContactFormPage, CSRExpenseTagFormPage, CSRProjectDetailPage, CSRActivitiesPage, CSRReportsPage, CSRUtilisationPage, CSRActivityTypesPage, CSRPartnersPage, CSRPartnerFormPage, CSRPartnerDetailPage, CSRClientsPage, CSRBrandingPage, CSRAccountPage } from "./components/csr";
 import ClientPortalPage from "./components/client/ClientPortalPage";
 import FunderPreviewPage from "./components/client/FunderPreviewPage";
 import ClientLogin from "./components/client/ClientLogin";
@@ -293,6 +293,28 @@ function App() {
               <CSRActivitiesPage />
             </GrantedRoute>
           } />
+          {/* D-021: CSR partners. /new is listed before /:id so the literal
+              segment is never read as an id. */}
+          <Route path="/csr/partners" element={
+            <GrantedRoute module="csr">
+              <CSRPartnersPage />
+            </GrantedRoute>
+          } />
+          <Route path="/csr/partners/new" element={
+            <GrantedRoute module="csr">
+              <CSRPartnerFormPage />
+            </GrantedRoute>
+          } />
+          <Route path="/csr/partners/:id/edit" element={
+            <GrantedRoute module="csr">
+              <CSRPartnerFormPage />
+            </GrantedRoute>
+          } />
+          <Route path="/csr/partners/:id" element={
+            <GrantedRoute module="csr">
+              <CSRPartnerDetailPage />
+            </GrantedRoute>
+          } />
           <Route path="/csr/reports" element={
             <GrantedRoute module="csr">
               <CSRReportsPage />
@@ -307,12 +329,12 @@ function App() {
               <CSRUtilisationPage />
             </GrantedRoute>
           } />
-          {/* D1: the activity-type catalog is admin-managed (TTA Admin), not a
-              CSR-owned page. Admins reach it from Admin Settings. */}
+          {/* D-020: anyone in CSR adds an activity type; delete stays with admins
+              (the page and the server both enforce that). */}
           <Route path="/csr/activity-types" element={
-            <RoleBasedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+            <GrantedRoute module="csr">
               <CSRActivityTypesPage />
-            </RoleBasedRoute>
+            </GrantedRoute>
           } />
           {/* Funder onboarding — admin-only, not csr-grant gated. Static path
               must precede the dynamic /csr/:id route. */}

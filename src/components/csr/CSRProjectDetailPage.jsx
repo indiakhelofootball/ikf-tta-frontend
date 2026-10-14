@@ -720,7 +720,7 @@ export default function CSRProjectDetailPage() {
                         other one. The status moved to where it belongs and the
                         location got its column back. */}
                     <span className="t2">{a.location || '—'}</span>
-                    <span className="t2">{activityType?.name || '—'}</span>
+                    <span className="t2">{a.activityTypeName || activityType?.name || '—'}</span>
                     <span className="lend">
                       <span className={`pill ${activityStatusPillClass(a.status)}`}>
                         {a.status || 'Unknown'}
@@ -778,7 +778,7 @@ export default function CSRProjectDetailPage() {
                         <span className="dk">Linked to</span>
                         <span className="dv">
                           {[
-                            a.linkedTrialId && 'a trial',
+                            a.linkedTrialId && (a.linkedTrialCode ? `trial ${a.linkedTrialCode}` : 'a trial'),
                             a.workshopId && 'a workshop',
                             a.trainingProgrammeId && 'a training programme',
                           ].filter(Boolean).join(', ') || 'nothing else'}

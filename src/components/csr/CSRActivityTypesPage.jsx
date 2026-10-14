@@ -4,13 +4,20 @@ import { Snackbar, Alert } from '@mui/material';
 
 import { csrAPI } from '../../services/api';
 import ConfirmDialog from '../common/ConfirmDialog';
+import { useAuth } from '../../auth/AuthContext';
+import useGrants from '../../auth/useGrants';
+import { ROLES } from '../../auth/roles';
 import '../../styles/csrDesign.css';
 
 export default function CSRActivityTypesPage() {
   const navigate = useNavigate();
-  // Admin-only route (D1): the catalog is managed in TTA Admin, so anyone who
-  // reaches this page may edit it.
-  const editable = true;
+  const { user } = useAuth();
+  const { canEdit } = useGrants();
+  // D-020: anyone who can edit CSR adds a type; rename and delete stay with
+  // admins. Mirrors the server, which checks the role, not the grant, on delete.
+  const isAdmin = user?.role === ROLES.SUPER_ADMIN || user?.role === ROLES.ADMIN;
+  const canAdd = isAdmin || canEdit('csr');
+  const canDelete = isAdmin;
 
   const [types, setTypes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -77,18 +84,21 @@ export default function CSRActivityTypesPage() {
         <div>
           <h2>CSR Activity Types</h2>
           <p>
-            The admin-managed catalog of activity types — trials, workshops,
-            trainings — that CSR staff pick from when adding an activity. Mark a
-            type as a master template if it applies across grants.
+            The catalog of activity types — trials, workshops, trainings — that
+            CSR staff pick from when adding an activity. Anyone who edits CSR can
+            add a type; only an admin can delete one. Mark a type as a master
+            template if it applies across grants.
           </p>
         </div>
-        <button type="button" className="ghostbtn" onClick={() => navigate('/admin')}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6" /></svg>
-          Admin Settings
-        </button>
+        {isAdmin && (
+          <button type="button" className="ghostbtn" onClick={() => navigate('/admin')}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6" /></svg>
+            Admin Settings
+          </button>
+        )}
       </div>
 
-      {editable && (
+      {canAdd && (
         <div className="panel addrow">
           <label className="sb">
             <input
@@ -128,7 +138,7 @@ export default function CSRActivityTypesPage() {
             <div className="empty">
               <h3>No activity types yet</h3>
               An activity type is what a CSR activity IS — a trial, a workshop, a
-              training. Add the first one above.
+              training.{canAdd ? ' Add the first one above.' : ''}
             </div>
           ) : types.map((t) => (
             <div className="lwrap" key={t.id}>
@@ -140,7 +150,7 @@ export default function CSRActivityTypesPage() {
                     : 'Grant-specific'}
                 </span>
                 <span className="lend">
-                  {editable && (
+                  {canDelete && (
                     <button type="button" className="ico r" aria-label={`Delete ${t.name}`} onClick={() => remove(t)}>
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" /></svg>
                     </button>

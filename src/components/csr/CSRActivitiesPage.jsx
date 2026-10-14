@@ -58,6 +58,15 @@ const whenLabel = (a) => {
   return fmtDay(a.date || a.startDate || a.endDate);
 };
 
+// "IKF Season 6 Trials · Season 6" — the TTA project and season the grant is
+// tied to, whichever halves it has.
+const ttaRefLabel = (a) => [a.ttaProject, a.season].filter(Boolean).join(' · ');
+
+const linkedTrialLabel = (a) => {
+  if (a.linkedTrialCode) return a.linkedTrialCode;
+  return a.linkedTrialId ? `Trial #${a.linkedTrialId}` : 'None';
+};
+
 // Ochre on 'Planned' is the one ink that genuinely applies here: logged but not
 // yet done is precisely "waiting on you". 'Completed' takes the neutral chip
 // rather than moss, because moss means money and an activity is not money.
@@ -94,13 +103,12 @@ export default function CSRActivitiesPage() {
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      // The activity serializer ships projectId, not a project name — the name
-      // has to come from the projects list and be joined here.
+      // Each activity carries its grant, TTA project, season, type and trial
+      // code by name. The projects list still feeds the grant filter, and both
+      // lists stand in for a name the record arrives without.
       const [acts, projs, types] = await Promise.all([
         csrAPI.activities.getAll(),
         csrAPI.projects.getAll(),
-        // The serializer ships activityTypeId, not a name — same join the
-        // project name already needs.
         csrAPI.activityTypes.getAll().catch(() => []),
       ]);
       setActivities(asList(acts));
@@ -137,18 +145,21 @@ export default function CSRActivitiesPage() {
     return (id) => map.get(String(id)) || '—';
   }, [projects]);
 
+  const grantOf = useCallback((a) => a.projectName || projectName(a.projectId), [projectName]);
+  const typeOf = useCallback((a) => a.activityTypeName || typeName(a.activityTypeId), [typeName]);
+
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase();
     return activities
       .filter((a) => projectFilter === 'All' || String(a.projectId) === String(projectFilter))
       .filter((a) => {
         if (!q) return true;
-        return [a.title, a.location, projectName(a.projectId)]
+        return [a.title, a.location, grantOf(a), typeOf(a), a.ttaProject, a.season]
           .filter(Boolean)
           .some((v) => String(v).toLowerCase().includes(q));
       })
       .sort((a, b) => sortKey(b).localeCompare(sortKey(a)));
-  }, [activities, projectFilter, search, projectName]);
+  }, [activities, projectFilter, search, grantOf, typeOf]);
 
   const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
   // safePage, not page: the log can shrink under the reader — a refetch on
@@ -189,7 +200,7 @@ export default function CSRActivitiesPage() {
         <label className="sb">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4-4" /></svg>
           <input
-            placeholder="Search title, location or grant"
+            placeholder="Search title, type, location, grant or TTA project"
             aria-label="Search activities"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -213,7 +224,7 @@ export default function CSRActivitiesPage() {
       ) : (
         <div className="twrap">
           <div className="lgrid lgrid--acts lgrid-head">
-            {['Date', 'Activity', 'Location', 'Grant', 'Status'].map((h) => <span key={h}>{h}</span>)}
+            {['Date', 'Activity', 'Type', 'Grant', 'Location', 'Status'].map((h) => <span key={h}>{h}</span>)}
           </div>
 
           {rows.length === 0 ? (
@@ -229,7 +240,7 @@ export default function CSRActivitiesPage() {
                 role="button"
                 tabIndex={0}
                 className="lgrid lgrid--acts lrow"
-                aria-label={`Open ${a.title}, logged under ${projectName(a.projectId)}`}
+                aria-label={`Open ${a.title}, logged under ${grantOf(a)}`}
                 onClick={() => navigate(`/csr/${a.projectId}`, { state: { tab: ACTIVITIES_TAB } })}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
@@ -240,8 +251,12 @@ export default function CSRActivitiesPage() {
               >
                 <span className="fig nowrap">{whenLabel(a)}</span>
                 <span className="t1">{a.title}</span>
+                <span className="t2">{typeOf(a) || 'Not set'}</span>
+                <span className="t2 act-grant">
+                  <span>{grantOf(a)}</span>
+                  {ttaRefLabel(a) && <span className="act-ref">{ttaRefLabel(a)}</span>}
+                </span>
                 <span className="t2">{a.location || '—'}</span>
-                <span className="t2">{projectName(a.projectId)}</span>
                 <span className="lend">
                   <StatusChip status={a.status} />
                   <button
@@ -265,14 +280,18 @@ export default function CSRActivitiesPage() {
                 />
               )}
 
-              {/* Only fields the serializer actually returns. It ships ids, not
-                  names, and carries no description — a row of em dashes for
-                  fields that cannot exist is worse than not offering them. */}
+              {/* Only fields the serializer actually returns. It carries no
+                  description — a row of em dashes for fields that cannot exist
+                  is worse than not offering them. */}
               {open.has(a.id) && (
                 <div className="ldetail">
                   <div>
                     <span className="dk">Activity type</span>
-                    <span className="dv">{typeName(a.activityTypeId) || 'Not set'}</span>
+                    <span className="dv">{typeOf(a) || 'Not set'}</span>
+                  </div>
+                  <div>
+                    <span className="dk">TTA project</span>
+                    <span className="dv">{ttaRefLabel(a) || 'Not linked to a TTA project'}</span>
                   </div>
                   <div>
                     <span className="dk">Delivered by</span>
@@ -288,7 +307,7 @@ export default function CSRActivitiesPage() {
                   </div>
                   <div>
                     <span className="dk">Linked trial</span>
-                    <span className="dv">{a.linkedTrialId ? `Trial #${a.linkedTrialId}` : 'None'}</span>
+                    <span className="dv">{linkedTrialLabel(a)}</span>
                   </div>
                   <div>
                     <span className="dk">Partner</span>

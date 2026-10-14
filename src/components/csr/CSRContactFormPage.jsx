@@ -319,7 +319,7 @@ export default function CSRContactFormPage() {
                 </select>
                 <p id="c-partner-help" className={`pform-help${partnerError ? ' bad' : ''}`}>
                   {partnerError || (partnerOptions.length === 0
-                    ? 'No partners yet. In TTA Admin, give a vendor name the service type Partner.'
+                    ? 'No partners yet. Add one on the CSR Partners page.'
                     : 'Which partner this person represents.')}
                 </p>
               </div>

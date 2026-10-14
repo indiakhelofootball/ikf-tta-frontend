@@ -1271,6 +1271,23 @@ export const csrAPI = /*#__PURE__*/ {
   partners: {
     getAll: async () => apiService.request('/csr/partners/'),
   },
+  // D-021: CSR partners are vendor names picked from the TTA Admin master
+  // list, plus a partner type and an address. The vendor itself cannot change
+  // on an edit, so update is a PATCH.
+  partnerRecords: {
+    getAll: async (params = {}) => {
+      const qs = new URLSearchParams(params).toString();
+      return apiService.request(`/csr/partner-records/${qs ? `?${qs}` : ''}`);
+    },
+    getById: async (id) => apiService.request(`/csr/partner-records/${id}/`),
+    create: async (data) =>
+      apiService.request('/csr/partner-records/', { method: 'POST', body: JSON.stringify(data) }),
+    update: async (id, data) =>
+      apiService.request(`/csr/partner-records/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }),
+    delete: async (id) => apiService.request(`/csr/partner-records/${id}/`, { method: 'DELETE' }),
+    vendorOptions: async () => apiService.request('/csr/partner-records/vendor-options/'),
+    delivered: async (id) => apiService.request(`/csr/partner-records/${id}/delivered/`),
+  },
 };
 
 // ============================================

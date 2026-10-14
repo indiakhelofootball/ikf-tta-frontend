@@ -128,7 +128,7 @@ describe('creating an activity', () => {
     await screen.findByText('District Trial');
     await userEvent.selectOptions(screen.getByLabelText(/activity type/i), '11');
     expect(await screen.findByText(
-      'No partners yet. In TTA Admin, give a vendor name the service type Partner.',
+      'No partners yet. Add one on the CSR Partners page.',
     )).toBeInTheDocument();
   });
 
@@ -564,5 +564,48 @@ describe('D-019: the activity city comes from the grant', () => {
     const city = await screen.findByLabelText(/^city$/i);
     await waitFor(() => expect(city).toHaveValue('9'));
     expect(within(city).getByRole('option', { name: 'Akola' })).toBeInTheDocument();
+  });
+});
+
+// The form never said which grant it was filing under: the breadcrumb read
+// "Grant" on every create, because only an edit's record carried a name.
+describe('the form names the grant, TTA project and season it belongs to', () => {
+  const GRANT = {
+    id: 11, name: 'Grassroots Football', cities: [],
+    ttaProjectName: 'IKF Season 6 Trials', season: 'Season 6',
+  };
+
+  test('on create, from the grant the page fetches', async () => {
+    mockSearch = new URLSearchParams({ project: '11' });
+    csrAPI.projects.getById.mockResolvedValue(GRANT);
+    render(<CSRActivityFormPage />);
+    const crumb = await screen.findByRole('navigation', { name: 'Breadcrumb' });
+    await waitFor(() => {
+      expect(within(crumb).getByRole('button', { name: 'Grassroots Football' })).toBeInTheDocument();
+    });
+    expect(
+      screen.getByText('Grant: Grassroots Football · TTA project: IKF Season 6 Trials · Season 6'),
+    ).toBeInTheDocument();
+  });
+
+  test('on edit, from the names the activity carries', async () => {
+    mockParams = { id: '5' };
+    csrAPI.projects.getById.mockResolvedValue({ id: 11, cities: [] });
+    csrAPI.activities.getById.mockResolvedValue({
+      ...ACTIVITY, ttaProject: 'IKF Season 6 Trials', season: 'Season 6',
+    });
+    render(<CSRActivityFormPage />);
+    const crumb = await screen.findByRole('navigation', { name: 'Breadcrumb' });
+    expect(within(crumb).getByRole('button', { name: 'Grassroots Football' })).toBeInTheDocument();
+    expect(
+      screen.getByText('Grant: Grassroots Football · TTA project: IKF Season 6 Trials · Season 6'),
+    ).toBeInTheDocument();
+  });
+
+  test('a grant with no TTA project leaves those parts out', async () => {
+    mockSearch = new URLSearchParams({ project: '11' });
+    csrAPI.projects.getById.mockResolvedValue({ ...GRANT, ttaProjectName: '', season: '' });
+    render(<CSRActivityFormPage />);
+    expect(await screen.findByText('Grant: Grassroots Football')).toBeInTheDocument();
   });
 });

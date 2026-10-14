@@ -83,3 +83,72 @@ test('the footer states what is shown versus what is logged in total', async () 
     expect(screen.getByText(/Showing 1 of 1 activity logged in total/i)).toBeInTheDocument();
   });
 });
+
+// Owner, 14 Oct 2026: "In activities, activity type are not shown" and "TTA
+// project by which it linked are not shown". The names come on the activity
+// itself, so they show even when the type catalog lookup returns nothing.
+describe('the names an activity carries', () => {
+  const NAMED = {
+    ...ACTIVITY,
+    projectName: 'Khelo Girls Initiative — Chhattisgarh',
+    activityTypeId: 4,
+    activityTypeName: 'District Trial',
+    ttaProject: 'IKF Season 6 Trials',
+    season: 'Season 6',
+    linkedTrialId: 12,
+    linkedTrialCode: 'TR-2026-012',
+  };
+
+  beforeEach(() => {
+    csrAPI.activities.getAll.mockResolvedValue([NAMED]);
+  });
+
+  test('the row has a Type column showing the type name', async () => {
+    render(<CSRActivitiesPage />);
+    expect(await screen.findByText('Type')).toBeInTheDocument();
+    const row = await screen.findByRole('button', { name: /Open Bhilai Trial/i });
+    expect(row).toHaveTextContent('District Trial');
+  });
+
+  test('the grant cell names the TTA project and season under the grant', async () => {
+    render(<CSRActivitiesPage />);
+    const row = await screen.findByRole('button', { name: /Open Bhilai Trial/i });
+    expect(row).toHaveTextContent('Khelo Girls Initiative — Chhattisgarh');
+    expect(row).toHaveTextContent('IKF Season 6 Trials · Season 6');
+  });
+
+  test('the detail shows the trial code and the TTA project', async () => {
+    render(<CSRActivitiesPage />);
+    fireEvent.click(await screen.findByRole('button', { name: /Show details for Bhilai Trial/i }));
+    expect(screen.getByText('TR-2026-012')).toBeInTheDocument();
+    expect(screen.queryByText('Trial #12')).toBeNull();
+    expect(screen.getByText('TTA project')).toBeInTheDocument();
+  });
+
+  test('an activity with no TTA project says so in the detail', async () => {
+    csrAPI.activities.getAll.mockResolvedValue([
+      { ...NAMED, ttaProject: '', season: '', linkedTrialId: null, linkedTrialCode: '' },
+    ]);
+    render(<CSRActivitiesPage />);
+    fireEvent.click(await screen.findByRole('button', { name: /Show details for Bhilai Trial/i }));
+    expect(screen.getByText('Not linked to a TTA project')).toBeInTheDocument();
+    expect(screen.getByText('None')).toBeInTheDocument();
+  });
+
+  test('search matches the type name and the TTA project', async () => {
+    csrAPI.activities.getAll.mockResolvedValue([
+      NAMED,
+      { ...ACTIVITY, id: 2, title: 'Nashik Workshop', activityTypeName: 'Career Workshop', ttaProject: '', season: '' },
+    ]);
+    render(<CSRActivitiesPage />);
+    const box = await screen.findByLabelText('Search activities');
+
+    fireEvent.change(box, { target: { value: 'career workshop' } });
+    expect(screen.queryByRole('button', { name: /Open Bhilai Trial/i })).toBeNull();
+    expect(screen.getByRole('button', { name: /Open Nashik Workshop/i })).toBeInTheDocument();
+
+    fireEvent.change(box, { target: { value: 'season 6 trials' } });
+    expect(screen.getByRole('button', { name: /Open Bhilai Trial/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Open Nashik Workshop/i })).toBeNull();
+  });
+});

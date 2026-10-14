@@ -323,8 +323,7 @@ function VendorNamePanel({ items, onSave, onUpdate, serviceTypes, entityTypes })
         <Typography sx={{ fontSize: '1rem', fontWeight: 700, color: '#1d1d1f' }}>Vendor Names</Typography>
         <Typography sx={{ fontSize: '0.82rem', color: '#6e6e73', mt: 0.25 }}>
           Pre-approved vendor names, tagged with their service type and entity type.
-          A vendor name with service type Partner appears as a partner in CSR, on
-          activities and on partner contacts.
+          To use a vendor as a CSR partner, add it on the CSR Partners page.
         </Typography>
       </Box>
 

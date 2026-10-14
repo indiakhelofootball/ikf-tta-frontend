@@ -57,9 +57,9 @@ async function editA1ToPartner() {
   fireEvent.click(within(vendorPanel()).getByLabelText('Save'));
 }
 
-test('the panel tells admins a Partner vendor name becomes a CSR partner', async () => {
+test('the panel tells admins a vendor becomes a CSR partner on the CSR Partners page', async () => {
   render(<AdminPage />);
-  expect(within(vendorPanel()).getByText(/service type Partner appears as a partner in CSR/i))
+  expect(within(vendorPanel()).getByText(/To use a vendor as a CSR partner, add it on the CSR Partners page/i))
     .toBeInTheDocument();
 });
 

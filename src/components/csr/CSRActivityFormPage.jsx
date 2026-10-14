@@ -87,6 +87,7 @@ export default function CSRActivityFormPage() {
   const [trials, setTrials] = useState([]);
   // D-019: the cities the grant funds; an activity picks one of them.
   const [grantCities, setGrantCities] = useState([]);
+  const [grant, setGrant] = useState(null);
   // Partners are the TTA Admin vendor-name entries whose service type is
   // Partner (owner, 10 Oct 2026) — not Vendor-module records. The narrowing is
   // the endpoint's, not this component's.
@@ -170,8 +171,16 @@ export default function CSRActivityFormPage() {
     if (!projectId) return undefined;
     let active = true;
     csrAPI.projects.getById(projectId)
-      .then((data) => { if (active) setGrantCities(data?.cities || []); })
-      .catch(() => { if (active) setGrantCities([]); });
+      .then((data) => {
+        if (!active) return;
+        setGrant(data || null);
+        setGrantCities(data?.cities || []);
+      })
+      .catch(() => {
+        if (!active) return;
+        setGrant(null);
+        setGrantCities([]);
+      });
     return () => { active = false; };
   }, [projectId]);
 
@@ -321,6 +330,15 @@ export default function CSRActivityFormPage() {
     ? [...grantCities, { id: Number(form.trialCityId), cityName: activity?.trialCityName || `#${form.trialCityId}` }]
     : grantCities;
 
+  const grantName = activity?.projectName || grant?.name || '';
+  const ttaProject = activity?.ttaProject || grant?.ttaProjectName || '';
+  const season = activity?.season || grant?.season || '';
+  const contextLine = [
+    grantName && `Grant: ${grantName}`,
+    ttaProject && `TTA project: ${ttaProject}`,
+    season,
+  ].filter(Boolean).join(' · ');
+
   if (loading) {
     return (
       <div className="csrx csrx-page">
@@ -368,11 +386,13 @@ export default function CSRActivityFormPage() {
     <div className="csrx csrx-page">
       <nav className="pform-crumb" aria-label="Breadcrumb">
         <button type="button" className="pform-back" onClick={() => leave()}>
-          {activity?.projectName || 'Grant'}
+          {grantName || 'Grant'}
         </button>
         <span aria-hidden="true">/</span>
         <span className="pform-crumb-now">{isEdit ? 'Edit Activity' : 'New Activity'}</span>
       </nav>
+
+      {contextLine && <p className="pform-sub pform-context">{contextLine}</p>}
 
       <form className="pform" onSubmit={handleSubmit} noValidate>
         <section className="pform-sec pform-sec--grant">
@@ -607,7 +627,7 @@ export default function CSRActivityFormPage() {
                       {errors.partnerId || (form.deliveryMode === 'Self'
                         ? 'Not needed — this one was delivered by TTA.'
                         : partnerOptions.length === 0
-                          ? 'No partners yet. In TTA Admin, give a vendor name the service type Partner.'
+                          ? 'No partners yet. Add one on the CSR Partners page.'
                           : 'The partner who delivered this. Vendor names with service type Partner in TTA Admin appear here.')}
                     </p>
                   </div>
