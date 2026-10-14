@@ -556,6 +556,31 @@ describe('D-019: the activity city comes from the grant', () => {
     expect(screen.getByLabelText(/^city$/i)).toBeDisabled();
   });
 
+  test('a held workshop Admin has removed still shows as itself', async () => {
+    mockParams = { id: '5' };
+    csrAPI.activities.getById.mockResolvedValue({
+      ...ACTIVITY, activityTypeId: 11, workshopId: 4, workshopName: 'Goal Setting (removed in TTA)',
+    });
+    render(<CSRActivityFormPage />);
+    const workshop = await screen.findByLabelText(/^workshop$/i);
+    await waitFor(() => expect(workshop).toHaveValue('4'));
+    expect(within(workshop).getByRole('option', { name: 'Goal Setting (removed in TTA)' })).toBeInTheDocument();
+    expect(within(workshop).getByRole('option', { name: 'Career Guidance' })).toBeInTheDocument();
+  });
+
+  test('a held training programme Admin has removed still shows as itself', async () => {
+    mockParams = { id: '5' };
+    csrAPI.activityTypes.getAll.mockResolvedValue([...TYPES, { id: 12, name: 'Coach Training', isMaster: false }]);
+    csrAPI.activities.getById.mockResolvedValue({
+      ...ACTIVITY, activityTypeId: 12, trainingProgrammeId: 6,
+      trainingProgrammeName: 'Digital Skills (removed in TTA)',
+    });
+    render(<CSRActivityFormPage />);
+    const programme = await screen.findByLabelText(/training programme/i);
+    await waitFor(() => expect(programme).toHaveValue('6'));
+    expect(within(programme).getByRole('option', { name: 'Digital Skills (removed in TTA)' })).toBeInTheDocument();
+  });
+
   test('a stored city the grant has dropped still shows as itself', async () => {
     mockParams = { id: '5' };
     csrAPI.activities.getById.mockResolvedValue({ ...ACTIVITY, trialCityId: 9, trialCityName: 'Akola' });

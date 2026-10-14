@@ -2,6 +2,8 @@
 // never typed, plus a partner type. The vendor is fixed once the partner
 // exists; only the type and active state change. Address, PAN and bank stay
 // on the TTA vendor record.
+// D-022: a partner may also point at the TTA vendor record it is paid through.
+// That link is optional and read-only towards TTA; payments stay in TTA.
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -18,7 +20,15 @@ const fieldError = (data, key) => {
   return Array.isArray(v) ? v[0] : String(v);
 };
 
+const RECORD_HELP = 'Optional. The vendor record in TTA this partner is paid through. Payments stay in TTA.';
+
 const vendorLabel = (v) => (v.serviceType ? `${v.name} · ${v.serviceType}` : v.name);
+
+const vendorRecordLabel = (r) => [
+  r.name || `#${r.id}`,
+  r.vendorType,
+  [r.city, r.state].filter(Boolean).join(', '),
+].filter(Boolean).join(' · ');
 
 export default function CSRPartnerFormPage() {
   const { id } = useParams();
@@ -28,7 +38,9 @@ export default function CSRPartnerFormPage() {
   const [partner, setPartner] = useState(null);
   const [vendorOptions, setVendorOptions] = useState([]);
   const [vendorQuery, setVendorQuery] = useState('');
-  const [form, setForm] = useState({ vendorNameId: '', partnerCategoryId: '', isActive: true });
+  const [form, setForm] = useState({ vendorNameId: '', vendorId: '', partnerCategoryId: '', isActive: true });
+  const [vendorRecords, setVendorRecords] = useState([]);
+  const [recordsState, setRecordsState] = useState('idle');
   const [errors, setErrors] = useState({});
   const [saveError, setSaveError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -51,6 +63,7 @@ export default function CSRPartnerFormPage() {
           setPartner(data);
           setForm({
             vendorNameId: data.vendorNameId ?? '',
+            vendorId: data.vendorId ?? '',
             partnerCategoryId: data.partnerCategoryId ?? '',
             isActive: data.isActive !== false,
           });
@@ -66,6 +79,37 @@ export default function CSRPartnerFormPage() {
       });
     return () => { cancelled = true; };
   }, [id, isEdit]);
+
+  useEffect(() => {
+    const vendorNameId = form.vendorNameId;
+    if (vendorNameId === '') {
+      setVendorRecords([]);
+      setRecordsState('idle');
+      return undefined;
+    }
+    let cancelled = false;
+    setRecordsState('loading');
+    csrAPI.partnerRecords.vendorRecords(vendorNameId)
+      .then((data) => {
+        if (cancelled) return;
+        setVendorRecords(Array.isArray(data) ? data : data?.results || []);
+        setRecordsState('ready');
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setVendorRecords([]);
+        setRecordsState('failed');
+      });
+    return () => { cancelled = true; };
+  }, [form.vendorNameId]);
+
+  // A linked record that no longer matches the name list stays visible as
+  // itself, so the select does not show "not set up" while the link holds.
+  const recordOptions = useMemo(() => {
+    const heldId = partner?.vendorId;
+    if (heldId == null || vendorRecords.some((r) => String(r.id) === String(heldId))) return vendorRecords;
+    return [...vendorRecords, partner.vendorRecord || { id: heldId }];
+  }, [vendorRecords, partner]);
 
   // The picked vendor stays in the list while the filter narrows, so the select
   // never silently drops the current choice.
@@ -83,6 +127,12 @@ export default function CSRPartnerFormPage() {
     setErrors((errs) => ({ ...errs, [k]: '' }));
   };
 
+  const pickVendor = (e) => {
+    const { value } = e.target;
+    setForm((f) => ({ ...f, vendorNameId: value, vendorId: '' }));
+    setErrors((errs) => ({ ...errs, vendorNameId: '', vendorId: '' }));
+  };
+
   const back = () => navigate(isEdit ? `/csr/partners/${id}` : '/csr/partners');
 
   const noVendors = !isEdit && vendorOptions.length === 0;
@@ -97,6 +147,7 @@ export default function CSRPartnerFormPage() {
 
     const body = {
       partnerCategoryId: Number(form.partnerCategoryId),
+      vendorId: form.vendorId === '' ? null : Number(form.vendorId),
     };
     if (isEdit) body.isActive = form.isActive;
     else body.vendorNameId = Number(form.vendorNameId);
@@ -112,6 +163,7 @@ export default function CSRPartnerFormPage() {
       const data = err?.response?.data;
       const fields = {
         vendorNameId: fieldError(data, 'vendorNameId'),
+        vendorId: fieldError(data, 'vendorId'),
         partnerCategoryId: fieldError(data, 'partnerCategoryId'),
       };
       setErrors(fields);
@@ -121,6 +173,11 @@ export default function CSRPartnerFormPage() {
       setSaving(false);
     }
   };
+
+  let recordHelp = RECORD_HELP;
+  if (recordsState === 'loading') recordHelp = 'Loading TTA vendor records…';
+  else if (recordsState === 'failed') recordHelp = 'The TTA vendor records could not be loaded. Try again in a moment.';
+  else if (recordOptions.length === 0) recordHelp = 'No vendor record with this name in TTA yet.';
 
   if (loading) {
     return (
@@ -184,7 +241,7 @@ export default function CSRPartnerFormPage() {
                 />
                 <select
                   id="p-vendor" className="sel" value={form.vendorNameId}
-                  onChange={setField('vendorNameId')}
+                  onChange={pickVendor}
                   disabled={noVendors}
                   aria-invalid={Boolean(errors.vendorNameId)}
                   aria-describedby="p-vendor-help"
@@ -202,6 +259,27 @@ export default function CSRPartnerFormPage() {
                 : VENDOR_HELP)}
             </p>
           </div>
+
+          {form.vendorNameId !== '' && (
+            <div className="pform-field">
+              <label htmlFor="p-vendor-record">TTA vendor record</label>
+              <select
+                id="p-vendor-record" className="sel" value={form.vendorId}
+                onChange={setField('vendorId')}
+                disabled={recordsState === 'loading'}
+                aria-invalid={Boolean(errors.vendorId)}
+                aria-describedby="p-vendor-record-help"
+              >
+                <option value="">Not set up in TTA yet</option>
+                {recordOptions.map((r) => (
+                  <option key={r.id} value={r.id}>{vendorRecordLabel(r)}</option>
+                ))}
+              </select>
+              <p id="p-vendor-record-help" className={`pform-help${errors.vendorId ? ' bad' : ''}`}>
+                {errors.vendorId || recordHelp}
+              </p>
+            </div>
+          )}
 
           <div className="pform-field">
             <label htmlFor="p-category">Partner type <span className="pform-req" aria-hidden="true">*</span></label>

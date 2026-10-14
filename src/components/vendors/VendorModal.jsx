@@ -16,13 +16,15 @@ import {
   FilterList as FilterIcon,
 } from '@mui/icons-material';
 import { vendorsAPI } from '../../services/api';
-import { getVendorTypeNames, getEntityTypeNames, getFilteredVendorNames, getBankNamesList, getAccountTypesList, getPartnerCategoryNames } from '../../utils/adminStorage';
+import { getVendorTypeNames, getEntityTypeNames, getFilteredVendorNames, getBankNamesList, getAccountTypesList } from '../../utils/adminStorage';
 import useConfigVersion from '../../hooks/useConfigVersion';
 import PanCardImage from './PanCardImage';
 import { getStateFromPinCode, getCitiesForState, INDIAN_STATES } from '../../utils/pinCodeToState';
 
 const initialFormData = {
   vendorName: '', vendorType: '', companyType: '', entityName: '',
+  // No control since D-022 (CSR owns a partner's type). Kept so an edit sends
+  // the stored value back unchanged instead of clearing it.
   partnerCategory: '',
   gstNumber: '', panNumber: '',
   gstVerified: false, panVerified: false,
@@ -122,7 +124,6 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
   }, [searchServiceType, searchEntityType, cfgVersion]);
   const serviceTypeOptions = useMemo(() => getVendorTypeNames(), [cfgVersion]);
   const entityTypeOptions = useMemo(() => getEntityTypeNames(), [cfgVersion]);
-  const partnerCategoryOptions = useMemo(() => getPartnerCategoryNames(), [cfgVersion]);
 
   const filteredVendors = useMemo(() => {
     let pool = [...vendors];
@@ -430,25 +431,6 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
               </Box>
             </>
           )}
-
-          {/* ── CSR PARTNER ── */}
-          <Typography variant="subtitle2" sx={sectionSx}>CSR PARTNER</Typography>
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="caption" sx={lSx}>Partner Category</Typography>
-            <FormControl fullWidth size="small" disabled={!formActive || partnerCategoryOptions.length === 0}>
-              <Select value={formData.partnerCategory} onChange={handleChange('partnerCategory')}
-                displayEmpty renderValue={(v) => v || <em style={{ color: '#5A6B82' }}>Not a CSR partner</em>}
-                sx={selectSx} MenuProps={menuMaxH}>
-                <MenuItem value=""><em>Not a CSR partner</em></MenuItem>
-                {partnerCategoryOptions.map(t => <MenuItem key={t} value={t} sx={{ fontSize: '0.85rem' }}>{t}</MenuItem>)}
-              </Select>
-            </FormControl>
-            <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: '#64748b' }}>
-              {partnerCategoryOptions.length === 0
-                ? 'No partner categories exist yet. An admin adds them under Admin Settings, Vendors.'
-                : 'Only vendors carrying a category can be named as the partner who ran a CSR workshop.'}
-            </Typography>
-          </Box>
 
           {/* ── DOCUMENTS ── */}
           <Typography variant="subtitle2" sx={sectionSx}>DOCUMENTS</Typography>

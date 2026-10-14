@@ -3220,3 +3220,8 @@
   cursor:pointer;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px;
 }
 .csrx .pt-link:hover{color:var(--g-deep);text-decoration-color:currentColor}
+
+/* D-022: a TTA vendor record label is a name, a type and a place; it wraps
+   inside its fact cell rather than widening the strip on a phone. */
+.csrx .pt-facts .fc{min-width:0}
+.csrx .pt-facts .fv{overflow-wrap:anywhere}

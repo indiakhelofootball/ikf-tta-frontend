@@ -1286,6 +1286,10 @@ export const csrAPI = /*#__PURE__*/ {
       apiService.request(`/csr/partner-records/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }),
     delete: async (id) => apiService.request(`/csr/partner-records/${id}/`, { method: 'DELETE' }),
     vendorOptions: async () => apiService.request('/csr/partner-records/vendor-options/'),
+    vendorRecords: async (vendorNameId) => {
+      const qs = new URLSearchParams({ vendorNameId }).toString();
+      return apiService.request(`/csr/partner-records/vendor-records/?${qs}`);
+    },
     delivered: async (id) => apiService.request(`/csr/partner-records/${id}/delivered/`),
   },
 };

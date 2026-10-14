@@ -329,6 +329,18 @@ export default function CSRActivityFormPage() {
   const cityOptions = form.trialCityId !== '' && !grantCities.some((c) => c.id === Number(form.trialCityId))
     ? [...grantCities, { id: Number(form.trialCityId), cityName: activity?.trialCityName || `#${form.trialCityId}` }]
     : grantCities;
+  // Same for a workshop or training programme Admin has since removed; the
+  // activity carries its name, marked "(removed in TTA)".
+  const workshopOptions = form.workshopId !== '' && !workshops.some((w) => w.id === Number(form.workshopId))
+    ? [...workshops, { id: Number(form.workshopId), name: activity?.workshopName || `#${form.workshopId}` }]
+    : workshops;
+  const programmeOptions = form.trainingProgrammeId !== ''
+    && !programmes.some((t) => t.id === Number(form.trainingProgrammeId))
+    ? [...programmes, {
+      id: Number(form.trainingProgrammeId),
+      name: activity?.trainingProgrammeName || `#${form.trainingProgrammeId}`,
+    }]
+    : programmes;
 
   const grantName = activity?.projectName || grant?.name || '';
   const ttaProject = activity?.ttaProject || grant?.ttaProjectName || '';
@@ -532,10 +544,10 @@ export default function CSRActivityFormPage() {
                 <label htmlFor="a-workshop">Workshop</label>
                 <select
                   id="a-workshop" className="sel" value={form.workshopId} onChange={setField('workshopId')}
-                  disabled={workshops.length === 0} aria-describedby="a-workshop-help"
+                  disabled={workshopOptions.length === 0} aria-describedby="a-workshop-help"
                 >
                   <option value="">— none —</option>
-                  {workshops.map((w) => (
+                  {workshopOptions.map((w) => (
                     <option key={w.id} value={w.id}>{w.name}</option>
                   ))}
                 </select>
@@ -553,10 +565,10 @@ export default function CSRActivityFormPage() {
                 <select
                   id="a-programme" className="sel" value={form.trainingProgrammeId}
                   onChange={setField('trainingProgrammeId')}
-                  disabled={programmes.length === 0} aria-describedby="a-programme-help"
+                  disabled={programmeOptions.length === 0} aria-describedby="a-programme-help"
                 >
                   <option value="">— none —</option>
-                  {programmes.map((t) => (
+                  {programmeOptions.map((t) => (
                     <option key={t.id} value={t.id}>{t.name}</option>
                   ))}
                 </select>

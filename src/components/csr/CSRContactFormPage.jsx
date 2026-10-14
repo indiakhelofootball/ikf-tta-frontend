@@ -4,12 +4,10 @@
 // Fields, validation and payload shape are carried over unchanged from
 // CSRContactModal; the comments explaining WHY a field behaves as it does
 // come with them.
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 
 import { csrAPI } from '../../services/api';
-import { getPartnerCategories } from '../../utils/adminStorage';
-import useConfigVersion from '../../hooks/useConfigVersion';
 import '../../styles/csrDesign.css';
 
 // The three sides the 26 Aug review named: IKF representative, client
@@ -26,13 +24,13 @@ const CONTACT_TYPES = [
   { value: 'Vendor', label: 'Partner representative' },
 ];
 
-// Only a partner representative has a partner category. The API refuses the
-// combination outright, so the field is not merely hidden for the other two —
-// it is cleared when the type moves away from partner.
+// Only a partner representative names a partner organisation. The field is
+// not merely hidden for the other two — it is cleared when the type moves away
+// from partner.
 const PARTNER_TYPE = 'Vendor';
 
 const EMPTY = {
-  name: '', designation: '', contactType: '', partnerCategoryId: '', partnerId: '', email: '', phone: '',
+  name: '', designation: '', contactType: '', partnerId: '', email: '', phone: '',
 };
 
 const fieldError = (data, key) => {
@@ -56,6 +54,10 @@ export default function CSRContactFormPage() {
   // names whose service type is Partner.
   const [partners, setPartners] = useState([]);
   const [partnerError, setPartnerError] = useState('');
+  // vendorNameId -> the partner's own type, from the CSR Partners page (D-022).
+  // null until loaded, and stays null if the read fails: the line is then
+  // simply not shown, and saving is unaffected.
+  const [partnerTypes, setPartnerTypes] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -83,7 +85,6 @@ export default function CSRContactFormPage() {
           name: data.name || '',
           designation: data.designation || '',
           contactType: data.contactType || '',
-          partnerCategoryId: data.partnerCategoryId ?? '',
           partnerId: data.partnerId ?? '',
           email: data.email || '',
           phone: data.phone || '',
@@ -129,6 +130,18 @@ export default function CSRContactFormPage() {
     return () => { active = false; };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    csrAPI.partnerRecords.getAll({ limit: 1000 })
+      .then((data) => {
+        if (!active) return;
+        const rows = Array.isArray(data) ? data : data?.results || [];
+        setPartnerTypes(new Map(rows.map((r) => [String(r.vendorNameId), r.partnerCategoryName || ''])));
+      })
+      .catch(() => { if (active) setPartnerTypes(null); });
+    return () => { active = false; };
+  }, []);
+
   // A contact can hold a partner whose Admin entry has since stopped being a
   // Partner. It stays selectable for that contact, so an edit does not
   // silently clear it.
@@ -137,23 +150,20 @@ export default function CSRContactFormPage() {
     ? [...partners, { id: contact.partnerId, name: contact.partnerName || `#${contact.partnerId}` }]
     : partners;
 
-  // The SAME catalog that classifies a partner vendor, read the same way the
-  // activity form reads its workshop list. A second list for one question is
-  // how two screens start disagreeing about what a partner does.
-  const cfgVersion = useConfigVersion();
-  const partnerCategories = useMemo(() => getPartnerCategories(), [cfgVersion]);
+  const pickedPartnerType = partnerTypes && form.partnerId !== ''
+    ? partnerTypes.get(String(form.partnerId)) || ''
+    : null;
 
   const setField = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
-  // Moving off the partner type drops the category with it. Leaving it set
-  // would send a combination the API refuses, and the operator would be looking
-  // at an error about a field the form is no longer showing them.
+  // Moving off the partner type drops the partner organisation with it, so
+  // the operator is never looking at an error about a field the form is no
+  // longer showing them.
   const handleTypeChange = (e) => {
     const contactType = e.target.value;
     setForm((f) => ({
       ...f,
       contactType,
-      partnerCategoryId: contactType === PARTNER_TYPE ? f.partnerCategoryId : '',
       partnerId: contactType === PARTNER_TYPE ? f.partnerId : '',
     }));
     if (contactType !== PARTNER_TYPE) setPartnerError('');
@@ -196,11 +206,10 @@ export default function CSRContactFormPage() {
       name: form.name.trim(),
       designation: form.designation.trim(),
       contactType: form.contactType,
-      // null, not '' — this is an FK. Sending an empty string would be a 400
-      // on a field the operator deliberately left blank.
-      partnerCategoryId: form.contactType === PARTNER_TYPE && form.partnerCategoryId !== ''
-        ? Number(form.partnerCategoryId)
-        : null,
+      // partnerCategoryId is deliberately absent (D-022): a partner's type is
+      // the partner's own, and leaving the key out keeps a contact's legacy
+      // value rather than clearing it. partnerId is null, not '', because it is
+      // an FK.
       partnerId: form.contactType === PARTNER_TYPE && form.partnerId !== ''
         ? Number(form.partnerId)
         : null,
@@ -296,53 +305,36 @@ export default function CSRContactFormPage() {
             </select>
           </div>
 
-          {/* WHICH KIND of partner, asked only once the answer can mean
-              something. The type above says which side this person sits on;
-              for a partner that is not enough, because a grant runs life
-              skills, player development and education partners at the same
-              time and their representatives are otherwise indistinguishable. */}
+          {/* WHICH partner, asked only once the answer can mean something.
+              The partner's type is not asked here: it is the partner's own,
+              set once on the CSR Partners page (D-022), and shown read-only. */}
           {form.contactType === PARTNER_TYPE && (
-            <div className="pform-row">
-              <div className="pform-field">
-                <label htmlFor="c-partner">Partner organisation</label>
-                <select
-                  id="c-partner" className="sel" value={form.partnerId}
-                  onChange={(e) => { setPartnerError(''); setField('partnerId')(e); }}
-                  disabled={partnerOptions.length === 0}
-                  aria-invalid={Boolean(partnerError)}
-                  aria-describedby="c-partner-help"
-                >
-                  <option value="">— none —</option>
-                  {partnerOptions.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name || `#${p.id}`}</option>
-                  ))}
-                </select>
-                <p id="c-partner-help" className={`pform-help${partnerError ? ' bad' : ''}`}>
-                  {partnerError || (partnerOptions.length === 0
-                    ? 'No partners yet. Add one on the CSR Partners page.'
-                    : 'Which partner this person represents.')}
+            <div className="pform-field">
+              <label htmlFor="c-partner">Partner organisation</label>
+              <select
+                id="c-partner" className="sel" value={form.partnerId}
+                onChange={(e) => { setPartnerError(''); setField('partnerId')(e); }}
+                disabled={partnerOptions.length === 0}
+                aria-invalid={Boolean(partnerError)}
+                aria-describedby="c-partner-help"
+              >
+                <option value="">— none —</option>
+                {partnerOptions.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name || `#${p.id}`}</option>
+                ))}
+              </select>
+              <p id="c-partner-help" className={`pform-help${partnerError ? ' bad' : ''}`}>
+                {partnerError || (partnerOptions.length === 0
+                  ? 'No partners yet. Add one on the CSR Partners page.'
+                  : 'Which partner this person represents.')}
+              </p>
+              {pickedPartnerType !== null && (
+                <p className="pform-help">
+                  {pickedPartnerType
+                    ? `Partner type: ${pickedPartnerType} (set on the partner)`
+                    : 'Partner type: not set on the partner yet'}
                 </p>
-              </div>
-
-              <div className="pform-field">
-                <label htmlFor="c-partner-category">Partner Type</label>
-                <select
-                  id="c-partner-category" className="sel" value={form.partnerCategoryId}
-                  onChange={setField('partnerCategoryId')}
-                  disabled={partnerCategories.length === 0}
-                  aria-describedby="c-partner-category-help"
-                >
-                  <option value="">— none —</option>
-                  {partnerCategories.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
-                <p id="c-partner-category-help" className="pform-help">
-                  {partnerCategories.length === 0
-                    ? 'No partner types in the catalog yet — an admin adds them in TTA Admin → Setup.'
-                    : 'What this partner does, e.g. life skills, player development, education.'}
-                </p>
-              </div>
+              )}
             </div>
           )}
 

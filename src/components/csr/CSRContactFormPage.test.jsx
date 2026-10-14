@@ -24,19 +24,9 @@ jest.mock('../../services/api', () => ({
   csrAPI: {
     contacts: { getById: jest.fn(), getAll: jest.fn(), create: jest.fn(), update: jest.fn() },
     partners: { getAll: jest.fn() },
+    partnerRecords: { getAll: jest.fn() },
   },
 }));
-
-// The SAME catalog that classifies a partner vendor — not a list of this
-// form's own.
-jest.mock('../../utils/adminStorage', () => ({
-  getPartnerCategories: () => [
-    { id: 7, name: 'Life Skills' },
-    { id: 8, name: 'Player Development' },
-  ],
-}));
-
-jest.mock('../../hooks/useConfigVersion', () => ({ __esModule: true, default: () => 0 }));
 
 const { csrAPI } = require('../../services/api');
 
@@ -55,6 +45,14 @@ beforeEach(() => {
     { id: 3, name: 'A1 Classes' },
     { id: 4, name: 'Kick Academy' },
   ]);
+  // Paginated, as the API returns it. Kick Academy (vendor-name id 4) has a
+  // type; A1 Classes (3) has no CSR partner record at all.
+  csrAPI.partnerRecords.getAll.mockResolvedValue({
+    results: [
+      { id: 21, vendorNameId: 4, partnerName: 'Kick Academy', partnerCategoryName: 'Life skill' },
+      { id: 22, vendorNameId: 9, partnerName: 'Untyped Trust', partnerCategoryName: '' },
+    ],
+  });
 });
 
 test('creating without ?project= stops rather than posting an orphan', async () => {
@@ -89,38 +87,36 @@ describe('creating a contact', () => {
     expect(vendorOption.textContent).toBe('Partner representative');
   });
 
-  test('the partner type is asked only once the contact is a partner', async () => {
+  // D-022: a partner's type is the partner's own, set on the CSR Partners page.
+  // The contact form no longer asks it.
+  test('there is no partner type select, even for a partner representative', async () => {
     render(<CSRContactFormPage />);
     await waitFor(() => expect(csrAPI.contacts.getAll).toHaveBeenCalled());
-    // A client or IKF representative has no partner type — the API refuses the
-    // combination, so the form must not offer it.
-    expect(screen.queryByLabelText(/partner type/i)).toBeNull();
-
     await userEvent.selectOptions(screen.getByLabelText(/contact type/i), 'Vendor');
-    expect(await screen.findByLabelText(/partner type/i)).toBeInTheDocument();
+    await screen.findByLabelText(/partner organisation/i);
+    expect(screen.queryByLabelText(/partner type/i)).toBeNull();
+    expect(screen.getAllByRole('combobox').map((el) => el.id)).not.toContain('c-partner-category');
   });
 
-  test('the partner type is sent as the catalog row id', async () => {
+  test('a partner contact is saved without a partnerCategoryId key', async () => {
     csrAPI.contacts.create.mockResolvedValue({});
     render(<CSRContactFormPage />);
     await waitFor(() => expect(csrAPI.contacts.getAll).toHaveBeenCalled());
 
     await userEvent.selectOptions(screen.getByLabelText(/contact type/i), 'Vendor');
-    await userEvent.selectOptions(await screen.findByLabelText(/partner type/i), '7');
+    await userEvent.selectOptions(await screen.findByLabelText(/partner organisation/i), '4');
     await userEvent.type(screen.getByLabelText(/^name/i), 'Partner Person');
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     await waitFor(() => expect(csrAPI.contacts.create).toHaveBeenCalled());
-    expect(csrAPI.contacts.create.mock.calls[0][0].partnerCategoryId).toBe(7);
+    expect(csrAPI.contacts.create.mock.calls[0][0]).not.toHaveProperty('partnerCategoryId');
   });
 
-  test('moving off partner clears the type rather than sending a refused pair', async () => {
+  test('a non-partner contact is saved without a partnerCategoryId key', async () => {
     csrAPI.contacts.create.mockResolvedValue({});
     render(<CSRContactFormPage />);
     await waitFor(() => expect(csrAPI.contacts.getAll).toHaveBeenCalled());
 
-    await userEvent.selectOptions(screen.getByLabelText(/contact type/i), 'Vendor');
-    await userEvent.selectOptions(await screen.findByLabelText(/partner type/i), '8');
     await userEvent.selectOptions(screen.getByLabelText(/contact type/i), 'Client');
     await userEvent.type(screen.getByLabelText(/^name/i), 'Client Person');
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
@@ -128,21 +124,53 @@ describe('creating a contact', () => {
     await waitFor(() => expect(csrAPI.contacts.create).toHaveBeenCalled());
     const payload = csrAPI.contacts.create.mock.calls[0][0];
     expect(payload.contactType).toBe('Client');
-    // null, not '' — the server field is an FK.
-    expect(payload.partnerCategoryId).toBeNull();
+    expect(payload).not.toHaveProperty('partnerCategoryId');
   });
 
-  test('a partner with no type recorded sends null, not an empty string', async () => {
-    csrAPI.contacts.create.mockResolvedValue({});
+  test("picking a partner shows the partner's own type, read-only", async () => {
     render(<CSRContactFormPage />);
-    await waitFor(() => expect(csrAPI.contacts.getAll).toHaveBeenCalled());
+    await waitFor(() => expect(csrAPI.partnerRecords.getAll).toHaveBeenCalled());
 
     await userEvent.selectOptions(screen.getByLabelText(/contact type/i), 'Vendor');
-    await userEvent.type(screen.getByLabelText(/^name/i), 'Untyped Partner');
-    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+    expect(screen.queryByText(/^Partner type:/)).toBeNull();
+    await userEvent.selectOptions(await screen.findByLabelText(/partner organisation/i), '4');
+    expect(await screen.findByText('Partner type: Life skill (set on the partner)')).toBeInTheDocument();
+  });
 
+  test('a partner with no CSR partner record says its type is not set yet', async () => {
+    render(<CSRContactFormPage />);
+    await waitFor(() => expect(csrAPI.partnerRecords.getAll).toHaveBeenCalled());
+
+    await userEvent.selectOptions(screen.getByLabelText(/contact type/i), 'Vendor');
+    await userEvent.selectOptions(await screen.findByLabelText(/partner organisation/i), '3');
+    expect(await screen.findByText('Partner type: not set on the partner yet')).toBeInTheDocument();
+  });
+
+  test('a partner record with an empty type says its type is not set yet', async () => {
+    csrAPI.partners.getAll.mockResolvedValue([{ id: 9, name: 'Untyped Trust' }]);
+    render(<CSRContactFormPage />);
+    await waitFor(() => expect(csrAPI.partnerRecords.getAll).toHaveBeenCalled());
+
+    await userEvent.selectOptions(screen.getByLabelText(/contact type/i), 'Vendor');
+    const picker = await screen.findByLabelText(/partner organisation/i);
+    await waitFor(() => expect(within(picker).getByRole('option', { name: 'Untyped Trust' })).toBeInTheDocument());
+    await userEvent.selectOptions(picker, '9');
+    expect(await screen.findByText('Partner type: not set on the partner yet')).toBeInTheDocument();
+  });
+
+  test('if the partner list cannot be read, no type line shows and saving still works', async () => {
+    csrAPI.partnerRecords.getAll.mockRejectedValue(new Error('500'));
+    csrAPI.contacts.create.mockResolvedValue({});
+    render(<CSRContactFormPage />);
+    await waitFor(() => expect(csrAPI.partnerRecords.getAll).toHaveBeenCalled());
+
+    await userEvent.selectOptions(screen.getByLabelText(/contact type/i), 'Vendor');
+    await userEvent.selectOptions(await screen.findByLabelText(/partner organisation/i), '4');
+    expect(screen.queryByText(/^Partner type:/)).toBeNull();
+    await userEvent.type(screen.getByLabelText(/^name/i), 'Partner Person');
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
     await waitFor(() => expect(csrAPI.contacts.create).toHaveBeenCalled());
-    expect(csrAPI.contacts.create.mock.calls[0][0].partnerCategoryId).toBeNull();
+    expect(csrAPI.contacts.create.mock.calls[0][0].partnerId).toBe(4);
   });
 
   test('the partner organisation is asked only for a partner, from the Admin partner list', async () => {
@@ -256,14 +284,32 @@ describe('editing a contact', () => {
     expect(await screen.findByDisplayValue('Aditi Rane')).toBeInTheDocument();
   });
 
-  test('an existing partner contact loads its recorded partner type', async () => {
+  test('editing a contact with a legacy partner type leaves it out of the save, so it is not cleared', async () => {
     csrAPI.contacts.getById.mockResolvedValue({
-      ...CONTACT, contactType: 'Vendor', partnerCategoryId: 8,
-      partnerCategoryName: 'Player Development',
+      ...CONTACT, contactType: 'Vendor', partnerId: 4, partnerName: 'Kick Academy',
+      partnerCategoryId: 8, partnerCategoryName: 'Player Development', partnerTypeFromPartner: false,
+    });
+    csrAPI.contacts.update.mockResolvedValue({});
+    render(<CSRContactFormPage />);
+    await screen.findByDisplayValue('Aditi Rane');
+
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+    await waitFor(() => expect(csrAPI.contacts.update).toHaveBeenCalled());
+    const payload = csrAPI.contacts.update.mock.calls[0][1];
+    expect(payload).not.toHaveProperty('partnerCategoryId');
+    expect(payload.partnerId).toBe(4);
+  });
+
+  test('a partner Admin has removed shows its name exactly as the server gives it', async () => {
+    csrAPI.contacts.getById.mockResolvedValue({
+      ...CONTACT, contactType: 'Vendor', partnerId: 99, partnerName: 'Old Partner Trust (removed in TTA)',
     });
     render(<CSRContactFormPage />);
     await screen.findByDisplayValue('Aditi Rane');
-    expect(screen.getByLabelText(/partner type/i)).toHaveValue('8');
+    const picker = screen.getByLabelText(/partner organisation/i);
+    await waitFor(() => expect(
+      within(picker).getByRole('option', { name: 'Old Partner Trust (removed in TTA)' }),
+    ).toBeInTheDocument());
   });
 
   test('a partner no longer in the Admin partner list stays selected, and is sent back', async () => {

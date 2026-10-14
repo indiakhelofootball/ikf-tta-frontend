@@ -48,6 +48,39 @@ test('shows the partner, what it delivered, and its TTA service type', async () 
   expect(screen.getByText('No contacts represent this partner yet.')).toBeInTheDocument();
 });
 
+test('a partner with no TTA vendor record says so, and no removed notice shows', async () => {
+  render(<CSRPartnerDetailPage />);
+  await screen.findByRole('heading', { name: 'A1 Classes' });
+  expect(screen.getByText('TTA vendor record')).toBeInTheDocument();
+  expect(screen.getByText('Not set up in TTA yet')).toBeInTheDocument();
+  expect(screen.queryByText(/removed in TTA Admin/)).not.toBeInTheDocument();
+});
+
+test('a linked TTA vendor record reads "Name · vendor type · City, State"', async () => {
+  csrAPI.partnerRecords.getById.mockResolvedValue({
+    id: 5, vendorNameId: 31, name: 'A1 Classes', serviceType: 'Coaching',
+    partnerCategoryId: 7, partnerCategoryName: 'Life Skills', isActive: true,
+    vendorId: 301,
+    vendorRecord: { id: 301, name: 'A1 Classes', vendorType: 'Coaching', city: 'Pune', state: 'Maharashtra' },
+  });
+  render(<CSRPartnerDetailPage />);
+  expect(await screen.findByText('A1 Classes · Coaching · Pune, Maharashtra')).toBeInTheDocument();
+  expect(screen.queryByText('Not set up in TTA yet')).not.toBeInTheDocument();
+});
+
+test('a vendor name removed in TTA Admin carries a notice', async () => {
+  csrAPI.partnerRecords.getById.mockResolvedValue({
+    id: 5, vendorNameId: 31, name: 'A1 Classes (removed in TTA)', vendorNameRemoved: true,
+    serviceType: 'Coaching', partnerCategoryId: 7, partnerCategoryName: 'Life Skills',
+    isActive: true, vendorId: null, vendorRecord: null,
+  });
+  render(<CSRPartnerDetailPage />);
+  expect(await screen.findByRole('heading', { name: 'A1 Classes (removed in TTA)' })).toBeInTheDocument();
+  expect(screen.getByText(
+    "This vendor name was removed in TTA Admin. Past activities keep it; it can't be picked for new ones.",
+  )).toBeInTheDocument();
+});
+
 test('an activity title opens its grant on the Activities tab', async () => {
   render(<CSRPartnerDetailPage />);
   fireEvent.click(await screen.findByRole('button', { name: 'Life skills camp' }));

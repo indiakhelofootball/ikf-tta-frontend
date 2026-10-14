@@ -12,6 +12,12 @@ import '../../styles/csrDesign.css';
 // same value CSRActivitiesPage sends.
 const ACTIVITIES_TAB = 2;
 
+const vendorRecordLabel = (r) => [
+  r.name || `#${r.id}`,
+  r.vendorType,
+  [r.city, r.state].filter(Boolean).join(', '),
+].filter(Boolean).join(' · ');
+
 const fmtDay = (value) => {
   if (!value) return '—';
   const d = new Date(value);
@@ -130,12 +136,24 @@ export default function CSRPartnerDetailPage() {
 
       {removeError && <Alert severity="error" className="pt-alert">{removeError}</Alert>}
 
+      {partner.vendorNameRemoved && (
+        <Alert severity="info" className="pt-alert">
+          This vendor name was removed in TTA Admin. Past activities keep it; it can&apos;t be picked for new ones.
+        </Alert>
+      )}
+
       <div className="panel pt-facts">
         <div className="dtl">
         <div className="facts nb">
           <div className="fc">
             <div className="fl">Partner type</div>
             <div className={`fv${partner.partnerCategoryName ? '' : ' em'}`}>{partner.partnerCategoryName || 'Not set'}</div>
+          </div>
+          <div className="fc">
+            <div className="fl">TTA vendor record</div>
+            <div className={`fv${partner.vendorRecord ? '' : ' em'}`}>
+              {partner.vendorRecord ? vendorRecordLabel(partner.vendorRecord) : 'Not set up in TTA yet'}
+            </div>
           </div>
           <div className="fc">
             <div className="fl">Status</div>

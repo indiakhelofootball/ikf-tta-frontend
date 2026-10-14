@@ -20,7 +20,7 @@ export default function CSRPartnersPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setPartners(asList(await csrAPI.partnerRecords.getAll()));
+      setPartners(asList(await csrAPI.partnerRecords.getAll({ limit: 1000 })));
       setError('');
     } catch (e) {
       setError(e.message || 'Could not load partners.');
