@@ -918,6 +918,26 @@ export default function ClientPortalPage({ source = funderSource, preview = null
     );
   }
 
+  const handleSignOut = () => {
+    // 1. Get slug from current brand state or localStorage
+    const clientSlug = brand?.slug || localStorage.getItem('tta_client_slug');
+    
+    // 2. Ensure localStorage remembers the slug for future visits
+    if (clientSlug) {
+      localStorage.setItem('tta_client_slug', clientSlug);
+    }
+
+    // 3. Clear auth tokens & session
+    logout();
+
+    // 4. Redirect directly to the branded login screen or CSR login
+    if (clientSlug) {
+      window.location.href = `/client/${clientSlug}/login`;
+    } else {
+      window.location.href = '/csr/login';
+    }
+  };
+
   return (
     <ThemeProvider theme={clientThemeFrom(brand)}>
     <div className="cportal" style={cssVars || undefined}>
@@ -943,7 +963,7 @@ export default function ClientPortalPage({ source = funderSource, preview = null
           <>
             <div className="cbar-actions">
               <Button className="cbar-btn" onClick={() => setPwOpen(true)}>Change password</Button>
-              <Button className="cbar-btn" onClick={logout}>Sign out</Button>
+              <Button className="cbar-btn" onClick={handleSignOut}>Sign out</Button>
             </div>
             {/* On a phone the two actions sit behind one menu, so the funder's
                 name keeps the whole bar instead of wrapping onto a second row. */}
@@ -958,7 +978,7 @@ export default function ClientPortalPage({ source = funderSource, preview = null
               </IconButton>
               <Menu anchorEl={menuAnchor} open={!!menuAnchor} onClose={() => setMenuAnchor(null)}>
                 <MenuItem onClick={() => { setMenuAnchor(null); setPwOpen(true); }}>Change password</MenuItem>
-                <MenuItem onClick={() => { setMenuAnchor(null); logout(); }}>Sign out</MenuItem>
+                <MenuItem onClick={() => { setMenuAnchor(null); handleSignOut(); }}>Sign out</MenuItem>
               </Menu>
             </div>
           </>
