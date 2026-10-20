@@ -196,3 +196,32 @@ describe('the row actions sit on their own line, and the table has a frame', () 
     expect(wires(courierSrc, '<TableCell colSpan={9} sx={{ textAlign')).toBe(true);
   });
 });
+
+describe('the shipment list keeps itself current while the page is open', () => {
+  test('shipments come through the app-wide change check', () => {
+    expect(wires(courierSrc, "useLiveUpdates('courier', {")).toBe(true);
+    expect(wires(courierSrc, 'await live.reload();')).toBe(true);
+  });
+
+  test('the old reload-on-return no longer drives the shipments', () => {
+    // It only fired after leaving and returning to the tab (ST1). The REP
+    // picker, which the change check does not cover, keeps it.
+    expect(wires(courierSrc, 'useRefetchOnFocus(loadReps);')).toBe(true);
+    expect(courierSrc.includes(normalise('loadData({ silent: true })'))).toBe(false);
+  });
+
+  test('what a reload brought is compared against the list on screen', () => {
+    expect(wires(courierSrc, 'markChanged(diffRows(shipmentsRef.current, rows))')).toBe(true);
+    expect(wires(courierSrc, 'if (background || highlight)')).toBe(true);
+  });
+
+  test('a fresh shipment is labelled in words, not by colour alone', () => {
+    expect(wires(courierSrc, 'const fresh = highlights[s.id];')).toBe(true);
+    expect(wires(courierSrc, '<Chip label={fresh} size="small"')).toBe(true);
+  });
+
+  test('the page says how current the list is, and offers a refresh', () => {
+    expect(wires(courierSrc, '<LiveStatus checkedAt={live.checkedAt} failed={live.failed}')).toBe(true);
+    expect(wires(courierSrc, 'await live.reload({ highlight: true });')).toBe(true);
+  });
+});
