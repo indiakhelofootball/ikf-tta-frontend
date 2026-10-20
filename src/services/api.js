@@ -1137,6 +1137,14 @@ export const courierAPI = {
 };
 
 // ============================================
+// CHANGES API — one small request answering "has anything changed?" for every
+// area an open screen shows. See src/hooks/useLiveUpdates.js.
+// ============================================
+export const changesAPI = {
+  get: async (areas) => apiService.request(`/changes/?areas=${encodeURIComponent(areas.join(','))}`),
+};
+
+// ============================================
 // REPORTS API
 // Each report has its own endpoint gated by its own grant key, so a user can
 // be given a single report without any operational-module access.

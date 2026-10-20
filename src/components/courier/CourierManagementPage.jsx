@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Box, Typography, Button, Stack, Chip, TextField, MenuItem,
   Dialog, DialogTitle, DialogContent, DialogActions, IconButton,
@@ -33,6 +33,12 @@ import {
 import { findRepIdForShipment, findRepLogoRefForShipment } from './courierRepLookup';
 import { assignmentOptionLines, assignmentSelectedLabel } from './courierAssignmentLabel';
 import useRefetchOnFocus from '../../hooks/useRefetchOnFocus';
+import useLiveUpdates from '../../hooks/useLiveUpdates';
+import { diffRows } from '../../utils/rowChanges';
+import LiveStatus from '../common/LiveStatus';
+
+// How long a shipment that arrived or changed in the background stays marked.
+const HIGHLIGHT_MS = 30 * 1000;
 
 const TSHIRT_ITEM_NAME = 'Volunteer Tshirts';
 
@@ -300,16 +306,61 @@ export default function CourierManagementPage() {
   // Now: shipments paint as soon as they land, and the REP picker fills in
   // behind them. Nothing stale is ever shown — the picker is simply not ready
   // yet and says so. That is progressive loading, not a cached read.
-  async function loadShipments({ silent = false } = {}) {
-    if (!silent) setLoading(true);
-    try {
+  //
+  // Shipments are kept current by the app-wide change check (useLiveUpdates):
+  // a colleague's new or edited shipment appears within one check interval
+  // without anyone leaving the tab, and is marked so it does not just appear
+  // unexplained. Open dialogs hold their own copies of what they edit, so a
+  // reload behind them changes nothing the user is typing.
+  const shipmentsRef = useRef(shipments);
+  shipmentsRef.current = shipments;
+  const [highlights, setHighlights] = useState({});
+  const [refreshing, setRefreshing] = useState(false);
+
+  function markChanged({ added, changed }) {
+    if (!added.size && !changed.size) return;
+    const stamp = {};
+    added.forEach(id => { stamp[id] = 'New'; });
+    changed.forEach(id => { stamp[id] = 'Updated'; });
+    setHighlights(prev => ({ ...prev, ...stamp }));
+    setTimeout(() => setHighlights(prev => {
+      const next = { ...prev };
+      Object.keys(stamp).forEach(id => { if (next[id] === stamp[id]) delete next[id]; });
+      return next;
+    }), HIGHLIGHT_MS);
+  }
+
+  const live = useLiveUpdates('courier', {
+    fetch: async () => {
       const data = await courierAPI.getAll(viewingDeleted ? { deleted: true } : {});
-      setShipments(Array.isArray(data) ? data : (data.results || []));
+      return Array.isArray(data) ? data : (data.results || []);
+    },
+    apply: (rows, { background, highlight }) => {
+      if (background || highlight) markChanged(diffRows(shipmentsRef.current, rows));
+      setShipments(rows);
       setAdminItems(getCourierItems());
+    },
+  });
+
+  async function loadShipments() {
+    setLoading(true);
+    try {
+      await live.reload();
     } catch {
-      if (!silent) setError('Failed to load shipments.');
+      setError('Failed to load shipments.');
     } finally {
-      if (!silent) setLoading(false);
+      setLoading(false);
+    }
+  }
+
+  async function refreshNow() {
+    setRefreshing(true);
+    try {
+      await live.reload({ highlight: true });
+    } catch {
+      // LiveStatus already says the list could not be refreshed.
+    } finally {
+      setRefreshing(false);
     }
   }
 
@@ -327,14 +378,12 @@ export default function CourierManagementPage() {
     }
   }
 
-  async function loadData({ silent = false } = {}) {
-    await Promise.all([loadShipments({ silent }), loadReps()]);
-  }
-
   // Reload when toggling between the live list and the Deleted (super-admin) view,
   // since those are two different server queries.
-  useEffect(() => { loadData(); }, [viewingDeleted]); // eslint-disable-line react-hooks/exhaustive-deps
-  useRefetchOnFocus(() => loadData({ silent: true }));
+  useEffect(() => { loadShipments(); loadReps(); }, [viewingDeleted]); // eslint-disable-line react-hooks/exhaustive-deps
+  // The REP picker is not part of the courier change check, so it keeps its
+  // reload on returning to the tab.
+  useRefetchOnFocus(loadReps);
 
   // Resolve the shipment's REP logo, then render the slip PDF. The lookup falls
   // back to the snapshot name when the assignment link has been nulled — see
@@ -625,6 +674,8 @@ export default function CourierManagementPage() {
           <Typography sx={{ fontSize: '0.85rem', color: '#64748b', mt: 0.5 }}>
             Track shipments dispatched to REPs across trial cities
           </Typography>
+          <LiveStatus checkedAt={live.checkedAt} failed={live.failed}
+            onRefresh={refreshNow} refreshing={refreshing} />
         </Box>
         {canEditCourier && (
           <Button variant="contained" startIcon={<AddIcon />} onClick={openNew}
@@ -709,11 +760,17 @@ export default function CourierManagementPage() {
               // wrapped so the pair stays together, and both carry the same
               // background so a flagged shipment tints as one block rather
               // than as a coloured row above a white one.
+              // A shipment that arrived or changed in the background carries a
+              // left bar and a New / Updated label for HIGHLIGHT_MS. The label
+              // says it in words; the bar is only there to catch the eye.
+              const fresh = highlights[s.id];
               const rowBg = flag?.level === 'error' ? '#fff7f7'
-                : flag?.level === 'warning' ? '#fffbeb' : '#fff';
+                : flag?.level === 'warning' ? '#fffbeb' : fresh ? '#f5f7ff' : '#fff';
+              const freshBar = fresh ? { '& > td:first-of-type': { boxShadow: 'inset 3px 0 0 #5B63D3' } } : {};
               return (
                 <React.Fragment key={s.id}>
-                <TableRow sx={{ bgcolor: rowBg, '& > td': { borderBottom: 'none', pb: 0.25 } }}>
+                <TableRow data-fresh={fresh || undefined}
+                  sx={{ bgcolor: rowBg, '& > td': { borderBottom: 'none', pb: 0.25 }, ...freshBar }}>
                   <TableCell sx={{ width: 28, pr: 0 }}>
                     {flag && (
                       <Tooltip title={flag.msg}>
@@ -721,7 +778,13 @@ export default function CourierManagementPage() {
                       </Tooltip>
                     )}
                   </TableCell>
-                  <TableCell sx={{ fontWeight: 600, fontSize: '0.82rem' }}>{s.snapRepName}</TableCell>
+                  <TableCell sx={{ fontWeight: 600, fontSize: '0.82rem' }}>
+                    {s.snapRepName}
+                    {fresh && (
+                      <Chip label={fresh} size="small"
+                        sx={{ ml: 0.75, height: 18, fontSize: '0.65rem', fontWeight: 700, bgcolor: '#e0e7ff', color: '#3730a3' }} />
+                    )}
+                  </TableCell>
                   <TableCell sx={{ fontSize: '0.82rem', color: '#475569' }}>{s.snapCity}, {s.snapState}</TableCell>
                   <TableCell>
                     {s.snapTrialDate ? (
@@ -776,7 +839,7 @@ export default function CourierManagementPage() {
                     line they need no horizontal scrolling at all, and the data
                     columns get the width back. */}
                 <TableRow
-                  sx={{ bgcolor: rowBg, '& > td': { borderBottom: '2px solid #eef2f7', pt: 0, pb: 1 } }}>
+                  sx={{ bgcolor: rowBg, '& > td': { borderBottom: '2px solid #eef2f7', pt: 0, pb: 1 }, ...freshBar }}>
                   <TableCell colSpan={9} sx={{ pl: 5 }}>
                     <Stack direction="row" gap={0.5} flexWrap="wrap" alignItems="center">
                       {viewingDeleted ? (
