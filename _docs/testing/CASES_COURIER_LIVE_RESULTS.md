@@ -1,7 +1,7 @@
 # Courier live updates: results (2026-10-21)
 
 Cases: `CASES_COURIER_LIVE.md`. Code: FE `fix/courier-live-fe` at `eb31962`,
-BE `fix/courier-live-be` at `845a3a6`.
+BE `fix/courier-live-be` at `79804e5`.
 
 Where it ran:
 
@@ -20,13 +20,13 @@ Where it ran:
 |---|---|
 | A. My own work (A1-A13) | All pass. No own change ever labelled New/Updated |
 | B. Colleague's work reaching open screens (B1-B11) | All pass, 0-16 s |
-| C. Two people on one shipment (C1-C4) | C1-C3 pass. **C4 fails: pre-existing bug, not this change** (below) |
+| C. Two people on one shipment (C1-C4) | All pass. C4 needed a fix to an older bug (below) |
 | D. Tabs, connection, login (D1-D8) | All pass |
 | E. Who may see it (E1-E5) | All pass |
 | F. Prod data and load (F1-F5) | All pass |
 | G. Rest of the app (G1-G5) | All pass |
 
-Browser run on the prod copy: 65 passed, 2 failed (both the C4 bug).
+Final browser run on the prod copy, with both fixes: **67 passed, 0 failed**. (Before the C4 fix: 65 passed, 2 failed, both C4.)
 
 ## Found and fixed during this testing
 
@@ -36,15 +36,16 @@ save; applied after it, the row showed its old state, labelled Updated, until
 the next check. Every save the page shows itself now drops that download first.
 Unit test reverse-checked: with the fix off it fails.
 
-## Found, not fixed (pre-existing, outside this change)
-
-**C4 - two shipments created at the same moment get the same reference number,
-and the second save fails with a 500.** `courier/models.py` `CourierCounter.next_ref`
+**C4 - two shipments created at the same moment got the same reference number,
+and the second save failed with a 500 (older bug; fixed BE `79804e5`, owner approved 10-21).** `courier/models.py` `CourierCounter.next_ref`
 reads `last_seq`, adds one and saves, with no lock. Seen twice: test data
 (`CR-2026-0129`) and prod copy (`CR-2026-0139`), `IntegrityError 1062 Duplicate
-entry ... for key 'courier_shipment.ref_number'`. The user sees a save error
-and has to save again. Fix: take the number under `select_for_update` inside a
-transaction. Waiting on the owner.
+entry ... for key 'courier_shipment.ref_number'`. The user saw a save error
+and had to save again. The counter row is now locked while a number is taken.
+`courier/test_ref_number.py` (MySQL only, real threads): before the fix 10 of 12
+simultaneous creates failed; after it all 12 save with distinct numbers, 5 runs
+out of 5, including the first shipments of a new year. In the browser on the
+prod copy: `CR-2026-0139` / `CR-2026-0140`, both 201.
 
 ## Evidence
 
@@ -68,8 +69,8 @@ transaction. Waiting on the owner.
 | D7 | Left the courier page: 0 checks in 32 s |
 | E2 | View-only: no New Shipment / Edit / Dispatch; live updates still arrive |
 | A6 | On prod data, Add All Items includes Volunteer Tshirts at qty 0 and Dispatch stays disabled until a reason is picked: unchanged behaviour |
-| G | No script errors in any browser; the only 500 was C4 |
-| G5 | FE 1,038/1,038 (4 suites time out only under full-suite load and pass alone, as before). BE unchanged since 845a3a6: courier 106/106 SQLite + MySQL; full 1,143 on both at 4736b08 |
+| G | No script errors and no server errors in any browser |
+| G5 | FE 1,038/1,038 (4 suites time out only under full-suite load and pass alone, as before). BE at 79804e5: 1,146/1,146 on MySQL 8.4; 1,146 on SQLite with the 2 MySQL-only race tests skipped |
 
 ## Not covered
 
