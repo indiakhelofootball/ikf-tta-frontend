@@ -105,7 +105,7 @@ export function resetLiveUpdatesForTests() {
  * fetch  – (opts) => Promise<data>: reads the list from the server. Throws on failure.
  * apply  – (data, opts) => void: puts the fetched list on screen.
  *
- * Returns { reload, checkedAt, failed }. reload(opts) fetches now; opts is
+ * Returns { reload, discardInFlight, checkedAt, failed }. reload(opts) fetches now; opts is
  * passed through to fetch and apply ({ background: true } for a reload the
  * check started). checkedAt is when the list was last confirmed current;
  * failed is true while the latest check or reload has not succeeded.
@@ -163,5 +163,11 @@ export default function useLiveUpdates(area, { fetch, apply }) {
 
   useRefetchOnFocus(() => reload({ background: true }).catch(() => {}));
 
-  return { reload, checkedAt, failed };
+  // A screen that puts its own save on screen calls this first. A reload
+  // already downloading was read before the save, and applying it would show
+  // the row as it was. Dropping it is safe: the version it would have recorded
+  // is not recorded, so the next check fetches again.
+  const discardInFlight = useCallback(() => { latest.current += 1; }, []);
+
+  return { reload, discardInFlight, checkedAt, failed };
 }

@@ -205,7 +205,8 @@ describe('the shipment list keeps itself current while the page is open', () => 
 
   test('the old reload-on-return no longer drives the shipments', () => {
     // It only fired after leaving and returning to the tab (ST1). The REP
-    // picker, which the change check does not cover, keeps it.
+    // picker, which the change check does not cover, keeps it; the shipments'
+    // own reload on return now lives in useLiveUpdates.
     expect(wires(courierSrc, 'useRefetchOnFocus(loadReps);')).toBe(true);
     expect(courierSrc.includes(normalise('loadData({ silent: true })'))).toBe(false);
   });
@@ -218,6 +219,15 @@ describe('the shipment list keeps itself current while the page is open', () => 
   test('a fresh shipment is labelled in words, not by colour alone', () => {
     expect(wires(courierSrc, 'const fresh = highlights[s.id];')).toBe(true);
     expect(wires(courierSrc, '<Chip label={fresh} size="small"')).toBe(true);
+  });
+
+  test('every save the page shows itself first drops a reload already downloading', () => {
+    // That download was read before the save; applied after it, it would show
+    // the user's own change as undone, marked Updated, until the next check.
+    const own = courierSrc.split(normalise('setShipments(prev =>')).length - 1;
+    const guarded = courierSrc.split(normalise('live.discardInFlight(); setShipments(prev =>')).length - 1;
+    expect(own).toBeGreaterThanOrEqual(8);
+    expect(guarded).toBe(own);
   });
 
   test('the page says how current the list is, and offers a refresh', () => {
