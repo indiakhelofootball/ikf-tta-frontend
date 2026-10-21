@@ -4,6 +4,13 @@
 // shows has changed (backend/changes.py), and a list is fetched again only when
 // its version moved. Becoming visible again checks at once.
 //
+// Returning to the tab also reloads the list outright, at most every 30 s,
+// exactly as screens did before the check existed (useRefetchOnFocus). The
+// check only sees what backend/changes.py watches; if a screen ever shows
+// something it misses, this reload still brings the edit in on return, so the
+// check can only make a screen fresher than before, never staler. Silent: the
+// list on screen stays until the new one replaces it.
+//
 // This is not stale-while-revalidate, which never-show-stale-data rules out:
 // nothing cached is ever shown. The timer only decides WHEN to fetch; what the
 // screen shows is always what was fetched for it.
@@ -19,6 +26,7 @@
 // the request asks for all of them at once.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { changesAPI } from '../services/api';
+import useRefetchOnFocus from './useRefetchOnFocus';
 
 export const CHECK_INTERVAL_MS = 15 * 1000;
 const MIN_GAP_MS = 2 * 1000;
@@ -152,6 +160,8 @@ export default function useLiveUpdates(area, { fetch, apply }) {
     },
     onFailure: () => setFailed(true),
   }), [area, reload]);
+
+  useRefetchOnFocus(() => reload({ background: true }).catch(() => {}));
 
   return { reload, checkedAt, failed };
 }

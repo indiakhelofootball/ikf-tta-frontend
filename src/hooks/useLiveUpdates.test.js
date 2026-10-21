@@ -114,8 +114,9 @@ test('stops checking while the tab is hidden, and checks at once on return', asy
   await act(() => result.current.reload());
   const before = changesAPI.get.mock.calls.length;
 
+  // Under 30 s away, so the return is a check only, not a full reload.
   await act(async () => setVisibility('hidden'));
-  await settle(CHECK_INTERVAL_MS * 4);
+  await settle(CHECK_INTERVAL_MS + 1000);
   expect(changesAPI.get).toHaveBeenCalledTimes(before);
 
   await act(async () => setVisibility('visible'));
@@ -187,4 +188,37 @@ test('a check does not start a second reload while one is running', async () => 
   expect(fetch).toHaveBeenCalledTimes(1);
 
   await act(async () => { slow.resolve([]); await pending; });
+});
+
+test('returning to the tab after 30 s reloads the list even when the version has not moved', async () => {
+  // The safety net: an edit the check does not watch still arrives on return,
+  // as it did before the check existed.
+  changesAPI.get.mockResolvedValue({ courier: 'v1' });
+  const fetch = jest.fn(async () => ['row']);
+  const apply = jest.fn();
+  const { result } = renderHook(() => useLiveUpdates('courier', { fetch, apply }));
+  await act(() => result.current.reload());
+
+  await act(async () => setVisibility('hidden'));
+  await settle(31 * 1000);
+  await act(async () => setVisibility('visible'));
+  await settle();
+
+  // Once: the check that also fires on return does not start a second reload.
+  expect(fetch).toHaveBeenCalledTimes(2);
+  expect(apply).toHaveBeenLastCalledWith(['row'], { background: true });
+});
+
+test('returning to the tab within 30 s does not reload the list', async () => {
+  changesAPI.get.mockResolvedValue({ courier: 'v1' });
+  const fetch = jest.fn(async () => []);
+  const { result } = renderHook(() => useLiveUpdates('courier', { fetch, apply: jest.fn() }));
+  await act(() => result.current.reload());
+
+  await act(async () => setVisibility('hidden'));
+  await settle(10 * 1000);
+  await act(async () => setVisibility('visible'));
+  await settle();
+
+  expect(fetch).toHaveBeenCalledTimes(1);
 });
