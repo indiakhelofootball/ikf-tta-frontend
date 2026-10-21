@@ -208,8 +208,6 @@ function PaymentRequestModal({
       );
     if (!vendor) return;
 
-    prefillAppliedForWoId.current = String(woId);
-
     const vendorId = vendor.id ?? vendor._id;
     const woRaw = prefillContext.workOrder;
 
@@ -223,6 +221,9 @@ function PaymentRequestModal({
       .getAll({ vendor: vendorId })
       .then((res) => {
         if (cancelled) return;
+        // Marked only once applied: a rerun while the lookup is in flight
+        // cancels it, so it must be free to ask again.
+        prefillAppliedForWoId.current = String(woId);
         const list = res.workOrders || [];
         const merged =
           list.find(
@@ -256,6 +257,7 @@ function PaymentRequestModal({
       })
       .catch(() => {
         if (cancelled) return;
+        prefillAppliedForWoId.current = String(woId);
         // API failed — use the prefill WO data we already have
         setVendorWOs([woRaw]);
         setSelectedWO(woRaw);
