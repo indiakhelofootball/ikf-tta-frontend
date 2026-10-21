@@ -222,3 +222,30 @@ test('returning to the tab within 30 s does not reload the list', async () => {
 
   expect(fetch).toHaveBeenCalledTimes(1);
 });
+
+test('a save made while a background reload is downloading is not overwritten by that older list', async () => {
+  changesAPI.get.mockResolvedValue({ courier: 'v1' });
+  const fetch = jest.fn(async () => ['before']);
+  const apply = jest.fn();
+  const { result } = renderHook(() => useLiveUpdates('courier', { fetch, apply }));
+  await act(() => result.current.reload());
+
+  // A colleague's change starts a background reload; its download is slow.
+  const slow = deferred();
+  fetch.mockImplementationOnce(() => slow.promise);
+  changesAPI.get.mockResolvedValue({ courier: 'v2' });
+  await settle(CHECK_INTERVAL_MS);
+  expect(fetch).toHaveBeenCalledTimes(2);
+
+  // The user saves; the page shows the server's answer for that row.
+  act(() => result.current.discardInFlight());
+  await act(async () => { slow.resolve(['downloaded before the save']); });
+  await settle();
+  expect(apply).not.toHaveBeenCalledWith(['downloaded before the save'], expect.anything());
+
+  // The next check still fetches, so the colleague's change is not lost.
+  fetch.mockResolvedValue(['after the save']);
+  changesAPI.get.mockResolvedValue({ courier: 'v3' });
+  await settle(CHECK_INTERVAL_MS);
+  expect(apply).toHaveBeenLastCalledWith(['after the save'], { background: true });
+});

@@ -311,7 +311,9 @@ export default function CourierManagementPage() {
   // a colleague's new or edited shipment appears within one check interval
   // without anyone leaving the tab, and is marked so it does not just appear
   // unexplained. Open dialogs hold their own copies of what they edit, so a
-  // reload behind them changes nothing the user is typing.
+  // reload behind them changes nothing the user is typing. Each save that puts
+  // its own result on screen calls live.discardInFlight() first, so a reload
+  // downloaded before the save cannot show the row as it was.
   const shipmentsRef = useRef(shipments);
   shipmentsRef.current = shipments;
   const [highlights, setHighlights] = useState({});
@@ -438,6 +440,7 @@ export default function CourierManagementPage() {
     if (!window.confirm(msg)) return;
     try {
       await courierAPI.delete(s.id);
+      live.discardInFlight();
       setShipments(prev => prev.filter(x => x.id !== s.id));
     } catch (e) {
       setError(e.message || 'Failed to delete shipment.');
@@ -447,6 +450,7 @@ export default function CourierManagementPage() {
   async function handleRestoreShipment(s) {
     try {
       await courierAPI.restore(s.id);
+      live.discardInFlight();
       setShipments(prev => prev.filter(x => x.id !== s.id));
     } catch (e) {
       setError(e.message || 'Failed to restore shipment.');
@@ -517,6 +521,7 @@ export default function CourierManagementPage() {
           items: itemsForSave,
           expectedUpdatedAt: loadedUpdatedAt,
         });
+        live.discardInFlight();
         setShipments(prev => prev.map(s => s.id === editingId ? updated : s));
       } else {
         const created = await courierAPI.create({
@@ -524,6 +529,7 @@ export default function CourierManagementPage() {
           notes: fNotes,
           items: itemsForSave.map((it, i) => ({ ...it, order: i })),
         });
+        live.discardInFlight();
         setShipments(prev => [created, ...prev]);
       }
       setModalOpen(false);
@@ -538,6 +544,7 @@ export default function CourierManagementPage() {
       if (code === 'stale_write' || code === 'missing_version_token') {
         try {
           const fresh = await courierAPI.getById(editingId);
+          live.discardInFlight();
           setShipments(prev => prev.map(s => s.id === editingId ? fresh : s));
           setFItems((fresh.items || []).map(i => ({ ...i })));
           setFNotes(fresh.notes || '');
@@ -595,6 +602,7 @@ export default function CourierManagementPage() {
         dispatchNotes: dispNotes,
         tshirtZeroReason: dispTshirtZero ? dispTshirtReason : '',
       });
+      live.discardInFlight();
       setShipments(prev => prev.map(s => s.id === dispId ? updated : s));
       setDispOpen(false);
     } catch (e) {
@@ -631,6 +639,7 @@ export default function CourierManagementPage() {
         deliveryNotes: deliveryNotes,
         deliveryImageUrl: deliveryImage,
       });
+      live.discardInFlight();
       setShipments(prev => prev.map(s => s.id === deliveryId ? updated : s));
       setDeliveryOpen(false);
     } catch (e) {
@@ -645,6 +654,7 @@ export default function CourierManagementPage() {
     setError('');
     try {
       const updated = await courierAPI.return(returnId, returnNote);
+      live.discardInFlight();
       setShipments(prev => prev.map(s => s.id === returnId ? updated : s));
       setReturnOpen(false);
       setReturnNote('');
