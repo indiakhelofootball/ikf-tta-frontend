@@ -253,7 +253,7 @@ describe('creating a contact', () => {
     expect(payload.contactType).toBe('Vendor');
     expect(payload.projectId).toBe(11);
     expect(mockNavigate).toHaveBeenCalledWith(
-      '/csr/11', { state: { saved: 'Contact added.' } },
+      '/csr/11', { state: { saved: 'Contact added.', tab: 1 } },
     );
   });
 
@@ -348,6 +348,6 @@ describe('editing a contact', () => {
 
     expect(csrAPI.contacts.create).not.toHaveBeenCalled();
     expect(csrAPI.contacts.update).not.toHaveBeenCalled();
-    expect(mockNavigate).toHaveBeenCalledWith('/csr/11', undefined);
+    expect(mockNavigate).toHaveBeenCalledWith('/csr/11', { state: { tab: 1 } });
   });
 });

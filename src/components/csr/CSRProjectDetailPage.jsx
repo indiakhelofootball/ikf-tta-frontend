@@ -14,7 +14,7 @@ import CSRProjectDetailView, { ttaProjectIdentity } from './CSRProjectDetailView
 import CSRContractManagementPage from './CSRContractManagementPage';
 import ConfirmDialog from '../common/ConfirmDialog';
 import { certificateFreezeState } from './csrContractRules';
-import { DEFAULT_REPORT_SORT, reportSortOptions, sortReports } from './reportSort';
+import { DEFAULT_REPORT_SORT, reportDisplayName, reportSortOptions, sortReports } from './reportSort';
 import ReportFileButton from './ReportFileButton';
 import {
   activityStatusPillClass, funderVisibilityLabel, needsDatePassedPrompt,
@@ -401,7 +401,7 @@ export default function CSRProjectDetailPage() {
 
   const deleteReport = (r) => setConfirmState({
     title: 'Delete report',
-    message: `Delete report "${r.fileName}"?`,
+    message: `Delete report "${reportDisplayName(r)}"?`,
     confirmLabel: 'Delete',
     onConfirm: async () => {
       try {
@@ -577,7 +577,7 @@ export default function CSRProjectDetailPage() {
 
   return (
     <Container className="csrx" maxWidth="lg" sx={{ py: 3 }}>
-      <Button startIcon={<BackIcon />} onClick={() => navigate('/csr')} sx={{ mb: 2 }}>
+      <Button startIcon={<BackIcon />} onClick={() => navigate('/csr/projects')} sx={{ mb: 2 }}>
         All Projects
       </Button>
       {/* Which TTA project this grant belongs to, above the grant's own name:
@@ -895,13 +895,13 @@ export default function CSRProjectDetailPage() {
                   <div
                     className="lgrid lgrid--greports lrow"
                     {...rowActivation(
-                      editable ? `Edit report ${r.fileName}` : null,
+                      editable ? `Edit report ${reportDisplayName(r)}` : null,
                       editable ? () => navigate(`/csr/reports/${r.id}/edit`) : null,
                     )}
                   >
                     <span className="fig nowrap">{fmtDay(r.createdAt)}</span>
                     <span className="t1wrap">
-                      <span className="t1">{r.fileName}</span>
+                      <span className="t1">{reportDisplayName(r)}</span>
                       <ReportFileButton report={r} onError={(m) => notify(m, 'error')} />
                       {r.fileUrl && (
                         <a
@@ -909,7 +909,7 @@ export default function CSRProjectDetailPage() {
                           target="_blank"
                           rel="noopener noreferrer"
                           title="Open document"
-                          aria-label={`Open document ${r.fileName}`}
+                          aria-label={`Open document ${reportDisplayName(r)}`}
                           onClick={(e) => e.stopPropagation()}
                         >
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
@@ -934,14 +934,14 @@ export default function CSRProjectDetailPage() {
                         <>
                           <button
                             type="button" className="ico g"
-                            aria-label={`Edit report ${r.fileName}`}
+                            aria-label={`Edit report ${reportDisplayName(r)}`}
                             onClick={(e) => { e.stopPropagation(); navigate(`/csr/reports/${r.id}/edit`); }}
                           >
                             <EditGlyph />
                           </button>
                           <button
                             type="button" className="ico r"
-                            aria-label={`Delete report ${r.fileName}`}
+                            aria-label={`Delete report ${reportDisplayName(r)}`}
                             onClick={(e) => { e.stopPropagation(); deleteReport(r); }}
                           >
                             <DeleteGlyph />

@@ -8,7 +8,9 @@ import { useAuth } from "./AuthContext";
 import { ROLES } from "./roles";
 import { expiredSessionLoginPath } from "./loginDoor";
 
-const GrantedRoute = ({ children, module, anyOf, edit = false, fallbackRoles = [ROLES.SUPER_ADMIN, ROLES.ADMIN] }) => {
+// denied: rendered instead of the /unauthorized redirect when an edit route is
+// refused to someone who can still view `viewModule` (defaults to `module`).
+const GrantedRoute = ({ children, module, anyOf, edit = false, denied = null, viewModule, fallbackRoles = [ROLES.SUPER_ADMIN, ROLES.ADMIN] }) => {
   const { user, isAuthenticated, perms, permsLoading } = useAuth();
 
   if (!isAuthenticated) {
@@ -49,7 +51,9 @@ const GrantedRoute = ({ children, module, anyOf, edit = false, fallbackRoles = [
     }
     const grant = perms.grants?.[module];
     const allowed = edit ? grant?.can_edit : grant?.can_view;
-    return allowed ? children : <Navigate to="/unauthorized" replace />;
+    if (allowed) return children;
+    if (edit && denied && perms.grants?.[viewModule || module]?.can_view) return denied;
+    return <Navigate to="/unauthorized" replace />;
   }
 
   // Grants fetch failed (offline, pre-backfill server) — preserve the legacy

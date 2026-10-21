@@ -85,7 +85,7 @@ describe('with a grant in the query param', () => {
     expect(payload.note).toBe('Pending clearance');
     expect(payload.projectId).toBe(11);
     expect(mockNavigate).toHaveBeenCalledWith(
-      '/csr/11', { state: { saved: 'Expense tagged.' } },
+      '/csr/11', { state: { saved: 'Expense tagged.', tab: 5 } },
     );
   });
 
@@ -157,7 +157,7 @@ describe('with a grant in the query param', () => {
     render(<CSRExpenseTagFormPage />);
     await userEvent.click(screen.getByRole('button', { name: /cancel/i }));
     expect(csrAPI.expenseTags.create).not.toHaveBeenCalled();
-    expect(mockNavigate).toHaveBeenCalledWith('/csr/11', undefined);
+    expect(mockNavigate).toHaveBeenCalledWith('/csr/11', { state: { tab: 5 } });
   });
 });
 

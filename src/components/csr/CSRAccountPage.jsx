@@ -21,8 +21,8 @@ const CSR_MODULES = [
   ['csr', 'CSR', 'Grants, activities, reports and contacts.'],
   ['csr_certificate', 'Utilisation certificate', 'Tag payments to a grant and issue the certificate.'],
   ['payments', 'Payments', 'The payment ledger a utilisation figure is drawn from.'],
-  ['workorders', 'Work orders', 'The signed contract a grant is measured against.'],
-  ['vendors', 'Partners', 'Delivery partners an activity can be assigned to.'],
+  ['workorders', 'Work orders', "TTA's work orders with its vendors. A grant's own contract is on its Contracts tab."],
+  ['vendors', 'Vendors', "TTA's vendor records. CSR partners are added on CSR's Partners page."],
 ];
 
 const initials = (name) =>

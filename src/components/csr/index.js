@@ -17,6 +17,7 @@ export { default as CSRPartnerDetailPage } from './CSRPartnerDetailPage';
 export { default as CSRClientsPage } from './CSRClientsPage';
 export { default as CSRBrandingPage } from './CSRBrandingPage';
 export { default as CSRAccountPage } from './CSRAccountPage';
+export { default as CSRNoEditAccess } from './CSRNoEditAccess';
 export { default as CSRProjectCard } from './CSRProjectCard';
 export { default as CSRProjectDetailView } from './CSRProjectDetailView';
 export { default as CSRContractManagementPage } from './CSRContractManagementPage';

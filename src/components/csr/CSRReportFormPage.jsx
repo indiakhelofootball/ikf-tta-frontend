@@ -15,6 +15,7 @@ import {
   reportFileError,
 } from '../../utils/reportFile';
 import { reportFormFunderLine } from './activityVisibility';
+import { GRANT_TABS, grantTabState } from './grantTabs';
 import '../../styles/csrDesign.css';
 
 // The kinds the 26 Aug review asked to distinguish: "what is the report of the
@@ -147,7 +148,7 @@ export default function CSRReportFormPage() {
   const leave = useCallback(
     (saved) => {
       if (!projectId) { navigate('/csr/projects'); return; }
-      navigate(`/csr/${projectId}`, saved ? { state: { saved } } : undefined);
+      navigate(`/csr/${projectId}`, grantTabState(GRANT_TABS.reports, saved));
     },
     [navigate, projectId],
   );
@@ -363,7 +364,7 @@ export default function CSRReportFormPage() {
                 aria-describedby="r-visible-help"
                 onChange={(e) => setForm((f) => ({ ...f, visibleToClient: e.target.checked }))}
               />
-              Visible to client
+              Visible to funder
             </label>
             <p id="r-visible-help" className="pform-help">
               The funder sees this title on their portal.

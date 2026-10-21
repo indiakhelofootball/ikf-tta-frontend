@@ -10,6 +10,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import { csrAPI } from '../../services/api';
+import { GRANT_TABS, grantTabState } from './grantTabs';
 import '../../styles/csrDesign.css';
 
 /** Today as `YYYY-MM-DD` in the operator's own timezone — `toISOString()` would
@@ -84,7 +85,7 @@ export default function CSRExpenseTagFormPage() {
   const leave = useCallback(
     (saved) => {
       if (!projectId) { navigate('/csr/projects'); return; }
-      navigate(`/csr/${projectId}`, saved ? { state: { saved } } : undefined);
+      navigate(`/csr/${projectId}`, grantTabState(GRANT_TABS.utilisation, saved));
     },
     [navigate, projectId],
   );

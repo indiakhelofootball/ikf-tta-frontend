@@ -13,6 +13,7 @@ import ActivityPhotos from './ActivityPhotos';
 import { activityFormFunderLine, defaultStatusFor, localToday } from './activityVisibility';
 import { getWorkshopNames, getTrainingProgrammes } from '../../utils/adminStorage';
 import useConfigVersion from '../../hooks/useConfigVersion';
+import { GRANT_TABS, grantTabState } from './grantTabs';
 import '../../styles/csrDesign.css';
 
 const STATUS_OPTIONS = ['Planned', 'Completed', 'Cancelled'];
@@ -263,7 +264,7 @@ export default function CSRActivityFormPage() {
   const leave = useCallback(
     (saved) => {
       if (!projectId) { navigate('/csr/projects'); return; }
-      navigate(`/csr/${projectId}`, saved ? { state: { saved } } : undefined);
+      navigate(`/csr/${projectId}`, grantTabState(GRANT_TABS.activities, saved));
     },
     [navigate, projectId],
   );

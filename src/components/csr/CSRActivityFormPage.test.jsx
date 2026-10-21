@@ -100,7 +100,7 @@ describe('creating an activity', () => {
     expect(payload.activityTypeId).toBe(10);
     expect(payload.projectId).toBe(11);
     expect(mockNavigate).toHaveBeenCalledWith(
-      '/csr/11', { state: { saved: 'Activity logged.' } },
+      '/csr/11', { state: { saved: 'Activity logged.', tab: 2 } },
     );
   });
 
@@ -255,7 +255,7 @@ describe('editing an activity', () => {
 
     expect(csrAPI.activities.create).not.toHaveBeenCalled();
     expect(csrAPI.activities.update).not.toHaveBeenCalled();
-    expect(mockNavigate).toHaveBeenCalledWith('/csr/11', undefined);
+    expect(mockNavigate).toHaveBeenCalledWith('/csr/11', { state: { tab: 2 } });
   });
 });
 
