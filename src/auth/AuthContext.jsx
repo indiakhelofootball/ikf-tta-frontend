@@ -220,7 +220,10 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const sessionTimerRef = useRef(null);
+
   const startSessionTimer = (duration) => {
+    if (sessionTimerRef.current) clearTimeout(sessionTimerRef.current);
     if (sessionTimeout) clearTimeout(sessionTimeout);
     
     const timeout = setTimeout(() => {
@@ -234,6 +237,7 @@ export const AuthProvider = ({ children }) => {
       redirectToLoginDoor(role);
     }, duration);
     
+    sessionTimerRef.current = timeout;
     setSessionTimeout(timeout);
   };
 
