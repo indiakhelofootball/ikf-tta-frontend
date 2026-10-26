@@ -15,7 +15,7 @@ jest.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
   useParams: () => ({ id: '11' }),
   // Land straight on the Utilisation tab, as a row opened from a log does.
-  useLocation: () => ({ pathname: '/csr/11', state: { tab: 5 } }),
+  useLocation: () => ({ pathname: '/csr/11', state: { tab: 6 } }),
 }), { virtual: true });
 
 jest.mock('../../services/api', () => ({

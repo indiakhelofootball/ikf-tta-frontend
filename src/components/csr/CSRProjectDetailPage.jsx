@@ -27,6 +27,7 @@ import useGrants from '../../auth/useGrants';
 import { downloadCertificatePdf } from '../../utils/certificatePdf';
 import { getUtilisationTypes } from '../../utils/adminStorage';
 import useConfigVersion from '../../hooks/useConfigVersion';
+import { GRANT_TABS } from './grantTabs';
 
 // The record lists on this page are the module's coloured table (.twrap /
 // .lgrid / .lrow), the same one every other CSR screen uses — the owner's
@@ -328,10 +329,9 @@ export default function CSRProjectDetailPage() {
   // A row opened from the cross-grant Activities/Reports log (CSRActivitiesPage,
   // CSRReportsPage) arrives with the tab it belongs to in navigation state, so
   // "open" lands you on the record instead of back on the Overview tab.
-  const athletesTabIdx = canViewCert ? 6 : 5;
   const [tab, setTab] = useState(() => {
     const requested = location.state?.tab;
-    if (requested === 'athletes') return canViewCert ? 6 : 5;
+    if (requested === 'athletes') return GRANT_TABS.athletes;
     return typeof requested === 'number' ? requested : 0;
   });
   const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
@@ -754,8 +754,8 @@ export default function CSRProjectDetailPage() {
         <Tab label={tabCount('Activities', activities, listFailed.activities)} />
         <Tab label={tabCount('Reports', reports, listFailed.reports)} />
         <Tab label="Contracts" />
-        {canViewCert && <Tab label="Utilisation" />}
         <Tab label={tabCount('Athletes', athletes, listFailed.athletes)} />
+        {canViewCert && <Tab label="Utilisation" />}
       </Tabs>
 
       {tab === 0 && (
@@ -1111,7 +1111,7 @@ export default function CSRProjectDetailPage() {
 
       {tab === 4 && <CSRContractManagementPage projectId={id} />}
 
-      {tab === 5 && canViewCert && (
+      {tab === GRANT_TABS.utilisation && canViewCert && (
         <Box>
           {/* The certificate type, under the Utilisation heading: «type लिख दो
               इसके नीचे» (26 Aug review, 19:53), resolved on 3 Sep as the type of
@@ -1282,7 +1282,7 @@ export default function CSRProjectDetailPage() {
         </Box>
       )}
 
-      {tab === athletesTabIdx && (
+      {tab === GRANT_TABS.athletes && (
         <Box>
           <Stack direction="row" spacing={1} sx={{ mb: 2, justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography variant="body2" color="text.secondary">

@@ -22,6 +22,7 @@ jest.mock('../../services/api', () => ({
     contacts: { getAll: jest.fn() },
     activityTypes: { getAll: jest.fn() },
     expenseTags: { getAll: jest.fn() },
+    athletes: { getAll: jest.fn().mockResolvedValue([]) },
   },
 }));
 

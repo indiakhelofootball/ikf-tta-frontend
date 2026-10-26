@@ -7,7 +7,8 @@ export const GRANT_TABS = {
   activities: 2,
   reports: 3,
   contracts: 4,
-  utilisation: 5,
+  athletes: 5,
+  utilisation: 6,
 };
 
 // Back to the grant, on the tab the record lives on, carrying the save message
