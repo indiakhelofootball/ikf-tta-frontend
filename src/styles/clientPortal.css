@@ -454,3 +454,120 @@ html:has(.cportal) .MuiDialog-root :focus-visible{outline-color:#243040}
 .cportal .bprev-body .ctrack{width:100%}
 .cportal .bprev-h{font-family:var(--serif);font-size:22px;color:var(--ink)}
 .cportal .bprev-btn{margin-top:10px;pointer-events:none}
+
+/* ---- Multi-year & Multi-project switcher ------------------------------ */
+.cportal .cfy-switcher{margin:0 0 16px}
+.cportal .cfy-bar{
+  display:inline-flex;align-items:center;background:var(--card);
+  border:1px solid var(--line);border-radius:24px;padding:3px;gap:2px;
+  box-shadow:0 1px 3px rgba(0,0,0,.04);
+}
+.cportal .cfy-pill{
+  appearance:none;background:transparent;border:0;font:inherit;
+  font-size:12.5px;font-weight:600;color:var(--soft);
+  padding:6px 14px;border-radius:20px;cursor:pointer;
+  transition:all .15s ease;
+}
+.cportal .cfy-pill:hover{color:var(--ink);background:var(--line-soft)}
+.cportal .cfy-pill.on{
+  background:var(--brand);color:#fff;box-shadow:0 1px 4px rgba(0,0,0,.15);
+}
+.cportal .cfy-more{font-size:12px}
+.cportal .cproj-chips{
+  display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;
+}
+.cportal .cproj-chip{
+  appearance:none;background:var(--card);border:1px solid var(--line);
+  font:inherit;font-size:12px;font-weight:500;color:var(--soft);
+  padding:5px 12px;border-radius:16px;cursor:pointer;
+  transition:all .15s ease;
+}
+.cportal .cproj-chip:hover{border-color:var(--brand-text);color:var(--ink)}
+.cportal .cproj-chip.on{
+  background:var(--brand-wash);border-color:var(--brand);
+  color:var(--brand-text);font-weight:600;
+}
+
+/* ---- 4 Stat Summary Cards on Overview --------------------------------- */
+.cportal .cstat-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));
+  gap:12px;margin:18px 0 24px;
+}
+.cportal .cstat-card{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  padding:16px;display:flex;flex-direction:column;justify-content:space-between;
+  min-height:98px;box-shadow:0 1px 2px rgba(0,0,0,.02);
+}
+.cportal .cstat-lbl{
+  font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:4px;
+}
+.cportal .cstat-val{
+  font-family:var(--serif);font-size:26px;font-weight:400;color:var(--ink);
+  line-height:1.15;letter-spacing:-.01em;
+}
+.cportal .cstat-val-sm{font-family:var(--sans);font-size:18px;font-weight:600}
+.cportal .cstat-sub{
+  display:flex;align-items:center;gap:8px;margin-top:8px;
+  font-size:12px;color:var(--soft);
+}
+.cportal .cstat-ellipsis{
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.cportal .cstat-tag{
+  font-size:11px;font-weight:600;padding:2px 7px;border-radius:4px;
+  background:var(--line-soft);color:var(--soft);
+}
+.cportal .cbtn-link{
+  appearance:none;background:none;border:0;padding:0;font:inherit;
+  font-size:12px;font-weight:600;color:var(--brand-text);cursor:pointer;
+  text-decoration:underline;
+}
+
+/* ---- Athletes Tab ----------------------------------------------------- */
+.cportal .cathlete-filter-bar{
+  display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;
+  gap:12px;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--line-soft);
+}
+.cportal .csearch-input{
+  flex:1 1 240px;max-width:380px;height:38px;padding:0 12px;
+  font:inherit;font-size:13.5px;color:var(--ink);background:var(--pg);
+  border:1px solid var(--line);border-radius:8px;outline:none;
+}
+.cportal .csearch-input:focus{
+  border-color:var(--brand);background:#fff;
+}
+.cportal .cfilter-pills{display:flex;flex-wrap:wrap;gap:6px}
+.cportal .cfilter-pill{
+  appearance:none;background:transparent;border:1px solid var(--line);
+  border-radius:16px;padding:4px 12px;font:inherit;font-size:12px;
+  font-weight:500;color:var(--soft);cursor:pointer;transition:all .15s ease;
+}
+.cportal .cfilter-pill:hover{border-color:var(--muted);color:var(--ink)}
+.cportal .cfilter-pill.on{
+  background:var(--brand);border-color:var(--brand);color:#fff;font-weight:600;
+}
+.cportal .cathletes-table-wrap{
+  overflow-x:auto;margin:0 -18px;padding:0 18px;
+}
+.cportal .cathletes-table{
+  width:100%;border-collapse:collapse;font-size:13.5px;
+}
+.cportal .cathletes-table th{
+  text-align:left;font-size:11px;font-weight:600;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--muted);padding:10px 12px;
+  border-bottom:1px solid var(--line);white-space:nowrap;
+}
+.cportal .cathletes-table td{
+  padding:12px;border-bottom:1px solid var(--line-soft);
+  vertical-align:middle;color:var(--ink);
+}
+.cportal .cathletes-table tr:hover td{background:var(--line-soft)}
+.cportal .cath-num{font-weight:600;color:var(--muted);white-space:nowrap}
+.cportal .cath-name{display:flex;flex-direction:column;gap:2px}
+.cportal .cpos-badge{
+  display:inline-block;padding:2px 8px;border-radius:4px;
+  font-size:11px;font-weight:600;background:var(--brand-wash);color:var(--brand-text);
+  white-space:nowrap;
+}
+.cportal .cpill.warn{background:#FEF3C7;color:#92400E}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { ThemeProvider } from '@mui/material/styles';
 import { Button, CircularProgress, IconButton, Menu, MenuItem } from '@mui/material';
 import { Download as DownloadIcon, Menu as MenuIcon } from '@mui/icons-material';
@@ -16,12 +16,13 @@ import { grantProgress, monthStrip, placesReached, activityPlace, latestFirst, a
 import '../../styles/clientPortal.css';
 import ClientChangePasswordDialog from './ClientChangePasswordDialog';
 
-// The five tabs, keyed by the word that goes in the URL hash. The hash is the
+// The six tabs, keyed by the word that goes in the URL hash. The hash is the
 // tab's address: a funder who reloads on Reports, or presses Back, stays where
 // they were instead of being thrown to the landing tab.
 const TABS = [
   { key: 'project', label: () => 'Overview' },
   { key: 'activities', label: (c) => `Activities (${c.activities})` },
+  { key: 'athletes', label: (c) => `Athletes (${formatCount(c.athletes)})` },
   { key: 'reports', label: (c) => `Reports (${formatCount(c.reports)})` },
   { key: 'deliverables', label: (c) => `Deliverables (${formatCount(c.deliverables)})` },
   { key: 'certificate', label: () => 'Certificate' },
@@ -37,6 +38,21 @@ const deliverablePercent = (d) => {
   const target = Number(d.targetCount) || 0;
   if (target <= 0) return null;
   return Math.min(100, Math.round(((Number(d.completedCount) || 0) / target) * 100));
+};
+
+// Helper to determine the Financial Year string (e.g. "FY 2026-27")
+const getProjectFY = (p) => {
+  if (!p) return 'General';
+  if (p.financialYear) {
+    return p.financialYear.startsWith('FY') ? p.financialYear : `FY ${p.financialYear}`;
+  }
+  if (!p.startDate) return 'General';
+  const d = new Date(p.startDate);
+  if (isNaN(d.getTime())) return 'General';
+  const y = d.getFullYear();
+  const m = d.getMonth() + 1;
+  const startY = m >= 4 ? y : y - 1;
+  return `FY ${startY}-${String(startY + 1).slice(-2)}`;
 };
 
 // A funder whose login has no grant linked gets 403 with code "no_project" from
@@ -61,22 +77,33 @@ export const asList = (d) => (Array.isArray(d) ? d : d?.results || []);
 
 // Where the portal's data comes from. The funder's own portal reads the
 // /api/client/ endpoints; the staff preview (FunderPreviewPage) passes its own
-// source with the same five calls, so both render through this one page.
+// source with the same calls, so both render through this one page.
 export const funderSource = {
-  branding: () => clientAPI.myBranding(),
-  data: async () => {
-    const [p, acts, reps, dels] = await Promise.all([
-      clientAPI.project(), clientAPI.activities(), clientAPI.reports(),
-      clientAPI.deliverables(),
-    ]);
+  branding: (projectId) => clientAPI.myBranding(projectId),
+  data: async (projectId, includeProjects = true) => {
+    const fetchCalls = [
+      clientAPI.activities(projectId),
+      clientAPI.reports(projectId),
+      clientAPI.deliverables(projectId),
+      clientAPI.athletes ? clientAPI.athletes(projectId) : Promise.resolve([]),
+    ];
+    if (includeProjects) {
+      fetchCalls.unshift(clientAPI.project(projectId));
+    }
+    const results = await Promise.all(fetchCalls);
+    const p = includeProjects ? results.shift() : null;
+    const [acts, reps, dels, aths] = results;
+    const projects = p ? asList(p) : null;
     return {
-      project: asList(p)[0] || null,
+      projects,
+      project: projects ? ((projectId ? projects.find((x) => x.id === projectId) : null) || projects[0] || null) : null,
       activities: asList(acts),
       reports: asList(reps),
       deliverables: asList(dels),
+      athletes: asList(aths),
     };
   },
-  certificate: () => clientAPI.certificate(),
+  certificate: (projectId) => clientAPI.certificate(projectId),
   activityPhoto: (activityId, photoId, version) => clientAPI.activityPhoto(activityId, photoId, version),
   reportFile: (reportId) => clientAPI.reportFile(reportId),
 };
@@ -84,11 +111,6 @@ export const funderSource = {
 // One deliverable as a row. The same row on the landing tab and on the
 // Deliverables tab, so the two cannot drift apart; `detailed` adds the due
 // date and the stored status.
-//
-// The stored status is shown exactly as recorded — a label is a product
-// decision. What the row adds is the arithmetic: completed above target is
-// shown as '318 of 300' with a note, and the bar stops at full rather than
-// overflowing its track.
 function DeliverableRow({ d, detailed }) {
   const percent = deliverablePercent(d);
   const target = Number(d.targetCount) || 0;
@@ -181,11 +203,6 @@ function IkfMark() {
   );
 }
 
-// The photos the Overview shows: the first photo of the latest activity that has
-// one (the large photo), and the first photo of each of the three latest
-// activities (the tiles). Photos sit behind the funder's login, so each is
-// fetched with the token and shown from a local object URL, released when the
-// page no longer needs it. A photo that fails to load is simply not shown.
 function useOverviewPhotos(activities, enabled, source) {
   const [urls, setUrls] = useState({});
   const recent = latestFirst(activities, activityDate);
@@ -213,7 +230,6 @@ function useOverviewPhotos(activities, enabled, source) {
         .catch(() => {});
     });
     return () => { active = false; made.forEach((u) => URL.revokeObjectURL(u)); setUrls({}); };
-    // `wanted` is derived from `key`; the key is the dependency that matters.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, key, source]);
 
@@ -231,18 +247,21 @@ function EmptyPanel({ title, children }) {
   );
 }
 
-// `source` is where the data comes from (funderSource unless a preview passes
-// its own). `preview`, when set, is the staff "Preview as funder" view: it
-// shows a banner with a Back button and leaves out the funder's own account
-// controls, since the person looking is not that funder.
 export default function ClientPortalPage({ source = funderSource, preview = null }) {
   const { logout } = useAuth();
+  const [allProjects, setAllProjects] = useState([]);
+  const [selectedProjectId, setSelectedProjectId] = useState(null);
   const [project, setProject] = useState(null);
   const [activities, setActivities] = useState([]);
   const [reports, setReports] = useState([]);
   const [fileBusy, setFileBusy] = useState(null);
   const [fileErrors, setFileErrors] = useState({});
   const [deliverables, setDeliverables] = useState([]);
+  const [athletes, setAthletes] = useState([]);
+  const [athleteSearch, setAthleteSearch] = useState('');
+  const [athleteFilter, setAthleteFilter] = useState('all');
+  const [fyMenuAnchor, setFyMenuAnchor] = useState(null);
+
   const [brand, setBrand] = useState(null);
   const [cert, setCert] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -256,18 +275,18 @@ export default function ClientPortalPage({ source = funderSource, preview = null
   const [logoBroken, setLogoBroken] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState(null);
   const tabRefs = useRef({});
-  // Every load, shown or silent, takes a number; only the newest may write
-  // to the page, so a slow earlier answer can never overwrite a later one.
+
   const loadSeq = useRef(0);
   const certSeq = useRef(0);
   const mounted = useRef(true);
-  // The funder sees Planned and Completed activities (owner decision D-016),
-  // but only Completed ones are delivered work: the Overview and its photos
-  // are built from these alone. The Activities tab lists both, split (D-018).
+  const selectedProjectIdRef = useRef(selectedProjectId);
+
+  useEffect(() => {
+    selectedProjectIdRef.current = selectedProjectId;
+  }, [selectedProjectId]);
+
   const delivered = activities.filter((a) => a.status === 'Completed');
   const upcoming = activities.filter((a) => a.status === 'Planned' && !a.datePassed);
-  // These two arrive only when the grant's "Show cancelled and overdue
-  // activities to the funder" switch is on (D-018); otherwise both are empty.
   const awaiting = activities.filter((a) => a.status === 'Planned' && a.datePassed);
   const cancelled = activities.filter((a) => a.status === 'Cancelled');
   const activityCount = formatActivityCount(delivered.length, upcoming.length, {
@@ -280,13 +299,59 @@ export default function ClientPortalPage({ source = funderSource, preview = null
     return () => { mounted.current = false; };
   }, []);
 
-  const applyData = useCallback((d) => {
-    setProject(d.project);
-    setActivities(d.activities);
-    setReports(d.reports);
-    setDeliverables(d.deliverables);
+  const applyData = useCallback((d, preserveProjects = false) => {
+    if (!preserveProjects && d.projects) {
+      setAllProjects(d.projects);
+    }
+    if (d.project) {
+      setProject(d.project);
+      if (!selectedProjectIdRef.current) {
+        setSelectedProjectId(d.project.id);
+      }
+    }
+    setActivities(d.activities || []);
+    setReports(d.reports || []);
+    setDeliverables(d.deliverables || []);
+    setAthletes(d.athletes || []);
     setUpdatedAt(new Date());
   }, []);
+
+  // Project switch handler for multi-year selection — does NOT re-fetch projects catalog!
+  const handleSelectProject = useCallback(async (pid) => {
+    if (!pid || pid === selectedProjectIdRef.current) return;
+    selectedProjectIdRef.current = pid;
+    setSelectedProjectId(pid);
+    const matched = allProjects.find((p) => p.id === pid);
+    if (matched) {
+      setProject(matched);
+    }
+    setAthleteSearch(''); // Reset athlete search filter for the newly selected project
+    const seq = ++loadSeq.current;
+    const current = () => mounted.current && seq === loadSeq.current;
+    setLoading(true);
+    try {
+      source.branding(pid)
+        .then((b) => { if (current()) setBrand(b && b.slug ? b : null); })
+        .catch(() => {});
+      const d = await source.data(pid, true);
+      if (!current()) return;
+      applyData({ ...d, project: matched || d.project }, true);
+      setFailed(false);
+      setNoGrant(false);
+    } catch (e) {
+      if (!current()) return;
+      if (isNoGrant(e)) setNoGrant(true);
+      else setFailed(true);
+    } finally {
+      if (current()) setLoading(false);
+    }
+
+    const cseq = ++certSeq.current;
+    setCert(null);
+    source.certificate(pid)
+      .then((c) => { if (mounted.current && cseq === certSeq.current) setCert(c); })
+      .catch(() => { if (mounted.current && cseq === certSeq.current) setCert({ available: false, reason: 'error' }); });
+  }, [source, applyData, allProjects]);
 
   useEffect(() => {
     let active = true;
@@ -297,23 +362,16 @@ export default function ClientPortalPage({ source = funderSource, preview = null
     setNoGrant(false);
     (async () => {
       try {
-        // Branding is fetched FIRST and on its own, not inside the data call
-        // below. It decides the funder's colours and logo -- the one thing on
-        // this page whose job is to look like it was made for them -- and
-        // bundling it with four data calls meant the brand could not paint
-        // until the slowest query returned.
-        source.branding()
+        const pid = selectedProjectId;
+        source.branding(pid)
           .then((b) => { if (current()) setBrand(b && b.slug ? b : null); })
-          .catch(() => { /* unbranded is a valid state; the default theme holds */ });
+          .catch(() => {});
 
-        const d = await source.data();
+        // Initial mount loads projects list
+        const d = await source.data(pid, true);
         if (!current()) return;
         applyData(d);
       } catch (e) {
-        // The raw message is never shown. api.js writes for developers — a 500
-        // reads "check Django logs ... REACT_APP_API_URL" — and a funder can do
-        // nothing with that except lose confidence. They get one sentence and a
-        // Retry that re-runs this whole load.
         if (!current()) return;
         if (isNoGrant(e)) setNoGrant(true);
         else setFailed(true);
@@ -324,46 +382,39 @@ export default function ClientPortalPage({ source = funderSource, preview = null
     return () => { active = false; };
   }, [attempt, source, applyData]);
 
-  // The certificate is fetched on its own for the same reason branding is: it
-  // is behind a tab, nothing above the fold waits on it, and a failure here
-  // must not blank the whole portal. Its own effect so the tab's Try again
-  // re-fetches the certificate alone; the page-level Retry still re-runs it.
   useEffect(() => {
     let active = true;
     const seq = ++certSeq.current;
     const current = () => active && seq === certSeq.current;
     setCert(null);
-    source.certificate()
+    source.certificate(selectedProjectId)
       .then((c) => { if (current()) setCert(c); })
       .catch(() => { if (current()) setCert({ available: false, reason: 'error' }); });
     return () => { active = false; };
   }, [attempt, certAttempt, source]);
 
-  // Coming back to the tab re-checks everything quietly (D-018): no spinner,
-  // nothing cleared while it runs, and a failure leaves what is on screen as
-  // it was. The hook keeps at least 30 seconds between checks.
   useRefetchOnFocus(() => {
     if (loading) return;
+    const pid = selectedProjectIdRef.current;
     const seq = ++loadSeq.current;
     const current = () => mounted.current && seq === loadSeq.current;
-    source.branding()
+    source.branding(pid)
       .then((b) => { if (current()) setBrand(b && b.slug ? b : null); })
       .catch(() => {});
-    source.data()
+    source.data(pid, false)
       .then((d) => {
         if (!current()) return;
-        applyData(d);
+        applyData(d, true);
         setFailed(false);
         setNoGrant(false);
       })
       .catch(() => {});
     const cseq = ++certSeq.current;
-    source.certificate()
+    source.certificate(pid)
       .then((c) => { if (mounted.current && cseq === certSeq.current) setCert(c); })
       .catch(() => {});
   });
 
-  // Back, Forward and a hand-edited hash all arrive here.
   useEffect(() => {
     const onHash = () => setTab(tabFromHash());
     window.addEventListener('hashchange', onHash);
@@ -379,8 +430,6 @@ export default function ClientPortalPage({ source = funderSource, preview = null
     return () => { document.title = previous; };
   }, [brand?.displayName, project?.name]);
 
-  // On a phone the tab row scrolls sideways; a tab chosen by hash (a reload on
-  // #certificate) must be brought into view, not left past the edge.
   useEffect(() => {
     tabRefs.current[tab]?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
   }, [tab, loading]);
@@ -390,9 +439,6 @@ export default function ClientPortalPage({ source = funderSource, preview = null
     if (window.location.hash !== `#${key}`) window.location.hash = key;
   }, []);
 
-  // WAI-ARIA tabs with automatic activation: arrows move between tabs and
-  // select as they go; Home and End jump to the ends. Only the selected tab is
-  // in the Tab order (roving tabindex), so Tab leaves the row in one press.
   const onTabKeyDown = (e) => {
     const i = TAB_KEYS.indexOf(tab);
     let next = null;
@@ -406,24 +452,36 @@ export default function ClientPortalPage({ source = funderSource, preview = null
     tabRefs.current[next]?.focus();
   };
 
-  // The funder's own colour drives every accent below, through CSS variables.
-  // Only a real #RRGGBB is accepted; anything else leaves the stylesheet's
-  // graphite in place, never a borrowed brand and never CSS's idea of 'blue'.
   const cssVars = brandCssVars(brand?.primaryColor);
   const closed = project?.status === 'Closed';
   const counts = {
-    activities: activityCount, reports: reports.length, deliverables: deliverables.length,
+    activities: activityCount,
+    reports: reports.length,
+    deliverables: deliverables.length,
+    athletes: athletes.length,
   };
 
-  // The Overview is written as a programme report for the funder, read top to
-  // bottom: what was delivered, where and when, the latest from the field, the
-  // latest reports. A CSR head lifts lines from it into their own board report,
-  // so it states facts in sentences rather than as a dashboard.
-  //
-  // NEVER SUM ACROSS UNITS. 26 trials and 120 coaches is not 146 of anything.
-  // Each deliverable keeps its own line; months and places count activities,
-  // which are one kind of thing. No utilisation figure appears: financials are
-  // excluded from the funder payload by isolation policy.
+  // Group projects by Financial Year
+  const fyGroups = useMemo(() => {
+    const map = new Map();
+    (allProjects || []).forEach((p) => {
+      const fy = getProjectFY(p);
+      if (!map.has(fy)) map.set(fy, []);
+      map.get(fy).push(p);
+    });
+    return Array.from(map.entries())
+      .map(([fy, prjs]) => ({
+        fy,
+        projects: prjs.sort((a, b) => (b.startDate || '').localeCompare(a.startDate || '')),
+      }))
+      .sort((a, b) => b.fy.localeCompare(a.fy));
+  }, [allProjects]);
+
+  const currentFY = project ? getProjectFY(project) : (fyGroups[0]?.fy || 'General');
+  const topFYs = fyGroups.slice(0, 3);
+  const moreFYs = fyGroups.slice(3);
+  const projectsInActiveFY = fyGroups.find((g) => g.fy === currentFY)?.projects || [];
+
   const renderProject = () => {
     const progress = grantProgress(project.startDate, project.endDate);
     const months = monthStrip(project.startDate, project.endDate, delivered);
@@ -436,9 +494,70 @@ export default function ClientPortalPage({ source = funderSource, preview = null
         : progress.state === 'upcoming' ? `Starts ${formatDate(project.startDate)}`
           : `Ended ${formatDate(project.endDate)}`;
 
+    // Realistic athlete count: check athletes list, then project deliverable count, fallback to 0 (no hardcoded 840)
+    const athleteDisplayCount = athletes.length > 0
+      ? formatCount(athletes.length)
+      : (project.athletesCount != null ? formatCount(project.athletesCount) : '0');
+
     return (
       <article className="creport">
         {project.description && <p className="cdek">{project.description}</p>}
+
+        {/* 4 Summary Stat Cards */}
+        <div className="cstat-grid">
+          <div className="cstat-card">
+            <div className="cstat-lbl">Total Grant Amount</div>
+            <div className="cstat-val cnum">{formatRupees(project.sanctionedAmount)}</div>
+            <div className="cstat-sub">
+              <span className="cpill ok">Sanctioned</span>
+              {project.season && <span className="cstat-tag">{project.season}</span>}
+            </div>
+          </div>
+
+          <div className="cstat-card">
+            <div className="cstat-lbl">Athletes Scouted</div>
+            <div className="cstat-val cnum">{athleteDisplayCount}</div>
+            <div className="cstat-sub">
+              {project.cities?.length > 0 ? `Across ${project.cities.length} target cities` : 'Registered in programme'}
+            </div>
+          </div>
+
+          <div className="cstat-card">
+            <div className="cstat-lbl">Target Cities</div>
+            <div className="cstat-val cnum">{project.cities?.length || 0}</div>
+            <div className="cstat-sub cstat-ellipsis">
+              {project.cities?.length > 0
+                ? project.cities.map((c) => c.name || c.cityName || c.cityCode).join(', ')
+                : 'No cities assigned'}
+            </div>
+          </div>
+
+          <div className="cstat-card">
+            <div className="cstat-lbl">Audit &amp; Certification</div>
+            <div className="cstat-val cstat-val-sm">
+              {cert?.available ? 'Certified' : closed ? 'Closing' : 'In Progress'}
+            </div>
+            <div className="cstat-sub">
+              {cert?.available ? (
+                <button
+                  type="button"
+                  className="cbtn-link"
+                  onClick={() => downloadCertificate(cert)}
+                >
+                  Download PDF
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="cbtn-link"
+                  onClick={() => selectTab('certificate')}
+                >
+                  View Status →
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
 
         <dl className="cline">
           <div><dt>Funder</dt><dd>{project.clientName || 'Not recorded'}</dd></div>
@@ -511,7 +630,7 @@ export default function ClientPortalPage({ source = funderSource, preview = null
                     </span>
                   </li>
                 ))}
-              </ul>
+              </ul >
             )}
           </section>
         )}
@@ -612,8 +731,6 @@ export default function ClientPortalPage({ source = funderSource, preview = null
     );
   };
 
-  // Split by status (D-018): what is coming, then what has been delivered. A
-  // group with nothing in it is left out rather than shown empty.
   const activityGroups = [
     { key: 'upcoming', heading: 'Upcoming', list: upcoming },
     { key: 'awaiting', heading: 'Awaiting update', list: awaiting },
@@ -640,8 +757,188 @@ export default function ClientPortalPage({ source = funderSource, preview = null
     )
   );
 
-  // An uploaded report is behind the funder's login, so it cannot be a plain
-  // link: it is fetched with the token, then opened (PDF, image) or saved.
+  // Status helper ensuring both backend ('Participated', 'Shortlisted', 'Scholarship Awarded', 'National Finals')
+  // and UI ('Selected', 'Shortlisted', 'Scouted') map cleanly to filter categories
+  const getStatusCategory = (ath) => {
+    const raw = (ath.status || ath.selectionStatus || '').toLowerCase();
+    if (raw.includes('final') || raw.includes('national')) return 'national_finals';
+    if (raw.includes('scholarship')) return 'scholarship_awarded';
+    if (raw.includes('shortlist')) return 'shortlisted';
+    if (raw.includes('select')) return 'selected';
+    return 'participated';
+  };
+
+  // Calculates youth football category (U-13, U-15, U-17, U-19, U-21, Senior) from DOB or age
+const calculateCategoryFromDobOrAge = (dob, age) => {
+  let calcAge = null;
+  if (dob) {
+    const birth = new Date(dob);
+    if (!isNaN(birth.getTime())) {
+      const today = new Date();
+      let diff = today.getFullYear() - birth.getFullYear();
+      const m = today.getMonth() - birth.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+        diff--;
+      }
+      if (diff >= 0 && diff <= 100) {
+        calcAge = diff;
+      }
+    }
+  }
+  if (calcAge === null && age != null && age !== '') {
+    calcAge = Number(age);
+  }
+  if (calcAge === null || isNaN(calcAge)) {
+    return '—';
+  }
+  if (calcAge <= 11) return 'U-11';
+  if (calcAge <= 13) return 'U-13';
+  if (calcAge <= 15) return 'U-15';
+  if (calcAge <= 17) return 'U-17';
+  if (calcAge <= 19) return 'U-19';
+  if (calcAge <= 21) return 'U-21';
+  return 'Senior';
+};
+
+const getStatusLabel = (ath) => {
+    return ath.status || ath.selectionStatus || 'Participated';
+  };
+
+  const renderAthletes = () => {
+    const q = (athleteSearch || '').trim().toLowerCase();
+    const filtered = (athletes || []).filter((ath) => {
+      const cat = getStatusCategory(ath);
+      const matchFilter = athleteFilter === 'all' || cat === athleteFilter;
+      if (!matchFilter) return false;
+      if (!q) return true;
+      const name = (ath.fullName || '').toLowerCase();
+      const num = String(ath.jerseyNumber || '').toLowerCase();
+      const pos = (ath.position || '').toLowerCase();
+      const city = (ath.city || ath.cityName || '').toLowerCase();
+      const st = getStatusLabel(ath).toLowerCase();
+      return name.includes(q) || num.includes(q) || pos.includes(q) || city.includes(q) || st.includes(q);
+    });
+
+    const countsStatus = {
+      all: athletes.length,
+      participated: athletes.filter((a) => getStatusCategory(a) === 'participated').length,
+      shortlisted: athletes.filter((a) => getStatusCategory(a) === 'shortlisted').length,
+      scholarship: athletes.filter((a) => getStatusCategory(a) === 'scholarship_awarded').length,
+      finals: athletes.filter((a) => getStatusCategory(a) === 'national_finals').length,
+      selected: athletes.filter((a) => getStatusCategory(a) === 'selected').length,
+    };
+
+    const filterOptions = [
+      { id: 'all', label: `All (${countsStatus.all})` },
+      { id: 'participated', label: `Participated (${countsStatus.participated})` },
+      { id: 'shortlisted', label: `Shortlisted (${countsStatus.shortlisted})` },
+      { id: 'scholarship_awarded', label: `Scholarship Awarded (${countsStatus.scholarship})` },
+      { id: 'national_finals', label: `National Finals (${countsStatus.finals})` },
+    ];
+    if (countsStatus.selected > 0) {
+      filterOptions.push({ id: 'selected', label: `Selected (${countsStatus.selected})` });
+    }
+
+    return (
+      <section className="cpanel" aria-label="Athletes">
+        <div className="chead">
+          <div>
+            <h2 className="ctitle">Athletes Scouted ({formatCount(athletes.length)})</h2>
+            <div className="crow-s">
+              Beneficiaries and scouted players from trials under {project?.name || 'this grant'}
+            </div>
+          </div>
+        </div>
+
+        <div className="cathlete-filter-bar">
+          <input
+            type="search"
+            className="csearch-input"
+            placeholder="Search by name, jersey #, position, city…"
+            value={athleteSearch}
+            onChange={(e) => setAthleteSearch(e.target.value)}
+            aria-label="Search athletes"
+          />
+          <div className="cfilter-pills" role="group" aria-label="Filter by status">
+            {filterOptions.map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                className={`cfilter-pill${athleteFilter === f.id ? ' on' : ''}`}
+                onClick={() => setAthleteFilter(f.id)}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {athletes.length === 0 ? (
+          <EmptyPanel>
+            {closed
+              ? 'No athletes were scouted or registered under this grant.'
+              : 'No athletes recorded yet. Players scouted during trials and talent hunts will be profiled here.'}
+          </EmptyPanel>
+        ) : filtered.length === 0 ? (
+          <EmptyPanel>
+            No athletes match your search or filter.
+          </EmptyPanel>
+        ) : (
+          <div className="cathletes-table-wrap">
+            <table className="cathletes-table">
+              <thead>
+                <tr>
+                  <th scope="col">Jersey #</th>
+                  <th scope="col">Athlete Name</th>
+                  <th scope="col">Position</th>
+                  <th scope="col">Trial City</th>
+                  <th scope="col">Category</th>
+                  <th scope="col">Gender</th>
+                  <th scope="col">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((ath) => {
+                  const statusCat = getStatusCategory(ath);
+                  const statusClass = (statusCat === 'selected' || statusCat === 'scholarship_awarded' || statusCat === 'national_finals') ? ' ok'
+                    : statusCat === 'shortlisted' ? ' warn' : '';
+                  return (
+                    <tr key={ath.id}>
+                      <td className="cath-num cnum">{ath.jerseyNumber ? `#${ath.jerseyNumber}` : '—'}</td>
+                      <td>
+                        <div className="cath-name">
+                          <strong>{ath.fullName}</strong>
+                          {ath.dob && <span className="crow-s">{formatDate(ath.dob)}</span>}
+                        </div>
+                      </td>
+                      <td>
+                        {ath.position ? (
+                          <span className="cpos-badge">{ath.position}</span>
+                        ) : '—'}
+                      </td>
+                      <td>{ath.cityName || ath.city || '—'}</td>
+                      <td>
+                        <span className="cpos-badge">
+                          {ath.category || calculateCategoryFromDobOrAge(ath.dob, ath.age)}
+                        </span>
+                      </td>
+                      <td>{ath.gender && ath.gender !== 'Not Mentioned' ? ath.gender : '—'}</td>
+                      <td>
+                        <span className={`cpill${statusClass}`}>
+                          {getStatusLabel(ath)}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    );
+  };
+
   const openUploadedReport = async (r, name) => {
     if (fileBusy) return;
     setFileBusy(r.id);
@@ -734,11 +1031,6 @@ export default function ClientPortalPage({ source = funderSource, preview = null
     )
   );
 
-  // The Utilisation Certificate. It is issued only when the grant closes and
-  // its figures are frozen — until then expenses are still being allocated by
-  // hand, and a figure that moves after a funder has filed it is worse than no
-  // figure. So the waiting state is written out in full rather than left as an
-  // empty tab.
   const renderCertificate = () => {
     if (!cert) {
       return <div className="cloading"><CircularProgress size={24} /></div>;
@@ -790,9 +1082,6 @@ export default function ClientPortalPage({ source = funderSource, preview = null
         </div>
 
         <dl className="cfacts">
-          {/* The kind of certificate this is. The server sends it only when
-              the grant has one, so a missing type is no field, never an
-              empty or "None" one. */}
           {cert.utilisationType && (
             <div className="cfact">
               <dt className="cfact-k">Certificate type</dt>
@@ -817,11 +1106,6 @@ export default function ClientPortalPage({ source = funderSource, preview = null
           <p className="clede cdesc">No expenses are recorded against this grant.</p>
         ) : (
           <ul className="crows clines">
-            {/* The date each line is filed under. The block above states the
-                period this certificate covers; without a date per line the
-                funder has to take on trust that every line falls inside it. A
-                certificate frozen before the server sent this field has no
-                date, and must still render. */}
             {lines.map((x, i) => {
               const on = formatDate(x.date);
               return (
@@ -843,6 +1127,7 @@ export default function ClientPortalPage({ source = funderSource, preview = null
   const PANELS = {
     project: renderProject,
     activities: renderActivities,
+    athletes: renderAthletes,
     reports: renderReports,
     deliverables: renderDeliverables,
     certificate: renderCertificate,
@@ -872,13 +1157,85 @@ export default function ClientPortalPage({ source = funderSource, preview = null
   } else {
     body = (
       <>
-        {/* The grant's own name. With branding on, the bar carries the
-            funder's display name, and before this the grant itself was named
-            nowhere on its own page. */}
         {project.clientName && (
           <div className="ceyebrow">Programme report for {project.clientName} · {formatUpdated(updatedAt)}</div>
         )}
         <h1 className="cgrant">{project.name || title}</h1>
+
+        {/* Multi-Year Segmented Control + Project Switcher */}
+        {fyGroups.length > 0 && (
+          <div className="cfy-switcher">
+            <div className="cfy-bar" role="tablist" aria-label="Financial Year">
+              {topFYs.map(({ fy, projects: prjs }) => {
+                const isCurrentFY = currentFY === fy;
+                return (
+                  <button
+                    key={fy}
+                    type="button"
+                    className={`cfy-pill${isCurrentFY ? ' on' : ''}`}
+                    onClick={() => {
+                      if (!isCurrentFY && prjs[0]) {
+                        handleSelectProject(prjs[0].id);
+                      }
+                    }}
+                    aria-selected={isCurrentFY}
+                  >
+                    {fy}
+                  </button>
+                );
+              })}
+              {moreFYs.length > 0 && (
+                <>
+                  <button
+                    type="button"
+                    className={`cfy-pill cfy-more${moreFYs.some((g) => g.fy === currentFY) ? ' on' : ''}`}
+                    onClick={(e) => setFyMenuAnchor(e.currentTarget)}
+                    aria-haspopup="true"
+                  >
+                    {moreFYs.some((g) => g.fy === currentFY) ? currentFY : 'Past Years ▾'}
+                  </button>
+                  <Menu
+                    anchorEl={fyMenuAnchor}
+                    open={!!fyMenuAnchor}
+                    onClose={() => setFyMenuAnchor(null)}
+                  >
+                    {moreFYs.map(({ fy, projects: prjs }) => (
+                      <MenuItem
+                        key={fy}
+                        selected={currentFY === fy}
+                        onClick={() => {
+                          setFyMenuAnchor(null);
+                          if (prjs[0]) handleSelectProject(prjs[0].id);
+                        }}
+                      >
+                        {fy} ({prjs.length} project{prjs.length === 1 ? '' : 's'})
+                      </MenuItem>
+                    ))}
+                  </Menu>
+                </>
+              )}
+            </div>
+
+            {/* Project sub-chips when current FY has multiple projects */}
+            {projectsInActiveFY.length > 1 && (
+              <div className="cproj-chips" role="group" aria-label="Projects in this Financial Year">
+                {projectsInActiveFY.map((p) => {
+                  const isSelected = p.id === project?.id;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className={`cproj-chip${isSelected ? ' on' : ''}`}
+                      onClick={() => handleSelectProject(p.id)}
+                    >
+                      {p.season ? `${p.season}: ` : ''}{p.name}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="ctabs" role="tablist" aria-label="Your grant" onKeyDown={onTabKeyDown}>
           {TABS.map(({ key, label }) => (
@@ -899,8 +1256,6 @@ export default function ClientPortalPage({ source = funderSource, preview = null
           ))}
         </div>
 
-        {/* Every tab owns a panel so its aria-controls points at something
-            real; only the selected one renders content. */}
         {TABS.map(({ key }) => (
           <div
             key={key}
@@ -920,66 +1275,59 @@ export default function ClientPortalPage({ source = funderSource, preview = null
 
   return (
     <ThemeProvider theme={clientThemeFrom(brand)}>
-    <div className="cportal" style={cssVars || undefined}>
-      <header className="cbar">
-        <div className="cbar-id">
-          {/* A funder's logo is hosted wherever they gave us a URL, so it can
-              rot without warning. Without onError, one dead link makes a
-              broken image glyph the first thing they see on their own branded
-              portal. Failing back to the wordmark alone is invisible; a broken
-              icon is not. */}
-          {brand?.logoUrl && !logoBroken && (
-            <img
-              className="cbar-logo"
-              src={brand.logoUrl}
-              alt=""
-              onError={() => setLogoBroken(true)}
-            />
-          )}
-          <span className="cbar-name">{brand?.displayName || project?.clientName || title}</span>
-        </div>
-        <span className="cbar-ikf"><IkfMark /></span>
-        {!preview && (
-          <>
-            <div className="cbar-actions">
-              <Button className="cbar-btn" onClick={() => setPwOpen(true)}>Change password</Button>
-              <Button className="cbar-btn" onClick={logout}>Sign out</Button>
-            </div>
-            {/* On a phone the two actions sit behind one menu, so the funder's
-                name keeps the whole bar instead of wrapping onto a second row. */}
-            <div className="cbar-menu">
-              <IconButton
-                aria-label="Account menu"
-                aria-haspopup="true"
-                aria-expanded={menuAnchor ? 'true' : undefined}
-                onClick={(e) => setMenuAnchor(e.currentTarget)}
-              >
-                <MenuIcon />
-              </IconButton>
-              <Menu anchorEl={menuAnchor} open={!!menuAnchor} onClose={() => setMenuAnchor(null)}>
-                <MenuItem onClick={() => { setMenuAnchor(null); setPwOpen(true); }}>Change password</MenuItem>
-                <MenuItem onClick={() => { setMenuAnchor(null); logout(); }}>Sign out</MenuItem>
-              </Menu>
-            </div>
-          </>
-        )}
-      </header>
-
-      <main className="cwrap">
-        {preview && (
-          <aside className="cpanel" aria-label="Preview">
-            <div className="chead">
-              <div className="ctitle">
-                {`Preview — this is what the funder of ${project?.name || 'this grant'} sees`}
+      <div className="cportal" style={cssVars || undefined}>
+        <header className="cbar">
+          <div className="cbar-id">
+            {brand?.logoUrl && !logoBroken && (
+              <img
+                className="cbar-logo"
+                src={brand.logoUrl}
+                alt=""
+                onError={() => setLogoBroken(true)}
+              />
+            )}
+            <span className="cbar-name">{brand?.displayName || project?.clientName || title}</span>
+          </div>
+          <span className="cbar-ikf"><IkfMark /></span>
+          {!preview && (
+            <>
+              <div className="cbar-actions">
+                <Button className="cbar-btn" onClick={() => setPwOpen(true)}>Change password</Button>
+                <Button className="cbar-btn" onClick={logout}>Sign out</Button>
               </div>
-              <Button variant="contained" onClick={preview.onBack}>Back</Button>
-            </div>
-          </aside>
-        )}
-        {body}
-      </main>
-      {!preview && <ClientChangePasswordDialog open={pwOpen} onClose={() => setPwOpen(false)} />}
-    </div>
+              <div className="cbar-menu">
+                <IconButton
+                  aria-label="Account menu"
+                  aria-haspopup="true"
+                  aria-expanded={menuAnchor ? 'true' : undefined}
+                  onClick={(e) => setMenuAnchor(e.currentTarget)}
+                >
+                  <MenuIcon />
+                </IconButton>
+                <Menu anchorEl={menuAnchor} open={!!menuAnchor} onClose={() => setMenuAnchor(null)}>
+                  <MenuItem onClick={() => { setMenuAnchor(null); setPwOpen(true); }}>Change password</MenuItem>
+                  <MenuItem onClick={() => { setMenuAnchor(null); logout(); }}>Sign out</MenuItem>
+                </Menu>
+              </div>
+            </>
+          )}
+        </header>
+
+        <main className="cwrap">
+          {preview && (
+            <aside className="cpanel" aria-label="Preview">
+              <div className="chead">
+                <div className="ctitle">
+                  {`Preview — this is what the funder of ${project?.name || 'this grant'} sees`}
+                </div>
+                <Button variant="contained" onClick={preview.onBack}>Back</Button>
+              </div>
+            </aside>
+          )}
+          {body}
+        </main>
+        {!preview && <ClientChangePasswordDialog open={pwOpen} onClose={() => setPwOpen(false)} />}
+      </div>
     </ThemeProvider>
   );
 }

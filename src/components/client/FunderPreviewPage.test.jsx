@@ -48,6 +48,7 @@ const VIEW = {
   ],
   reports: [{ id: 21, title: 'Quarter one summary', hasFile: true, createdAt: '2026-10-08' }],
   deliverables: [],
+  athletes: [],
   certificate: { available: false, reason: 'open', endDate: '2027-03-31' },
   branding: { slug: 'acme', displayName: 'Acme Foundation CSR', primaryColor: '#1B3A6B' },
 };
