@@ -21,7 +21,7 @@ import { Alert, Button } from '@mui/material';
 import { csrAPI } from '../../services/api';
 import useGrants from '../../auth/useGrants';
 import useRefetchOnFocus from '../../hooks/useRefetchOnFocus';
-import { DEFAULT_REPORT_SORT, reportSortOptions, sortReports } from './reportSort';
+import { DEFAULT_REPORT_SORT, reportDisplayName, reportSortOptions, sortReports } from './reportSort';
 import ReportFileButton from './ReportFileButton';
 import '../../styles/csrDesign.css';
 
@@ -133,7 +133,7 @@ export default function CSRReportsPage() {
       .filter((r) => projectFilter === 'All' || String(r.projectId) === String(projectFilter))
       .filter((r) => {
         if (!q) return true;
-        return [r.fileName, projectName(r.projectId), activityTitle(r.activityId)]
+        return [r.title, r.fileName, projectName(r.projectId), activityTitle(r.activityId)]
           .filter(Boolean)
           .some((v) => String(v).toLowerCase().includes(q));
       });
@@ -206,7 +206,7 @@ export default function CSRReportsPage() {
         <label className="sb">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4-4" /></svg>
           <input
-            placeholder="Search file, grant or activity"
+            placeholder="Search report name, grant or activity"
             aria-label="Search reports"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -255,7 +255,7 @@ export default function CSRReportsPage() {
               role="button"
               tabIndex={0}
               className="lgrid lgrid--reports lrow"
-              aria-label={`Open ${r.fileName || 'Untitled'}, filed under ${projectName(r.projectId)}`}
+              aria-label={`Open ${reportDisplayName(r)}, filed under ${projectName(r.projectId)}`}
               onClick={() => navigate(`/csr/${r.projectId}`, { state: { tab: REPORTS_TAB } })}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
@@ -266,7 +266,7 @@ export default function CSRReportsPage() {
             >
               <span className="fig nowrap">{fmtDay(r.createdAt)}</span>
               <span className="t1wrap">
-                <span className="t1">{r.fileName || 'Untitled'}</span>
+                <span className="t1">{reportDisplayName(r)}</span>
                 <ReportFileButton report={r} onError={setError} />
                 {r.fileUrl && (
                   <a

@@ -166,8 +166,9 @@ const STATS = (sanctioned, utilised, remaining, excluded, excludedCount, utilPct
 };
 
 // Four things an operator actually starts from. Every one is a real route.
+// New Project needs edit, the same rule the Projects page applies to its button.
 const ACTIONS = [
-  { label: 'New Project', to: '/csr/projects', icon: ic(<><path d="M12 5v14M5 12h14" /></>) },
+  { label: 'New Project', to: '/csr/projects/new', needsEdit: true, icon: ic(<><path d="M12 5v14M5 12h14" /></>) },
   { label: 'Activities', to: '/csr/activities', icon: ic(<><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M8 3v4M16 3v4M3 11h18" /></>) },
   { label: 'Reports', to: '/csr/reports', icon: ic(<><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z" /><path d="M14 3v5h5" /></>) },
   { label: 'Utilisation', to: '/csr/utilisation', icon: ic(<><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>) },
@@ -175,7 +176,7 @@ const ACTIONS = [
 
 
 export default function CSRDashboard() {
-  const { canView } = useGrants();
+  const { canView, canEdit } = useGrants();
   const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [utilised, setUtilised] = useState(null);
@@ -318,7 +319,7 @@ export default function CSRDashboard() {
             {/* ---- row 2: what you can do, and the shape of the money ---- */}
             <div className="panel quick">
               <div className="quick-grid">
-                {ACTIONS.map((a) => (
+                {ACTIONS.filter((a) => !a.needsEdit || canEdit('csr')).map((a) => (
                   <button type="button" className="qa" key={a.label} onClick={() => navigate(a.to)}>
                     <span className="qa-ic">{a.icon}</span>
                     {a.label}

@@ -74,7 +74,7 @@ describe('creating a report', () => {
     expect(payload.fileUrl).toBe('https://drive.example.com/q2');
     expect(payload.projectId).toBe(11);
     expect(mockNavigate).toHaveBeenCalledWith(
-      '/csr/11', { state: { saved: 'Report filed.' } },
+      '/csr/11', { state: { saved: 'Report filed.', tab: 3 } },
     );
   });
 
@@ -122,14 +122,14 @@ describe('editing a report', () => {
 
     expect(csrAPI.reports.create).not.toHaveBeenCalled();
     expect(csrAPI.reports.update).not.toHaveBeenCalled();
-    expect(mockNavigate).toHaveBeenCalledWith('/csr/11', undefined);
+    expect(mockNavigate).toHaveBeenCalledWith('/csr/11', { state: { tab: 3 } });
   });
 });
 
 test('the visibility control says the funder reads the title', async () => {
   mockSearch = new URLSearchParams({ project: '11' });
   render(<CSRReportFormPage />);
-  const box = await screen.findByRole('checkbox', { name: /visible to client/i });
+  const box = await screen.findByRole('checkbox', { name: /visible to funder/i });
   expect(box).toHaveAccessibleDescription('The funder sees this title on their portal.');
   expect(screen.queryByText(/linked report/i)).toBeNull();
 });
@@ -180,7 +180,7 @@ describe('a document link or an uploaded file', () => {
     await waitFor(() => expect(csrAPI.reportFile.upload).toHaveBeenCalledWith(42, file));
     expect(order).toEqual(['create', 'upload']);
     expect(csrAPI.reports.create.mock.calls[0][0].fileUrl).toBe('');
-    expect(mockNavigate).toHaveBeenCalledWith('/csr/11', { state: { saved: 'Report filed.' } });
+    expect(mockNavigate).toHaveBeenCalledWith('/csr/11', { state: { saved: 'Report filed.', tab: 3 } });
   });
 
   test('a link alone is enough and nothing is uploaded', async () => {
@@ -288,7 +288,7 @@ test('a new report starts visible to the client, and is sent that way', async ()
   mockSearch = new URLSearchParams({ project: '11' });
   csrAPI.reports.create.mockResolvedValue({});
   render(<CSRReportFormPage />);
-  expect(await screen.findByRole('checkbox', { name: /visible to client/i })).toBeChecked();
+  expect(await screen.findByRole('checkbox', { name: /visible to funder/i })).toBeChecked();
 
   await userEvent.type(screen.getByLabelText(/report name/i), 'Q2 Utilisation Statement');
   await userEvent.type(screen.getByLabelText(/document link/i), 'https://drive.example.com/q2');
@@ -302,7 +302,7 @@ test.each([false, true])('editing keeps the stored visibility (%p)', async (stor
   csrAPI.reports.getById.mockResolvedValue({ ...REPORT, visibleToClient: stored });
   render(<CSRReportFormPage />);
   await screen.findByDisplayValue('Nashik Trial Summary');
-  expect(screen.getByRole('checkbox', { name: /visible to client/i }).checked).toBe(stored);
+  expect(screen.getByRole('checkbox', { name: /visible to funder/i }).checked).toBe(stored);
 });
 
 describe('D-018: the line beside Save follows the switch', () => {
@@ -312,7 +312,7 @@ describe('D-018: the line beside Save follows the switch', () => {
     mockSearch = new URLSearchParams({ project: '11' });
     render(<CSRReportFormPage />);
     expect(line()).toHaveTextContent('The funder will see this');
-    await userEvent.click(screen.getByRole('checkbox', { name: /visible to client/i }));
+    await userEvent.click(screen.getByRole('checkbox', { name: /visible to funder/i }));
     expect(line()).toHaveTextContent('Hidden from the funder');
     expect(line()).not.toHaveTextContent('The funder will see this');
   });

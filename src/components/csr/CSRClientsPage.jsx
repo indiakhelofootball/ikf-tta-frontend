@@ -55,8 +55,8 @@ function OnboardModal({ open, projects, onClose, onSave, saving }) {
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
           <Typography variant="body2" color="text.secondary">
-            Creates a read-only client login linked to one project. The funder sets their own
-            password after first sign-in.
+            Creates a read-only client login linked to one project. The funder signs in with
+            the password you set here, and can change it with Change password on their portal.
           </Typography>
           <TextField
             label="Project" value={form.projectId} onChange={setField('projectId')}
@@ -81,7 +81,7 @@ function OnboardModal({ open, projects, onClose, onSave, saving }) {
             label="Initial Password" value={form.password} onChange={setField('password')}
             type="text"
             error={!!errors.password}
-            helperText={errors.password || 'Share this with the funder; they change it on the Profile page.'}
+            helperText={errors.password || 'Share this with the funder; they can change it with Change password on their portal.'}
             fullWidth
           />
         </Stack>
@@ -120,7 +120,7 @@ function ResetPasswordModal({ client, onClose, onSave, saving }) {
             label="New Password" value={password} type="text" fullWidth
             onChange={(e) => { setPassword(e.target.value); setError(''); }}
             error={!!error}
-            helperText={error || 'Share this with the funder; they change it on the Profile page.'}
+            helperText={error || 'Share this with the funder; they can change it with Change password on their portal.'}
           />
         </Stack>
       </DialogContent>
@@ -157,7 +157,7 @@ function SendDetailsDialog({ details, onClose, notify }) {
       `Link: ${url}`,
       `Email: ${details.email}`,
       `Password: ${details.password}`,
-      'Please change the password from Profile after signing in.',
+      'After signing in, you can change the password with Change password at the top of the portal.',
     ].join('\n')
     : '';
   return (
@@ -288,8 +288,8 @@ export default function CSRClientsPage() {
         <div>
           <h2>Funders</h2>
           <p>
-            Each funder gets a read-only login onto one grant. They set their own
-            password after the first sign-in.
+            Each funder gets a read-only login onto one grant. They sign in with the
+            password you set, and can change it from their portal.
           </p>
         </div>
         <button type="button" className="newbtn" onClick={() => setModalOpen(true)}>

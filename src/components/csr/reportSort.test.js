@@ -1,4 +1,4 @@
-import { sortReports, reportSortOptions, DEFAULT_REPORT_SORT } from './reportSort';
+import { sortReports, reportSortOptions, reportDisplayName, DEFAULT_REPORT_SORT } from './reportSort';
 
 const r = (id, over = {}) => ({
   id,
@@ -110,4 +110,21 @@ test('the grant option is offered only where there is more than one grant', () =
   const all = reportSortOptions().map((o) => o.value);
   expect(all).toEqual(['newest', 'oldest', 'name-asc', 'name-desc', 'type', 'activity', 'grant']);
   expect(reportSortOptions({ withGrant: false }).map((o) => o.value)).not.toContain('grant');
+});
+
+test('a report shows the Report Name staff typed, then the file name, then Untitled', () => {
+  expect(reportDisplayName(r(1, { title: 'Q1 Impact Report', fileName: 'scan_0042.pdf' }))).toBe('Q1 Impact Report');
+  expect(reportDisplayName(r(2, { title: '   ', fileName: 'scan_0042.pdf' }))).toBe('scan_0042.pdf');
+  expect(reportDisplayName(r(3, { title: 'Baseline Survey', fileName: '' }))).toBe('Baseline Survey');
+  expect(reportDisplayName(r(4, { title: '', fileName: '' }))).toBe('Untitled');
+});
+
+test('a name sort orders by the Report Name the row shows, not the file name', () => {
+  const list = [
+    r(1, { title: 'Zonal summary', fileName: 'a.pdf' }),
+    r(2, { title: 'Baseline', fileName: 'z.pdf' }),
+    r(3, { title: '', fileName: 'Midline.pdf' }),
+  ];
+  expect(ids(sortReports(list, 'name-asc'))).toEqual([2, 3, 1]);
+  expect(ids(sortReports(list, 'name-desc'))).toEqual([1, 3, 2]);
 });

@@ -33,7 +33,7 @@ import VendorAuditReport from "./components/reports/VendorAuditReport";
 import TrialSpendReport from "./components/reports/TrialSpendReport";
 import TrialsReport from "./components/reports/TrialsReport";
 import CourierManagementPage from "./components/courier/CourierManagementPage";
-import { CSRLogin, CSRDashboard, CSRProjectManagementPage, CSRProjectFormPage, CSRActivityFormPage, CSRReportFormPage, CSRContactFormPage, CSRExpenseTagFormPage, CSRProjectDetailPage, CSRActivitiesPage, CSRReportsPage, CSRUtilisationPage, CSRActivityTypesPage, CSRPartnersPage, CSRPartnerFormPage, CSRPartnerDetailPage, CSRClientsPage, CSRBrandingPage, CSRAccountPage } from "./components/csr";
+import { CSRLogin, CSRDashboard, CSRProjectManagementPage, CSRProjectFormPage, CSRActivityFormPage, CSRReportFormPage, CSRContactFormPage, CSRExpenseTagFormPage, CSRProjectDetailPage, CSRActivitiesPage, CSRReportsPage, CSRUtilisationPage, CSRActivityTypesPage, CSRPartnersPage, CSRPartnerFormPage, CSRPartnerDetailPage, CSRClientsPage, CSRBrandingPage, CSRAccountPage, CSRNoEditAccess } from "./components/csr";
 import ClientPortalPage from "./components/client/ClientPortalPage";
 import FunderPreviewPage from "./components/client/FunderPreviewPage";
 import ClientLogin from "./components/client/ClientLogin";
@@ -224,12 +224,12 @@ function App() {
               two segments under /csr/projects, so neither can be swallowed by
               the dynamic /csr/:id route below. */}
           <Route path="/csr/projects/new" element={
-            <GrantedRoute module="csr">
+            <GrantedRoute module="csr" edit denied={<CSRNoEditAccess />}>
               <CSRProjectFormPage />
             </GrantedRoute>
           } />
           <Route path="/csr/projects/:id/edit" element={
-            <GrantedRoute module="csr">
+            <GrantedRoute module="csr" edit denied={<CSRNoEditAccess />}>
               <CSRProjectFormPage />
             </GrantedRoute>
           } />
@@ -241,22 +241,22 @@ function App() {
               own id, and edit does not need it: a loaded record already
               carries its own projectId. */}
           <Route path="/csr/activities/new" element={
-            <GrantedRoute module="csr">
+            <GrantedRoute module="csr" edit denied={<CSRNoEditAccess />}>
               <CSRActivityFormPage />
             </GrantedRoute>
           } />
           <Route path="/csr/activities/:id/edit" element={
-            <GrantedRoute module="csr">
+            <GrantedRoute module="csr" edit denied={<CSRNoEditAccess />}>
               <CSRActivityFormPage />
             </GrantedRoute>
           } />
           <Route path="/csr/reports/new" element={
-            <GrantedRoute module="csr">
+            <GrantedRoute module="csr" edit denied={<CSRNoEditAccess />}>
               <CSRReportFormPage />
             </GrantedRoute>
           } />
           <Route path="/csr/reports/:id/edit" element={
-            <GrantedRoute module="csr">
+            <GrantedRoute module="csr" edit denied={<CSRNoEditAccess />}>
               <CSRReportFormPage />
             </GrantedRoute>
           } />
@@ -265,18 +265,23 @@ function App() {
               keeps a tag audit-bound and write-once, and the modal it replaces
               never loaded an existing one either — only create exists. */}
           <Route path="/csr/contacts/new" element={
-            <GrantedRoute module="csr">
+            <GrantedRoute module="csr" edit denied={<CSRNoEditAccess />}>
               <CSRContactFormPage />
             </GrantedRoute>
           } />
           <Route path="/csr/contacts/:id/edit" element={
-            <GrantedRoute module="csr">
+            <GrantedRoute module="csr" edit denied={<CSRNoEditAccess />}>
               <CSRContactFormPage />
             </GrantedRoute>
           } />
+          {/* Tagging is written with the csr_certificate edit grant (the server's
+              rule). The outer CSR view check is the one this route always had:
+              without it the form opens but cannot name the grant. */}
           <Route path="/csr/expenses/new" element={
             <GrantedRoute module="csr">
-              <CSRExpenseTagFormPage />
+              <GrantedRoute module="csr_certificate" edit viewModule="csr" denied={<CSRNoEditAccess />}>
+                <CSRExpenseTagFormPage />
+              </GrantedRoute>
             </GrantedRoute>
           } />
           {/* Activities and Reports are cross-project destinations, not just
@@ -301,12 +306,12 @@ function App() {
             </GrantedRoute>
           } />
           <Route path="/csr/partners/new" element={
-            <GrantedRoute module="csr">
+            <GrantedRoute module="csr" edit denied={<CSRNoEditAccess />}>
               <CSRPartnerFormPage />
             </GrantedRoute>
           } />
           <Route path="/csr/partners/:id/edit" element={
-            <GrantedRoute module="csr">
+            <GrantedRoute module="csr" edit denied={<CSRNoEditAccess />}>
               <CSRPartnerFormPage />
             </GrantedRoute>
           } />

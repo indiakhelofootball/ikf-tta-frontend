@@ -136,3 +136,23 @@ describe('a failed load', () => {
     expect(screen.queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument();
   });
 });
+
+// A3: the Report Name staff must type is what the list shows and searches;
+// the file name is only the fallback for reports filed before names existed.
+test('a report shows the Report Name staff typed, and search finds it by that name', async () => {
+  csrAPI.reports.getAll.mockResolvedValue([
+    { ...REPORT, id: 1, title: 'Q1 Impact Report', fileName: 'scan_0042.pdf' },
+    { ...REPORT, id: 2, title: '', fileName: 'Older report.pdf', fileUrl: '' },
+    { ...REPORT, id: 3, title: '', fileName: '', fileUrl: 'https://drive.example/x' },
+  ]);
+  render(<CSRReportsPage />);
+
+  expect(await screen.findByText('Q1 Impact Report')).toBeInTheDocument();
+  expect(screen.queryByText('scan_0042.pdf')).toBeNull();
+  expect(screen.getByText('Older report.pdf')).toBeInTheDocument();
+  expect(screen.getByText('Untitled')).toBeInTheDocument();
+
+  fireEvent.change(screen.getByRole('textbox', { name: 'Search reports' }), { target: { value: 'impact' } });
+  expect(screen.getByText('Q1 Impact Report')).toBeInTheDocument();
+  expect(screen.queryByText('Older report.pdf')).toBeNull();
+});

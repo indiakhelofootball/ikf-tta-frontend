@@ -174,3 +174,21 @@ describe('a failed load', () => {
     expect(screen.queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument();
   });
 });
+
+// A5: "Delivered in-house" is a fact only when Delivered By says Self. A blank
+// Delivered By, or Partner with no partner named, is unknown and must say so.
+test('a blank Delivered By says Not set, never Delivered in-house', async () => {
+  csrAPI.activities.getAll.mockResolvedValue([
+    { ...ACTIVITY, deliveryMode: '', partnerId: null, partnerName: '' },
+    { ...ACTIVITY, id: 2, title: 'Nashik Trial', deliveryMode: 'Partner', partnerId: null, partnerName: '' },
+    { ...ACTIVITY, id: 3, title: 'Raipur Trial', deliveryMode: 'Self', partnerId: null, partnerName: '' },
+  ]);
+  render(<CSRActivitiesPage />);
+  for (const name of [/Show details for Bhilai Trial/i, /Show details for Nashik Trial/i, /Show details for Raipur Trial/i]) {
+    // eslint-disable-next-line no-await-in-loop
+    fireEvent.click(await screen.findByRole('button', { name }));
+  }
+  // eslint-disable-next-line testing-library/no-node-access
+  const partnerValues = screen.getAllByText('Partner', { selector: '.dk' }).map((el) => el.nextSibling.textContent);
+  expect(partnerValues).toEqual(['Not set', 'Not set', 'Delivered in-house']);
+});

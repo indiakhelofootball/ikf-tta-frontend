@@ -8,6 +8,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 
 import { csrAPI } from '../../services/api';
+import { GRANT_TABS, grantTabState } from './grantTabs';
 import '../../styles/csrDesign.css';
 
 // The three sides the 26 Aug review named: IKF representative, client
@@ -194,7 +195,7 @@ export default function CSRContactFormPage() {
   const leave = useCallback(
     (saved) => {
       if (!projectId) { navigate('/csr/projects'); return; }
-      navigate(`/csr/${projectId}`, saved ? { state: { saved } } : undefined);
+      navigate(`/csr/${projectId}`, grantTabState(GRANT_TABS.contacts, saved));
     },
     [navigate, projectId],
   );

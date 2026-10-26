@@ -326,7 +326,9 @@ export default function CSRActivitiesPage() {
                   </div>
                   <div>
                     <span className="dk">Partner</span>
-                    <span className="dv">{a.partnerName || 'Delivered in-house'}</span>
+                    <span className="dv">
+                      {a.partnerName || (a.deliveryMode === 'Self' ? 'Delivered in-house' : 'Not set')}
+                    </span>
                   </div>
                   <div>
                     <span className="dk">Logged</span>

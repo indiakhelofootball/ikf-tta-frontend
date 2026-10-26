@@ -46,9 +46,15 @@ const byText = (get, dir = 1) => (a, b) => {
 
 const thenNewest = (compare) => (a, b) => compare(a, b) || newestFirst(a, b);
 
-// The name both lists print on the row is fileName, so that is what a name
-// sort orders by -- sorting on a field the row does not show would look random.
-const reportName = (r) => r.fileName;
+// The Report Name staff must type is `title`. Reports created before `title`
+// existed carry their name in fileName, so that is the fallback.
+const reportTitle = (r) => (r?.title && String(r.title).trim()) || r?.fileName || '';
+
+export const reportDisplayName = (r) => reportTitle(r) || 'Untitled';
+
+// A name sort orders by the label the row prints -- sorting on a field the row
+// does not show would look random.
+const reportName = reportTitle;
 
 // activityName / grantName take the report and return the label the screen
 // shows for it; neither is on the report row itself (it carries ids only).

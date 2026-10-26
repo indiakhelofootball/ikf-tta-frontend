@@ -14,7 +14,7 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('../../auth/useGrants', () => ({
   __esModule: true,
-  default: () => ({ canView: () => true }),
+  default: () => ({ canView: () => true, canEdit: () => true }),
 }));
 
 jest.mock('../../services/api', () => ({
