@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box, Container, Typography, Button, Stack, Tabs, Tab, Snackbar, Alert,
@@ -100,6 +100,29 @@ const outOfPeriodTitle = (x, project) => {
       + 'so it is not on the Utilisation Certificate.';
   }
   return undefined;
+};
+
+const ATHLETE_CATEGORIES = ['U-11', 'U-13', 'U-15', 'U17', 'U19', 'U-21', 'Senior'];
+
+// An athlete's category is fixed by their age when the grant started, not by
+// today's date, or every player would move up a band each birthday after the
+// trial. Only a suggestion: staff can change it before saving.
+const categoryFromDob = (dob, startDate) => {
+  const birth = new Date(dob);
+  if (!dob || isNaN(birth.getTime())) return '';
+  const start = startDate ? new Date(startDate) : null;
+  const on = start && !isNaN(start.getTime()) ? start : new Date();
+  let age = on.getUTCFullYear() - birth.getUTCFullYear();
+  const m = on.getUTCMonth() - birth.getUTCMonth();
+  if (m < 0 || (m === 0 && on.getUTCDate() < birth.getUTCDate())) age--;
+  if (age < 0 || age > 100) return '';
+  if (age <= 11) return 'U-11';
+  if (age <= 13) return 'U-13';
+  if (age <= 15) return 'U-15';
+  if (age <= 17) return 'U17';
+  if (age <= 19) return 'U19';
+  if (age <= 21) return 'U-21';
+  return 'Senior';
 };
 
 const rowActivation = (label, onActivate) => (onActivate ? {
@@ -291,6 +314,7 @@ export default function CSRProjectDetailPage() {
     jerseyNumber: '',
     dob: '',
     age: '',
+    category: '',
     gender: 'Not Mentioned',
     position: '',
     city: '',
@@ -475,6 +499,7 @@ export default function CSRProjectDetailPage() {
       jerseyNumber: '',
       dob: '',
       age: '',
+      category: '',
       gender: 'Not Mentioned',
       position: '',
       city: defaultCity,
@@ -493,6 +518,7 @@ export default function CSRProjectDetailPage() {
       jerseyNumber: a.jerseyNumber || '',
       dob: a.dob || '',
       age: a.age != null ? a.age : '',
+      category: a.category || '',
       gender: a.gender || 'Not Mentioned',
       position: a.position || '',
       city: a.city || '',
@@ -519,6 +545,7 @@ export default function CSRProjectDetailPage() {
         jerseyNumber: String(athleteForm.jerseyNumber || '').trim(),
         dob: athleteForm.dob || null,
         age: athleteForm.age ? parseInt(athleteForm.age, 10) : null,
+        category: athleteForm.category || '',
         gender: athleteForm.gender || 'Not Mentioned',
         position: String(athleteForm.position || '').trim(),
         city: String(athleteForm.city || '').trim(),
@@ -1276,7 +1303,7 @@ export default function CSRProjectDetailPage() {
           {listFailed.athletes ? listError('athletes') : (
             <div className="twrap">
               <div className="lgrid lgrid--athletes lgrid-head">
-                {['#', 'Athlete', 'Age / Gender', 'Position', 'City / Club', 'Status', 'Manage'].map((h) => <span key={h}>{h}</span>)}
+                {['#', 'Athlete', 'Category / Age / Gender', 'Position', 'City / Club', 'Status', 'Manage'].map((h) => <span key={h}>{h}</span>)}
               </div>
 
               {athletes.length === 0 ? (
@@ -1293,10 +1320,10 @@ export default function CSRProjectDetailPage() {
                     <span className="fig nowrap">{a.jerseyNumber ? `#${a.jerseyNumber}` : '--'}</span>
                     <span className="t1wrap">
                       <span className="t1">{a.fullName}</span>
-                      {a.notes && <span className="t2" title={a.notes} style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>{a.notes}</span>}
+                      {a.notes && <span className="t2 athlete-note" title={a.notes}>{a.notes}</span>}
                     </span>
                     <span className="t2">
-                      {[a.age ? `${a.age}y` : null, a.gender].filter(Boolean).join(', ') || '—'}
+                      {[a.category, a.age ? `${a.age}y` : null, a.gender].filter(Boolean).join(', ') || '—'}
                     </span>
                     <span className="t2">{a.position || '—'}</span>
                     <span className="t2">
@@ -1404,9 +1431,10 @@ export default function CSRProjectDetailPage() {
                         }
                       }
                     }
-                    setAthleteForm({ ...athleteForm, dob: dobVal, age: calculatedAge });
+                    const category = athleteForm.category || categoryFromDob(dobVal, project?.startDate);
+                    setAthleteForm({ ...athleteForm, dob: dobVal, age: calculatedAge, category });
                   }}
-                  InputLabelProps={{ shrink: true }}
+                  slotProps={{ inputLabel: { shrink: true } }}
                   helperText="Pick calendar or type YYYY-MM-DD"
                 />
               </Stack>
@@ -1419,8 +1447,23 @@ export default function CSRProjectDetailPage() {
                   value={athleteForm.age}
                   onChange={(e) => setAthleteForm({ ...athleteForm, age: e.target.value })}
                   placeholder="e.g. 15"
-                  helperText={athleteForm.age ? `Category: U-${athleteForm.age <= 11 ? 11 : athleteForm.age <= 13 ? 13 : athleteForm.age <= 15 ? 15 : athleteForm.age <= 17 ? 17 : athleteForm.age <= 19 ? 19 : athleteForm.age <= 21 ? 21 : 'Senior'}` : 'Calculated from DOB or enter manually'}
+                  helperText="Calculated from DOB or enter manually"
                 />
+                <TextField
+                  select
+                  label="Category"
+                  size="small"
+                  fullWidth
+                  value={athleteForm.category || ''}
+                  onChange={(e) => setAthleteForm({ ...athleteForm, category: e.target.value })}
+                  helperText="Set from age at the grant's start; change if needed"
+                >
+                  <MenuItem value="">Not set</MenuItem>
+                  {ATHLETE_CATEGORIES.map((c) => <MenuItem key={c} value={c}>{c}</MenuItem>)}
+                  {athleteForm.category && !ATHLETE_CATEGORIES.includes(athleteForm.category) && (
+                    <MenuItem value={athleteForm.category}>{athleteForm.category}</MenuItem>
+                  )}
+                </TextField>
                 <TextField
                   select
                   label="Gender"

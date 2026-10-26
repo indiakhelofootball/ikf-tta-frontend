@@ -22,6 +22,7 @@ jest.mock('../../services/api', () => ({
     contacts: { getAll: jest.fn() },
     activityTypes: { getAll: jest.fn() },
     expenseTags: { getAll: jest.fn() },
+    athletes: { getAll: jest.fn() },
     grantTrials: jest.fn(),
   },
 }));
@@ -53,6 +54,7 @@ beforeEach(() => {
   csrAPI.contacts.getAll.mockResolvedValue([]);
   csrAPI.activityTypes.getAll.mockResolvedValue([]);
   csrAPI.expenseTags.getAll.mockResolvedValue([]);
+  csrAPI.athletes.getAll.mockResolvedValue([]);
   csrAPI.grantTrials.mockResolvedValue([]);
 });
 

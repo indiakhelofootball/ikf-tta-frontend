@@ -23,6 +23,7 @@ jest.mock('../../services/api', () => ({
     contacts: { getAll: jest.fn() },
     activityTypes: { getAll: jest.fn() },
     expenseTags: { getAll: jest.fn() },
+    athletes: { getAll: jest.fn() },
   },
 }));
 
@@ -61,6 +62,7 @@ beforeEach(() => {
   csrAPI.contacts.getAll.mockResolvedValue([]);
   csrAPI.activityTypes.getAll.mockResolvedValue([]);
   csrAPI.expenseTags.getAll.mockResolvedValue([]);
+  csrAPI.athletes.getAll.mockResolvedValue([]);
 });
 
 // The row and its pencil share the name "Edit report X", so the bin -- one per

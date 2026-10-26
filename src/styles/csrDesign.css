@@ -3038,7 +3038,8 @@
 .csrx .lgrid.lgrid--greports{grid-template-columns:110px minmax(220px,1.6fr) minmax(90px,.5fr) minmax(150px,1fr) 200px}
 .csrx .lgrid.lgrid--expenses{grid-template-columns:130px minmax(120px,.8fr) minmax(220px,1.6fr) 150px}
 .csrx .lgrid.lgrid--types   {grid-template-columns:minmax(200px,1.6fr) minmax(110px,.8fr) 100px}
-.csrx .lgrid.lgrid--athletes{grid-template-columns:70px minmax(140px,1.2fr) 90px 110px minmax(140px,1fr) 140px 90px}
+.csrx .lgrid.lgrid--athletes{grid-template-columns:70px minmax(140px,1.2fr) 130px 110px minmax(140px,1fr) 140px 90px}
+.csrx .lrow .t2.athlete-note{font-size:.75rem;color:var(--muted)}
 
 /* The funder's grant cell holds the grant, then its link and Copy: one under
    the other, not squeezed side by side by the band's row layout. */
