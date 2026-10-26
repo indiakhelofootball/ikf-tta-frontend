@@ -1281,6 +1281,7 @@ export const csrAPI = /*#__PURE__*/ {
     apiService.request(`/csr/projects/${projectId}/funder-view/`),
   // White-label branding — admin-managed CRUD (SUPER_ADMIN/ADMIN).
   branding: /*#__PURE__*/ csrCrud('/csr/branding'),
+  athletes: /*#__PURE__*/ csrCrud('/csr/athletes'),
   // The partners an activity or a partner contact may name: the TTA Admin
   // vendor-name master entries whose service type is Partner (owner, 10 Oct
   // 2026). Read-only on purpose, and deliberately NOT csrCrud — the list is
@@ -1316,14 +1317,18 @@ export const csrAPI = /*#__PURE__*/ {
 // the caller's one project by the backend (CSR_CLIENT role).
 // ============================================
 export const clientAPI = {
-  project: async () => apiService.request('/client/project/'),
-  activities: async () => apiService.request('/client/activities/'),
-  reports: async () => apiService.request('/client/reports/'),
+  project: async (projectId) =>
+    apiService.request(projectId ? `/client/project/?project_id=${projectId}` : '/client/project/'),
+  activities: async (projectId) =>
+    apiService.request(projectId ? `/client/activities/?project_id=${projectId}` : '/client/activities/'),
+  reports: async (projectId) =>
+    apiService.request(projectId ? `/client/reports/?project_id=${projectId}` : '/client/reports/'),
   // The uploaded copy of one published report. 404 unless the report is the
   // funder's own and published.
   reportFile: async (reportId) => apiService.downloadFile(`/client/reports/${reportId}/file/`),
   // Deliverable progress only — the grant contract behind them stays internal.
-  deliverables: async () => apiService.request('/client/deliverables/'),
+  deliverables: async (projectId) =>
+    apiService.request(projectId ? `/client/deliverables/?project_id=${projectId}` : '/client/deliverables/'),
   // White-label branding: public by slug (pre-auth login), and the funder's own
   // branding post-auth (skins the portal without a slug in the URL).
   // One photo of an activity the funder can see, fetched with their token. The
@@ -1332,10 +1337,13 @@ export const clientAPI = {
     `/client/activities/${activityId}/photos/${photoId}/?v=${encodeURIComponent(version || '')}`,
   ),
   brandingBySlug: async (slug) => withBrandImages(await apiService.request(`/client/branding/${slug}/`)),
-  myBranding: async () => withBrandImages(await apiService.request('/client/my-branding/')),
+  myBranding: async (projectId) =>
+    withBrandImages(await apiService.request(projectId ? `/client/my-branding/?project_id=${projectId}` : '/client/my-branding/')),
   // The funder's own Utilisation Certificate — the document they file as
-  // statutory evidence. Takes no project id: the server reads the grant off the
-  // login. Returns { available: false, reason } until the grant closes and the
-  // figures are frozen, so the portal can say why rather than show a blank.
-  certificate: async () => apiService.request('/client/certificate/'),
+  // statutory evidence. Supports optional projectId for multi-year funders.
+  certificate: async (projectId) =>
+    apiService.request(projectId ? `/client/certificate/?project_id=${projectId}` : '/client/certificate/'),
+  // The athletes scouted under this project / funder.
+  athletes: async (projectId) =>
+    apiService.request(projectId ? `/client/athletes/?project_id=${projectId}` : '/client/athletes/'),
 };

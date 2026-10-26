@@ -3038,6 +3038,7 @@
 .csrx .lgrid.lgrid--greports{grid-template-columns:110px minmax(220px,1.6fr) minmax(90px,.5fr) minmax(150px,1fr) 200px}
 .csrx .lgrid.lgrid--expenses{grid-template-columns:130px minmax(120px,.8fr) minmax(220px,1.6fr) 150px}
 .csrx .lgrid.lgrid--types   {grid-template-columns:minmax(200px,1.6fr) minmax(110px,.8fr) 100px}
+.csrx .lgrid.lgrid--athletes{grid-template-columns:70px minmax(140px,1.2fr) 90px 110px minmax(140px,1fr) 140px 90px}
 
 /* The funder's grant cell holds the grant, then its link and Copy: one under
    the other, not squeezed side by side by the band's row layout. */
@@ -3065,13 +3066,13 @@
   .csrx .twrap .lrow:is(.lgrid--gacts):not(.lgrid--3):not(.lgrid--4) > *:nth-child(4){display:block;margin-block:0;padding:0;background:none;border:0;color:var(--muted);font-weight:400}
 }
 @container (max-width:909px){
-  .csrx .twrap .lgrid-head:is(.lgrid--acts,.lgrid--reports,.lgrid--util,.lgrid--trials,.lgrid--contacts,.lgrid--greports){display:none}
-  .csrx .twrap .lrow:is(.lgrid--acts,.lgrid--reports,.lgrid--util,.lgrid--trials,.lgrid--contacts,.lgrid--greports){display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px}
-  .csrx .twrap .lrow:is(.lgrid--acts,.lgrid--reports,.lgrid--util,.lgrid--trials,.lgrid--contacts,.lgrid--greports) > *{min-width:0;overflow-wrap:anywhere}
-  .csrx .twrap .lrow:is(.lgrid--acts,.lgrid--reports,.lgrid--util,.lgrid--trials,.lgrid--contacts,.lgrid--greports) > :is(.t1,.t1wrap,:has(> .t1)){order:-1;flex:1 0 100%}
-  .csrx .twrap .lrow:is(.lgrid--acts,.lgrid--reports,.lgrid--util,.lgrid--trials,.lgrid--contacts,.lgrid--greports) > *:last-child{margin-left:auto}
-  .csrx .twrap .lrow:is(.lgrid--acts,.lgrid--reports,.lgrid--util,.lgrid--trials,.lgrid--contacts,.lgrid--greports) > .lnum{text-align:left}
-  .csrx .twrap .lrow:is(.lgrid--acts,.lgrid--reports,.lgrid--util,.lgrid--trials,.lgrid--contacts,.lgrid--greports):not(.lgrid--3):not(.lgrid--4) > *:nth-child(4){display:block;margin-block:0;padding:0;background:none;border:0;color:var(--muted);font-weight:400}
+  .csrx .twrap .lgrid-head:is(.lgrid--acts,.lgrid--reports,.lgrid--util,.lgrid--trials,.lgrid--contacts,.lgrid--greports,.lgrid--athletes){display:none}
+  .csrx .twrap .lrow:is(.lgrid--acts,.lgrid--reports,.lgrid--util,.lgrid--trials,.lgrid--contacts,.lgrid--greports,.lgrid--athletes){display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px}
+  .csrx .twrap .lrow:is(.lgrid--acts,.lgrid--reports,.lgrid--util,.lgrid--trials,.lgrid--contacts,.lgrid--greports,.lgrid--athletes) > *{min-width:0;overflow-wrap:anywhere}
+  .csrx .twrap .lrow:is(.lgrid--acts,.lgrid--reports,.lgrid--util,.lgrid--trials,.lgrid--contacts,.lgrid--greports,.lgrid--athletes) > :is(.t1,.t1wrap,:has(> .t1)){order:-1;flex:1 0 100%}
+  .csrx .twrap .lrow:is(.lgrid--acts,.lgrid--reports,.lgrid--util,.lgrid--trials,.lgrid--contacts,.lgrid--greports,.lgrid--athletes) > *:last-child{margin-left:auto}
+  .csrx .twrap .lrow:is(.lgrid--acts,.lgrid--reports,.lgrid--util,.lgrid--trials,.lgrid--contacts,.lgrid--greports,.lgrid--athletes) > .lnum{text-align:left}
+  .csrx .twrap .lrow:is(.lgrid--acts,.lgrid--reports,.lgrid--util,.lgrid--trials,.lgrid--contacts,.lgrid--greports,.lgrid--athletes):not(.lgrid--3):not(.lgrid--4) > *:nth-child(4){display:block;margin-block:0;padding:0;background:none;border:0;color:var(--muted);font-weight:400}
 }
 @container (max-width:719px){
   .csrx .twrap .lgrid-head:is(.lgrid--expenses){display:none}

@@ -31,6 +31,7 @@ export function previewSource(projectId) {
         activities: asList(v.activities),
         reports: asList(v.reports),
         deliverables: asList(v.deliverables),
+        athletes: asList(v.athletes),
       };
     },
     certificate: async () => (await view()).certificate,

@@ -19,6 +19,7 @@ jest.mock('../../services/api', () => ({
     myBranding: jest.fn(),
     certificate: jest.fn(),
     activityPhoto: jest.fn(),
+    athletes: jest.fn(),
   },
 }));
 
@@ -54,6 +55,7 @@ beforeEach(() => {
   clientAPI.deliverables.mockResolvedValue(DELIVERABLES);
   clientAPI.myBranding.mockResolvedValue(null);
   clientAPI.certificate.mockResolvedValue({ available: false, reason: 'open' });
+  clientAPI.athletes.mockResolvedValue([]);
 });
 
 test('the landing tab leads with what was delivered, in each deliverable own units', async () => {
@@ -80,7 +82,7 @@ test('the grant facts stay on the landing tab, below the delivery', async () => 
   render(<ClientPortalPage />);
 
   expect((await screen.findAllByText('Acme Foundation')).length).toBeGreaterThan(1);
-  expect(screen.getByText('₹9,21,000')).toBeInTheDocument();
+  expect(screen.getAllByText('\u20B99,21,000').length).toBeGreaterThan(0);
   expect(screen.getByText('Prepared for Acme Foundation')).toBeInTheDocument();
   expect(screen.getAllByText('Delivered by India Khelo Football').length).toBeGreaterThan(0);
 });
@@ -133,7 +135,7 @@ test('every tab the funder is offered is reachable', async () => {
   await screen.findByText(/What has been delivered/i);
 
   const tabs = screen.getAllByRole('tab');
-  expect(tabs).toHaveLength(5);
+  expect(tabs).toHaveLength(6);
 
   // each one selects when clicked — a tab that renders but cannot be chosen is
   // worse than one that is absent
@@ -369,20 +371,20 @@ test('the tabs are a real tabs widget: labelled, linked to panels, arrow keys an
   const panel = screen.getByRole('tabpanel');
   expect(panel).toHaveAttribute('aria-labelledby', tabs[0].id);
   expect(tabs[0]).toHaveAttribute('aria-controls', panel.id);
-  expect(tabs.map((t) => t.tabIndex)).toEqual([0, -1, -1, -1, -1]);
+  expect(tabs.map((t) => t.tabIndex)).toEqual([0, -1, -1, -1, -1, -1]);
 
   fireEvent.keyDown(tabs[0], { key: 'ArrowRight' });
   expect(tabs[1]).toHaveAttribute('aria-selected', 'true');
   expect(tabs[1]).toHaveFocus();
-  expect(tabs.map((t) => t.tabIndex)).toEqual([-1, 0, -1, -1, -1]);
+  expect(tabs.map((t) => t.tabIndex)).toEqual([-1, 0, -1, -1, -1, -1]);
 
   fireEvent.keyDown(tabs[1], { key: 'End' });
-  expect(tabs[4]).toHaveAttribute('aria-selected', 'true');
-  fireEvent.keyDown(tabs[4], { key: 'ArrowRight' });
+  expect(tabs[5]).toHaveAttribute('aria-selected', 'true');
+  fireEvent.keyDown(tabs[5], { key: 'ArrowRight' });
   expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
   fireEvent.keyDown(tabs[0], { key: 'ArrowLeft' });
-  expect(tabs[4]).toHaveAttribute('aria-selected', 'true');
-  fireEvent.keyDown(tabs[4], { key: 'Home' });
+  expect(tabs[5]).toHaveAttribute('aria-selected', 'true');
+  fireEvent.keyDown(tabs[5], { key: 'Home' });
   expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
 });
 
@@ -818,7 +820,7 @@ test('D-019: the funder sees the cities their grant funds, and each activity cit
     { id: 1, title: 'Trial at Pune', status: 'Completed', city: 'Pune', location: 'Balewadi Ground', startDate: '2026-05-02' },
   ]);
   render(<ClientPortalPage />);
-  expect(await screen.findByText('Pune, Wardha')).toBeInTheDocument();
+  expect((await screen.findAllByText('Pune, Wardha')).length).toBeGreaterThan(0);
   expect(screen.getAllByText(/Pune, Balewadi Ground/).length).toBeGreaterThan(0);
 });
 
@@ -826,4 +828,54 @@ test('D-019: a grant with no cities shows no Cities line', async () => {
   render(<ClientPortalPage />);
   await screen.findByText('What has been delivered');
   expect(screen.queryByText('Cities')).not.toBeInTheDocument();
+});
+
+test('the Overview tab displays the 4 summary stat cards', async () => {
+  clientAPI.athletes.mockResolvedValue([
+    { id: 1, fullName: 'Aarav Patel', jerseyNumber: 7, position: 'Forward', city: 'Ludhiana', selectionStatus: 'Selected' },
+  ]);
+  render(<ClientPortalPage />);
+  expect(await screen.findByText('Total Grant Amount')).toBeInTheDocument();
+  expect(screen.getByText('Athletes Scouted')).toBeInTheDocument();
+  expect(screen.getByText('Target Cities')).toBeInTheDocument();
+  expect(screen.getByText('Audit & Certification')).toBeInTheDocument();
+});
+
+test('the Athletes tab shows scouted beneficiaries and search works', async () => {
+  clientAPI.athletes.mockResolvedValue([
+    { id: 101, fullName: 'Rohan Sharma', jerseyNumber: 10, position: 'Midfielder', city: 'Ludhiana', category: 'U-17', gender: 'Boys', selectionStatus: 'Selected' },
+    { id: 102, fullName: 'Simran Kaur', jerseyNumber: 4, position: 'Defender', city: 'Jalandhar', category: 'U-17', gender: 'Girls', selectionStatus: 'Shortlisted' },
+  ]);
+  render(<ClientPortalPage />);
+  await screen.findByText(/What has been delivered/i);
+
+  fireEvent.click(screen.getByRole('tab', { name: /^Athletes/i }));
+  expect(await screen.findByText('Rohan Sharma')).toBeInTheDocument();
+  expect(screen.getByText('Simran Kaur')).toBeInTheDocument();
+  expect(screen.getByText('#10')).toBeInTheDocument();
+  expect(screen.getByText('Midfielder')).toBeInTheDocument();
+  expect(screen.getByText('Selected')).toBeInTheDocument();
+  expect(screen.getByText('Shortlisted')).toBeInTheDocument();
+
+  // Test search
+  const searchInput = screen.getByPlaceholderText(/Search by name/i);
+  fireEvent.change(searchInput, { target: { value: 'Rohan' } });
+  expect(screen.getByText('Rohan Sharma')).toBeInTheDocument();
+  expect(screen.queryByText('Simran Kaur')).not.toBeInTheDocument();
+});
+
+test('switching Financial Year loads that year projects and updates state', async () => {
+  const P2026 = { id: 1, name: 'Project 2026', clientName: 'Acme', sanctionedAmount: 1000000, startDate: '2026-09-01', financialYear: '2026-27' };
+  const P2025 = { id: 2, name: 'Project 2025', clientName: 'Acme', sanctionedAmount: 800000, startDate: '2025-09-01', financialYear: '2025-26' };
+  clientAPI.project.mockResolvedValue([P2026, P2025]);
+
+  render(<ClientPortalPage />);
+  expect(await screen.findByRole('heading', { level: 1, name: 'Project 2026' })).toBeInTheDocument();
+
+  // Switch to FY 2025-26
+  const fy2025Btn = screen.getByRole('button', { name: /2025-26/i });
+  expect(fy2025Btn).toBeInTheDocument();
+  fireEvent.click(fy2025Btn);
+
+  expect(clientAPI.project).toHaveBeenCalledWith(2);
 });

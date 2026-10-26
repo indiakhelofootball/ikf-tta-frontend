@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box, Container, Typography, Button, Stack, Tabs, Tab, Snackbar, Alert,
-  CircularProgress, Chip,
+  CircularProgress, Chip, Dialog, DialogTitle, DialogContent, DialogActions,
+  TextField, MenuItem,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -282,12 +283,31 @@ export default function CSRProjectDetailPage() {
   const [loading, setLoading] = useState(true);
   // null | 'notFound' | 'failed' -- for the grant itself.
   const [loadError, setLoadError] = useState(null);
-  const [listFailed, setListFailed] = useState({ activities: false, reports: false, contacts: false });
+  const [athletes, setAthletes] = useState([]);
+  const [athleteModalOpen, setAthleteModalOpen] = useState(false);
+  const [editingAthlete, setEditingAthlete] = useState(null);
+  const [athleteForm, setAthleteForm] = useState({
+    fullName: '',
+    jerseyNumber: '',
+    dob: '',
+    age: '',
+    gender: 'Not Mentioned',
+    position: '',
+    city: '',
+    schoolOrClub: '',
+    status: 'Participated',
+    notes: '',
+  });
+  const [athleteSaving, setAthleteSaving] = useState(false);
+  const [athleteError, setAthleteError] = useState('');
+  const [listFailed, setListFailed] = useState({ activities: false, reports: false, contacts: false, athletes: false });
   // A row opened from the cross-grant Activities/Reports log (CSRActivitiesPage,
   // CSRReportsPage) arrives with the tab it belongs to in navigation state, so
   // "open" lands you on the record instead of back on the Overview tab.
+  const athletesTabIdx = canViewCert ? 6 : 5;
   const [tab, setTab] = useState(() => {
     const requested = location.state?.tab;
+    if (requested === 'athletes') return canViewCert ? 6 : 5;
     return typeof requested === 'number' ? requested : 0;
   });
   const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
@@ -335,12 +355,13 @@ export default function CSRProjectDetailPage() {
   // The type catalogue is optional: every activity carries activityTypeName.
   const load = useCallback(async () => {
     setLoading(true);
-    const [p, acts, reps, cons, types] = await Promise.allSettled([
+    const [p, acts, reps, cons, types, aths] = await Promise.allSettled([
       csrAPI.projects.getById(id),
       csrAPI.activities.getAll({ project: id }),
       csrAPI.reports.getAll({ project: id }),
       csrAPI.contacts.getAll({ project: id }),
       csrAPI.activityTypes.getAll().catch(() => []),
+      csrAPI.athletes.getAll({ project: id }),
     ]);
     const listOf = (r) => (r.status === 'fulfilled' ? asList(r.value) : []);
     if (p.status === 'fulfilled') {
@@ -354,10 +375,12 @@ export default function CSRProjectDetailPage() {
     setReports(listOf(reps));
     setContacts(listOf(cons));
     setActivityTypes(listOf(types));
+    setAthletes(listOf(aths));
     setListFailed({
       activities: acts.status === 'rejected',
       reports: reps.status === 'rejected',
       contacts: cons.status === 'rejected',
+      athletes: aths.status === 'rejected',
     });
     setLoading(false);
     // Expense tags require the stricter csr_certificate grant — fetch separately
@@ -437,6 +460,97 @@ export default function CSRProjectDetailPage() {
       try {
         await csrAPI.expenseTags.delete(x.id);
         notify('Expense tag removed.');
+        load();
+      } catch (e) {
+        notify(e.message || 'Delete failed.', 'error');
+      }
+    },
+  });
+
+  const openAddAthleteModal = () => {
+    setEditingAthlete(null);
+    const defaultCity = (project?.cities && project.cities.length > 0) ? project.cities[0].cityName : '';
+    setAthleteForm({
+      fullName: '',
+      jerseyNumber: '',
+      dob: '',
+      age: '',
+      gender: 'Not Mentioned',
+      position: '',
+      city: defaultCity,
+      schoolOrClub: '',
+      status: 'Participated',
+      notes: '',
+    });
+    setAthleteError('');
+    setAthleteModalOpen(true);
+  };
+
+  const openEditAthleteModal = (a) => {
+    setEditingAthlete(a);
+    setAthleteForm({
+      fullName: a.fullName || '',
+      jerseyNumber: a.jerseyNumber || '',
+      dob: a.dob || '',
+      age: a.age != null ? a.age : '',
+      gender: a.gender || 'Not Mentioned',
+      position: a.position || '',
+      city: a.city || '',
+      schoolOrClub: a.schoolOrClub || '',
+      status: a.status || 'Participated',
+      notes: a.notes || '',
+    });
+    setAthleteError('');
+    setAthleteModalOpen(true);
+  };
+
+  const saveAthlete = async (e) => {
+    if (e) e.preventDefault();
+    if (!athleteForm.fullName.trim()) {
+      setAthleteError('Full name is required.');
+      return;
+    }
+    setAthleteSaving(true);
+    setAthleteError('');
+    try {
+      const payload = {
+        projectId: Number(id),
+        fullName: String(athleteForm.fullName || '').trim(),
+        jerseyNumber: String(athleteForm.jerseyNumber || '').trim(),
+        dob: athleteForm.dob || null,
+        age: athleteForm.age ? parseInt(athleteForm.age, 10) : null,
+        gender: athleteForm.gender || 'Not Mentioned',
+        position: String(athleteForm.position || '').trim(),
+        city: String(athleteForm.city || '').trim(),
+        schoolOrClub: String(athleteForm.schoolOrClub || '').trim(),
+        status: athleteForm.status,
+        notes: String(athleteForm.notes || '').trim(),
+      };
+      if (editingAthlete) {
+        await csrAPI.athletes.update(editingAthlete.id, payload);
+        notify('Athlete updated successfully.');
+      } else {
+        await csrAPI.athletes.create(payload);
+        notify('Athlete added successfully.');
+      }
+      setAthleteModalOpen(false);
+      const updated = await csrAPI.athletes.getAll({ project: id });
+      setAthletes(asList(updated));
+    } catch (err) {
+      setAthleteError(err.message || 'Failed to save athlete.');
+    } finally {
+      setAthleteSaving(false);
+    }
+  };
+
+  const deleteAthlete = (a) => setConfirmState({
+    title: 'Delete athlete',
+    message: `Delete athlete "${a.fullName}"?`,
+    confirmLabel: 'Delete',
+    onConfirm: async () => {
+      try {
+        await csrAPI.athletes.delete(a.id);
+        notify('Athlete deleted.');
         load();
       } catch (e) {
         notify(e.message || 'Delete failed.', 'error');
@@ -607,13 +721,14 @@ export default function CSRProjectDetailPage() {
         Preview as funder
       </Button>
 
-      <Tabs value={tab} onChange={(e, v) => setTab(v)} variant="scrollable" scrollButtons={false} sx={{ mb: 2 }}>
+      <Tabs value={Math.min(tab, canViewCert ? 6 : 5)} onChange={(e, v) => setTab(v)} variant="scrollable" scrollButtons={false} sx={{ mb: 2 }}>
         <Tab label="Overview" />
         <Tab label={tabCount('Contacts', contacts, listFailed.contacts)} />
         <Tab label={tabCount('Activities', activities, listFailed.activities)} />
         <Tab label={tabCount('Reports', reports, listFailed.reports)} />
         <Tab label="Contracts" />
         {canViewCert && <Tab label="Utilisation" />}
+        <Tab label={tabCount('Athletes', athletes, listFailed.athletes)} />
       </Tabs>
 
       {tab === 0 && (
@@ -1139,6 +1254,250 @@ export default function CSRProjectDetailPage() {
           </div>
         </Box>
       )}
+
+      {tab === athletesTabIdx && (
+        <Box>
+          <Stack direction="row" spacing={1} sx={{ mb: 2, justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="body2" color="text.secondary">
+              Beneficiaries and scouted football players supported under this grant.
+            </Typography>
+            {editable && (
+              <Button
+                size="small"
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={openAddAthleteModal}
+              >
+                Add Athlete
+              </Button>
+            )}
+          </Stack>
+
+          {listFailed.athletes ? listError('athletes') : (
+            <div className="twrap">
+              <div className="lgrid lgrid--athletes lgrid-head">
+                {['#', 'Athlete', 'Age / Gender', 'Position', 'City / Club', 'Status', 'Manage'].map((h) => <span key={h}>{h}</span>)}
+              </div>
+
+              {athletes.length === 0 ? (
+                <div className="empty"><h3>No athletes added yet</h3></div>
+              ) : athletes.map((a) => (
+                <div className="lwrap" key={a.id}>
+                  <div
+                    className="lgrid lgrid--athletes lrow"
+                    {...rowActivation(
+                      editable ? `Edit athlete ${a.fullName}` : null,
+                      editable ? () => openEditAthleteModal(a) : null,
+                    )}
+                  >
+                    <span className="fig nowrap">{a.jerseyNumber ? `#${a.jerseyNumber}` : '--'}</span>
+                    <span className="t1wrap">
+                      <span className="t1">{a.fullName}</span>
+                      {a.notes && <span className="t2" title={a.notes} style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>{a.notes}</span>}
+                    </span>
+                    <span className="t2">
+                      {[a.age ? `${a.age}y` : null, a.gender].filter(Boolean).join(', ') || '—'}
+                    </span>
+                    <span className="t2">{a.position || '—'}</span>
+                    <span className="t2">
+                      {[a.city, a.schoolOrClub].filter(Boolean).join(' · ') || '—'}
+                    </span>
+                    <span>
+                      <span className={`pill ${a.status === 'Participated' ? 'wait' : 'act'}`}>
+                        {a.status || 'Participated'}
+                      </span>
+                    </span>
+                    <span className="lend">
+                      {editable && (
+                        <>
+                          <button
+                            type="button"
+                            className="ico g"
+                            aria-label={`Edit athlete ${a.fullName}`}
+                            onClick={(e) => { e.stopPropagation(); openEditAthleteModal(a); }}
+                          >
+                            <EditGlyph />
+                          </button>
+                          <button
+                            type="button"
+                            className="ico r"
+                            aria-label={`Delete athlete ${a.fullName}`}
+                            onClick={(e) => { e.stopPropagation(); deleteAthlete(a); }}
+                          >
+                            <DeleteGlyph />
+                          </button>
+                        </>
+                      )}
+                    </span>
+                  </div>
+                </div>
+              ))}
+
+              {athletes.length > 0 && (
+                <div className="tfoot">
+                  <span className="cnt">
+                    Showing {athletes.length} of {athletes.length}{' '}
+                    {athletes.length === 1 ? 'athlete' : 'athletes'} scouted on this project
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+        </Box>
+      )}
+
+      <Dialog
+        open={athleteModalOpen}
+        onClose={() => !athleteSaving && setAthleteModalOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <form onSubmit={saveAthlete}>
+          <DialogTitle>
+            {editingAthlete ? 'Edit Athlete' : 'Add Athlete'}
+          </DialogTitle>
+          <DialogContent dividers>
+            {athleteError && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {athleteError}
+              </Alert>
+            )}
+            <Stack spacing={2} sx={{ pt: 1 }}>
+              <TextField
+                label="Full Name"
+                required
+                fullWidth
+                size="small"
+                value={athleteForm.fullName}
+                onChange={(e) => setAthleteForm({ ...athleteForm, fullName: e.target.value })}
+                placeholder="e.g. Manpreet Singh"
+              />
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <TextField
+                  label="Jersey Number"
+                  size="small"
+                  fullWidth
+                  value={athleteForm.jerseyNumber}
+                  onChange={(e) => setAthleteForm({ ...athleteForm, jerseyNumber: e.target.value })}
+                  placeholder="e.g. 10"
+                />
+                <TextField
+                  label="Date of Birth (DOB)"
+                  type="date"
+                  size="small"
+                  fullWidth
+                  value={athleteForm.dob || ''}
+                  onChange={(e) => {
+                    const dobVal = e.target.value;
+                    let calculatedAge = athleteForm.age;
+                    if (dobVal) {
+                      const birth = new Date(dobVal);
+                      if (!isNaN(birth.getTime())) {
+                        const today = new Date();
+                        let diff = today.getFullYear() - birth.getFullYear();
+                        const m = today.getMonth() - birth.getMonth();
+                        if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+                          diff--;
+                        }
+                        if (diff >= 0 && diff <= 100) {
+                          calculatedAge = String(diff);
+                        }
+                      }
+                    }
+                    setAthleteForm({ ...athleteForm, dob: dobVal, age: calculatedAge });
+                  }}
+                  InputLabelProps={{ shrink: true }}
+                  helperText="Pick calendar or type YYYY-MM-DD"
+                />
+              </Stack>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <TextField
+                  label="Age"
+                  type="number"
+                  size="small"
+                  fullWidth
+                  value={athleteForm.age}
+                  onChange={(e) => setAthleteForm({ ...athleteForm, age: e.target.value })}
+                  placeholder="e.g. 15"
+                  helperText={athleteForm.age ? `Category: U-${athleteForm.age <= 11 ? 11 : athleteForm.age <= 13 ? 13 : athleteForm.age <= 15 ? 15 : athleteForm.age <= 17 ? 17 : athleteForm.age <= 19 ? 19 : athleteForm.age <= 21 ? 21 : 'Senior'}` : 'Calculated from DOB or enter manually'}
+                />
+                <TextField
+                  select
+                  label="Gender"
+                  size="small"
+                  fullWidth
+                  value={athleteForm.gender || 'Not Mentioned'}
+                  onChange={(e) => setAthleteForm({ ...athleteForm, gender: e.target.value })}
+                >
+                  <MenuItem value="Male">Male</MenuItem>
+                  <MenuItem value="Female">Female</MenuItem>
+                  <MenuItem value="Other">Other</MenuItem>
+                  <MenuItem value="Not Mentioned">Not Mentioned</MenuItem>
+                </TextField>
+              </Stack>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <TextField
+                  label="Position"
+                  size="small"
+                  fullWidth
+                  value={athleteForm.position}
+                  onChange={(e) => setAthleteForm({ ...athleteForm, position: e.target.value })}
+                  placeholder="e.g. Forward, Midfielder"
+                />
+                <TextField
+                  label="City"
+                  size="small"
+                  fullWidth
+                  value={athleteForm.city}
+                  onChange={(e) => setAthleteForm({ ...athleteForm, city: e.target.value })}
+                  placeholder="e.g. Ludhiana"
+                />
+              </Stack>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <TextField
+                  select
+                  label="Status"
+                  size="small"
+                  fullWidth
+                  value={athleteForm.status}
+                  onChange={(e) => setAthleteForm({ ...athleteForm, status: e.target.value })}
+                >
+                  <MenuItem value="Participated">Participated</MenuItem>
+                  <MenuItem value="Shortlisted">Shortlisted</MenuItem>
+                  <MenuItem value="Scholarship Awarded">Scholarship Awarded</MenuItem>
+                  <MenuItem value="National Finals">National Finals</MenuItem>
+                </TextField>
+                <TextField
+                  label="School / Club / Academy"
+                  size="small"
+                  fullWidth
+                  value={athleteForm.schoolOrClub}
+                  onChange={(e) => setAthleteForm({ ...athleteForm, schoolOrClub: e.target.value })}
+                  placeholder="e.g. Ludhiana Football Academy"
+                />
+              </Stack>
+              <TextField
+                label="Notes"
+                size="small"
+                fullWidth
+                multiline
+                rows={2}
+                value={athleteForm.notes}
+                onChange={(e) => setAthleteForm({ ...athleteForm, notes: e.target.value })}
+                placeholder="Optional notes or evaluation details"
+              />
+            </Stack>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, py: 2 }}>
+            <Button onClick={() => setAthleteModalOpen(false)} disabled={athleteSaving} color="inherit">
+              Cancel
+            </Button>
+            <Button type="submit" variant="contained" disabled={athleteSaving}>
+              {athleteSaving ? 'Saving...' : (editingAthlete ? 'Update Athlete' : 'Add Athlete')}
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
 
       <ConfirmDialog
         open={Boolean(confirmState)}
