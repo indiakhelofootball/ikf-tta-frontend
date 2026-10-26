@@ -23,7 +23,8 @@ jest.mock('../../services/api', () => ({
   },
 }));
 
-jest.mock('../../auth/AuthContext', () => ({ useAuth: () => ({ logout: jest.fn() }) }));
+const mockLogout = jest.fn();
+jest.mock('../../auth/AuthContext', () => ({ useAuth: () => ({ logout: mockLogout }) }));
 
 // jsPDF is only reached by the certificate download; keep it out of the render.
 jest.mock('jspdf', () => ({ __esModule: true, default: jest.fn() }));
@@ -832,7 +833,7 @@ test('D-019: a grant with no cities shows no Cities line', async () => {
 
 test('the Overview tab displays the 4 summary stat cards', async () => {
   clientAPI.athletes.mockResolvedValue([
-    { id: 1, fullName: 'Aarav Patel', jerseyNumber: 7, position: 'Forward', city: 'Ludhiana', selectionStatus: 'Selected' },
+    { id: 1, fullName: 'Aarav Patel', position: 'Forward', category: 'U17', status: 'Shortlisted' },
   ]);
   render(<ClientPortalPage />);
   expect(await screen.findByText('Total Grant Amount')).toBeInTheDocument();
@@ -843,8 +844,8 @@ test('the Overview tab displays the 4 summary stat cards', async () => {
 
 test('the Athletes tab shows scouted beneficiaries and search works', async () => {
   clientAPI.athletes.mockResolvedValue([
-    { id: 101, fullName: 'Rohan Sharma', jerseyNumber: 10, position: 'Midfielder', city: 'Ludhiana', category: 'U-17', gender: 'Boys', selectionStatus: 'Selected' },
-    { id: 102, fullName: 'Simran Kaur', jerseyNumber: 4, position: 'Defender', city: 'Jalandhar', category: 'U-17', gender: 'Girls', selectionStatus: 'Shortlisted' },
+    { id: 101, fullName: 'Rohan Sharma', position: 'Midfielder', category: 'U17', status: 'Scholarship Awarded' },
+    { id: 102, fullName: 'Simran Kaur', position: 'Defender', category: 'U19', status: 'Shortlisted' },
   ]);
   render(<ClientPortalPage />);
   await screen.findByText(/What has been delivered/i);
@@ -852,9 +853,9 @@ test('the Athletes tab shows scouted beneficiaries and search works', async () =
   fireEvent.click(screen.getByRole('tab', { name: /^Athletes/i }));
   expect(await screen.findByText('Rohan Sharma')).toBeInTheDocument();
   expect(screen.getByText('Simran Kaur')).toBeInTheDocument();
-  expect(screen.getByText('#10')).toBeInTheDocument();
   expect(screen.getByText('Midfielder')).toBeInTheDocument();
-  expect(screen.getByText('Selected')).toBeInTheDocument();
+  expect(screen.getByText('U19')).toBeInTheDocument();
+  expect(screen.getByText('Scholarship Awarded')).toBeInTheDocument();
   expect(screen.getByText('Shortlisted')).toBeInTheDocument();
 
   // Test search
@@ -878,4 +879,98 @@ test('switching Financial Year loads that year projects and updates state', asyn
   fireEvent.click(fy2025Btn);
 
   expect(clientAPI.project).toHaveBeenCalledWith(2);
+});
+
+test('D-026: the funder sees an athlete name, position, category and status, nothing more', async () => {
+  // Even if the server ever sends more, the table has no place to put it.
+  clientAPI.athletes.mockResolvedValue([
+    {
+      id: 101, fullName: 'Rohan Sharma', position: 'Midfielder', category: 'U17', status: 'Shortlisted',
+      dob: '2009-05-04', age: 17, jerseyNumber: 10, gender: 'Male', city: 'Zirakpur', cityName: 'Zirakpur',
+      notes: 'Weak left foot', photo: 'x.jpg',
+    },
+  ]);
+  render(<ClientPortalPage />);
+  await screen.findByText(/What has been delivered/i);
+  fireEvent.click(screen.getByRole('tab', { name: /^Athletes/i }));
+
+  const table = await screen.findByRole('table');
+  expect(within(table).getAllByRole('columnheader').map((h) => h.textContent))
+    .toEqual(['Athlete Name', 'Position', 'Category', 'Status']);
+  const row = within(table).getAllByRole('row')[1];
+  expect(within(row).getAllByRole('cell').map((c) => c.textContent))
+    .toEqual(['Rohan Sharma', 'Midfielder', 'U17', 'Shortlisted']);
+  expect(screen.queryByText(/2009/)).not.toBeInTheDocument();
+  expect(screen.queryByText('#10')).not.toBeInTheDocument();
+  expect(screen.queryByText('Male')).not.toBeInTheDocument();
+  expect(screen.queryByText('Zirakpur')).not.toBeInTheDocument();
+  expect(screen.queryByText('Weak left foot')).not.toBeInTheDocument();
+});
+
+test('an athlete with no category shows a dash, not a band worked out from a birth date', async () => {
+  clientAPI.athletes.mockResolvedValue([
+    { id: 1, fullName: 'Aarav Patel', position: 'Forward', category: '', status: 'Participated', dob: '2010-01-01', age: 16 },
+  ]);
+  render(<ClientPortalPage />);
+  await screen.findByText(/What has been delivered/i);
+  fireEvent.click(screen.getByRole('tab', { name: /^Athletes/i }));
+
+  const row = within(await screen.findByRole('table')).getAllByRole('row')[1];
+  expect(within(row).getAllByRole('cell')[2]).toHaveTextContent(/^—$/);
+});
+
+test('signing out keeps the funder door and leaves the page where it is, never /csr/login', async () => {
+  mockLogout.mockClear();
+  localStorage.removeItem('tta_client_slug');
+  clientAPI.myBranding.mockResolvedValue({ slug: 'acme', displayName: 'Acme Foundation CSR' });
+  // jsdom cannot navigate; a page assigning location.href to another path logs
+  // "Not implemented: navigation" instead. Either way the page must not try.
+  const errors = jest.spyOn(console, 'error').mockImplementation(() => {});
+  const before = window.location.pathname;
+  render(<ClientPortalPage />);
+  await screen.findByText('Acme Foundation CSR');
+
+  fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+
+  expect(mockLogout).toHaveBeenCalledTimes(1);
+  expect(localStorage.getItem('tta_client_slug')).toBe('acme');
+  expect(window.location.pathname).toBe(before);
+  const navigated = errors.mock.calls.some((args) => args.some((a) => /navigation/i.test(String(a?.message || a))));
+  expect(navigated).toBe(false);
+  errors.mockRestore();
+  localStorage.removeItem('tta_client_slug');
+});
+
+test('signing out with no remembered door still does not send a funder to /csr/login', async () => {
+  mockLogout.mockClear();
+  localStorage.removeItem('tta_client_slug');
+  const errors = jest.spyOn(console, 'error').mockImplementation(() => {});
+  const before = window.location.pathname;
+  render(<ClientPortalPage />);
+  await screen.findByText('What has been delivered');
+
+  fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+
+  expect(mockLogout).toHaveBeenCalledTimes(1);
+  expect(localStorage.getItem('tta_client_slug')).toBeNull();
+  expect(window.location.pathname).toBe(before);
+  const navigated = errors.mock.calls.some((args) => args.some((a) => /navigation/i.test(String(a?.message || a))));
+  expect(navigated).toBe(false);
+  errors.mockRestore();
+});
+
+test('returning to the tab refreshes the chosen grant itself and keeps the chosen year', async () => {
+  const P2026 = { id: 1, name: 'Project 2026', clientName: 'Acme', startDate: '2026-09-01', financialYear: '2026-27' };
+  const P2025 = { id: 2, name: 'Project 2025', clientName: 'Acme', startDate: '2025-09-01', financialYear: '2025-26' };
+  clientAPI.project.mockResolvedValue([P2026, P2025]);
+  render(<ClientPortalPage />);
+  await screen.findByRole('heading', { level: 1, name: 'Project 2026' });
+  fireEvent.click(screen.getByRole('button', { name: /2025-26/i }));
+  await screen.findByRole('heading', { level: 1, name: 'Project 2025' });
+
+  clientAPI.project.mockResolvedValue([P2026, { ...P2025, name: 'Project 2025 (closed)' }]);
+  returnToTab(31 * 1000);
+
+  expect(await screen.findByRole('heading', { level: 1, name: 'Project 2025 (closed)' })).toBeInTheDocument();
+  expect(clientAPI.project).toHaveBeenLastCalledWith(2);
 });

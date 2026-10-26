@@ -563,7 +563,6 @@ html:has(.cportal) .MuiDialog-root :focus-visible{outline-color:#243040}
   vertical-align:middle;color:var(--ink);
 }
 .cportal .cathletes-table tr:hover td{background:var(--line-soft)}
-.cportal .cath-num{font-weight:600;color:var(--muted);white-space:nowrap}
 .cportal .cath-name{display:flex;flex-direction:column;gap:2px}
 .cportal .cpos-badge{
   display:inline-block;padding:2px 8px;border-radius:4px;

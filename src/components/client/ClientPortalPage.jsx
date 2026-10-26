@@ -401,10 +401,14 @@ export default function ClientPortalPage({ source = funderSource, preview = null
     source.branding(pid)
       .then((b) => { if (current()) setBrand(b && b.slug ? b : null); })
       .catch(() => {});
-    source.data(pid, false)
+    // The grant list comes back too, so a changed status, amount or period shows
+    // without a reload; the funder stays on the year they picked.
+    source.data(pid, true)
       .then((d) => {
         if (!current()) return;
-        applyData(d, true);
+        const keep = selectedProjectIdRef.current;
+        const fresh = (keep && d.projects?.find((p) => p.id === keep)) || d.project;
+        applyData({ ...d, project: fresh });
         setFailed(false);
         setNoGrant(false);
       })
@@ -630,7 +634,7 @@ export default function ClientPortalPage({ source = funderSource, preview = null
                     </span>
                   </li>
                 ))}
-              </ul >
+              </ul>
             )}
           </section>
         )}
@@ -757,50 +761,17 @@ export default function ClientPortalPage({ source = funderSource, preview = null
     )
   );
 
-  // Status helper ensuring both backend ('Participated', 'Shortlisted', 'Scholarship Awarded', 'National Finals')
-  // and UI ('Selected', 'Shortlisted', 'Scouted') map cleanly to filter categories
+  // Maps the stored status ('Participated', 'Shortlisted', 'Scholarship Awarded',
+  // 'National Finals') to its filter bucket.
   const getStatusCategory = (ath) => {
     const raw = (ath.status || ath.selectionStatus || '').toLowerCase();
     if (raw.includes('final') || raw.includes('national')) return 'national_finals';
     if (raw.includes('scholarship')) return 'scholarship_awarded';
     if (raw.includes('shortlist')) return 'shortlisted';
-    if (raw.includes('select')) return 'selected';
     return 'participated';
   };
 
-  // Calculates youth football category (U-13, U-15, U-17, U-19, U-21, Senior) from DOB or age
-const calculateCategoryFromDobOrAge = (dob, age) => {
-  let calcAge = null;
-  if (dob) {
-    const birth = new Date(dob);
-    if (!isNaN(birth.getTime())) {
-      const today = new Date();
-      let diff = today.getFullYear() - birth.getFullYear();
-      const m = today.getMonth() - birth.getMonth();
-      if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
-        diff--;
-      }
-      if (diff >= 0 && diff <= 100) {
-        calcAge = diff;
-      }
-    }
-  }
-  if (calcAge === null && age != null && age !== '') {
-    calcAge = Number(age);
-  }
-  if (calcAge === null || isNaN(calcAge)) {
-    return '—';
-  }
-  if (calcAge <= 11) return 'U-11';
-  if (calcAge <= 13) return 'U-13';
-  if (calcAge <= 15) return 'U-15';
-  if (calcAge <= 17) return 'U-17';
-  if (calcAge <= 19) return 'U-19';
-  if (calcAge <= 21) return 'U-21';
-  return 'Senior';
-};
-
-const getStatusLabel = (ath) => {
+  const getStatusLabel = (ath) => {
     return ath.status || ath.selectionStatus || 'Participated';
   };
 
@@ -812,11 +783,10 @@ const getStatusLabel = (ath) => {
       if (!matchFilter) return false;
       if (!q) return true;
       const name = (ath.fullName || '').toLowerCase();
-      const num = String(ath.jerseyNumber || '').toLowerCase();
       const pos = (ath.position || '').toLowerCase();
-      const city = (ath.city || ath.cityName || '').toLowerCase();
+      const category = (ath.category || '').toLowerCase();
       const st = getStatusLabel(ath).toLowerCase();
-      return name.includes(q) || num.includes(q) || pos.includes(q) || city.includes(q) || st.includes(q);
+      return name.includes(q) || pos.includes(q) || category.includes(q) || st.includes(q);
     });
 
     const countsStatus = {
@@ -825,7 +795,6 @@ const getStatusLabel = (ath) => {
       shortlisted: athletes.filter((a) => getStatusCategory(a) === 'shortlisted').length,
       scholarship: athletes.filter((a) => getStatusCategory(a) === 'scholarship_awarded').length,
       finals: athletes.filter((a) => getStatusCategory(a) === 'national_finals').length,
-      selected: athletes.filter((a) => getStatusCategory(a) === 'selected').length,
     };
 
     const filterOptions = [
@@ -835,9 +804,6 @@ const getStatusLabel = (ath) => {
       { id: 'scholarship_awarded', label: `Scholarship Awarded (${countsStatus.scholarship})` },
       { id: 'national_finals', label: `National Finals (${countsStatus.finals})` },
     ];
-    if (countsStatus.selected > 0) {
-      filterOptions.push({ id: 'selected', label: `Selected (${countsStatus.selected})` });
-    }
 
     return (
       <section className="cpanel" aria-label="Athletes">
@@ -854,7 +820,7 @@ const getStatusLabel = (ath) => {
           <input
             type="search"
             className="csearch-input"
-            placeholder="Search by name, jersey #, position, city…"
+            placeholder="Search by name, position, category, status…"
             value={athleteSearch}
             onChange={(e) => setAthleteSearch(e.target.value)}
             aria-label="Search athletes"
@@ -888,27 +854,22 @@ const getStatusLabel = (ath) => {
             <table className="cathletes-table">
               <thead>
                 <tr>
-                  <th scope="col">Jersey #</th>
                   <th scope="col">Athlete Name</th>
                   <th scope="col">Position</th>
-                  <th scope="col">Trial City</th>
                   <th scope="col">Category</th>
-                  <th scope="col">Gender</th>
                   <th scope="col">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((ath) => {
                   const statusCat = getStatusCategory(ath);
-                  const statusClass = (statusCat === 'selected' || statusCat === 'scholarship_awarded' || statusCat === 'national_finals') ? ' ok'
+                  const statusClass = (statusCat === 'scholarship_awarded' || statusCat === 'national_finals') ? ' ok'
                     : statusCat === 'shortlisted' ? ' warn' : '';
                   return (
                     <tr key={ath.id}>
-                      <td className="cath-num cnum">{ath.jerseyNumber ? `#${ath.jerseyNumber}` : '—'}</td>
                       <td>
                         <div className="cath-name">
                           <strong>{ath.fullName}</strong>
-                          {ath.dob && <span className="crow-s">{formatDate(ath.dob)}</span>}
                         </div>
                       </td>
                       <td>
@@ -916,13 +877,11 @@ const getStatusLabel = (ath) => {
                           <span className="cpos-badge">{ath.position}</span>
                         ) : '—'}
                       </td>
-                      <td>{ath.cityName || ath.city || '—'}</td>
                       <td>
-                        <span className="cpos-badge">
-                          {ath.category || calculateCategoryFromDobOrAge(ath.dob, ath.age)}
-                        </span>
+                        {ath.category ? (
+                          <span className="cpos-badge">{ath.category}</span>
+                        ) : '—'}
                       </td>
-                      <td>{ath.gender && ath.gender !== 'Not Mentioned' ? ath.gender : '—'}</td>
                       <td>
                         <span className={`cpill${statusClass}`}>
                           {getStatusLabel(ath)}
@@ -1273,6 +1232,19 @@ const getStatusLabel = (ath) => {
     );
   }
 
+  // Keeps the funder's door before the session is cleared, then lets the route
+  // decide: signed out, /client renders ClientSignedOut, which opens the branded login.
+  // No redirect here, so a funder is never sent to the staff /csr/login.
+  const handleSignOut = () => {
+    try {
+      const slug = brand?.slug || localStorage.getItem('tta_client_slug');
+      if (slug) localStorage.setItem('tta_client_slug', slug);
+    } catch {
+      // storage blocked: the signed-out page still offers the way back
+    }
+    logout();
+  };
+
   return (
     <ThemeProvider theme={clientThemeFrom(brand)}>
       <div className="cportal" style={cssVars || undefined}>
@@ -1293,7 +1265,7 @@ const getStatusLabel = (ath) => {
             <>
               <div className="cbar-actions">
                 <Button className="cbar-btn" onClick={() => setPwOpen(true)}>Change password</Button>
-                <Button className="cbar-btn" onClick={logout}>Sign out</Button>
+                <Button className="cbar-btn" onClick={handleSignOut}>Sign out</Button>
               </div>
               <div className="cbar-menu">
                 <IconButton
@@ -1306,7 +1278,7 @@ const getStatusLabel = (ath) => {
                 </IconButton>
                 <Menu anchorEl={menuAnchor} open={!!menuAnchor} onClose={() => setMenuAnchor(null)}>
                   <MenuItem onClick={() => { setMenuAnchor(null); setPwOpen(true); }}>Change password</MenuItem>
-                  <MenuItem onClick={() => { setMenuAnchor(null); logout(); }}>Sign out</MenuItem>
+                  <MenuItem onClick={() => { setMenuAnchor(null); handleSignOut(); }}>Sign out</MenuItem>
                 </Menu>
               </div>
             </>
