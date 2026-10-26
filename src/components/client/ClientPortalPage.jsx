@@ -36,9 +36,15 @@ const tabFromHash = () => {
 
 const deliverablePercent = (d) => {
   const target = Number(d.targetCount) || 0;
-  if (target <= 0) return null;
+  if (target <= 0 || !hasResult(d)) return null;
   return Math.min(100, Math.round(((Number(d.completedCount) || 0) / target) * 100));
 };
+
+// A target nobody has reported a figure for yet. Drawn as "No result recorded
+// yet", never as 0: zero would tell the funder nothing happened, when all we
+// know is that no figure has been entered.
+const hasResult = (d) => d.completedCount != null;
+const NO_RESULT = 'No result recorded yet';
 
 // Helper to determine the Financial Year string (e.g. "FY 2026-27")
 const getProjectFY = (p) => {
@@ -124,12 +130,16 @@ function DeliverableRow({ d, detailed }) {
         {due && <div className="crow-s">Due {due}</div>}
       </div>
       <div className="crow-end">
-        <div>
-          <span className="cfig">{formatCount(done)}</span>
-          {d.targetCount != null && (
-            <span className="crow-s"> of {formatCount(d.targetCount)}</span>
-          )}
-        </div>
+        {hasResult(d) ? (
+          <div>
+            <span className="cfig">{formatCount(done)}</span>
+            {d.targetCount != null && (
+              <span className="crow-s"> of {formatCount(d.targetCount)}</span>
+            )}
+          </div>
+        ) : (
+          <div className="crow-s">{NO_RESULT}</div>
+        )}
         {exceeded && <div className="cnote">Target exceeded</div>}
         {detailed && d.status && (
           <span className={`cpill${d.status === 'Completed' ? ' ok' : ''}`}>{d.status}</span>
@@ -166,10 +176,10 @@ function LedgerRow({ d }) {
   const percent = deliverablePercent(d);
   const target = Number(d.targetCount) || 0;
   const done = Number(d.completedCount) || 0;
-  const note = deliveryNote(done, target, percent);
+  const note = hasResult(d) ? deliveryNote(done, target, percent) : NO_RESULT;
   return (
     <li className="cled">
-      <div className="cled-n">{formatCount(done)}</div>
+      <div className="cled-n">{hasResult(d) ? formatCount(done) : '—'}</div>
       <div className="cled-b">
         <div className="cled-t">
           {d.title}{target > 0 ? `, against a target of ${formatCount(target)}.` : '.'}

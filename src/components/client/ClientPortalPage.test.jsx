@@ -1001,3 +1001,16 @@ test('a grant with something delivered stays on its own year', async () => {
   await act(async () => {});
   expect(clientAPI.athletes).not.toHaveBeenCalledWith(PILOT.id);
 });
+
+// A target the documents set but nobody has reported a figure for. Drawn as 0 it
+// told the funder "Not started"; all anyone knows is that no figure was entered.
+test('a target with no result recorded says so, never 0 or Not started', async () => {
+  clientAPI.deliverables.mockResolvedValue([
+    { id: 9, title: 'Vardhman Steel placements (target 2-4 hires)', targetCount: null, completedCount: null, status: 'Pending' },
+    { id: 10, title: 'Formal club trials secured', targetCount: 5, completedCount: null, status: 'Pending' },
+  ]);
+  render(<ClientPortalPage />);
+  expect((await screen.findAllByText('No result recorded yet')).length).toBeGreaterThanOrEqual(2);
+  expect(screen.queryByText('Not started')).toBeNull();
+  expect(screen.queryByRole('progressbar', { name: 'Progress for Formal club trials secured' })).toBeNull();
+});
