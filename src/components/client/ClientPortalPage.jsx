@@ -352,6 +352,8 @@ export default function ClientPortalPage({ source = funderSource, preview = null
       .then((c) => { if (mounted.current && cseq === certSeq.current) setCert(c); })
       .catch(() => { if (mounted.current && cseq === certSeq.current) setCert({ available: false, reason: 'error' }); });
   }, [source, applyData, allProjects]);
+  const selectProjectRef = useRef(handleSelectProject);
+  selectProjectRef.current = handleSelectProject;
 
   useEffect(() => {
     let active = true;
@@ -368,9 +370,17 @@ export default function ClientPortalPage({ source = funderSource, preview = null
           .catch(() => {});
 
         // Initial mount loads projects list
+        const firstOpen = !selectedProjectIdRef.current;
         const d = await source.data(pid, true);
         if (!current()) return;
         applyData(d);
+        // D-027: a grant with nothing delivered yet opens on the latest earlier
+        // year instead, so the funder does not land on an empty page. The list
+        // puts the login's own grant first and the rest newest first.
+        const nothingYet = !d.activities?.length && !d.athletes?.length && !d.deliverables?.length;
+        if (firstOpen && nothingYet && d.projects?.length > 1) {
+          selectProjectRef.current(d.projects[1].id);
+        }
       } catch (e) {
         if (!current()) return;
         if (isNoGrant(e)) setNoGrant(true);

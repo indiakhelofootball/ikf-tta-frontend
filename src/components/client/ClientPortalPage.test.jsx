@@ -974,3 +974,30 @@ test('returning to the tab refreshes the chosen grant itself and keeps the chose
   expect(await screen.findByRole('heading', { level: 1, name: 'Project 2025 (closed)' })).toBeInTheDocument();
   expect(clientAPI.project).toHaveBeenLastCalledWith(2);
 });
+
+// D-027: Vardhman's login belongs to the new grant, which has nothing delivered
+// yet; landing on it looked like the portal had no data at all.
+const OWN_EMPTY = { id: 8, name: 'Football for All', clientName: 'Vardhman Steel', status: 'Active', startDate: '2026-09-01', financialYear: 'FY 2026-27' };
+const PILOT = { id: 10, name: 'Ludhiana Pilot', clientName: 'Vardhman Steel', status: 'Closed', startDate: '2025-12-02', financialYear: 'FY 2025-26' };
+const byYear = (forOwn, forPilot) => (pid) => Promise.resolve(pid === PILOT.id ? forPilot : forOwn);
+
+test('a grant with nothing delivered yet opens on the latest earlier year', async () => {
+  clientAPI.project.mockResolvedValue([OWN_EMPTY, PILOT]);
+  clientAPI.activities.mockImplementation(byYear([], [{ id: 5, title: 'Trials Day 1', status: 'Completed' }]));
+  clientAPI.deliverables.mockImplementation(byYear([], []));
+  clientAPI.athletes.mockImplementation(byYear([], [{ id: 1, fullName: 'Rajvir Singh', category: 'U17', position: 'Center Back', status: 'Shortlisted' }]));
+  clientAPI.reports.mockImplementation(byYear([{ id: 4, title: 'client_status' }], []));
+  render(<ClientPortalPage />);
+  expect(await screen.findByRole('heading', { name: 'Ludhiana Pilot' })).toBeInTheDocument();
+  expect(clientAPI.athletes).toHaveBeenCalledWith(PILOT.id);
+  expect(screen.getByRole('button', { name: 'FY 2026-27' })).toBeInTheDocument();
+});
+
+test('a grant with something delivered stays on its own year', async () => {
+  clientAPI.project.mockResolvedValue([OWN_EMPTY, PILOT]);
+  clientAPI.activities.mockImplementation(byYear([{ id: 7, title: 'Workshop', status: 'Completed' }], []));
+  render(<ClientPortalPage />);
+  expect(await screen.findByRole('heading', { name: 'Football for All' })).toBeInTheDocument();
+  await act(async () => {});
+  expect(clientAPI.athletes).not.toHaveBeenCalledWith(PILOT.id);
+});
