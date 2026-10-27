@@ -59,6 +59,21 @@ export function formatLineDate(value) {
   return value || '—';
 }
 
+/**
+ * The one date every line shares, or null. A CA certificate states one period
+ * for all its heads, so a grant loaded from one carries the same date on every
+ * line; printed per line it reads as if everything was spent that one day
+ * (owner, 27 Oct). The funder tab and the funder PDF both state it once, through
+ * this one rule. A single line, a missing date or two different dates is null,
+ * and each line keeps its own date as before.
+ */
+export function sharedLineDate(lineItems) {
+  const lines = Array.isArray(lineItems) ? lineItems : [];
+  if (lines.length < 2) return null;
+  const first = lines[0].date;
+  return first && lines.every((x) => x.date === first) ? first : null;
+}
+
 /** Filesystem-safe file stem: strips characters Windows/macOS/Linux all reject. */
 export function sanitizeFileNamePart(value) {
   const cleaned = String(value || '')
@@ -106,6 +121,15 @@ export function buildCertificateTable(cert, { variant = 'funder' } = {}) {
   // deliberately (client_serializers.CLIENT_CERTIFICATE_LINE_FIELDS) — it is
   // the date of their own grant spend, not a payment reference and not a
   // vendor, so it crosses none of the lines the funder variant exists to hold.
+  // When every line shares one date the funder copy states it once above the
+  // table (buildCertificateDoc) and drops the column, so the period stays
+  // stated. The internal copy keeps the column as before.
+  if (!isInternal && sharedLineDate(lineItems)) {
+    return {
+      head: [['Expense', 'Amount']],
+      body: lineItems.map((x) => [x.note || 'Expense', formatMoney(x.amount)]),
+    };
+  }
   const head = isInternal
     ? [['Date', 'Source', 'Note', 'Amount']]
     : [['Date', 'Expense', 'Amount']];
@@ -171,6 +195,9 @@ export function buildCertificateDoc(cert, { variant = 'funder' } = {}) {
   if (isInternal && Number(c.outOfPeriodCount) > 0) {
     line(`${c.outOfPeriodCount} tagged expense(s) fall outside this period and are not included.`);
   }
+
+  const sharedDate = isInternal ? null : sharedLineDate(c.lineItems);
+  if (sharedDate) line(`Spent up to ${formatLineDate(sharedDate)}`);
 
   autoTable(doc, { startY: y + 4, ...buildCertificateTable(c, { variant }) });
 

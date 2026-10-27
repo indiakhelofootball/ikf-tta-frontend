@@ -4,7 +4,7 @@ import { Button, CircularProgress, IconButton, Menu, MenuItem } from '@mui/mater
 import { Download as DownloadIcon, Menu as MenuIcon } from '@mui/icons-material';
 
 import { clientAPI } from '../../services/api';
-import { downloadCertificatePdf } from '../../utils/certificatePdf';
+import { downloadCertificatePdf, sharedLineDate } from '../../utils/certificatePdf';
 import { openDownloadedFile } from '../../utils/reportFile';
 import { useAuth } from '../../auth/AuthContext';
 import clientThemeFrom, { brandCssVars } from './clientTheme';
@@ -1258,12 +1258,9 @@ export default function ClientPortalPage({ source = funderSource, preview = null
     const start = formatDate(cert.periodStart) || 'Inception';
     const end = formatDate(cert.periodEnd);
     const lines = cert.lineItems || [];
-    // 27 Oct, owner: a CA certificate gives one period for every head, so each
-    // line carries the same date; shown once above the list, it no longer reads
-    // as if everything was spent on that one day.
-    const sharedDate = lines.length > 1 && lines.every((x) => x.date && x.date === lines[0].date)
-      ? formatDate(lines[0].date)
-      : '';
+    // One date shared by every line is stated once above the list; the PDF
+    // applies the same rule (sharedLineDate).
+    const sharedDate = formatDate(sharedLineDate(lines));
     return (
       <section className="cpanel" aria-labelledby="cp-cert">
         <div className="chead">

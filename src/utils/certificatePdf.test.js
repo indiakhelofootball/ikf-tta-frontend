@@ -176,6 +176,40 @@ describe('buildCertificateDoc — funder variant', () => {
     buildCertificateDoc({ ...base, outOfPeriodCount: 3 }, { variant: 'funder' });
     expect(allText()).not.toMatch(/outside this period/);
   });
+
+  // 27 Oct, owner: Vardhman's CA certificate gives one period for all 15 heads.
+  const sameDay = [
+    { date: '2026-03-31', note: 'Coaching kits', amount: 1000, source: 'Vendor Payment' },
+    { date: '2026-03-31', note: 'Travel', amount: 2000 },
+  ];
+
+  test('when every line shares one date it is printed once above the table and the column goes', () => {
+    const cert = { ...base, lineItems: sameDay };
+    const { head, body } = buildCertificateTable(cert, { variant: 'funder' });
+    buildCertificateDoc(cert, { variant: 'funder' });
+    expect(head[0]).toEqual(['Expense', 'Amount']);
+    expect(body).toEqual([['Coaching kits', 'INR 1,000.00'], ['Travel', 'INR 2,000.00']]);
+    expect(allText()).toMatch(/Spent up to 2026-03-31/);
+    expect(JSON.stringify(body)).not.toMatch(/Vendor Payment/);
+  });
+
+  test('lines with different dates keep their own date and no shared date is printed', () => {
+    const cert = { ...base, lineItems: [sameDay[0], { ...sameDay[1], date: '2026-02-10' }] };
+    const { head, body } = buildCertificateTable(cert, { variant: 'funder' });
+    buildCertificateDoc(cert, { variant: 'funder' });
+    expect(head[0]).toEqual(['Date', 'Expense', 'Amount']);
+    expect(body[1][0]).toBe('2026-02-10');
+    expect(allText()).not.toMatch(/Spent up to/);
+  });
+
+  test('the internal copy keeps a date on every line even when they are all the same', () => {
+    const cert = { ...base, lineItems: sameDay };
+    const { head, body } = buildCertificateTable(cert, { variant: 'internal' });
+    buildCertificateDoc(cert, { variant: 'internal' });
+    expect(head[0]).toEqual(['Date', 'Source', 'Note', 'Amount']);
+    expect(body[0][0]).toBe('2026-03-31');
+    expect(allText()).not.toMatch(/Spent up to/);
+  });
 });
 
 describe('buildCertificateDoc — internal variant', () => {
