@@ -81,7 +81,15 @@ export default function ClientLogin() {
   // would otherwise be sent to /client, which no staff role may open.
   const funderSignedIn = isAuthenticated && user?.role === CSR_CLIENT_ROLE;
   const staffSignedIn = isAuthenticated && !funderSignedIn;
-  const sessionEnded = new URLSearchParams(location?.search || '').get('reason') === EXPIRED_REASON;
+  // Read once, then taken out of the address: a refresh used to show "Your
+  // session ended" again and again on a login page that had nothing wrong with
+  // it (27 Oct). The notice stays up for this visit.
+  const [sessionEnded] = useState(
+    () => new URLSearchParams(location?.search || '').get('reason') === EXPIRED_REASON,
+  );
+  useEffect(() => {
+    if (sessionEnded) navigate(location.pathname, { replace: true });
+  }, [sessionEnded, navigate, location.pathname]);
 
   const [brand, setBrand] = useState(null);
   const [brandLoading, setBrandLoading] = useState(true);

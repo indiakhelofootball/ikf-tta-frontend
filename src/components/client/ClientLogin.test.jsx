@@ -125,6 +125,22 @@ test('an ended session explains itself in the page', async () => {
   expect(await screen.findByText('Your session ended. Sign in again.')).toBeInTheDocument();
 });
 
+test('the ended-session reason leaves the address, so a refresh does not show it again', async () => {
+  mockSearch = '?reason=expired';
+  clientAPI.brandingBySlug.mockResolvedValue(ACME);
+  render(<ClientLogin />);
+
+  expect(await screen.findByText('Your session ended. Sign in again.')).toBeInTheDocument();
+  expect(mockNavigate).toHaveBeenCalledWith('/client/acme/login', { replace: true });
+});
+
+test('a plain visit leaves the address alone', async () => {
+  clientAPI.brandingBySlug.mockResolvedValue(ACME);
+  render(<ClientLogin />);
+  await screen.findByRole('button', { name: 'Sign In' });
+  expect(mockNavigate).not.toHaveBeenCalled();
+});
+
 test('no session message on a plain visit', async () => {
   clientAPI.brandingBySlug.mockResolvedValue(ACME);
   render(<ClientLogin />);
