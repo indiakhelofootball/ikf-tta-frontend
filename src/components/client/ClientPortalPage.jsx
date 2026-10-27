@@ -286,6 +286,9 @@ function useOverviewPhotos(activities, enabled, source) {
 
 const URL_RE = /(https?:\/\/[^\s]+)/g;
 
+// Rows shown at once on the Athletes tab; 255 in one table was a wall of names.
+const ATHLETE_PAGE = 25;
+
 // A link as a reader wants it: the site and the page, without the tracking
 // query ("instagram.com/p/DSWy4lpCHqU", not the full address).
 const linkLabel = (href) => {
@@ -378,7 +381,9 @@ export default function ClientPortalPage({ source = funderSource, preview = null
   const [deliverables, setDeliverables] = useState([]);
   const [athletes, setAthletes] = useState([]);
   const [athleteSearch, setAthleteSearch] = useState('');
-  const [athleteFilter, setAthleteFilter] = useState('all');
+  // null = the default: Shortlisted when there are any (27 Oct, direction A).
+  const [athleteFilter, setAthleteFilter] = useState(null);
+  const [athleteLimit, setAthleteLimit] = useState(ATHLETE_PAGE);
   const [fyMenuAnchor, setFyMenuAnchor] = useState(null);
   const [photosOpen, setPhotosOpen] = useState(null);
 
@@ -446,6 +451,8 @@ export default function ClientPortalPage({ source = funderSource, preview = null
       setProject(matched);
     }
     setAthleteSearch(''); // Reset athlete search filter for the newly selected project
+    setAthleteFilter(null);
+    setAthleteLimit(ATHLETE_PAGE);
     const seq = ++loadSeq.current;
     const current = () => mounted.current && seq === loadSeq.current;
     setLoading(true);
@@ -618,7 +625,9 @@ export default function ClientPortalPage({ source = funderSource, preview = null
 
   const renderProject = () => {
     const progress = grantProgress(project.startDate, project.endDate);
-    const months = monthStrip(project.startDate, project.endDate, delivered);
+    // Empty past months said nothing but "None" (27 Oct, direction A).
+    const months = monthStrip(project.startDate, project.endDate, delivered)
+      .filter((m) => m.count > 0 || m.state === 'ahead');
     const places = placesReached(delivered);
     const recent = latestFirst(delivered, activityDate).slice(0, 3);
     const recentReports = latestFirst(reports, reportDate).slice(0, 3);
@@ -631,72 +640,41 @@ export default function ClientPortalPage({ source = funderSource, preview = null
         : progress.state === 'upcoming' ? `Starts ${formatDate(project.startDate)}`
           : `Ended ${formatDate(project.endDate)}`;
 
-    // Realistic athlete count: check athletes list, then project deliverable count, fallback to 0 (no hardcoded 840)
-    const athleteDisplayCount = athletes.length > 0
-      ? formatCount(athletes.length)
-      : (project.athletesCount != null ? formatCount(project.athletesCount) : '0');
-
     return (
       <article className="creport">
-
-        {/* 4 Summary Stat Cards */}
-        <div className="cstat-grid">
-          <div className="cstat-card">
-            <div className="cstat-lbl">Total Grant Amount</div>
-            <div className="cstat-val cnum">{formatRupees(project.sanctionedAmount)}</div>
-            <div className="cstat-sub">
-              <span className="cpill ok">Sanctioned</span>
-              {project.season && <span className="cstat-tag">{project.season}</span>}
-            </div>
-          </div>
-
-          <div className="cstat-card">
-            <div className="cstat-lbl">Athletes Scouted</div>
-            <div className="cstat-val cnum">{athleteDisplayCount}</div>
-            <div className="cstat-sub">
-              {project.cities?.length > 0 ? `Across ${project.cities.length} target cities` : 'Registered in programme'}
-            </div>
-          </div>
-
-          {project.cities?.length > 0 && (
-          <div className="cstat-card">
-            <div className="cstat-lbl">Target Cities</div>
-            <div className="cstat-val cnum">{project.cities?.length || 0}</div>
-            <div className="cstat-sub cstat-ellipsis">
-              {project.cities?.length > 0
-                ? project.cities.map((c) => c.name || c.cityName || c.cityCode).join(', ')
-                : 'No cities assigned'}
-            </div>
-          </div>
+        {/* 27 Oct, owner chose direction A: the four summary boxes repeated the
+            amount and showed empty facts, so the grant's facts are one line and
+            the description says what happened, above what was delivered. */}
+        <dl className="cline">
+          <div><dt>Grant</dt><dd className="cnum">{formatRupees(project.sanctionedAmount)}</dd></div>
+          <div><dt>Period</dt><dd>{formatRange(project.startDate, project.endDate) || 'Not set'}</dd></div>
+          {project.fundsReceivedOn && (
+            <div><dt>Received</dt><dd className="cnum">{formatDate(project.fundsReceivedOn)}</dd></div>
           )}
-
-          <div className="cstat-card">
-            <div className="cstat-lbl">Audit &amp; Certification</div>
-            <div className="cstat-val cstat-val-sm">
-              {cert?.available ? 'Certified' : closed ? 'Closing' : 'In Progress'}
-            </div>
-            <div className="cstat-sub">
+          <div><dt>Status</dt><dd>{project.status || 'Not recorded'}</dd></div>
+          {dayFact && <div><dt>Progress</dt><dd className="cnum">{dayFact}</dd></div>}
+          {project.cities?.length > 0 && (
+            <div><dt>Cities</dt><dd>{project.cities.map((c) => c.name).join(', ')}</dd></div>
+          )}
+          <div>
+            <dt>Certificate</dt>
+            <dd>
               {cert?.available ? (
-                <button
-                  type="button"
-                  className="cbtn-link"
-                  onClick={() => downloadCertificate(cert)}
-                >
-                  Download PDF
-                </button>
+                <>
+                  Issued ·{' '}
+                  <button type="button" className="cbtn-link" onClick={() => downloadCertificate(cert)}>
+                    Download
+                  </button>
+                </>
               ) : (
-                <button
-                  type="button"
-                  className="cbtn-link"
-                  onClick={() => selectTab('certificate')}
-                >
-                  View Status →
+                <button type="button" className="cbtn-link" onClick={() => selectTab('certificate')}>
+                  {closed ? 'Being prepared' : 'Issued when the grant closes'}
                 </button>
               )}
-            </div>
+            </dd>
           </div>
-        </div>
-
+        </dl>
+        {project.description && <p className="cdek cdek-in">{project.description}</p>}
 
         <section aria-labelledby="cp-delivered">
           <h2 className="csec" id="cp-delivered">What has been delivered</h2>
@@ -826,23 +804,6 @@ export default function ClientPortalPage({ source = funderSource, preview = null
           </section>
         )}
 
-        <section aria-labelledby="cp-details">
-          <h2 className="csec" id="cp-details">Programme details</h2>
-          <dl className="cline">
-            <div><dt>Funder</dt><dd>{project.clientName || 'Not recorded'}</dd></div>
-            <div><dt>Sanctioned</dt><dd className="cnum">{formatRupees(project.sanctionedAmount)}</dd></div>
-            <div><dt>Period</dt><dd>{formatRange(project.startDate, project.endDate) || 'Not set'}</dd></div>
-            {project.fundsReceivedOn && (
-              <div><dt>Received</dt><dd className="cnum">{formatDate(project.fundsReceivedOn)}</dd></div>
-            )}
-            <div><dt>Status</dt><dd>{project.status || 'Not recorded'}</dd></div>
-            {dayFact && <div><dt>Progress</dt><dd className="cnum">{dayFact}</dd></div>}
-            {project.cities?.length > 0 && (
-              <div><dt>Cities</dt><dd>{project.cities.map((c) => c.name).join(', ')}</dd></div>
-            )}
-          </dl>
-          {project.description && <p className="cdek cdek-in">{project.description}</p>}
-        </section>
 
         {recentReports.length > 0 && (
           <section aria-labelledby="cp-reports">
@@ -850,7 +811,7 @@ export default function ClientPortalPage({ source = funderSource, preview = null
             <ul className="citems">
               {recentReports.map((r) => {
                 const name = (r.title && String(r.title).trim()) || r.fileName || 'Report';
-                const meta = [r.reportType, r.documentDate || formatDate(r.createdAt)].filter(Boolean).join(' · ');
+                const meta = [r.reportType, r.documentDate].filter(Boolean).join(' · ');
                 return (
                   <li key={r.id} className="citem citem-row">
                     <span className="citem-main">
@@ -977,9 +938,11 @@ export default function ClientPortalPage({ source = funderSource, preview = null
 
   const renderAthletes = () => {
     const q = (athleteSearch || '').trim().toLowerCase();
+    const shortlistedCount = athletes.filter((a) => getStatusCategory(a) === 'shortlisted').length;
+    const activeFilter = athleteFilter || (shortlistedCount > 0 ? 'shortlisted' : 'all');
     const filtered = (athletes || []).filter((ath) => {
-      const cat = getStatusCategory(ath);
-      const matchFilter = athleteFilter === 'all' || cat === athleteFilter;
+      const matchFilter = activeFilter === 'all'
+        || (activeFilter.startsWith('age:') ? ath.category === activeFilter.slice(4) : getStatusCategory(ath) === activeFilter);
       if (!matchFilter) return false;
       if (!q) return true;
       const name = (ath.fullName || '').toLowerCase();
@@ -997,13 +960,26 @@ export default function ClientPortalPage({ source = funderSource, preview = null
       finals: athletes.filter((a) => getStatusCategory(a) === 'national_finals').length,
     };
 
+    // Age groups as the funder reads them, oldest code last: U17 before U19.
+    const ages = Array.from(new Set(athletes.map((a) => a.category).filter(Boolean)))
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+      .map((c) => ({ c, n: athletes.filter((a) => a.category === c).length }));
+    // Shortlisted first; a filter with nobody in it is not offered.
     const filterOptions = [
-      { id: 'all', label: `All (${countsStatus.all})` },
-      { id: 'participated', label: `Participated (${countsStatus.participated})` },
-      { id: 'shortlisted', label: `Shortlisted (${countsStatus.shortlisted})` },
-      { id: 'scholarship_awarded', label: `Scholarship Awarded (${countsStatus.scholarship})` },
-      { id: 'national_finals', label: `National Finals (${countsStatus.finals})` },
-    ];
+      { id: 'shortlisted', label: `Shortlisted (${countsStatus.shortlisted})`, n: countsStatus.shortlisted },
+      { id: 'all', label: `All (${countsStatus.all})`, n: countsStatus.all },
+      { id: 'participated', label: `Participated (${countsStatus.participated})`, n: countsStatus.participated },
+      { id: 'scholarship_awarded', label: `Scholarship Awarded (${countsStatus.scholarship})`, n: countsStatus.scholarship },
+      { id: 'national_finals', label: `National Finals (${countsStatus.finals})`, n: countsStatus.finals },
+      ...ages.map(({ c, n }) => ({ id: `age:${c}`, label: `${c} (${formatCount(n)})`, n })),
+    ].filter((f) => f.n > 0);
+    const summary = [
+      `${formatCount(athletes.length)} athlete${athletes.length === 1 ? '' : 's'}`,
+      shortlistedCount > 0 && `${formatCount(shortlistedCount)} shortlisted`,
+      ...ages.map(({ c, n }) => `${c} ${formatCount(n)}`),
+    ].filter(Boolean).join(' · ');
+    const shown = filtered.slice(0, athleteLimit);
+    const pick = (id) => { setAthleteFilter(id); setAthleteLimit(ATHLETE_PAGE); };
 
     return (
       <section className="cpanel" aria-label="Athletes">
@@ -1011,7 +987,7 @@ export default function ClientPortalPage({ source = funderSource, preview = null
           <div>
             <h2 className="ctitle">Athletes Scouted ({formatCount(athletes.length)})</h2>
             <div className="crow-s">
-              Beneficiaries and scouted players from trials under {project?.name || 'this grant'}
+              {athletes.length > 0 ? summary : `Players scouted under ${project?.name || 'this grant'}`}
             </div>
           </div>
         </div>
@@ -1030,8 +1006,9 @@ export default function ClientPortalPage({ source = funderSource, preview = null
               <button
                 key={f.id}
                 type="button"
-                className={`cfilter-pill${athleteFilter === f.id ? ' on' : ''}`}
-                onClick={() => setAthleteFilter(f.id)}
+                className={`cfilter-pill${activeFilter === f.id ? ' on' : ''}`}
+                aria-pressed={activeFilter === f.id}
+                onClick={() => pick(f.id)}
               >
                 {f.label}
               </button>
@@ -1061,7 +1038,7 @@ export default function ClientPortalPage({ source = funderSource, preview = null
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((ath) => {
+                {shown.map((ath) => {
                   const statusCat = getStatusCategory(ath);
                   const statusClass = (statusCat === 'scholarship_awarded' || statusCat === 'national_finals') ? ' ok'
                     : statusCat === 'shortlisted' ? ' warn' : '';
@@ -1092,6 +1069,11 @@ export default function ClientPortalPage({ source = funderSource, preview = null
                 })}
               </tbody>
             </table>
+            {filtered.length > shown.length && (
+              <button type="button" className="cmore" onClick={() => setAthleteLimit((n) => n + ATHLETE_PAGE)}>
+                Show {formatCount(Math.min(ATHLETE_PAGE, filtered.length - shown.length))} more
+              </button>
+            )}
           </div>
         )}
       </section>
@@ -1123,7 +1105,7 @@ export default function ClientPortalPage({ source = funderSource, preview = null
         <ul className="crows ccards">
           {byMonth(reports, reportDate).flatMap((m) => m.items).map((r) => {
             const name = (r.title && String(r.title).trim()) || r.fileName || 'Report';
-            const meta = [r.reportType, r.documentDate || formatDate(r.createdAt)].filter(Boolean).join(' · ');
+            const meta = [r.reportType, r.documentDate].filter(Boolean).join(' · ');
             return (
               <li className="crow" key={r.id}>
                 <div className="crow-main">

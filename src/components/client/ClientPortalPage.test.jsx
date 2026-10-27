@@ -83,10 +83,10 @@ test('nothing is summed across units', async () => {
   expect(screen.queryByText(/\bof 160\b/)).not.toBeInTheDocument();
 });
 
-test('the grant facts stay on the landing tab, below the delivery', async () => {
+test('the grant facts stay on the landing tab', async () => {
   render(<ClientPortalPage />);
 
-  expect((await screen.findAllByText('Acme Foundation')).length).toBeGreaterThan(1);
+  expect((await screen.findAllByText('Acme Foundation')).length).toBeGreaterThan(0);
   expect(screen.getAllByText('\u20B99,21,000').length).toBeGreaterThan(0);
   expect(screen.getByText('Prepared for Acme Foundation')).toBeInTheDocument();
   expect(screen.getAllByText('Delivered by India Khelo Football').length).toBeGreaterThan(0);
@@ -287,7 +287,9 @@ test('reports are listed by title with type and a human date, falling back to th
   expect(link).toHaveAttribute('target', '_blank');
   expect(link.getAttribute('rel')).toMatch(/noopener/);
   expect(screen.getByRole('link', { name: 'Open Quarter one summary' })).toHaveTextContent('Open');
-  expect(screen.getByText('Quarterly · 8 Oct 2026')).toBeInTheDocument();
+  // The date printed on the document, never the upload date (27 Oct, direction A).
+  expect(screen.getByText('Quarterly')).toBeInTheDocument();
+  expect(screen.queryByText(/8 Oct 2026/)).not.toBeInTheDocument();
   expect(screen.queryByText('q1.pdf')).not.toBeInTheDocument();
 
   expect(screen.getByText('field-notes.pdf')).toBeInTheDocument();
@@ -526,6 +528,18 @@ test('where and when lists each place once, most visited first, with its latest 
     expect.stringMatching(/^Sonipat1/),
   ]);
   expect(screen.getByRole('list', { name: 'Activities by month' })).toBeInTheDocument();
+});
+
+test('where and when leaves out past months in which nothing was held', async () => {
+  // 27 Oct, owner chose direction A: empty months read "None" and said nothing.
+  clientAPI.activities.mockResolvedValue(FIELD);
+  render(<ClientPortalPage />);
+  const months = within(await screen.findByRole('list', { name: 'Activities by month' })).getAllByRole('listitem');
+  const text = months.map((li) => li.textContent);
+  expect(text.some((t) => t.startsWith('Apr 2026'))).toBe(true);
+  expect(text.some((t) => t.startsWith('Sep 2026'))).toBe(true);
+  expect(text.some((t) => t.startsWith('May 2026'))).toBe(false);
+  expect(text.some((t) => t.endsWith('None'))).toBe(false);
 });
 
 test('from the field shows the three latest activities and links to the rest', async () => {
@@ -873,29 +887,36 @@ test('D-019: a grant with no cities shows no Cities line', async () => {
   expect(screen.queryByText('Cities')).not.toBeInTheDocument();
 });
 
-test('the Overview summary cards leave out Target Cities when the grant has none', async () => {
+// 27 Oct, owner chose direction A: the four summary boxes repeated the amount
+// and showed empty facts. The grant's facts are one line at the top.
+test('the Overview opens on one line of grant facts, not four summary boxes', async () => {
   clientAPI.athletes.mockResolvedValue([
     { id: 1, fullName: 'Aarav Patel', position: 'Forward', category: 'U17', status: 'Shortlisted' },
   ]);
   render(<ClientPortalPage />);
-  expect(await screen.findByText('Total Grant Amount')).toBeInTheDocument();
-  expect(screen.getByText('Athletes Scouted')).toBeInTheDocument();
-  // 27 Oct: an empty "0 / No cities assigned" card was clutter, not a fact.
-  expect(screen.queryByText('Target Cities')).not.toBeInTheDocument();
-  expect(screen.getByText('Audit & Certification')).toBeInTheDocument();
+  await screen.findByText('What has been delivered');
+  for (const gone of ['Total Grant Amount', 'Athletes Scouted', 'Target Cities', 'Audit & Certification', 'Programme details']) {
+    expect(screen.queryByText(gone)).not.toBeInTheDocument();
+  }
+  const facts = screen.getAllByRole('term').map((t) => t.textContent);
+  expect(facts).toEqual(expect.arrayContaining(['Grant', 'Period', 'Status', 'Certificate']));
+  expect(screen.getAllByText('₹9,21,000')).toHaveLength(1);
+  expect(screen.queryByText('Cities')).not.toBeInTheDocument();
 });
 
-test('a grant with cities shows the Target Cities card', async () => {
+test('a grant with cities names them in the facts line', async () => {
   clientAPI.project.mockResolvedValue([{ ...PROJECT, cities: [{ id: 1, name: 'Pune' }] }]);
   render(<ClientPortalPage />);
-  expect(await screen.findByText('Target Cities')).toBeInTheDocument();
+  expect(await screen.findByText('Cities')).toBeInTheDocument();
+  expect(screen.getByText('Pune')).toBeInTheDocument();
 });
 
-test('the programme description sits in Programme details, not at the top of the Overview', async () => {
+test('the description sits under the facts, above what was delivered', async () => {
   clientAPI.project.mockResolvedValue([{ ...PROJECT, description: 'What this grant does.' }]);
   render(<ClientPortalPage />);
-  const details = await screen.findByRole('region', { name: 'Programme details' });
-  expect(within(details).getByText('What this grant does.')).toBeInTheDocument();
+  const text = await screen.findByText('What this grant does.');
+  const delivered = screen.getByText('What has been delivered');
+  expect(text.compareDocumentPosition(delivered) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 });
 
 test('the Athletes tab shows scouted beneficiaries and search works', async () => {
@@ -907,7 +928,11 @@ test('the Athletes tab shows scouted beneficiaries and search works', async () =
   await screen.findByText(/What has been delivered/i);
 
   fireEvent.click(screen.getByRole('tab', { name: /^Athletes/i }));
-  expect(await screen.findByText('Rohan Sharma')).toBeInTheDocument();
+  // Shortlisted first (27 Oct, direction A); All shows everyone.
+  expect(await screen.findByText('Simran Kaur')).toBeInTheDocument();
+  expect(screen.queryByText('Rohan Sharma')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'All (2)' }));
+  expect(screen.getByText('Rohan Sharma')).toBeInTheDocument();
   expect(screen.getByText('Simran Kaur')).toBeInTheDocument();
   expect(screen.getByText('Midfielder')).toBeInTheDocument();
   expect(screen.getByText('U19')).toBeInTheDocument();
@@ -919,6 +944,44 @@ test('the Athletes tab shows scouted beneficiaries and search works', async () =
   fireEvent.change(searchInput, { target: { value: 'Rohan' } });
   expect(screen.getByText('Rohan Sharma')).toBeInTheDocument();
   expect(screen.queryByText('Simran Kaur')).not.toBeInTheDocument();
+});
+
+test('the Athletes tab sums up the list, offers only filters with someone in them, and pages long lists', async () => {
+  const many = Array.from({ length: 30 }, (_, i) => ({
+    id: 200 + i, fullName: `Player ${i + 1}`, position: 'Forward', category: i < 20 ? 'U17' : 'U19', status: 'Participated',
+  }));
+  clientAPI.athletes.mockResolvedValue([
+    ...many,
+    { id: 1, fullName: 'Simran Kaur', position: 'Defender', category: 'U19', status: 'Shortlisted' },
+  ]);
+  render(<ClientPortalPage />);
+  fireEvent.click(await screen.findByRole('tab', { name: /^Athletes/i }));
+
+  expect(await screen.findByText('31 athletes · 1 shortlisted · U17 20 · U19 11')).toBeInTheDocument();
+  const pills = within(screen.getByRole('group', { name: 'Filter by status' })).getAllByRole('button').map((b) => b.textContent);
+  expect(pills).toEqual(['Shortlisted (1)', 'All (31)', 'Participated (30)', 'U17 (20)', 'U19 (11)']);
+  expect(screen.getByRole('button', { name: 'Shortlisted (1)' })).toHaveAttribute('aria-pressed', 'true');
+
+  fireEvent.click(screen.getByRole('button', { name: 'U19 (11)' }));
+  expect(screen.getByText('Simran Kaur')).toBeInTheDocument();
+  expect(screen.queryByText('Player 1')).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'All (31)' }));
+  expect(screen.getByText('Player 25')).toBeInTheDocument();
+  expect(screen.queryByText('Player 26')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Show 6 more' }));
+  expect(screen.getByText('Player 30')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /Show \d+ more/ })).not.toBeInTheDocument();
+});
+
+test('with nobody shortlisted the Athletes tab opens on everyone', async () => {
+  clientAPI.athletes.mockResolvedValue([
+    { id: 1, fullName: 'Rohan Sharma', position: 'Midfielder', category: 'U17', status: 'Participated' },
+  ]);
+  render(<ClientPortalPage />);
+  fireEvent.click(await screen.findByRole('tab', { name: /^Athletes/i }));
+  expect(await screen.findByText('Rohan Sharma')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /^Shortlisted/ })).not.toBeInTheDocument();
 });
 
 test('switching Financial Year loads that year projects and updates state', async () => {
@@ -1159,13 +1222,15 @@ describe('D-030: a finished year shows everything the documents contain', () => 
     expect(screen.queryByText(/26 Oct 2026/)).not.toBeInTheDocument();
   });
 
-  test('a report with no printed date still shows its upload date', async () => {
+  test('a report with no printed date shows no date, not its upload date', async () => {
+    // 27 Oct, owner chose direction A: upload dates were removed from reports.
     clientAPI.reports.mockResolvedValue([
       { id: 4, title: 'Notes', reportType: 'Trial', hasFile: true, createdAt: '2026-10-26T10:00:00Z', documentDate: '' },
     ]);
     render(<ClientPortalPage />);
     fireEvent.click(await screen.findByRole('tab', { name: /^Reports/ }));
-    expect(await screen.findByText('Trial · 26 Oct 2026')).toBeInTheDocument();
+    expect(await screen.findByText('Trial')).toBeInTheDocument();
+    expect(screen.queryByText(/26 Oct 2026/)).not.toBeInTheDocument();
   });
 
   test('the grant shows the day the money was received', async () => {
