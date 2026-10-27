@@ -98,8 +98,8 @@ test('the preview is read-only: no Change password, Sign out or account menu', a
 
 test('photos in the preview come from the staff photo endpoint', async () => {
   render(<FunderPreviewPage />);
-  const hero = await screen.findByRole('figure');
-  expect(within(hero).getByRole('img')).toHaveAttribute('alt', 'District trial');
+  // The large top photo was removed 27 Oct; the photo now sits under its activity.
+  expect(await screen.findByRole('img', { name: /^District trial, 1 of \d+$/ })).toBeInTheDocument();
 
   expect(csrAPI.activityPhotos.file).toHaveBeenCalledWith(11, 7);
   expect(clientAPI.activityPhoto).not.toHaveBeenCalled();

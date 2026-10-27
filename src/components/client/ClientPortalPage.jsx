@@ -281,13 +281,7 @@ function useOverviewPhotos(activities, enabled, source) {
   });
   const months = byMonth(groups, (g) => activityDate(g.a))
     .map((m) => ({ key: m.key, label: m.label, groups: m.items }));
-  const latest = latestFirst(picks.map((p) => p.a), activityDate)[0] || null;
-  const latestPhoto = latest ? latest.photos[0] : null;
-  return {
-    hero: latest,
-    heroUrl: latestPhoto ? urls[latestPhoto.id] : null,
-    months,
-  };
+  return { months };
 }
 
 const URL_RE = /(https?:\/\/[^\s]+)/g;
@@ -703,15 +697,6 @@ export default function ClientPortalPage({ source = funderSource, preview = null
           </div>
         </div>
 
-
-        {photos.hero && photos.heroUrl && (
-          <figure className="cphoto">
-            <img src={photos.heroUrl} alt={photos.hero.title} />
-            <figcaption>
-              Latest: {[photos.hero.title, activityPlace(photos.hero), formatDate(activityDate(photos.hero))].filter(Boolean).join(' · ')}
-            </figcaption>
-          </figure>
-        )}
 
         <section aria-labelledby="cp-delivered">
           <h2 className="csec" id="cp-delivered">What has been delivered</h2>
@@ -1273,6 +1258,12 @@ export default function ClientPortalPage({ source = funderSource, preview = null
     const start = formatDate(cert.periodStart) || 'Inception';
     const end = formatDate(cert.periodEnd);
     const lines = cert.lineItems || [];
+    // 27 Oct, owner: a CA certificate gives one period for every head, so each
+    // line carries the same date; shown once above the list, it no longer reads
+    // as if everything was spent on that one day.
+    const sharedDate = lines.length > 1 && lines.every((x) => x.date && x.date === lines[0].date)
+      ? formatDate(lines[0].date)
+      : '';
     return (
       <section className="cpanel" aria-labelledby="cp-cert">
         <div className="chead">
@@ -1320,20 +1311,23 @@ export default function ClientPortalPage({ source = funderSource, preview = null
         {lines.length === 0 ? (
           <p className="clede cdesc">No expenses are recorded against this grant.</p>
         ) : (
-          <ul className="crows clines">
-            {lines.map((x, i) => {
-              const on = formatDate(x.date);
-              return (
-                <li className="crow" key={i}>
-                  <div className="crow-main">
-                    <div className="crow-t">{x.note || 'Expense'}</div>
-                    {on && <div className="crow-s">{on}</div>}
-                  </div>
-                  <div className="crow-end cnum">{formatRupees(x.amount)}</div>
-                </li>
-              );
-            })}
-          </ul>
+          <>
+            {sharedDate && <p className="crow-s">Spent up to {sharedDate}</p>}
+            <ul className="crows clines">
+              {lines.map((x, i) => {
+                const on = sharedDate ? '' : formatDate(x.date);
+                return (
+                  <li className="crow" key={i}>
+                    <div className="crow-main">
+                      <div className="crow-t">{x.note || 'Expense'}</div>
+                      {on && <div className="crow-s">{on}</div>}
+                    </div>
+                    <div className="crow-end cnum">{formatRupees(x.amount)}</div>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
         )}
       </section>
     );

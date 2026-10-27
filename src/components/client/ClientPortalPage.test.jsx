@@ -417,6 +417,41 @@ test('the certificate shows its facts and line items with human dates and whole 
   expect(screen.getByRole('button', { name: /Download PDF/ })).toBeInTheDocument();
 });
 
+test('when every spend line has the same date it is shown once above the list, not on each line', async () => {
+  clientAPI.certificate.mockResolvedValue({
+    available: true, certificateVersion: 1, frozenAt: '2026-10-08T07:05:25Z',
+    periodStart: '2025-04-01', periodEnd: '2026-03-31',
+    lineItems: [
+      { note: 'Coaching kits', amount: '1000.00', date: '2026-03-31' },
+      { note: 'Travel', amount: '2000.00', date: '2026-03-31' },
+      { note: 'Venue hire', amount: '3000.00', date: '2026-03-31' },
+    ],
+  });
+  window.history.replaceState(null, '', '#certificate');
+  render(<ClientPortalPage />);
+
+  expect(await screen.findByText('Spent up to 31 Mar 2026')).toBeInTheDocument();
+  expect(screen.getByText('Venue hire')).toBeInTheDocument();
+  expect(screen.queryByText('31 Mar 2026')).not.toBeInTheDocument();
+});
+
+test('when spend lines have different dates each line keeps its own and no shared date is shown', async () => {
+  clientAPI.certificate.mockResolvedValue({
+    available: true, certificateVersion: 1, frozenAt: '2026-10-08T07:05:25Z',
+    periodStart: '2026-04-01', periodEnd: '2027-03-31',
+    lineItems: [
+      { note: 'Coaching kits', amount: '1000.00', date: '2026-06-15' },
+      { note: 'Travel', amount: '2000.00', date: '2026-07-20' },
+    ],
+  });
+  window.history.replaceState(null, '', '#certificate');
+  render(<ClientPortalPage />);
+
+  expect(await screen.findByText('15 Jun 2026')).toBeInTheDocument();
+  expect(screen.getByText('20 Jul 2026')).toBeInTheDocument();
+  expect(screen.queryByText(/Spent up to/)).not.toBeInTheDocument();
+});
+
 test('a certificate failure keeps its own message and leaves the rest of the portal up', async () => {
   clientAPI.certificate.mockRejectedValue(httpError(500, {}));
   window.history.replaceState(null, '', '#certificate');
@@ -523,7 +558,9 @@ test('with no dated or placed activities the where-and-when section is left out,
   expect(screen.queryByText('Where and when')).not.toBeInTheDocument();
 });
 
-test('the latest activity photo leads the Overview, and recent activities become photo tiles', async () => {
+// 27 Oct, owner: the large photo at the top repeated the first photo of From the
+// field, so it is gone; each photo now appears once, under its own activity.
+test('the Overview shows each photo once, under its activity, with no large photo on top', async () => {
   URL.createObjectURL = jest.fn(() => 'blob:photo');
   URL.revokeObjectURL = jest.fn();
   clientAPI.activityPhoto.mockResolvedValue({ blob: new Blob(['x'], { type: 'image/jpeg' }) });
@@ -534,9 +571,9 @@ test('the latest activity photo leads the Overview, and recent activities become
   ]);
   render(<ClientPortalPage />);
 
-  const hero = await screen.findByRole('figure');
-  expect(within(hero).getByRole('img')).toHaveAttribute('alt', 'District trial, Sector 56');
-  expect(hero).toHaveTextContent('Latest: District trial, Sector 56 · Gurugram · 14 Sep 2026');
+  expect(await screen.findByRole('img', { name: 'District trial, Sector 56, 1 of 1' })).toBeInTheDocument();
+  expect(screen.queryByRole('figure')).not.toBeInTheDocument();
+  expect(screen.getAllByRole('img')).toHaveLength(1);
   expect(clientAPI.activityPhoto).toHaveBeenCalledWith(1, 7, 'a1');
   // Grouped by month and activity since 27 Oct: the photo sits under its own
   // activity, numbered; Second trial has no photo and gets no broken image.
@@ -607,8 +644,7 @@ test('no photo is requested for a Planned activity', async () => {
   ]);
   render(<ClientPortalPage />);
 
-  const hero = await screen.findByRole('figure');
-  expect(hero).toHaveTextContent('Latest: District trial, Sector 56');
+  expect(await screen.findByRole('img', { name: 'District trial, Sector 56, 1 of 1' })).toBeInTheDocument();
   expect(clientAPI.activityPhoto).toHaveBeenCalledWith(1, 7, 'a1');
   expect(clientAPI.activityPhoto).not.toHaveBeenCalledWith(5, expect.anything(), expect.anything());
   expect(clientAPI.activityPhoto).toHaveBeenCalledTimes(1);
