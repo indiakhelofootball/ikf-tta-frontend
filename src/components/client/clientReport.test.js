@@ -81,3 +81,45 @@ describe('D-019: an activity place leads with its grant city', () => {
     expect(activityPlace({})).toBe('');
   });
 });
+
+test('an activity that runs over several months counts in each of them', () => {
+  const acts = [
+    { startDate: '2026-01-01', endDate: '2026-03-31' },
+    { startDate: '2026-03-01', endDate: '2026-03-31' },
+    { date: '2025-12-27' },
+  ];
+  const cells = monthStrip('2025-12-02', '2026-03-31', acts, '2026-10-27');
+  expect(cells.map((c) => [c.key, c.count])).toEqual([
+    ['2025-12', 1], ['2026-01', 1], ['2026-02', 1], ['2026-03', 2],
+  ]);
+});
+
+test('an end date before the start counts the start month only', () => {
+  const cells = monthStrip('2026-01-01', '2026-03-31', [{ startDate: '2026-02-10', endDate: '2026-01-05' }], '2026-10-27');
+  expect(cells.map((c) => c.count)).toEqual([0, 1, 0]);
+});
+
+import { byMonth, documentDateKey, reportDate } from './clientReport';
+
+test('byMonth puts months and their items oldest first, undated last', () => {
+  const items = [
+    { id: 'mar', date: '2026-03-01' }, { id: 'none' }, { id: 'dec28', date: '2025-12-28' },
+    { id: 'jan', startDate: '2026-01-01' }, { id: 'dec2', startDate: '2025-12-02' },
+  ];
+  const groups = byMonth(items, (x) => x.startDate || x.date);
+  expect(groups.map((g) => [g.label, g.items.map((x) => x.id)])).toEqual([
+    ['December 2025', ['dec2', 'dec28']],
+    ['January 2026', ['jan']],
+    ['March 2026', ['mar']],
+    ['Date not set', ['none']],
+  ]);
+});
+
+test('a document dates itself by day, month or financial year', () => {
+  expect(documentDateKey('30 March 2026')).toBe('2026-03-30');
+  expect(documentDateKey('December 2025')).toBe('2025-12-01');
+  expect(documentDateKey('FY 2025-26')).toBe('2025-04-01');
+  expect(documentDateKey('')).toBeNull();
+  expect(documentDateKey('soon')).toBeNull();
+  expect(reportDate({ documentDate: '', createdAt: '2026-10-26T10:00:00Z' })).toBe('2026-10-26T10:00:00Z');
+});

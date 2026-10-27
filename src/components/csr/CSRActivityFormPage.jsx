@@ -58,7 +58,7 @@ const ALL_KIND_FIELDS = [
 ];
 
 const EMPTY = {
-  title: '', activityTypeId: '', startDate: '', endDate: '',
+  title: '', description: '', activityTypeId: '', startDate: '', endDate: '',
   location: '', status: 'Completed', linkedTrialId: '', trialCityId: '',
   workshopId: '', trainingProgrammeId: '', partnerId: '',
   deliveryMode: '',
@@ -124,6 +124,7 @@ export default function CSRActivityFormPage() {
         setStatusPicked(true);
         setForm({
           title: data.title || '',
+          description: data.description || '',
           activityTypeId: data.activityTypeId ?? '',
           // A row created before the third field went carries only `date`;
           // it loads into Start so the operator sees what was recorded.
@@ -274,6 +275,7 @@ export default function CSRActivityFormPage() {
     if (!validate()) return;
     const payload = {
       title: form.title.trim(),
+      description: form.description.trim(),
       activityTypeId: Number(form.activityTypeId),
       // `date` is deliberately still sent. An activity EDITED after this
       // change would otherwise keep a stale single date the form no longer
@@ -511,6 +513,17 @@ export default function CSRActivityFormPage() {
           <div className="pform-field">
             <label htmlFor="a-location">Location</label>
             <input id="a-location" type="text" value={form.location} onChange={setField('location')} />
+          </div>
+
+          <div className="pform-field">
+            <label htmlFor="a-desc">What happened</label>
+            <textarea
+              id="a-desc" rows={6} value={form.description} onChange={setField('description')}
+              aria-describedby="a-desc-help"
+            />
+            <p id="a-desc-help" className="pform-help">
+              The funder reads this. Put each link on its own line and it opens from the portal.
+            </p>
           </div>
 
           <div className="pform-field">

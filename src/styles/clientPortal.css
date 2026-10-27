@@ -130,6 +130,19 @@
 .cportal .cled-t{font-family:var(--serif);font-size:16px;line-height:1.45;color:var(--ink);overflow-wrap:anywhere}
 .cportal .cled-s{font-size:12px;color:var(--soft);margin-top:3px}
 .cportal .cled .ctrack{height:4px;margin-top:9px}
+.cportal .couts{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:821px){.cportal .couts{grid-template-columns:repeat(3,1fr);gap:14px}}
+.cportal .cout{border:1px solid var(--line);border-radius:var(--r);background:var(--card);padding:16px 16px 14px;display:flex;flex-direction:column;gap:6px}
+.cportal .cout-n{font-family:var(--serif);font-size:36px;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums}
+.cportal .cout-t{font-size:14px;line-height:1.45;color:var(--ink);overflow-wrap:anywhere}
+.cportal .cout-m{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:12.5px;color:var(--muted);margin-top:auto;padding-top:4px}
+.cportal .cout .ctrack{height:3px;margin-top:6px}
+.cportal .ctag{display:inline-block;font-size:11.5px;font-weight:600;line-height:1;padding:5px 8px;border-radius:999px;background:var(--line-soft);color:var(--soft);white-space:nowrap}
+.cportal .ctag.ok{background:var(--brand-wash);color:var(--brand-text)}
+.cportal .cmisses{list-style:none;margin:10px 0 0;padding:0}
+.cportal .cmiss{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;padding:11px 0;border-top:1px solid var(--line-soft)}
+.cportal .cmiss-t{flex:1 1 220px;font-size:14px;color:var(--ink);overflow-wrap:anywhere}
+.cportal .cmiss-s{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
 
 .cportal .cmonths{
   list-style:none;margin:0 0 18px;padding:0;
@@ -285,6 +298,32 @@
 .cportal .crow-s{
   font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.6;overflow-wrap:anywhere;
 }
+.cportal .crow-d{
+  font-size:14px;color:var(--soft);margin-top:8px;line-height:1.6;max-width:680px;
+  white-space:pre-wrap;overflow-wrap:anywhere;
+}
+.cportal .crow-photos{margin-top:10px}
+.cportal .cbudget{margin-bottom:16px}
+.cportal .cgrid{list-style:none;margin:8px 0 0;padding:0;display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+@media (min-width:821px){.cportal .cgrid{grid-template-columns:repeat(4,1fr);gap:10px}}
+.cportal .cgrid img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;background:var(--line-soft)}
+.cportal .cfield-a{padding:14px 0;border-top:1px solid var(--line-soft)}
+.cportal .cfield-m .csub{margin-top:14px}
+.cportal .cmonth + .cmonth{margin-top:8px}
+.cportal .cmonth .csub{margin:14px 0 2px}
+.cportal .cmonth:first-of-type .csub{margin-top:6px}
+.cportal .cfield-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 12px}
+.cportal .cfield-t{font-size:14px;font-weight:600;color:var(--ink)}
+.cportal .cfield-s{font-size:12.5px;color:var(--muted)}
+.cportal .ctotal{border-top:1px solid var(--line)}
+.cportal .ctotal .crow-t,.cportal .ctotal .crow-end{font-weight:700;color:var(--ink)}
+.cportal .csub{font-size:13px;font-weight:600;color:var(--soft);margin:22px 0 4px;text-transform:uppercase;letter-spacing:.04em}
+.cportal .cgallery{
+  list-style:none;margin:12px 0 0;padding:0;
+  display:grid;grid-template-columns:repeat(2,1fr);gap:8px;
+}
+.cportal .cgallery img{display:block;width:100%;aspect-ratio:3/2;object-fit:cover;border-radius:6px;background:var(--line-soft)}
+@media (min-width:821px){.cportal .cgallery{grid-template-columns:repeat(4,1fr)}}
 .cportal .crow-end{
   flex:none;text-align:right;
   display:flex;flex-direction:column;align-items:flex-end;gap:6px;
@@ -570,3 +609,78 @@ html:has(.cportal) .MuiDialog-root :focus-visible{outline-color:#243040}
   white-space:nowrap;
 }
 .cportal .cpill.warn{background:#FEF3C7;color:#92400E}
+
+/* ---- cards (27 Oct, owner: "ui with border and cards where details are well
+   placed and organised date wise"). Each Overview section is its own card;
+   activities, targets and reports are cards under date headings. ---------- */
+.cportal .creport{background:none;border:0;padding:0}
+.cportal .creport > section{
+  margin-top:16px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  padding:18px 16px;
+}
+.cportal .creport > .cphoto{margin-top:16px}
+.cportal .creport > .cphoto img{border-radius:var(--r)}
+.cportal .creport > .csign{border-top:0;margin-top:20px;padding-top:0}
+.cportal .cdek-in{margin:16px 0 0;font-size:15.5px}
+.cportal .cpanel-open{background:none;border:0;padding:0}
+.cportal .cpanel-open + .cpanel-open{margin-top:22px}
+.cportal .ccards{display:flex;flex-direction:column;gap:10px}
+.cportal .ccards > .crow,
+.cportal .ccards > .crow:first-of-type{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;
+}
+@media (min-width:821px){
+  .cportal .creport{padding:0}
+  .cportal .creport > section{padding:22px 26px}
+  .cportal .cdek-in{font-size:16px}
+  .cportal .ccards > .crow,
+  .cportal .ccards > .crow:first-of-type{padding:16px 20px}
+}
+
+/* Activity kinds: a hue each, used for the card's edge, its kind label and the
+   panel its description sits in. Text stays ink on a pale tint, so every tone
+   keeps the body contrast. */
+.cportal{
+  --tone-0:oklch(0.62 0.13 70);  --tint-0:oklch(0.965 0.03 80);
+  --tone-1:oklch(0.55 0.13 255); --tint-1:oklch(0.965 0.02 255);
+  --tone-2:oklch(0.56 0.12 150); --tint-2:oklch(0.965 0.03 150);
+  --tone-3:oklch(0.55 0.13 310); --tint-3:oklch(0.965 0.02 310);
+  --tone-4:oklch(0.56 0.10 200); --tint-4:oklch(0.965 0.02 200);
+  --tone-5:oklch(0.57 0.12 20);  --tint-5:oklch(0.965 0.02 20);
+  --tone-6:oklch(0.50 0.03 260); --tint-6:oklch(0.965 0.005 260);
+}
+.cportal .ctype{
+  display:inline-block;margin-bottom:6px;padding:4px 9px;border-radius:999px;
+  font-size:11.5px;font-weight:600;letter-spacing:.02em;color:var(--ink);background:var(--tint-6);
+}
+.cportal .crow-d{background:var(--tint-6);border-radius:8px;padding:12px 14px;margin-top:10px}
+.cportal .ccards > .crow[class*="ctone-"]{border-left-width:4px}
+.cportal .ccards > .crow.ctone-0{border-left-color:var(--tone-0)}
+.cportal .ctone-0 .ctype{background:var(--tint-0);box-shadow:inset 0 0 0 1px var(--tone-0)}
+.cportal .ctone-0 .crow-d{background:var(--tint-0)}
+.cportal .ccards > .crow.ctone-1{border-left-color:var(--tone-1)}
+.cportal .ctone-1 .ctype{background:var(--tint-1);box-shadow:inset 0 0 0 1px var(--tone-1)}
+.cportal .ctone-1 .crow-d{background:var(--tint-1)}
+.cportal .ccards > .crow.ctone-2{border-left-color:var(--tone-2)}
+.cportal .ctone-2 .ctype{background:var(--tint-2);box-shadow:inset 0 0 0 1px var(--tone-2)}
+.cportal .ctone-2 .crow-d{background:var(--tint-2)}
+.cportal .ccards > .crow.ctone-3{border-left-color:var(--tone-3)}
+.cportal .ctone-3 .ctype{background:var(--tint-3);box-shadow:inset 0 0 0 1px var(--tone-3)}
+.cportal .ctone-3 .crow-d{background:var(--tint-3)}
+.cportal .ccards > .crow.ctone-4{border-left-color:var(--tone-4)}
+.cportal .ctone-4 .ctype{background:var(--tint-4);box-shadow:inset 0 0 0 1px var(--tone-4)}
+.cportal .ctone-4 .crow-d{background:var(--tint-4)}
+.cportal .ccards > .crow.ctone-5{border-left-color:var(--tone-5)}
+.cportal .ctone-5 .ctype{background:var(--tint-5);box-shadow:inset 0 0 0 1px var(--tone-5)}
+.cportal .ctone-5 .crow-d{background:var(--tint-5)}
+.cportal .ccards > .crow.ctone-6{border-left-color:var(--tone-6)}
+.cportal .ctone-6 .ctype{background:var(--tint-6);box-shadow:inset 0 0 0 1px var(--tone-6)}
+.cportal .ctone-6 .crow-d{background:var(--tint-6)}
+
+/* Photos are shown whole: a poster cropped to a strip says nothing. */
+.cportal .cgallery img{aspect-ratio:4/3;object-fit:contain;background:var(--line-soft)}
+.cportal .cgallery a{display:block;border-radius:6px}
+@media (max-width:820px){
+  .cportal .ccards > .crow{flex-direction:column;gap:10px}
+  .cportal .ccards > .crow .crow-end{align-items:flex-start;text-align:left}
+}

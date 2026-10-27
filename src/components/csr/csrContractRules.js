@@ -5,7 +5,8 @@
 // reaches react-router-dom v7, whose exports map CRA's Jest resolver cannot
 // read. Same reason as src/components/bank/tdsDueDate.js.
 
-export const DELIVERABLE_STATUSES = ['Pending', 'In Progress', 'Completed'];
+// D-032: Not Delivered is chosen by staff for a closed grant's missed target.
+export const DELIVERABLE_STATUSES = ['Pending', 'In Progress', 'Completed', 'Not Delivered'];
 
 export const CONTRACT_PROGRESS_FILTERS = [
   'All',

@@ -36,7 +36,15 @@ export function grantProgress(start, end, today) {
 // One cell per calendar month of the grant, with the number of activities that
 // started in it. Without grant dates the strip spans the activities themselves.
 export function monthStrip(start, end, activities, today) {
-  const dated = (activities || []).map((a) => toParts(activityDate(a))).filter(Boolean);
+  // An activity with an end date counts in every month it runs, so a
+  // Jan-Mar training does not leave February looking empty.
+  const spans = (activities || []).map((a) => {
+    const from = toParts(activityDate(a));
+    if (!from) return null;
+    const to = toParts(a.endDate);
+    return [from, to && dayNumber(to) >= dayNumber(from) ? to : from];
+  }).filter(Boolean);
+  const dated = spans.map(([from]) => from);
   let s = toParts(start);
   let e = toParts(end);
   if (!s || !e) {
@@ -53,9 +61,10 @@ export function monthStrip(start, end, activities, today) {
   const now = t ? t.y * 12 + t.mo : null;
 
   const counts = new Map();
-  dated.forEach((p) => {
-    const k = p.y * 12 + p.mo;
-    counts.set(k, (counts.get(k) || 0) + 1);
+  spans.forEach(([p, q]) => {
+    for (let k = p.y * 12 + p.mo; k <= q.y * 12 + q.mo; k += 1) {
+      counts.set(k, (counts.get(k) || 0) + 1);
+    }
   });
 
   const cells = [];
@@ -118,3 +127,42 @@ export function activityPlace(a) {
   if (!loc || loc.toLowerCase() === city.toLowerCase()) return city;
   return `${city}, ${loc}`;
 }
+
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
+  'August', 'September', 'October', 'November', 'December'];
+
+// Items grouped by the month of their date, months and items oldest first,
+// undated ones last: the order a report reads in.
+export function byMonth(items, dateOf) {
+  const groups = new Map();
+  (items || []).forEach((item) => {
+    const p = toParts(dateOf(item));
+    const key = p ? `${p.y}-${String(p.mo + 1).padStart(2, '0')}` : '';
+    if (!groups.has(key)) {
+      groups.set(key, { key, label: p ? `${MONTH_NAMES[p.mo]} ${p.y}` : 'Date not set', items: [] });
+    }
+    groups.get(key).items.push(item);
+  });
+  const oldestFirst = (list) => [...latestFirst(list, dateOf)].reverse()
+    .sort((a, b) => (toParts(dateOf(a)) ? 0 : 1) - (toParts(dateOf(b)) ? 0 : 1));
+  return [...groups.values()]
+    .sort((a, b) => (a.key === '' ? 1 : b.key === '' ? -1 : a.key.localeCompare(b.key)))
+    .map((g) => ({ ...g, items: oldestFirst(g.items) }));
+}
+
+// The date printed on a document, as an ISO day to sort by: "30 March 2026",
+// "December 2025" (its first day) and "FY 2025-26" (1 April, the year's start).
+export function documentDateKey(text) {
+  const t = String(text || '').trim();
+  const fy = t.match(/^FY\s*(\d{4})/i);
+  if (fy) return `${fy[1]}-04-01`;
+  const m = t.match(/^(?:(\d{1,2})\s+)?([A-Za-z]+)\s+(\d{4})$/);
+  if (m) {
+    const mo = MONTH_NAMES.findIndex((n) => n.toLowerCase().startsWith(m[2].toLowerCase().slice(0, 3)));
+    if (mo >= 0) return `${m[3]}-${String(mo + 1).padStart(2, '0')}-${String(m[1] || 1).padStart(2, '0')}`;
+  }
+  return /^\d{4}-\d{2}-\d{2}/.test(t) ? t.slice(0, 10) : null;
+}
+
+// Reports by the date on the document, falling back to the day it was uploaded.
+export const reportDate = (r) => documentDateKey(r?.documentDate) || r?.createdAt || null;

@@ -12,7 +12,9 @@ import useRefetchOnFocus from '../../hooks/useRefetchOnFocus';
 import {
   formatDate, formatRange, formatCount, formatRupees, formatUpdated, formatActivityCount,
 } from './clientFormat';
-import { grantProgress, monthStrip, placesReached, activityPlace, latestFirst, activityDate } from './clientReport';
+import {
+  grantProgress, monthStrip, placesReached, activityPlace, latestFirst, activityDate, byMonth, reportDate,
+} from './clientReport';
 import '../../styles/clientPortal.css';
 import ClientChangePasswordDialog from './ClientChangePasswordDialog';
 
@@ -45,6 +47,9 @@ const deliverablePercent = (d) => {
 // know is that no figure has been entered.
 const hasResult = (d) => d.completedCount != null;
 const NO_RESULT = 'No result recorded yet';
+// D-032: staff mark a closed grant's missed target; the portal only repeats it.
+const notDelivered = (d) => d.status === 'Not Delivered';
+const NOT_DELIVERED = 'Not delivered';
 
 // Helper to determine the Financial Year string (e.g. "FY 2026-27")
 const getProjectFY = (p) => {
@@ -137,8 +142,8 @@ function DeliverableRow({ d, detailed }) {
               <span className="crow-s"> of {formatCount(d.targetCount)}</span>
             )}
           </div>
-        ) : (
-          <div className="crow-s">{NO_RESULT}</div>
+        ) : !(detailed && notDelivered(d)) && (
+          <div className="crow-s">{notDelivered(d) ? NOT_DELIVERED : NO_RESULT}</div>
         )}
         {exceeded && <div className="cnote">Target exceeded</div>}
         {detailed && d.status && (
@@ -172,32 +177,48 @@ const deliveryNote = (done, target, percent) => {
   return `${percent}% of target`;
 };
 
-function LedgerRow({ d }) {
+// One achieved target on the Overview: the figure first, then what it counts,
+// then what was promised. One unit per tile, never a total.
+function OutcomeTile({ d }) {
   const percent = deliverablePercent(d);
   const target = Number(d.targetCount) || 0;
   const done = Number(d.completedCount) || 0;
-  const note = hasResult(d) ? deliveryNote(done, target, percent) : NO_RESULT;
+  const note = deliveryNote(done, target, percent);
+  const met = target > 0 && done >= target;
   return (
-    <li className="cled">
-      <div className="cled-n">{hasResult(d) ? formatCount(done) : '—'}</div>
-      <div className="cled-b">
-        <div className="cled-t">
-          {d.title}{target > 0 ? `, against a target of ${formatCount(target)}.` : '.'}
+    <li className="cout">
+      <div className="cout-n">{formatCount(done)}</div>
+      <div className="cout-t">{d.title}</div>
+      {(target > 0 || note) && (
+        <div className="cout-m">
+          {target > 0 && <span>Target {formatCount(target)}</span>}
+          {note && <span className={`ctag${met ? ' ok' : ''}`}>{note}</span>}
         </div>
-        {note && <div className="cled-s">{note}</div>}
-        {percent != null && (
-          <div
-            className="ctrack"
-            role="progressbar"
-            aria-label={`Progress for ${d.title}`}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={percent}
-          >
-            <div className="cfill" style={{ width: `${percent}%` }} />
-          </div>
-        )}
-      </div>
+      )}
+      {percent != null && (
+        <div
+          className="ctrack"
+          role="progressbar"
+          aria-label={`Progress for ${d.title}`}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={percent}
+        >
+          <div className="cfill" style={{ width: `${percent}%` }} />
+        </div>
+      )}
+    </li>
+  );
+}
+
+// A target with no figure: what was promised, and why there is no number.
+function MissedRow({ d, tagged }) {
+  const target = Number(d.targetCount) || 0;
+  return (
+    <li className="cmiss">
+      <span className="cmiss-t">{d.title}</span>
+      {target > 0 && <span className="cmiss-s">Target {formatCount(target)}</span>}
+      {tagged && <span className="ctag">{notDelivered(d) ? NOT_DELIVERED : NO_RESULT}</span>}
     </li>
   );
 }
@@ -213,29 +234,35 @@ function IkfMark() {
   );
 }
 
+// The Overview's photos, organised the way a report would be: by month, then
+// by activity, oldest first. Up to six activities (the latest with photos),
+// four photos each; the rest open from "See all".
+const FIELD_ACTIVITIES = 6;
+const PHOTOS_PER_ACTIVITY = 4;
+function overviewPhotoPicks(activities) {
+  const withPhotos = latestFirst(activities, activityDate)
+    .filter((a) => a.photos && a.photos.length)
+    .slice(0, FIELD_ACTIVITIES)
+    .reverse();
+  return withPhotos.flatMap((a) => a.photos.slice(0, PHOTOS_PER_ACTIVITY).map((ph) => ({ a, ph })));
+}
+
 function useOverviewPhotos(activities, enabled, source) {
   const [urls, setUrls] = useState({});
-  const recent = latestFirst(activities, activityDate);
-  const hero = recent.find((a) => a.photos && a.photos.length);
-  const wanted = [hero, ...recent.slice(0, 3)]
-    .filter((a) => a && a.photos && a.photos.length)
-    .map((a) => ({ a, ph: a.photos[0] }));
-  const key = wanted.map(({ a, ph }) => `${a.id}:${ph.id}:${ph.version}`).join('|');
+  const picks = overviewPhotoPicks(activities);
+  const key = picks.map(({ a, ph }) => `${a.id}:${ph.id}:${ph.version}`).join('|');
 
   useEffect(() => {
     if (!enabled || !key) return undefined;
     let active = true;
     const made = [];
-    const seen = new Set();
-    wanted.forEach(({ a, ph }) => {
-      if (seen.has(ph.id)) return;
-      seen.add(ph.id);
+    picks.forEach(({ a, ph }) => {
       source.activityPhoto(a.id, ph.id, ph.version)
         .then(({ blob }) => {
           if (!active) return;
           const url = URL.createObjectURL(blob);
           made.push(url);
-          setUrls((u) => ({ ...u, [a.id]: url }));
+          setUrls((u) => ({ ...u, [ph.id]: url }));
         })
         .catch(() => {});
     });
@@ -243,8 +270,96 @@ function useOverviewPhotos(activities, enabled, source) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, key, source]);
 
-  return { hero, urls };
+  // Activity -> its loaded photos, then grouped by month, oldest first.
+  const groups = [];
+  picks.forEach(({ a, ph }) => {
+    const url = urls[ph.id];
+    if (!url) return;
+    let group = groups.find((g) => g.a.id === a.id);
+    if (!group) { group = { a, shots: [] }; groups.push(group); }
+    group.shots.push({ ph, url });
+  });
+  const months = byMonth(groups, (g) => activityDate(g.a))
+    .map((m) => ({ key: m.key, label: m.label, groups: m.items }));
+  const latest = latestFirst(picks.map((p) => p.a), activityDate)[0] || null;
+  const latestPhoto = latest ? latest.photos[0] : null;
+  return {
+    hero: latest,
+    heroUrl: latestPhoto ? urls[latestPhoto.id] : null,
+    months,
+  };
 }
+
+const URL_RE = /(https?:\/\/[^\s]+)/g;
+
+// A link as a reader wants it: the site and the page, without the tracking
+// query ("instagram.com/p/DSWy4lpCHqU", not the full address).
+const linkLabel = (href) => {
+  try {
+    const u = new URL(href);
+    return `${u.hostname.replace(/^www\./, '')}${u.pathname.replace(/\/$/, '')}`;
+  } catch {
+    return href;
+  }
+};
+
+function LinkedText({ text, className }) {
+  const parts = String(text).split(URL_RE);
+  return (
+    <div className={className}>
+      {parts.map((part, i) => (i % 2 === 1
+        ? <a key={i} href={part} target="_blank" rel="noopener noreferrer" title={part}>{linkLabel(part)}</a>
+        : part))}
+    </div>
+  );
+}
+
+// Every photo of one activity, fetched only once the funder asks for them.
+function ActivityGallery({ activity, source, limit = null }) {
+  const [urls, setUrls] = useState([]);
+  const shown = limit ? activity.photos.slice(0, limit) : activity.photos;
+  const key = shown.map((ph) => `${ph.id}:${ph.version}`).join('|');
+
+  useEffect(() => {
+    let active = true;
+    const made = [];
+    Promise.all(shown.map((ph) => source.activityPhoto(activity.id, ph.id, ph.version)
+      .then(({ blob }) => {
+        const url = URL.createObjectURL(blob);
+        made.push(url);
+        return { id: ph.id, url };
+      })
+      .catch(() => null)))
+      .then((list) => { if (active) setUrls(list.filter(Boolean)); });
+    return () => { active = false; made.forEach((u) => URL.revokeObjectURL(u)); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activity.id, key, source]);
+
+  if (urls.length === 0) return <p className="crow-s">Loading photos…</p>;
+  return (
+    <ul className="cgallery" aria-label={`Photos: ${activity.title}`}>
+      {urls.map((u, i) => (
+        <li key={u.id}>
+          <a href={u.url} target="_blank" rel="noopener noreferrer" aria-label={`Open ${activity.title}, ${i + 1} of ${activity.photos.length}, full size`}>
+            <img src={u.url} alt={`${activity.title}, ${i + 1} of ${activity.photos.length}`} />
+          </a>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// One colour per kind of activity, so a funder can tell a trial from a training
+// at a glance. Known kinds get a fixed colour; any other kind a stable one.
+const TYPE_TONES = [['promot', 0], ['trial', 1], ['train', 2], ['showcase', 3], ['assess', 4]];
+const typeTone = (type) => {
+  const t = String(type || '').toLowerCase();
+  const known = TYPE_TONES.find(([word]) => t.includes(word));
+  if (known) return known[1];
+  let h = 0;
+  for (let i = 0; i < t.length; i += 1) h = (h * 31 + t.charCodeAt(i)) % 997;
+  return 5 + (h % 2);
+};
 
 function EmptyPanel({ title, children }) {
   return (
@@ -271,6 +386,7 @@ export default function ClientPortalPage({ source = funderSource, preview = null
   const [athleteSearch, setAthleteSearch] = useState('');
   const [athleteFilter, setAthleteFilter] = useState('all');
   const [fyMenuAnchor, setFyMenuAnchor] = useState(null);
+  const [photosOpen, setPhotosOpen] = useState(null);
 
   const [brand, setBrand] = useState(null);
   const [cert, setCert] = useState(null);
@@ -511,8 +627,11 @@ export default function ClientPortalPage({ source = funderSource, preview = null
     const months = monthStrip(project.startDate, project.endDate, delivered);
     const places = placesReached(delivered);
     const recent = latestFirst(delivered, activityDate).slice(0, 3);
-    const recentReports = latestFirst(reports, (r) => r.createdAt).slice(0, 3);
+    const recentReports = latestFirst(reports, reportDate).slice(0, 3);
     const n = delivered.length;
+    const achieved = deliverables.filter(hasResult);
+    const missed = deliverables.filter((d) => !hasResult(d));
+    const allNotDelivered = missed.length > 0 && missed.every(notDelivered);
     const dayFact = !progress ? null
       : progress.state === 'running' ? `Day ${formatCount(progress.day)} of ${formatCount(progress.total)}`
         : progress.state === 'upcoming' ? `Starts ${formatDate(project.startDate)}`
@@ -525,7 +644,6 @@ export default function ClientPortalPage({ source = funderSource, preview = null
 
     return (
       <article className="creport">
-        {project.description && <p className="cdek">{project.description}</p>}
 
         {/* 4 Summary Stat Cards */}
         <div className="cstat-grid">
@@ -546,6 +664,7 @@ export default function ClientPortalPage({ source = funderSource, preview = null
             </div>
           </div>
 
+          {project.cities?.length > 0 && (
           <div className="cstat-card">
             <div className="cstat-lbl">Target Cities</div>
             <div className="cstat-val cnum">{project.cities?.length || 0}</div>
@@ -555,6 +674,7 @@ export default function ClientPortalPage({ source = funderSource, preview = null
                 : 'No cities assigned'}
             </div>
           </div>
+          )}
 
           <div className="cstat-card">
             <div className="cstat-lbl">Audit &amp; Certification</div>
@@ -583,20 +703,10 @@ export default function ClientPortalPage({ source = funderSource, preview = null
           </div>
         </div>
 
-        <dl className="cline">
-          <div><dt>Funder</dt><dd>{project.clientName || 'Not recorded'}</dd></div>
-          <div><dt>Sanctioned</dt><dd className="cnum">{formatRupees(project.sanctionedAmount)}</dd></div>
-          <div><dt>Period</dt><dd>{formatRange(project.startDate, project.endDate) || 'Not set'}</dd></div>
-          <div><dt>Status</dt><dd>{project.status || 'Not recorded'}</dd></div>
-          {dayFact && <div><dt>Progress</dt><dd className="cnum">{dayFact}</dd></div>}
-          {project.cities?.length > 0 && (
-            <div><dt>Cities</dt><dd>{project.cities.map((c) => c.name).join(', ')}</dd></div>
-          )}
-        </dl>
 
-        {photos.hero && photos.urls[photos.hero.id] && (
+        {photos.hero && photos.heroUrl && (
           <figure className="cphoto">
-            <img src={photos.urls[photos.hero.id]} alt={photos.hero.title} />
+            <img src={photos.heroUrl} alt={photos.hero.title} />
             <figcaption>
               Latest: {[photos.hero.title, activityPlace(photos.hero), formatDate(activityDate(photos.hero))].filter(Boolean).join(' · ')}
             </figcaption>
@@ -616,9 +726,21 @@ export default function ClientPortalPage({ source = funderSource, preview = null
                   : 'Nothing has been recorded against this grant yet. Activities and delivery progress appear here as they happen.'}
             </p>
           ) : (
-            <ul className="cledger">
-              {deliverables.map((d) => <LedgerRow key={d.id} d={d} />)}
-            </ul>
+            <>
+              {achieved.length > 0 && (
+                <ul className="couts">
+                  {achieved.map((d) => <OutcomeTile key={d.id} d={d} />)}
+                </ul>
+              )}
+              {missed.length > 0 && (
+                <>
+                  {allNotDelivered && <h3 className="csub">Not delivered</h3>}
+                  <ul className="cmisses">
+                    {missed.map((d) => <MissedRow key={d.id} d={d} tagged={!allNotDelivered} />)}
+                  </ul>
+                </>
+              )}
+            </>
           )}
         </section>
 
@@ -659,20 +781,52 @@ export default function ClientPortalPage({ source = funderSource, preview = null
           </section>
         )}
 
-        {recent.length > 0 && (
+        {photos.months.length > 0 ? (
           <section aria-labelledby="cp-field">
             <h2 className="csec" id="cp-field">From the field</h2>
-            <ul className={recent.some((a) => photos.urls[a.id]) ? 'ctiles' : 'citems'}>
+            {photos.months.map((m) => (
+              <div className="cfield-m" key={m.key}>
+                <h3 className="csub">{m.label}</h3>
+                {m.groups.map(({ a, shots }) => (
+                  <div className="cfield-a" key={a.id}>
+                    <div className="cfield-h">
+                      <span className="cfield-t">{a.title}</span>
+                      <span className="cfield-s">
+                        {[formatDate(activityDate(a)), `${formatCount(a.photos.length)} photos`].filter(Boolean).join(' · ')}
+                      </span>
+                    </div>
+                    <ul className="cgrid" aria-label={`Photos from ${a.title}`}>
+                      {shots.map(({ ph, url }, k) => (
+                        <li key={ph.id}>
+                          <img src={url} alt={`${a.title}, ${k + 1} of ${a.photos.length}`} />
+                        </li>
+                      ))}
+                    </ul>
+                    {a.photos.length > shots.length && (
+                      <button
+                        type="button" className="cmore"
+                        onClick={() => { setPhotosOpen(a.id); selectTab('activities'); }}
+                      >
+                        See all {formatCount(a.photos.length)} photos
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ))}
+            <button type="button" className="cmore" onClick={() => selectTab('activities')}>
+              All activities ({activityCount})
+            </button>
+          </section>
+        ) : recent.length > 0 && (
+          <section aria-labelledby="cp-field">
+            <h2 className="csec" id="cp-field">From the field</h2>
+            <ul className="citems">
               {recent.map((a) => {
                 const when = (a.startDate || a.endDate) ? formatRange(a.startDate, a.endDate) : formatDate(a.date);
                 const meta = [a.activityType, activityPlace(a), when].filter(Boolean).join(' · ');
-                const url = photos.urls[a.id];
                 return (
-                  <li key={a.id} className={recent.some((x) => photos.urls[x.id]) ? 'ctile' : 'citem'}>
-                    {recent.some((x) => photos.urls[x.id]) && (
-                      url ? <img className="ctile-img" src={url} alt={a.title} />
-                        : <span className="ctile-img ctile-none" aria-hidden="true">{activityPlace(a) || a.activityType || ''}</span>
-                    )}
+                  <li key={a.id} className="citem">
                     <span className="citem-t">{a.title}</span>
                     {meta && <span className="citem-s">{meta}</span>}
                   </li>
@@ -687,13 +841,31 @@ export default function ClientPortalPage({ source = funderSource, preview = null
           </section>
         )}
 
+        <section aria-labelledby="cp-details">
+          <h2 className="csec" id="cp-details">Programme details</h2>
+          <dl className="cline">
+            <div><dt>Funder</dt><dd>{project.clientName || 'Not recorded'}</dd></div>
+            <div><dt>Sanctioned</dt><dd className="cnum">{formatRupees(project.sanctionedAmount)}</dd></div>
+            <div><dt>Period</dt><dd>{formatRange(project.startDate, project.endDate) || 'Not set'}</dd></div>
+            {project.fundsReceivedOn && (
+              <div><dt>Received</dt><dd className="cnum">{formatDate(project.fundsReceivedOn)}</dd></div>
+            )}
+            <div><dt>Status</dt><dd>{project.status || 'Not recorded'}</dd></div>
+            {dayFact && <div><dt>Progress</dt><dd className="cnum">{dayFact}</dd></div>}
+            {project.cities?.length > 0 && (
+              <div><dt>Cities</dt><dd>{project.cities.map((c) => c.name).join(', ')}</dd></div>
+            )}
+          </dl>
+          {project.description && <p className="cdek cdek-in">{project.description}</p>}
+        </section>
+
         {recentReports.length > 0 && (
           <section aria-labelledby="cp-reports">
             <h2 className="csec" id="cp-reports">Latest reports</h2>
             <ul className="citems">
               {recentReports.map((r) => {
                 const name = (r.title && String(r.title).trim()) || r.fileName || 'Report';
-                const meta = [r.reportType, formatDate(r.createdAt)].filter(Boolean).join(' · ');
+                const meta = [r.reportType, r.documentDate || formatDate(r.createdAt)].filter(Boolean).join(' · ');
                 return (
                   <li key={r.id} className="citem citem-row">
                     <span className="citem-main">
@@ -739,12 +911,30 @@ export default function ClientPortalPage({ source = funderSource, preview = null
     const when = (a.startDate || a.endDate)
       ? formatRange(a.startDate, a.endDate)
       : formatDate(a.date);
-    const meta = [a.activityType, when, activityPlace(a)].filter(Boolean).join(' · ');
+    const photoCount = a.status === 'Completed' && a.photos ? a.photos.length : 0;
+    const open = photosOpen === a.id;
+    const tone = `ctone-${typeTone(a.activityType)}`;
+    const placeAndWhen = [when, activityPlace(a)].filter(Boolean).join(' · ');
     return (
-      <li className="crow" key={a.id}>
+      <li className={`crow ${tone}`} key={a.id}>
         <div className="crow-main">
+          {a.activityType && <span className="ctype">{a.activityType}</span>}
           <div className="crow-t">{a.title}</div>
-          {meta && <div className="crow-s">{meta}</div>}
+          {placeAndWhen && <div className="crow-s">{placeAndWhen}</div>}
+          {a.description && <LinkedText className="crow-d" text={a.description} />}
+          {photoCount > 0 && (
+            <>
+              <ActivityGallery activity={a} source={source} limit={open ? null : 4} />
+              {photoCount > 4 && (
+                <button
+                  type="button" className="cbtn crow-photos" aria-expanded={open}
+                  onClick={() => setPhotosOpen(open ? null : a.id)}
+                >
+                  {open ? 'Show fewer photos' : `See all ${formatCount(photoCount)} photos`}
+                </button>
+              )}
+            </>
+          )}
         </div>
         {a.status && (
           <div className="crow-end">
@@ -771,11 +961,16 @@ export default function ClientPortalPage({ source = funderSource, preview = null
       </EmptyPanel>
     ) : (
       activityGroups.map((g) => (
-        <section className="cpanel" aria-labelledby={`cp-acts-${g.key}`} key={g.key}>
+        <section className="cpanel cpanel-open" aria-labelledby={`cp-acts-${g.key}`} key={g.key}>
           <h2 className="csec" id={`cp-acts-${g.key}`}>{g.heading}</h2>
-          <ul className="crows">
-            {g.list.map(activityRow)}
-          </ul>
+          {byMonth(g.list, activityDate).map((m) => (
+            <div className="cmonth" key={m.key}>
+              <h3 className="csub">{m.label}</h3>
+              <ul className="crows ccards">
+                {m.items.map(activityRow)}
+              </ul>
+            </div>
+          ))}
         </section>
       ))
     )
@@ -939,11 +1134,11 @@ export default function ClientPortalPage({ source = funderSource, preview = null
           : 'No reports released yet. The India Khelo Football team publishes a report for an activity once it is written; you will see it here as soon as it is released.'}
       </EmptyPanel>
     ) : (
-      <section className="cpanel" aria-label="Reports">
-        <ul className="crows">
-          {reports.map((r) => {
+      <section className="cpanel cpanel-open" aria-label="Reports">
+        <ul className="crows ccards">
+          {byMonth(reports, reportDate).flatMap((m) => m.items).map((r) => {
             const name = (r.title && String(r.title).trim()) || r.fileName || 'Report';
-            const meta = [r.reportType, formatDate(r.createdAt)].filter(Boolean).join(' · ');
+            const meta = [r.reportType, r.documentDate || formatDate(r.createdAt)].filter(Boolean).join(' · ');
             return (
               <li className="crow" key={r.id}>
                 <div className="crow-main">
@@ -1002,15 +1197,53 @@ export default function ClientPortalPage({ source = funderSource, preview = null
           : 'No deliverables recorded yet. What this grant promises, and how much of it has been delivered, will be tracked here.'}
       </EmptyPanel>
     ) : (
-      <section className="cpanel" aria-label="Deliverables">
-        <ul className="crows">
-          {deliverables.map((d) => <DeliverableRow key={d.id} d={d} detailed />)}
-        </ul>
+      <section className="cpanel cpanel-open" aria-label="Deliverables">
+        {byMonth(deliverables, (d) => d.dueDate).map((m) => (
+          <div className="cmonth" key={m.key}>
+            <h3 className="csub">{m.key ? `Due ${m.label}` : 'No due date'}</h3>
+            <ul className="crows ccards">
+              {m.items.map((d) => <DeliverableRow key={d.id} d={d} detailed />)}
+            </ul>
+          </div>
+        ))}
       </section>
     )
   );
 
-  const renderCertificate = () => {
+  // D-030: the budget the grant agreed, shown above the certificate so the
+  // funder reads what was planned before what was spent.
+  const renderBudget = () => {
+    const rows = project?.agreedBudget || [];
+    if (rows.length === 0) return null;
+    const total = rows.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+    return (
+      <section className="cpanel cbudget" aria-labelledby="cp-budget">
+        <h2 className="ctitle" id="cp-budget">Agreed budget</h2>
+        <div className="crow-s">As set out when the grant was agreed.</div>
+        <ul className="crows clines">
+          {rows.map((r, i) => (
+            <li className="crow" key={i}>
+              <div className="crow-main"><div className="crow-t">{r.head}</div></div>
+              <div className="crow-end cnum">{formatRupees(r.amount)}</div>
+            </li>
+          ))}
+          <li className="crow ctotal">
+            <div className="crow-main"><div className="crow-t">Total</div></div>
+            <div className="crow-end cnum">{formatRupees(total)}</div>
+          </li>
+        </ul>
+      </section>
+    );
+  };
+
+  const renderCertificate = () => (
+    <>
+      {renderBudget()}
+      {renderCertificateBody()}
+    </>
+  );
+
+  const renderCertificateBody = () => {
     if (!cert) {
       return <div className="cloading"><CircularProgress size={24} /></div>;
     }
@@ -1081,6 +1314,9 @@ export default function ClientPortalPage({ source = funderSource, preview = null
           </div>
         </dl>
 
+        {lines.length > 0 && (project?.agreedBudget || []).length > 0 && (
+          <h3 className="csub">Spent, by head</h3>
+        )}
         {lines.length === 0 ? (
           <p className="clede cdesc">No expenses are recorded against this grant.</p>
         ) : (

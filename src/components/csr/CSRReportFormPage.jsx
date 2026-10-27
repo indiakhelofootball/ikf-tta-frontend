@@ -25,7 +25,7 @@ import '../../styles/csrDesign.css';
 const REPORT_TYPES = ['Trial', 'Workshop', 'Training Programme', 'Overall', 'Other'];
 
 const EMPTY = {
-  title: '', reportType: '', fileName: '', fileUrl: '', activityId: '',
+  title: '', reportType: '', documentDate: '', fileName: '', fileUrl: '', activityId: '',
   visibleToClient: true,
 };
 
@@ -80,6 +80,7 @@ export default function CSRReportFormPage() {
           // actually typed rather than showing them an empty required field.
           title: data.title || data.fileName || '',
           reportType: data.reportType || '',
+          documentDate: data.documentDate || '',
           fileName: data.fileName || '',
           fileUrl: data.fileUrl || '',
           activityId: data.activityId ?? '',
@@ -159,6 +160,7 @@ export default function CSRReportFormPage() {
     const payload = {
       title: form.title.trim(),
       reportType: form.reportType,
+      documentDate: form.documentDate.trim(),
       fileName: form.fileName.trim(),
       fileUrl: form.fileUrl.trim(),
       activityId: form.activityId === '' ? null : Number(form.activityId),
@@ -279,6 +281,17 @@ export default function CSRReportFormPage() {
               <input id="r-filename" type="text" value={form.fileName} onChange={setField('fileName')} />
               <p className="pform-help">The document's own file name, if it differs.</p>
             </div>
+          </div>
+
+          <div className="pform-field">
+            <label htmlFor="r-docdate">Document date</label>
+            <input
+              id="r-docdate" type="text" maxLength={50} value={form.documentDate}
+              onChange={setField('documentDate')} aria-describedby="r-docdate-help"
+            />
+            <p id="r-docdate-help" className="pform-help">
+              As printed on the document, e.g. December 2025 or FY 2025-26. The funder sees this instead of the upload date.
+            </p>
           </div>
 
           <p className="pform-help">Upload the report, or paste a Drive link. Either is enough.</p>

@@ -63,8 +63,12 @@ test('the landing tab leads with what was delivered, in each deliverable own uni
   render(<ClientPortalPage />);
 
   expect(await screen.findByText('What has been delivered')).toBeInTheDocument();
-  expect(screen.getByText('Trials conducted, against a target of 40.')).toBeInTheDocument();
-  expect(screen.getByText('Coaches trained, against a target of 120.')).toBeInTheDocument();
+  // Redesigned 27 Oct (owner: the section 'needs to be well made'): the title
+  // and its target now sit on separate lines of one tile.
+  expect(screen.getByText('Trials conducted')).toBeInTheDocument();
+  expect(screen.getByText('Target 40')).toBeInTheDocument();
+  expect(screen.getByText('Coaches trained')).toBeInTheDocument();
+  expect(screen.getByText('Target 120')).toBeInTheDocument();
   expect(screen.getByText('65% of target')).toBeInTheDocument();
   expect(screen.getByText('Target met')).toBeInTheDocument();
 });
@@ -247,7 +251,8 @@ test('delivery above target reads "318 of 300" with a note, and the bar stops at
   render(<ClientPortalPage />);
 
   expect(await screen.findByText('318')).toBeInTheDocument();
-  expect(screen.getByText('Players screened, against a target of 300.')).toBeInTheDocument();
+  expect(screen.getByText('Players screened')).toBeInTheDocument();
+  expect(screen.getByText('Target 300')).toBeInTheDocument();
   expect(screen.getByText('Target exceeded')).toBeInTheDocument();
   expect(screen.getByRole('progressbar', { name: /Players screened/ }))
     .toHaveAttribute('aria-valuenow', '100');
@@ -533,8 +538,9 @@ test('the latest activity photo leads the Overview, and recent activities become
   expect(within(hero).getByRole('img')).toHaveAttribute('alt', 'District trial, Sector 56');
   expect(hero).toHaveTextContent('Latest: District trial, Sector 56 · Gurugram · 14 Sep 2026');
   expect(clientAPI.activityPhoto).toHaveBeenCalledWith(1, 7, 'a1');
-  // Second trial is the newest but has no photo: it still gets a tile, without a broken image.
-  expect(screen.getAllByRole('img', { name: 'District trial, Sector 56' }).length).toBe(2);
+  // Grouped by month and activity since 27 Oct: the photo sits under its own
+  // activity, numbered; Second trial has no photo and gets no broken image.
+  expect(await screen.findByRole('img', { name: 'District trial, Sector 56, 1 of 1' })).toBeInTheDocument();
   expect(screen.queryByRole('img', { name: 'Second trial' })).not.toBeInTheDocument();
 });
 
@@ -831,15 +837,29 @@ test('D-019: a grant with no cities shows no Cities line', async () => {
   expect(screen.queryByText('Cities')).not.toBeInTheDocument();
 });
 
-test('the Overview tab displays the 4 summary stat cards', async () => {
+test('the Overview summary cards leave out Target Cities when the grant has none', async () => {
   clientAPI.athletes.mockResolvedValue([
     { id: 1, fullName: 'Aarav Patel', position: 'Forward', category: 'U17', status: 'Shortlisted' },
   ]);
   render(<ClientPortalPage />);
   expect(await screen.findByText('Total Grant Amount')).toBeInTheDocument();
   expect(screen.getByText('Athletes Scouted')).toBeInTheDocument();
-  expect(screen.getByText('Target Cities')).toBeInTheDocument();
+  // 27 Oct: an empty "0 / No cities assigned" card was clutter, not a fact.
+  expect(screen.queryByText('Target Cities')).not.toBeInTheDocument();
   expect(screen.getByText('Audit & Certification')).toBeInTheDocument();
+});
+
+test('a grant with cities shows the Target Cities card', async () => {
+  clientAPI.project.mockResolvedValue([{ ...PROJECT, cities: [{ id: 1, name: 'Pune' }] }]);
+  render(<ClientPortalPage />);
+  expect(await screen.findByText('Target Cities')).toBeInTheDocument();
+});
+
+test('the programme description sits in Programme details, not at the top of the Overview', async () => {
+  clientAPI.project.mockResolvedValue([{ ...PROJECT, description: 'What this grant does.' }]);
+  render(<ClientPortalPage />);
+  const details = await screen.findByRole('region', { name: 'Programme details' });
+  expect(within(details).getByText('What this grant does.')).toBeInTheDocument();
 });
 
 test('the Athletes tab shows scouted beneficiaries and search works', async () => {
@@ -1013,4 +1033,195 @@ test('a target with no result recorded says so, never 0 or Not started', async (
   expect((await screen.findAllByText('No result recorded yet')).length).toBeGreaterThanOrEqual(2);
   expect(screen.queryByText('Not started')).toBeNull();
   expect(screen.queryByRole('progressbar', { name: 'Progress for Formal club trials secured' })).toBeNull();
+});
+
+describe('D-030: a finished year shows everything the documents contain', () => {
+  const origCreate = URL.createObjectURL;
+  const origRevoke = URL.revokeObjectURL;
+  let n = 0;
+  beforeEach(() => {
+    n = 0;
+    URL.createObjectURL = jest.fn(() => `blob:p${(n += 1)}`);
+    URL.revokeObjectURL = jest.fn();
+    clientAPI.activityPhoto.mockResolvedValue({ blob: new Blob(['x'], { type: 'image/jpeg' }) });
+  });
+  afterEach(() => {
+    // Unmount first: the gallery revokes its URLs on unmount, and jsdom has no
+    // revokeObjectURL of its own to fall back to.
+    require('@testing-library/react').cleanup();
+    URL.createObjectURL = origCreate;
+    URL.revokeObjectURL = origRevoke;
+  });
+
+  const TRIAL = {
+    id: 9, title: 'Trials - Day 1', status: 'Completed', date: '2025-12-27',
+    description: 'Physical screening and technical drills.\nReel: https://www.instagram.com/reel/abc/',
+    photos: [{ id: 1, version: 'v1' }, { id: 2, version: 'v2' }, { id: 3, version: 'v3' }],
+  };
+
+  test('an activity shows what happened, with its links clickable', async () => {
+    clientAPI.activities.mockResolvedValue([TRIAL]);
+    render(<ClientPortalPage />);
+    fireEvent.click(await screen.findByRole('tab', { name: /^Activities/ }));
+    expect(await screen.findByText(/Physical screening and technical drills\./)).toBeInTheDocument();
+    // Shown as site and page, linking to the full address.
+    expect(screen.getByRole('link', { name: 'instagram.com/reel/abc' }))
+      .toHaveAttribute('href', 'https://www.instagram.com/reel/abc/');
+  });
+
+  test('an activity card shows its photos without a click', async () => {
+    clientAPI.activities.mockResolvedValue([TRIAL]);
+    render(<ClientPortalPage />);
+    fireEvent.click(await screen.findByRole('tab', { name: /^Activities/ }));
+    const gallery = await screen.findByRole('list', { name: 'Photos: Trials - Day 1' });
+    await waitFor(() => expect(within(gallery).getAllByRole('img')).toHaveLength(3));
+    [1, 2, 3].forEach((id) => expect(clientAPI.activityPhoto).toHaveBeenCalledWith(9, id, `v${id}`));
+    expect(screen.queryByRole('button', { name: /^See all/ })).not.toBeInTheDocument();
+  });
+
+  test('a card shows four photos, and See all opens every one', async () => {
+    const many = { ...TRIAL, photos: Array.from({ length: 8 }, (_, i) => ({ id: i + 1, version: `v${i + 1}` })) };
+    clientAPI.activities.mockResolvedValue([many]);
+    render(<ClientPortalPage />);
+    fireEvent.click(await screen.findByRole('tab', { name: /^Activities/ }));
+    const first = await screen.findByRole('list', { name: 'Photos: Trials - Day 1' });
+    await waitFor(() => expect(within(first).getAllByRole('img')).toHaveLength(4));
+    fireEvent.click(screen.getByRole('button', { name: 'See all 8 photos' }));
+    await waitFor(() => expect(
+      within(screen.getByRole('list', { name: 'Photos: Trials - Day 1' })).getAllByRole('img'),
+    ).toHaveLength(8));
+  });
+
+  test('a planned activity shows no photos', async () => {
+    clientAPI.activities.mockResolvedValue([{ ...TRIAL, status: 'Planned' }]);
+    render(<ClientPortalPage />);
+    fireEvent.click(await screen.findByRole('tab', { name: /^Activities/ }));
+    await screen.findByText('Trials - Day 1');
+    expect(screen.queryByRole('list', { name: /^Photos/ })).not.toBeInTheDocument();
+    expect(clientAPI.activityPhoto).not.toHaveBeenCalled();
+  });
+
+  test('each activity carries its kind as a coloured label', async () => {
+    clientAPI.activities.mockResolvedValue([{ ...TRIAL, activityType: 'Trial' }, { ...TRIAL, id: 10, title: 'Coaching', activityType: 'Training', photos: [] }]);
+    const { container } = render(<ClientPortalPage />);
+    fireEvent.click(await screen.findByRole('tab', { name: /^Activities/ }));
+    await screen.findByText('Coaching');
+    const tones = Object.fromEntries([...container.querySelectorAll('.ccards > .crow')].map((li) => [
+      li.querySelector('.crow-t').textContent, [...li.classList].find((c) => c.startsWith('ctone-')),
+    ]));
+    expect(tones).toEqual({ 'Trials - Day 1': 'ctone-1', Coaching: 'ctone-2' });
+  });
+
+  test('a report shows the date printed on it, not the day it was uploaded', async () => {
+    clientAPI.reports.mockResolvedValue([
+      { id: 4, title: 'Progress Report - Part 1', reportType: 'Trial', hasFile: true,
+        createdAt: '2026-10-26T10:00:00Z', documentDate: 'December 2025' },
+    ]);
+    render(<ClientPortalPage />);
+    fireEvent.click(await screen.findByRole('tab', { name: /^Reports/ }));
+    expect(await screen.findByText('Trial · December 2025')).toBeInTheDocument();
+    expect(screen.queryByText(/26 Oct 2026/)).not.toBeInTheDocument();
+  });
+
+  test('a report with no printed date still shows its upload date', async () => {
+    clientAPI.reports.mockResolvedValue([
+      { id: 4, title: 'Notes', reportType: 'Trial', hasFile: true, createdAt: '2026-10-26T10:00:00Z', documentDate: '' },
+    ]);
+    render(<ClientPortalPage />);
+    fireEvent.click(await screen.findByRole('tab', { name: /^Reports/ }));
+    expect(await screen.findByText('Trial · 26 Oct 2026')).toBeInTheDocument();
+  });
+
+  test('the grant shows the day the money was received', async () => {
+    clientAPI.project.mockResolvedValue([{ ...PROJECT, fundsReceivedOn: '2025-12-02' }]);
+    render(<ClientPortalPage />);
+    expect(await screen.findByText('Received')).toBeInTheDocument();
+    expect(screen.getByText('2 Dec 2025')).toBeInTheDocument();
+  });
+
+  test('with no received date recorded the line is left out', async () => {
+    render(<ClientPortalPage />);
+    await screen.findByText('What has been delivered');
+    expect(screen.queryByText('Received')).not.toBeInTheDocument();
+  });
+});
+
+describe('D-032: a missed target of a finished year reads Not delivered', () => {
+  const MISSED = { id: 7, title: 'Formal club trial opportunities secured', targetCount: 5, completedCount: null, status: 'Not Delivered', dueDate: '2026-03-31' };
+
+  test('the Overview says Not delivered, not that no result was recorded', async () => {
+    clientAPI.deliverables.mockResolvedValue([MISSED]);
+    render(<ClientPortalPage />);
+    expect(await screen.findByText('Not delivered')).toBeInTheDocument();
+    expect(screen.queryByText('No result recorded yet')).not.toBeInTheDocument();
+  });
+
+  test('the Deliverables tab labels it once, with no Pending anywhere', async () => {
+    clientAPI.deliverables.mockResolvedValue([MISSED]);
+    render(<ClientPortalPage />);
+    fireEvent.click(await screen.findByRole('tab', { name: /^Deliverables/ }));
+    expect(await screen.findByText('Not Delivered')).toBeInTheDocument();
+    expect(screen.queryByText('Not delivered')).not.toBeInTheDocument();
+    expect(screen.queryByText('Pending')).not.toBeInTheDocument();
+  });
+
+  test('a target with no result and no Not Delivered mark still says no result was recorded', async () => {
+    clientAPI.deliverables.mockResolvedValue([{ ...MISSED, status: 'Pending' }]);
+    render(<ClientPortalPage />);
+    expect(await screen.findByText('No result recorded yet')).toBeInTheDocument();
+    expect(screen.queryByText('Not delivered')).not.toBeInTheDocument();
+  });
+});
+
+describe('the Overview photo grid', () => {
+  const origCreate = URL.createObjectURL;
+  const origRevoke = URL.revokeObjectURL;
+  let n = 0;
+  beforeEach(() => {
+    n = 0;
+    URL.createObjectURL = jest.fn(() => `blob:g${(n += 1)}`);
+    URL.revokeObjectURL = jest.fn();
+    clientAPI.activityPhoto.mockResolvedValue({ blob: new Blob(['x'], { type: 'image/jpeg' }) });
+  });
+  afterEach(() => {
+    require('@testing-library/react').cleanup();
+    URL.createObjectURL = origCreate;
+    URL.revokeObjectURL = origRevoke;
+  });
+  const photos = (base, k) => Array.from({ length: k }, (_, i) => ({ id: base + i, version: `v${base + i}` }));
+  const DAY2 = { id: 2, title: 'Day 2', status: 'Completed', date: '2025-12-28', photos: photos(20, 8) };
+  const DAY1 = { id: 1, title: 'Day 1', status: 'Completed', date: '2025-12-27', photos: photos(10, 8) };
+  const TRAINING = { id: 3, title: 'Training', status: 'Completed', startDate: '2026-01-01', endDate: '2026-03-31', photos: [] };
+
+  test('groups photos by month, then activity, oldest first, four from each', async () => {
+    clientAPI.activities.mockResolvedValue([TRAINING, DAY2, DAY1]);
+    render(<ClientPortalPage />);
+    await waitFor(() => expect(clientAPI.activityPhoto).toHaveBeenCalledTimes(8));
+    expect(await screen.findByRole('heading', { name: 'December 2025' })).toBeInTheDocument();
+    const lists = await screen.findAllByRole('list', { name: /^Photos from / });
+    expect(lists.map((l) => l.getAttribute('aria-label'))).toEqual(['Photos from Day 1', 'Photos from Day 2']);
+    await waitFor(() => expect(within(lists[0]).getAllByRole('img')).toHaveLength(4));
+  });
+
+  test('See all opens the activity with every one of its photos', async () => {
+    clientAPI.activities.mockResolvedValue([DAY1]);
+    render(<ClientPortalPage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'See all 8 photos' }));
+    expect(screen.getByRole('tab', { name: /^Activities/ })).toHaveAttribute('aria-selected', 'true');
+    expect(await screen.findByRole('list', { name: 'Photos: Day 1' })).toBeInTheDocument();
+  });
+});
+
+test('achieved targets are tiles and missed ones are listed apart, under one Not delivered heading', async () => {
+  clientAPI.deliverables.mockResolvedValue([
+    { id: 1, title: 'Camp attendance', targetCount: 200, completedCount: 200, status: 'Completed' },
+    { id: 2, title: 'Club trials', targetCount: 5, completedCount: null, status: 'Not Delivered' },
+    { id: 3, title: 'Placements', targetCount: null, completedCount: null, status: 'Not Delivered' },
+  ]);
+  const { container } = render(<ClientPortalPage />);
+  expect(await screen.findByRole('heading', { name: 'Not delivered' })).toBeInTheDocument();
+  expect(container.querySelectorAll('.cout')).toHaveLength(1);
+  const missed = [...container.querySelectorAll('.cmiss')].map((li) => li.textContent);
+  expect(missed).toEqual(['Club trialsTarget 5', 'Placements']);
+  expect(screen.queryByText('—')).not.toBeInTheDocument();
 });

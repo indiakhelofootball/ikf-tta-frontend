@@ -21,7 +21,7 @@ const STATUS_OPTIONS = ['Active', 'Closed'];
 
 const EMPTY = {
   name: '', clientName: '', sanctionedAmount: '',
-  startDate: '', endDate: '', status: 'Active', description: '',
+  startDate: '', endDate: '', fundsReceivedOn: '', agreedBudget: [], status: 'Active', description: '',
   projectRefId: '', season: '', showHeldBackToFunder: false, cityIds: [],
 };
 
@@ -89,6 +89,8 @@ export default function CSRProjectFormPage() {
           sanctionedAmount: data.sanctionedAmount ?? '',
           startDate: data.startDate || '',
           endDate: data.endDate || '',
+          fundsReceivedOn: data.fundsReceivedOn || '',
+          agreedBudget: (data.agreedBudget || []).map((r) => ({ head: r.head || '', amount: r.amount ?? '' })),
           status: data.status || 'Active',
           description: data.description || '',
           projectRefId: data.projectRefId ?? '',
@@ -119,6 +121,12 @@ export default function CSRProjectFormPage() {
   // TTA project's identity come from config, so no `trials` grant is needed and
   // the 403 on /api/trials/ is not in the way.
   const ttaSeasons = useMemo(() => getSeasons().map((x) => x.name).filter(Boolean), [cfgVersion]);
+
+  const setBudget = (i, key, value) => setForm((f) => ({
+    ...f,
+    agreedBudget: f.agreedBudget.map((r, j) => (j === i ? { ...r, [key]: value } : r)),
+  }));
+  const budgetTotal = form.agreedBudget.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
 
   const setField = (k) => (e) => {
     const { value } = e.target;
@@ -184,6 +192,10 @@ export default function CSRProjectFormPage() {
       description: form.description.trim(),
       startDate: form.startDate || null,
       endDate: form.endDate || null,
+      fundsReceivedOn: form.fundsReceivedOn || null,
+      agreedBudget: form.agreedBudget
+        .filter((r) => r.head.trim() !== '' || String(r.amount).trim() !== '')
+        .map((r) => ({ head: r.head.trim(), amount: r.amount })),
       projectRefId: form.projectRefId === '' ? null : Number(form.projectRefId),
       // Half of the TTA project's identity, and collected again for now.
       //
@@ -362,7 +374,55 @@ export default function CSRProjectFormPage() {
                   <p id="csr-amount-help" className="pform-help bad">{errors.sanctionedAmount}</p>
                 ) : null}
               </div>
+              <div className="pform-field">
+                <label htmlFor="csr-received">Money received on</label>
+                <input
+                  id="csr-received" type="date" value={form.fundsReceivedOn}
+                  onChange={setField('fundsReceivedOn')} aria-describedby="csr-received-help"
+                />
+                <p id="csr-received-help" className="pform-help">The funder sees this date.</p>
+              </div>
             </div>
+
+            <fieldset className="pform-field pform-budget">
+              <legend>Agreed budget</legend>
+              <p className="pform-help">
+                The budget heads the grant agreed, as the proposal states them. The funder sees them beside what was spent.
+              </p>
+              {form.agreedBudget.map((row, i) => (
+                <div className="pform-row" key={i}>
+                  <div className="pform-field">
+                    <label htmlFor={`csr-bh-${i}`}>Head {i + 1}</label>
+                    <input
+                      id={`csr-bh-${i}`} type="text" maxLength={120} value={row.head}
+                      onChange={(e) => setBudget(i, 'head', e.target.value)}
+                    />
+                  </div>
+                  <div className="pform-field">
+                    <label htmlFor={`csr-ba-${i}`}>Amount (₹)</label>
+                    <input
+                      id={`csr-ba-${i}`} type="number" min="0" value={row.amount}
+                      onChange={(e) => setBudget(i, 'amount', e.target.value)}
+                    />
+                  </div>
+                  <button
+                    type="button" className="ghostbtn" aria-label={`Remove head ${i + 1}`}
+                    onClick={() => setForm((f) => ({ ...f, agreedBudget: f.agreedBudget.filter((_, j) => j !== i) }))}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button" className="ghostbtn"
+                onClick={() => setForm((f) => ({ ...f, agreedBudget: [...f.agreedBudget, { head: '', amount: '' }] }))}
+              >
+                Add a budget head
+              </button>
+              {budgetTotal > 0 && (
+                <p className="pform-help">Total of the heads: ₹{budgetTotal.toLocaleString('en-IN')}</p>
+              )}
+            </fieldset>
 
             <div className="pform-field">
               <label className="chk">
