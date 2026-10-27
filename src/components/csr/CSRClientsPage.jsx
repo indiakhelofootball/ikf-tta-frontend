@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Typography, Button, Stack, Snackbar, Alert,
   Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, MenuItem,
+  TextField, MenuItem, FormControlLabel, Checkbox,
 } from '@mui/material';
 
 import { csrAPI } from '../../services/api';
@@ -134,6 +134,67 @@ function ResetPasswordModal({ client, onClose, onSave, saving }) {
   );
 }
 
+const fyLabel = (fy) => (fy ? `FY ${fy}` : 'No financial year');
+
+// D-025: staff tick each other year a login may open; nothing is inferred from a
+// matching name. A grant of a different funder is flagged, because ticking one
+// shows that funder's programme to this login.
+function YearsModal({ client, projects, onClose, onSave, saving }) {
+  const [picked, setPicked] = useState([]);
+
+  useEffect(() => {
+    if (client) setPicked((client.extraProjects || []).map((p) => p.id));
+  }, [client]);
+
+  const own = (projects || []).find((p) => p.id === client?.projectId);
+  const sameFunder = (p) => (p.clientName || '').trim().toLowerCase()
+    === (own?.clientName || '').trim().toLowerCase();
+  const others = (projects || [])
+    .filter((p) => p.id !== client?.projectId)
+    .sort((a, b) => (sameFunder(b) - sameFunder(a))
+      || (b.financialYear || '').localeCompare(a.financialYear || '')
+      || a.name.localeCompare(b.name));
+  const toggle = (id) => setPicked((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
+
+  return (
+    <Dialog open={!!client} onClose={onClose} fullWidth maxWidth="sm">
+      <DialogTitle>Other years</DialogTitle>
+      <DialogContent>
+        <Stack spacing={1.5} sx={{ mt: 1 }}>
+          <Typography variant="body2" color="text.secondary">
+            {client?.email} signs in to {client?.projectName}. Tick any other grant
+            they should also be able to open from the year switcher on their portal.
+          </Typography>
+          {others.length === 0 ? (
+            <Typography variant="body2">There are no other grants.</Typography>
+          ) : others.map((p) => (
+            <FormControlLabel
+              key={p.id}
+              control={<Checkbox checked={picked.includes(p.id)} onChange={() => toggle(p.id)} disabled={saving} />}
+              label={(
+                <span>
+                  {p.clientName} — {p.name} · {fyLabel(p.financialYear)}
+                  {!sameFunder(p) && (
+                    <Typography component="span" variant="body2" color="error" display="block">
+                      Different funder: ticking this shows {p.clientName}'s grant to this login.
+                    </Typography>
+                  )}
+                </span>
+              )}
+            />
+          ))}
+        </Stack>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} disabled={saving}>Cancel</Button>
+        <Button onClick={() => onSave(picked)} variant="contained" disabled={saving}>
+          {saving ? 'Saving…' : 'Save'}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
 // The full address a funder signs in at. The server sends the path; the site's
 // own origin makes it the link to send them.
 const portalUrl = (path) => (path ? `${window.location.origin}${path}` : '');
@@ -198,6 +259,7 @@ export default function CSRClientsPage() {
   const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
   const [confirmState, setConfirmState] = useState(null);
   const [resetFor, setResetFor] = useState(null);
+  const [yearsFor, setYearsFor] = useState(null);
   const [sendDetails, setSendDetails] = useState(null);
 
   const notify = (message, severity = 'success') => setToast({ open: true, message, severity });
@@ -255,6 +317,24 @@ export default function CSRClientsPage() {
       const msg = fieldErr
         ? Object.values(fieldErr).flat().join(' ')
         : (e.message || 'Could not reset the password.');
+      notify(msg, 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleYears = async (ids) => {
+    setSaving(true);
+    try {
+      await csrAPI.clients.setYears(yearsFor.id, ids);
+      notify(`Years updated for ${yearsFor.email}.`);
+      setYearsFor(null);
+      load();
+    } catch (e) {
+      const fieldErr = e?.response?.data?.errors;
+      const msg = fieldErr
+        ? Object.values(fieldErr).flat().join(' ')
+        : (e.message || 'Could not update the years.');
       notify(msg, 'error');
     } finally {
       setSaving(false);
@@ -341,9 +421,17 @@ export default function CSRClientsPage() {
                   ) : (
                     <span className="portal-path">No portal link. Set it up on the Branding page.</span>
                   )}
+                  {(c.extraProjects || []).length > 0 && (
+                    <span className="portal-path">
+                      Also sees: {c.extraProjects.map((p) => `${p.name} (${fyLabel(p.financialYear)})`).join(', ')}
+                    </span>
+                  )}
                 </span>
                 <span className="lend">
                   {!c.isActive && <span className="pill wait">Revoked</span>}
+                  <button type="button" className="ghostbtn tight" onClick={() => setYearsFor(c)}>
+                    Other years
+                  </button>
                   <button type="button" className="ghostbtn tight" onClick={() => setResetFor(c)}>
                     Reset password
                   </button>
@@ -375,6 +463,14 @@ export default function CSRClientsPage() {
       />
 
       <SendDetailsDialog details={sendDetails} onClose={() => setSendDetails(null)} notify={notify} />
+
+      <YearsModal
+        client={yearsFor}
+        projects={projects}
+        onClose={() => setYearsFor(null)}
+        onSave={handleYears}
+        saving={saving}
+      />
 
       <ResetPasswordModal
         client={resetFor}

@@ -1262,6 +1262,13 @@ export const csrAPI = /*#__PURE__*/ {
         method: 'POST',
         body: JSON.stringify({ password }),
       }),
+    // Admin sets the other grants this login may also open (D-025). The list
+    // replaces the whole set.
+    setYears: async (id, extraProjectIds) =>
+      apiService.request(`/csr/clients/${id}/years/`, {
+        method: 'PATCH',
+        body: JSON.stringify({ extraProjectIds }),
+      }),
   },
   // Server-authoritative Utilisation Certificate (totals computed server-side).
   utilisationCertificate: async (projectId) =>

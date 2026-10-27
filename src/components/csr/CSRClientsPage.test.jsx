@@ -6,7 +6,7 @@ import CSRClientsPage from './CSRClientsPage';
 
 jest.mock('../../services/api', () => ({
   csrAPI: {
-    clients: { list: jest.fn(), onboard: jest.fn(), setAccess: jest.fn(), resetPassword: jest.fn() },
+    clients: { list: jest.fn(), onboard: jest.fn(), setAccess: jest.fn(), resetPassword: jest.fn(), setYears: jest.fn() },
     projects: { getAll: jest.fn() },
   },
 }));
@@ -96,4 +96,47 @@ test('a funder whose grant has no portal link is told where to set one up', asyn
   render(<CSRClientsPage />);
   expect(await screen.findByText('No portal link. Set it up on the Branding page.')).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /Copy portal link/ })).not.toBeInTheDocument();
+});
+
+const GRANTS = [
+  { id: 1, name: 'Grassroots', clientName: 'Acme Foundation', financialYear: '2026-27' },
+  { id: 2, name: 'Pilot', clientName: 'Acme Foundation', financialYear: '2025-26' },
+  { id: 3, name: 'Other Corp Grant', clientName: 'Other Corp', financialYear: '2025-26' },
+];
+
+test('an admin ticks another year for a funder and the row then names it', async () => {
+  csrAPI.projects.getAll.mockResolvedValue(GRANTS);
+  csrAPI.clients.setYears.mockResolvedValue({ success: true });
+  render(<CSRClientsPage />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Other years' }));
+
+  expect(screen.queryByLabelText(/Grassroots/)).not.toBeInTheDocument();
+  fireEvent.click(screen.getByLabelText(/Acme Foundation — Pilot · FY 2025-26/));
+  csrAPI.clients.list.mockResolvedValue([{ ...FUNDER, extraProjects: [{ id: 2, name: 'Pilot', financialYear: '2025-26' }] }]);
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  await waitFor(() => expect(csrAPI.clients.setYears).toHaveBeenCalledWith(7, [2]));
+  expect(await screen.findByText('Years updated for funder@acme.com.')).toBeInTheDocument();
+  expect(await screen.findByText('Also sees: Pilot (FY 2025-26)')).toBeInTheDocument();
+});
+
+test('a grant of a different funder is flagged before it can be ticked', async () => {
+  csrAPI.projects.getAll.mockResolvedValue(GRANTS);
+  render(<CSRClientsPage />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Other years' }));
+  expect(screen.getByText(/Different funder: ticking this shows Other Corp's grant/)).toBeInTheDocument();
+  expect(screen.getAllByText(/Different funder/)).toHaveLength(1);
+});
+
+test('unticking a year sends the smaller list', async () => {
+  csrAPI.projects.getAll.mockResolvedValue(GRANTS);
+  csrAPI.clients.list.mockResolvedValue([{ ...FUNDER, extraProjects: [{ id: 2, name: 'Pilot', financialYear: '2025-26' }] }]);
+  csrAPI.clients.setYears.mockResolvedValue({ success: true });
+  render(<CSRClientsPage />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Other years' }));
+  const pilot = screen.getByLabelText(/Acme Foundation — Pilot/);
+  expect(pilot).toBeChecked();
+  fireEvent.click(pilot);
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  await waitFor(() => expect(csrAPI.clients.setYears).toHaveBeenCalledWith(7, []));
 });
