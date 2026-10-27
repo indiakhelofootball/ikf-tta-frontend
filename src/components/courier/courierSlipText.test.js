@@ -110,6 +110,28 @@ describe('fitAddressBlock', () => {
     expect(slipAddressWarning({ addressOverflow: r.overflow, addressDropped: r.dropped })).not.toBe('');
   });
 
+  test('the Rewa slip: a name the slip already prints is not printed again', () => {
+    const r = call({
+      address: '2/16/505, Nehrunagar, Rewa,Madhya Pradesh',
+      subArea: 'Rewa', city: 'Rewa', district: 'Rewa', state: 'Madhya Pradesh',
+    });
+    expect(r.lines).toEqual(['2/16/505, Nehrunagar', 'Rewa', 'Madhya Pradesh']);
+    expect(r.dropped).toEqual([]);
+  });
+
+  test('a repeat is matched whatever its case or spacing, and only at the end of the street', () => {
+    const r = call({
+      address: 'Rewa Road, House 4, rewa ,  MADHYA  pradesh.',
+      subArea: 'Nehru Nagar', city: 'Rewa', district: 'REWA', state: 'Madhya Pradesh',
+    });
+    expect(r.lines).toEqual(['Rewa Road, House 4', 'Nehru Nagar', 'Rewa', 'Madhya Pradesh']);
+  });
+
+  test('a street that is only a city name still prints, and a distinct district still prints', () => {
+    const r = call({ address: 'Rewa', city: 'Rewa', district: 'Satna', state: 'Madhya Pradesh' });
+    expect(r.lines).toEqual(['Rewa', 'Rewa', 'Satna', 'Madhya Pradesh']);
+  });
+
   test('no address at all still prints the city and state', () => {
     const r = call({ address: '', city: 'Mumbai', state: 'Maharashtra' });
     expect(r.lines).toEqual(['Mumbai', 'Maharashtra']);

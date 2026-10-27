@@ -64,6 +64,20 @@ function fitLines(text, size, tc, maxW, maxLines, measure, minSize, step) {
   return null;
 }
 
+// Whole comma-separated pieces at the END of the street box that the slip prints
+// on their own lines anyway ("…, Nehrunagar, Rewa, Madhya Pradesh"). Only the
+// tail is trimmed, never a word inside the street, and the first piece always
+// stays, so a street that is nothing but a city name still prints.
+function trimRepeatedTail(text, names, key) {
+  let out = text;
+  for (;;) {
+    const cut = out.lastIndexOf(',');
+    if (cut <= 0 || !names.has(key(out.slice(cut + 1)))) break;
+    out = out.slice(0, cut).trimEnd();
+  }
+  return out;
+}
+
 /**
  * Lay the recipient address out over the fixed five slots.
  *
@@ -85,8 +99,21 @@ export function fitAddressBlock({
   size, tc, maxW, measure, minSize = 15, legibleSize = 18, step = 0.5, slots = ADDR_SLOTS,
 }) {
   const clean = (v) => String(v || '').trim();
-  const text = clean(address);
   const parts = { subArea: clean(subArea), city: clean(city), district: clean(district), state: clean(state) };
+  // A name the slip already prints is not printed again (Rewa slip, 27 Oct: the
+  // city came out four times). A sub-area or district that repeats the city, the
+  // state or each other is left out; city and state always print.
+  const key = (v) => v.toLowerCase().replace(/[.\s]+$/, '').replace(/\s+/g, ' ').trim();
+  const always = new Set([key(parts.city), key(parts.state)].filter(Boolean));
+  const seen = new Set(always);
+  for (const k of ['subArea', 'district']) {
+    if (seen.has(key(parts[k]))) parts[k] = '';
+    else if (parts[k]) seen.add(key(parts[k]));
+  }
+  // Only city and state come off the end of the street: a sub-area or district
+  // may itself be given up for space below, and trimming it from the street as
+  // well would lose it twice ("Chembur East").
+  const text = trimRepeatedTail(clean(address), always, key);
 
   // Fields the courier can still deliver without, in the order they are given up.
   const sacrificial = ['district', 'subArea'];
