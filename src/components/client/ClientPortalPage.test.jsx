@@ -887,9 +887,12 @@ test('D-019: a grant with no cities shows no Cities line', async () => {
   expect(screen.queryByText('Cities')).not.toBeInTheDocument();
 });
 
-// 27 Oct, owner chose direction A: the four summary boxes repeated the amount
-// and showed empty facts. The grant's facts are one line at the top.
-test('the Overview opens on one line of grant facts, not four summary boxes', async () => {
+// 28 Oct, owner chose direction B: the amount leads, one sentence says who
+// funded it, who delivered it and where, and each fact appears once.
+const whoLine = () => screen.getByText((_, el) => el?.classList?.contains('cstate-who')).textContent;
+const factTerms = () => screen.getAllByRole('term').map((t) => t.textContent);
+
+test('the Overview opens on the grant amount and its facts, not four summary boxes', async () => {
   clientAPI.athletes.mockResolvedValue([
     { id: 1, fullName: 'Aarav Patel', position: 'Forward', category: 'U17', status: 'Shortlisted' },
   ]);
@@ -898,25 +901,59 @@ test('the Overview opens on one line of grant facts, not four summary boxes', as
   for (const gone of ['Total Grant Amount', 'Athletes Scouted', 'Target Cities', 'Audit & Certification', 'Programme details']) {
     expect(screen.queryByText(gone)).not.toBeInTheDocument();
   }
-  const facts = screen.getAllByRole('term').map((t) => t.textContent);
-  expect(facts).toEqual(expect.arrayContaining(['Grant', 'Period', 'Status', 'Certificate']));
   expect(screen.getAllByText('₹9,21,000')).toHaveLength(1);
+  expect(factTerms()).toEqual(expect.arrayContaining(['Period', 'Status']));
+  expect(whoLine()).toBe('Funded by Acme Foundation, delivered by India Khelo Football.');
+});
+
+test('the certificate is not repeated in the grant facts; it has its own tab', async () => {
+  render(<ClientPortalPage />);
+  await screen.findByText('What has been delivered');
+  expect(factTerms()).not.toContain('Certificate');
+  expect(screen.queryByText('Issued when the grant closes')).not.toBeInTheDocument();
+  expect(screen.getByRole('tab', { name: /^Certificate/ })).toBeInTheDocument();
+});
+
+test('a grant with one city says where, with its state', async () => {
+  clientAPI.project.mockResolvedValue([{ ...PROJECT, cities: [{ name: 'Ludhiana', state: 'Punjab' }] }]);
+  render(<ClientPortalPage />);
+  await screen.findByText('What has been delivered');
+  expect(whoLine()).toBe('Funded by Acme Foundation, delivered by India Khelo Football in Ludhiana, Punjab.');
   expect(screen.queryByText('Cities')).not.toBeInTheDocument();
 });
 
-test('a grant with cities names them in the facts line', async () => {
-  clientAPI.project.mockResolvedValue([{ ...PROJECT, cities: [{ id: 1, name: 'Pune' }] }]);
+test('a grant with several cities names each of them', async () => {
+  clientAPI.project.mockResolvedValue([{ ...PROJECT, cities: [{ name: 'Pune', state: 'Maharashtra' }, { name: 'Wardha', state: 'Maharashtra' }] }]);
   render(<ClientPortalPage />);
-  expect(await screen.findByText('Cities')).toBeInTheDocument();
-  expect(screen.getByText('Pune')).toBeInTheDocument();
+  await screen.findByText('What has been delivered');
+  expect(whoLine()).toBe('Funded by Acme Foundation, delivered by India Khelo Football in Pune, Wardha.');
 });
 
-test('the description sits under the facts, above what was delivered', async () => {
+test("the grant's description is the operator's note and is not shown to the funder", async () => {
   clientAPI.project.mockResolvedValue([{ ...PROJECT, description: 'What this grant does.' }]);
   render(<ClientPortalPage />);
-  const text = await screen.findByText('What this grant does.');
-  const delivered = screen.getByText('What has been delivered');
-  expect(text.compareDocumentPosition(delivered) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  await screen.findByText('What has been delivered');
+  expect(screen.queryByText('What this grant does.')).not.toBeInTheDocument();
+});
+
+test('a closed grant says how long it ran, once, and does not repeat its end date', async () => {
+  clientAPI.project.mockResolvedValue([{ ...PROJECT, status: 'Closed', startDate: '2025-12-02', endDate: '2026-03-31' }]);
+  render(<ClientPortalPage />);
+  await screen.findByText('What has been delivered');
+  expect(factTerms()).toContain('Duration');
+  expect(factTerms()).not.toContain('Progress');
+  expect(screen.getByText('4 months')).toBeInTheDocument();
+  expect(screen.queryByText(/^Ended /)).not.toBeInTheDocument();
+  expect(screen.getByText('Closed')).toHaveClass('cpill');
+});
+
+test('a running grant says how far through it is', async () => {
+  clientAPI.project.mockResolvedValue([{ ...PROJECT, startDate: '2020-01-01', endDate: '2099-12-31' }]);
+  render(<ClientPortalPage />);
+  await screen.findByText('What has been delivered');
+  expect(factTerms()).toContain('Progress');
+  expect(factTerms()).not.toContain('Duration');
+  expect(screen.getByText(/^Day [\d,]+ of [\d,]+$/)).toBeInTheDocument();
 });
 
 test('the Athletes tab shows scouted beneficiaries and search works', async () => {
@@ -1236,14 +1273,14 @@ describe('D-030: a finished year shows everything the documents contain', () => 
   test('the grant shows the day the money was received', async () => {
     clientAPI.project.mockResolvedValue([{ ...PROJECT, fundsReceivedOn: '2025-12-02' }]);
     render(<ClientPortalPage />);
-    expect(await screen.findByText('Received')).toBeInTheDocument();
+    expect(await screen.findByText('Funds received')).toBeInTheDocument();
     expect(screen.getByText('2 Dec 2025')).toBeInTheDocument();
   });
 
   test('with no received date recorded the line is left out', async () => {
     render(<ClientPortalPage />);
     await screen.findByText('What has been delivered');
-    expect(screen.queryByText('Received')).not.toBeInTheDocument();
+    expect(screen.queryByText('Funds received')).not.toBeInTheDocument();
   });
 });
 

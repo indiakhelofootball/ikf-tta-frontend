@@ -1,6 +1,26 @@
-import { grantProgress, monthStrip, placesReached, latestFirst, activityDate, activityPlace } from './clientReport';
+import {
+  grantProgress, grantLength, grantPlace, monthStrip, placesReached, latestFirst, activityDate, activityPlace,
+} from './clientReport';
 
 const TODAY = '2026-10-09';
+
+test('grant length reads in months, and in days when it is under two months', () => {
+  expect(grantLength(120)).toBe('4 months');   // 2 Dec 2025 - 31 Mar 2026
+  expect(grantLength(365)).toBe('12 months');
+  expect(grantLength(90)).toBe('3 months');
+  expect(grantLength(59)).toBe('59 days');
+  expect(grantLength(1)).toBe('1 day');
+  expect(grantLength(0)).toBe('');
+  expect(grantLength(undefined)).toBe('');
+});
+
+test('grant place names one city with its state, several by name, none as empty', () => {
+  expect(grantPlace([{ name: 'Ludhiana', state: 'Punjab' }])).toBe('Ludhiana, Punjab');
+  expect(grantPlace([{ name: 'Ludhiana', state: '' }])).toBe('Ludhiana');
+  expect(grantPlace([{ name: 'Pune', state: 'Maharashtra' }, { name: 'Wardha', state: 'Maharashtra' }])).toBe('Pune, Wardha');
+  expect(grantPlace([])).toBe('');
+  expect(grantPlace(undefined)).toBe('');
+});
 
 test('grant progress counts calendar days, inclusive of both ends', () => {
   expect(grantProgress('2026-09-01', '2027-03-31', TODAY)).toEqual({ state: 'running', day: 39, total: 212 });

@@ -33,6 +33,23 @@ export function grantProgress(start, end, today) {
   return { state: 'running', day, total };
 }
 
+// '4 months' for a grant's length in days. Under two months a month count is
+// too coarse to be true, so a short grant says its days.
+export function grantLength(totalDays) {
+  if (!totalDays || totalDays < 1) return '';
+  if (totalDays < 60) return `${totalDays} day${totalDays === 1 ? '' : 's'}`;
+  const months = Math.round(totalDays / 30.44);
+  return `${months} month${months === 1 ? '' : 's'}`;
+}
+
+// Where the grant runs, from the cities ticked on it: one city with its state
+// ('Ludhiana, Punjab'), several by name ('Pune, Wardha'), '' when none is ticked.
+export function grantPlace(cities) {
+  const named = (cities || []).filter((c) => c?.name);
+  if (named.length === 1) return [named[0].name, named[0].state].filter(Boolean).join(', ');
+  return named.map((c) => c.name).join(', ');
+}
+
 // One cell per calendar month of the grant, with the number of activities that
 // started in it. Without grant dates the strip spans the activities themselves.
 export function monthStrip(start, end, activities, today) {

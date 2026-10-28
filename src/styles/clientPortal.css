@@ -103,17 +103,26 @@
   padding:22px 18px 18px;
 }
 .cportal .creport > section{margin-top:34px}
-.cportal .cdek{
-  font-family:var(--serif);font-size:17px;line-height:1.55;color:var(--soft);
-  margin:0 0 20px;max-width:680px;white-space:pre-wrap;overflow-wrap:anywhere;
+/* The grant at a glance (28 Oct, direction B): the amount leads, one sentence
+   says who and where, and the facts sit under a rule with room between them. */
+.cportal .cstate{
+  background:var(--card);border:1px solid var(--line);border-top:3px solid var(--brand);
+  border-radius:var(--r);padding:24px 20px;
 }
-.cportal .cline{
-  display:flex;flex-wrap:wrap;gap:10px 28px;margin:0;
-  padding:14px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+.cportal .cstate-k,
+.cportal .cstate-facts dt{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.cportal .cstate-amt{
+  font-family:var(--serif);font-size:36px;line-height:1;letter-spacing:-.01em;color:var(--ink);
+  margin:10px 0 14px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;
 }
-.cportal .cline > div{min-width:0}
-.cportal .cline dt{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
-.cportal .cline dd{margin:2px 0 0;font-size:14px;font-weight:600;color:var(--ink);overflow-wrap:anywhere}
+.cportal .cstate-who{margin:0;max-width:640px;font-size:15px;line-height:1.6;color:var(--soft);overflow-wrap:anywhere}
+.cportal .cstate-who b{font-weight:600;color:var(--ink)}
+.cportal .cstate-facts{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px 20px;
+  margin:24px 0 0;padding-top:22px;border-top:1px solid var(--line);
+}
+.cportal .cstate-facts > div{min-width:0}
+.cportal .cstate-facts dd{margin:6px 0 0;font-size:15px;font-weight:600;color:var(--ink);overflow-wrap:anywhere}
 .cportal .csec{
   font-family:var(--serif);font-size:23px;font-weight:400;color:var(--ink);
   letter-spacing:-.005em;margin:0 0 12px;
@@ -406,7 +415,10 @@
   .cportal .cbar-ikf{display:inline-flex}
   .cportal .cbar-menu{display:none}
   .cportal .creport{padding:40px 56px 28px}
-  .cportal .cdek{font-size:19px}
+  .cportal .cstate{padding:36px 40px 34px}
+  .cportal .cstate-amt{font-size:48px;margin:12px 0 16px}
+  .cportal .cstate-who{font-size:16px}
+  .cportal .cstate-facts{grid-template-columns:repeat(4,minmax(0,1fr));gap:24px 40px;margin-top:30px;padding-top:28px}
   .cportal .csec{font-size:26px}
   .cportal .cled{grid-template-columns:110px minmax(0,1fr);gap:18px}
   .cportal .cled-n{font-size:34px}
@@ -597,7 +609,6 @@ html:has(.cportal) .MuiDialog-root :focus-visible{outline-color:#243040}
 .cportal .creport > .cphoto{margin-top:16px}
 .cportal .creport > .cphoto img{border-radius:var(--r)}
 .cportal .creport > .csign{border-top:0;margin-top:20px;padding-top:0}
-.cportal .cdek-in{margin:16px 0 0;font-size:15.5px}
 .cportal .cpanel-open{background:none;border:0;padding:0}
 .cportal .cpanel-open + .cpanel-open{margin-top:22px}
 .cportal .ccards{display:flex;flex-direction:column;gap:10px}
@@ -608,7 +619,6 @@ html:has(.cportal) .MuiDialog-root :focus-visible{outline-color:#243040}
 @media (min-width:821px){
   .cportal .creport{padding:0}
   .cportal .creport > section{padding:22px 26px}
-  .cportal .cdek-in{font-size:16px}
   .cportal .ccards > .crow,
   .cportal .ccards > .crow:first-of-type{padding:16px 20px}
 }

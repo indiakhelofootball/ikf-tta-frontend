@@ -13,7 +13,8 @@ import {
   formatDate, formatRange, formatCount, formatRupees, formatUpdated, formatActivityCount,
 } from './clientFormat';
 import {
-  grantProgress, monthStrip, placesReached, activityPlace, latestFirst, activityDate, byMonth, reportDate,
+  grantProgress, grantLength, grantPlace, monthStrip, placesReached, activityPlace, latestFirst, activityDate,
+  byMonth, reportDate,
 } from './clientReport';
 import '../../styles/clientPortal.css';
 import ClientChangePasswordDialog from './ClientChangePasswordDialog';
@@ -635,46 +636,44 @@ export default function ClientPortalPage({ source = funderSource, preview = null
     const achieved = deliverables.filter(hasResult);
     const missed = deliverables.filter((d) => !hasResult(d));
     const allNotDelivered = missed.length > 0 && missed.every(notDelivered);
-    const dayFact = !progress ? null
-      : progress.state === 'running' ? `Day ${formatCount(progress.day)} of ${formatCount(progress.total)}`
-        : progress.state === 'upcoming' ? `Starts ${formatDate(project.startDate)}`
-          : `Ended ${formatDate(project.endDate)}`;
+    const place = grantPlace(project.cities);
+    // A running grant says how far through it is; any other says how long it ran.
+    const timeFact = progress?.state === 'running'
+      ? { label: 'Progress', value: `Day ${formatCount(progress.day)} of ${formatCount(progress.total)}` }
+      : progress ? { label: 'Duration', value: grantLength(progress.total) } : null;
 
     return (
       <article className="creport">
-        {/* 27 Oct, owner chose direction A: the four summary boxes repeated the
-            amount and showed empty facts, so the grant's facts are one line and
-            the description says what happened, above what was delivered. */}
-        <dl className="cline">
-          <div><dt>Grant</dt><dd className="cnum">{formatRupees(project.sanctionedAmount)}</dd></div>
-          <div><dt>Period</dt><dd>{formatRange(project.startDate, project.endDate) || 'Not set'}</dd></div>
-          {project.fundsReceivedOn && (
-            <div><dt>Received</dt><dd className="cnum">{formatDate(project.fundsReceivedOn)}</dd></div>
-          )}
-          <div><dt>Status</dt><dd>{project.status || 'Not recorded'}</dd></div>
-          {dayFact && <div><dt>Progress</dt><dd className="cnum">{dayFact}</dd></div>}
-          {project.cities?.length > 0 && (
-            <div><dt>Cities</dt><dd>{project.cities.map((c) => c.name).join(', ')}</dd></div>
-          )}
-          <div>
-            <dt>Certificate</dt>
-            <dd>
-              {cert?.available ? (
-                <>
-                  Issued ·{' '}
-                  <button type="button" className="cbtn-link" onClick={() => downloadCertificate(cert)}>
-                    Download
-                  </button>
-                </>
-              ) : (
-                <button type="button" className="cbtn-link" onClick={() => selectTab('certificate')}>
-                  {closed ? 'Being prepared' : 'Issued when the grant closes'}
-                </button>
-              )}
-            </dd>
-          </div>
-        </dl>
-        {project.description && <p className="cdek cdek-in">{project.description}</p>}
+        {/* 28 Oct, owner chose direction B (design/portal-header-2026-10-28.html):
+            the amount leads, one line says who funded it, who delivered it and
+            where, and four facts sit under it. Each fact appears once. The
+            certificate lives on its own tab, and the grant's description is the
+            operator's note, so neither is repeated here. */}
+        <div className="cstate">
+          <header>
+            <div className="cstate-k">Grant</div>
+            <div className="cstate-amt cnum">{formatRupees(project.sanctionedAmount)}</div>
+            <p className="cstate-who">
+              {project.clientName && <>Funded by <b>{project.clientName}</b>, delivered</>}
+              {!project.clientName && 'Delivered'}
+              {' '}by <b>India Khelo Football</b>
+              {place && <> in <b>{place}</b></>}.
+            </p>
+          </header>
+          <dl className="cstate-facts">
+            <div><dt>Period</dt><dd>{formatRange(project.startDate, project.endDate) || 'Not set'}</dd></div>
+            {timeFact?.value && <div><dt>{timeFact.label}</dt><dd className="cnum">{timeFact.value}</dd></div>}
+            {project.fundsReceivedOn && (
+              <div><dt>Funds received</dt><dd className="cnum">{formatDate(project.fundsReceivedOn)}</dd></div>
+            )}
+            {project.status && (
+              <div>
+                <dt>Status</dt>
+                <dd><span className={`cpill${project.status === 'Active' ? ' ok' : ''}`}>{project.status}</span></dd>
+              </div>
+            )}
+          </dl>
+        </div>
 
         <section aria-labelledby="cp-delivered">
           <h2 className="csec" id="cp-delivered">What has been delivered</h2>
