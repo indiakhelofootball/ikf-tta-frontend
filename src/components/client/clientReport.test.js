@@ -1,8 +1,93 @@
 import {
   grantProgress, grantLength, grantPlace, monthStrip, placesReached, latestFirst, activityDate, activityPlace,
+  activityMonths, activityDateBlock, activityMonthBlocks, activityText, monthName, monthPicker,
 } from './clientReport';
 
 const TODAY = '2026-10-09';
+
+describe('activities, month by month', () => {
+  const promo = { id: 1, startDate: '2025-12-02', endDate: '2025-12-26' };
+  const day1 = { id: 2, date: '2025-12-27' };
+  const training = { id: 3, startDate: '2026-01-01', endDate: '2026-03-31' };
+  const showcase = { id: 4, startDate: '2026-03-01', endDate: '2026-03-31' };
+  const undated = { id: 5 };
+  const all = [showcase, training, undated, day1, promo];
+
+  test('an activity runs in every month from its start to its end', () => {
+    expect(activityMonths(training)).toEqual(['2026-01', '2026-02', '2026-03']);
+    expect(activityMonths(day1)).toEqual(['2025-12']);
+    expect(activityMonths({ startDate: '2025-12-20', endDate: '2026-01-05' })).toEqual(['2025-12', '2026-01']);
+    expect(activityMonths({ startDate: '2026-03-10', endDate: '2026-03-01' })).toEqual(['2026-03']);
+    expect(activityMonths(undated)).toEqual([]);
+  });
+
+  test('the date block reads as a day, a run of days, a whole month or several months', () => {
+    expect(activityDateBlock(day1)).toEqual({ top: '27', bottom: 'Dec' });
+    expect(activityDateBlock(promo)).toEqual({ top: '2–26', bottom: 'Dec' });
+    expect(activityDateBlock(showcase)).toEqual({ top: 'Mar', bottom: '2026' });
+    expect(activityDateBlock(training)).toEqual({ top: 'Jan–Mar', bottom: '2026' });
+    expect(activityDateBlock({ startDate: '2025-12-20', endDate: '2026-01-05' })).toEqual({ top: 'Dec–Jan', bottom: '2025–26' });
+    expect(activityDateBlock(undated)).toBeNull();
+  });
+
+  test('with no month picked, each activity sits once under its start, and later months say it continued', () => {
+    const blocks = activityMonthBlocks(all);
+    expect(blocks.map((b) => b.label)).toEqual(['December 2025', 'January 2026', 'February 2026', 'March 2026', 'Date not set']);
+    expect(blocks.map((b) => b.items.map((a) => a.id))).toEqual([[1, 2], [3], [], [4], [5]]);
+    expect(blocks.map((b) => b.continuing.map((a) => a.id))).toEqual([[], [], [3], [3], []]);
+  });
+
+  test('newest first reverses the months and the order inside them; undated stays last', () => {
+    const blocks = activityMonthBlocks(all, { newestFirst: true });
+    expect(blocks.map((b) => b.key)).toEqual(['2026-03', '2026-02', '2026-01', '2025-12', '']);
+    expect(blocks[3].items.map((a) => a.id)).toEqual([2, 1]);
+  });
+
+  test('a picked month lists everything that ran in it', () => {
+    expect(activityMonthBlocks(all, { month: '2026-03' })).toEqual([
+      { key: '2026-03', label: 'March 2026', items: [training, showcase], continuing: [] },
+    ]);
+    expect(activityMonthBlocks(all, { month: '2026-07' })).toEqual([]);
+  });
+
+  test("the month picker covers the grant's months with how many ran and how many began", () => {
+    const picker = monthPicker('2025-12-02', '2026-03-31', all);
+    expect(picker.map((m) => [m.short, m.count, m.started])).toEqual([
+      ['Dec 2025', 2, 2], ['Jan 2026', 1, 1], ['Feb 2026', 1, 0], ['Mar 2026', 2, 1],
+    ]);
+    expect(monthName('2026-02')).toBe('February 2026');
+  });
+});
+
+describe('an activity description, split into words and links', () => {
+  test('a line that is only a link becomes a named link; the words stay', () => {
+    expect(activityText('Screening and drills.\nPost-trial reel, Day 1: https://x.example/r/1?igsh=a==')).toEqual({
+      text: 'Screening and drills.',
+      links: [{ label: 'Post-trial reel, Day 1', href: 'https://x.example/r/1?igsh=a==' }],
+    });
+  });
+
+  test('a short heading names the bare links under it, numbered when there are several', () => {
+    const { text, links } = activityText('Intro.\n\nPosts\nTrial date: https://x.example/p/1\n\nPromotional videos\nhttps://x.example/v/1\nhttps://x.example/v/2');
+    expect(text).toBe('Intro.');
+    expect(links).toEqual([
+      { label: 'Trial date', href: 'https://x.example/p/1' },
+      { label: 'Promotional videos 1', href: 'https://x.example/v/1' },
+      { label: 'Promotional videos 2', href: 'https://x.example/v/2' },
+    ]);
+  });
+
+  test('a bare link with no heading keeps no name; a link inside a sentence stays in the sentence', () => {
+    expect(activityText('https://x.example/a')).toEqual({ text: '', links: [{ label: null, href: 'https://x.example/a' }] });
+    expect(activityText('See https://x.example/a for more.')).toEqual({ text: 'See https://x.example/a for more.', links: [] });
+  });
+
+  test('a description with no links is returned as it was', () => {
+    const plain = 'All 200+ players attended.\n\nThe top 50 were shortlisted.';
+    expect(activityText(plain)).toEqual({ text: plain, links: [] });
+    expect(activityText('')).toEqual({ text: '', links: [] });
+  });
+});
 
 test('grant length reads in months, and in days when it is under two months', () => {
   expect(grantLength(120)).toBe('4 months');   // 2 Dec 2025 - 31 Mar 2026

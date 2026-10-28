@@ -628,8 +628,9 @@ test('a Planned activity is listed on the Activities tab, labelled Planned', asy
   const row = rows.find((li) => within(li).queryByText('Coaching clinic'));
   expect(within(row).getByText('Planned')).toBeInTheDocument();
   expect(within(row).queryByText('Completed')).not.toBeInTheDocument();
+  // 28 Oct: a delivered card no longer repeats "Completed" under the Delivered heading.
   const done = rows.find((li) => within(li).queryByText('Camp visit'));
-  expect(within(done).getByText('Completed')).toBeInTheDocument();
+  expect(within(done).queryByText('Completed')).not.toBeInTheDocument();
 });
 
 test('the Overview counts, tiles, months and places leave a Planned activity out', async () => {
@@ -1200,8 +1201,8 @@ describe('D-030: a finished year shows everything the documents contain', () => 
     render(<ClientPortalPage />);
     fireEvent.click(await screen.findByRole('tab', { name: /^Activities/ }));
     expect(await screen.findByText(/Physical screening and technical drills\./)).toBeInTheDocument();
-    // Shown as site and page, linking to the full address.
-    expect(screen.getByRole('link', { name: 'instagram.com/reel/abc' }))
+    // 28 Oct: a line that is only a named link shows as a button with its name.
+    expect(screen.getByRole('link', { name: 'Reel' }))
       .toHaveAttribute('href', 'https://www.instagram.com/reel/abc/');
   });
 
@@ -1362,4 +1363,133 @@ test('achieved targets are tiles and missed ones are listed apart, under one Not
   const missed = [...container.querySelectorAll('.cmiss')].map((li) => li.textContent);
   expect(missed).toEqual(['Club trialsTarget 5', 'Placements']);
   expect(screen.queryByText('—')).not.toBeInTheDocument();
+});
+
+// ---------------------------------------------------------------------------
+// 28 Oct (design/portal-activities-2026-10-28.html): the Activities tab is read
+// month by month, a month can be picked on its own, and the order is the
+// reader's choice.
+// ---------------------------------------------------------------------------
+describe('the Activities tab, month by month', () => {
+  const PILOT = { ...PROJECT, status: 'Closed', startDate: '2025-12-02', endDate: '2026-03-31' };
+  const PROMO = {
+    id: 21, title: 'Awareness drive', activityType: 'Awareness & Promotion', location: 'Ludhiana',
+    startDate: '2025-12-02', endDate: '2025-12-26', status: 'Completed',
+  };
+  const DAY1 = { id: 22, title: 'Trials Day 1', activityType: 'Trial', location: 'Ludhiana', date: '2025-12-27', status: 'Completed' };
+  const TRAINING = {
+    id: 23, title: 'Player development', activityType: 'Training', location: 'Ludhiana',
+    startDate: '2026-01-01', endDate: '2026-03-31', status: 'Completed',
+  };
+  const SHOWCASE = {
+    id: 24, title: 'Showcase for clubs', activityType: 'Showcase', location: 'Ludhiana',
+    startDate: '2026-03-01', endDate: '2026-03-31', status: 'Completed',
+  };
+  const ALL = [SHOWCASE, TRAINING, DAY1, PROMO];
+
+  const openTab = async () => {
+    window.history.replaceState(null, '', '#activities');
+    render(<ClientPortalPage />);
+    return screen.findByRole('region', { name: 'Delivered' });
+  };
+  const cardTitles = (root) => within(root).queryAllByText((_, el) => el?.classList?.contains('cact-t')).map((t) => t.textContent);
+
+  beforeEach(() => {
+    localStorage.removeItem('tta_client_activity_order');
+    clientAPI.project.mockResolvedValue([PILOT]);
+    clientAPI.activities.mockResolvedValue(ALL);
+  });
+
+  test('each month has its own heading, oldest first, and a running activity shows once', async () => {
+    const done = await openTab();
+    expect(within(done).getAllByRole('heading', { level: 3 }).map((h) => h.textContent))
+      .toEqual(['December 2025', 'January 2026', 'February 2026', 'March 2026']);
+    expect(cardTitles(done)).toEqual(['Awareness drive', 'Trials Day 1', 'Player development', 'Showcase for clubs']);
+  });
+
+  test('a month with only running work is not missing: it names what continued', async () => {
+    const done = await openTab();
+    const months = within(done).getAllByRole('heading', { level: 3 });
+    expect(months.map((h) => h.textContent)).toContain('February 2026');
+    const continuing = within(done).getAllByText('Continuing');
+    expect(continuing).toHaveLength(2);
+    expect(within(done).getAllByText('Ongoing')).toHaveLength(1);
+    expect(within(done).getAllByText('Player development')).toHaveLength(3);
+  });
+
+  test('picking a month shows only what ran in it, including work that began earlier', async () => {
+    await openTab();
+    const months = screen.getByRole('group', { name: 'Month' });
+    expect(within(months).getByRole('button', { name: /^Feb 2026/ })).toHaveTextContent('1 ongoing');
+    fireEvent.click(within(months).getByRole('button', { name: /^Mar 2026/ }));
+    const done = screen.getByRole('region', { name: 'Delivered' });
+    expect(cardTitles(done)).toEqual(['Player development', 'Showcase for clubs']);
+    expect(screen.getByText('March 2026')).toBeInTheDocument();
+    expect(within(months).getByRole('button', { name: /^Mar 2026/ })).toHaveAttribute('aria-pressed', 'true');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show all months' }));
+    expect(cardTitles(screen.getByRole('region', { name: 'Delivered' }))).toHaveLength(4);
+  });
+
+  test('Newest first reverses the months and the cards, and is remembered', async () => {
+    await openTab();
+    fireEvent.click(screen.getByRole('button', { name: 'Newest first' }));
+    const done = screen.getByRole('region', { name: 'Delivered' });
+    expect(within(done).getAllByRole('heading', { level: 3 })[0]).toHaveTextContent('March 2026');
+    expect(cardTitles(done)).toEqual(['Showcase for clubs', 'Player development', 'Trials Day 1', 'Awareness drive']);
+    expect(localStorage.getItem('tta_client_activity_order')).toBe('newest');
+  });
+
+  test('the kind filter narrows to one kind, and only shows when there is more than one', async () => {
+    await openTab();
+    fireEvent.click(within(screen.getByRole('group', { name: 'Kind of activity' })).getByRole('button', { name: 'Trial' }));
+    expect(cardTitles(screen.getByRole('region', { name: 'Delivered' }))).toEqual(['Trials Day 1']);
+
+    fireEvent.click(within(screen.getByRole('group', { name: 'Kind of activity' })).getByRole('button', { name: 'All kinds' }));
+    fireEvent.click(within(screen.getByRole('group', { name: 'Month' })).getByRole('button', { name: /^Jan 2026/ }));
+    expect(screen.queryByRole('group', { name: 'Kind of activity' })).not.toBeInTheDocument();
+  });
+
+  test('each card leads with its date, and says when it ran for months', async () => {
+    const done = await openTab();
+    const days = within(done).getAllByText((_, el) => el?.classList?.contains('cact-date')).map((d) => d.textContent);
+    expect(days).toEqual(['2–26Dec', '27Dec', 'Jan–Mar2026', 'Mar2026']);
+    expect(within(done).getByText('Runs 3 months')).toBeInTheDocument();
+  });
+
+  test('a long description opens at three lines, with Read more', async () => {
+    const long = 'Players went through physical screening and technical drills. '.repeat(6).trim();
+    clientAPI.activities.mockResolvedValue([{ ...DAY1, description: long }]);
+    await openTab();
+    const more = screen.getByRole('button', { name: 'Read more' });
+    expect(more).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByText(long)).toHaveClass('cclamp');
+    fireEvent.click(more);
+    expect(screen.getByRole('button', { name: 'Show less' })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText(long)).not.toHaveClass('cclamp');
+  });
+
+  test('links under a heading are named by it, and no words are lost', async () => {
+    const description = [
+      'Posters and reels.', '', 'Posts', 'Trial date: https://x.example/p/1', '',
+      'Videos', 'https://x.example/r/1', 'https://x.example/r/2',
+    ].join('\n');
+    clientAPI.activities.mockResolvedValue([{ ...PROMO, description }]);
+    await openTab();
+    expect(screen.getByText('Posters and reels.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Trial date' })).toHaveAttribute('href', 'https://x.example/p/1');
+    expect(screen.getByRole('link', { name: 'Videos 1' })).toHaveAttribute('href', 'https://x.example/r/1');
+    expect(screen.getByRole('link', { name: 'Videos 2' })).toHaveAttribute('href', 'https://x.example/r/2');
+  });
+
+  test('a month on the Overview opens the Activities tab on that month', async () => {
+    clientAPI.deliverables.mockResolvedValue([]);
+    render(<ClientPortalPage />);
+    const strip = await screen.findByRole('list', { name: 'Activities by month' });
+    fireEvent.click(within(strip).getByRole('button', { name: /^Feb/ }));
+    expect(screen.getByRole('tab', { name: /^Activities/ })).toHaveAttribute('aria-selected', 'true');
+    expect(within(screen.getByRole('group', { name: 'Month' })).getByRole('button', { name: /^Feb 2026/ }))
+      .toHaveAttribute('aria-pressed', 'true');
+    expect(cardTitles(screen.getByRole('region', { name: 'Delivered' }))).toEqual(['Player development']);
+  });
 });

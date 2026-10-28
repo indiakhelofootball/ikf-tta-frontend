@@ -50,6 +50,136 @@ export function grantPlace(cities) {
   return named.map((c) => c.name).join(', ');
 }
 
+// ---- the Activities tab (28 Oct, design/portal-activities-2026-10-28.html) ----
+
+const lastDayOf = (y, mo) => new Date(Date.UTC(y, mo + 1, 0)).getUTCDate();
+
+// The days an activity covers: its start, and its end when that is later.
+function activitySpan(a) {
+  const from = toParts(activityDate(a));
+  if (!from) return null;
+  const to = toParts(a?.endDate);
+  return [from, to && dayNumber(to) >= dayNumber(from) ? to : from];
+}
+
+// Every month an activity ran in, as 'YYYY-MM', first to last.
+export function activityMonths(a) {
+  const span = activitySpan(a);
+  if (!span) return [];
+  const keys = [];
+  for (let k = span[0].y * 12 + span[0].mo; k <= span[1].y * 12 + span[1].mo; k += 1) {
+    keys.push(`${Math.floor(k / 12)}-${String((k % 12) + 1).padStart(2, '0')}`);
+  }
+  return keys;
+}
+
+// 'January 2026' for '2026-01'.
+export function monthName(key) {
+  const [y, m] = String(key || '').split('-').map(Number);
+  return y && m ? `${MONTH_NAMES[m - 1]} ${y}` : 'Date not set';
+}
+
+// The date as the card's block shows it: one day '27' over 'Dec', days of one
+// month '2–26' over 'Dec', a whole month 'Mar' over '2026', several months
+// 'Jan–Mar' over '2026'. Null when the activity has no date.
+export function activityDateBlock(a) {
+  const span = activitySpan(a);
+  if (!span) return null;
+  const [s, e] = span;
+  if (dayNumber(s) === dayNumber(e)) return { top: String(s.d), bottom: MONTHS[s.mo] };
+  if (s.y === e.y && s.mo === e.mo) {
+    if (s.d === 1 && e.d === lastDayOf(e.y, e.mo)) return { top: MONTHS[s.mo], bottom: String(s.y) };
+    return { top: `${s.d}–${e.d}`, bottom: MONTHS[s.mo] };
+  }
+  return {
+    top: `${MONTHS[s.mo]}–${MONTHS[e.mo]}`,
+    bottom: s.y === e.y ? String(s.y) : `${s.y}–${String(e.y).slice(-2)}`,
+  };
+}
+
+// The month picker: one entry per month of the grant (the activities' own
+// months when the grant has no dates), with how many activities ran in it and
+// how many began in it, so a month of only running work reads "2 ongoing".
+export function monthPicker(start, end, activities) {
+  return monthStrip(start, end, activities).map((m) => ({
+    key: m.key,
+    short: `${m.label} ${m.year}`,
+    count: m.count,
+    started: (activities || []).filter((a) => activityMonths(a)[0] === m.key).length,
+  }));
+}
+
+// The months of the Activities tab. With no month picked, each activity sits
+// once, under the month it began, and every later month it ran through names
+// it as continuing, so a month of only running work is not missing. With a
+// month picked, everything that ran in that month is listed.
+export function activityMonthBlocks(list, { month = null, newestFirst = false } = {}) {
+  const items = list || [];
+  const byStart = (x, y) => {
+    const px = toParts(activityDate(x));
+    const py = toParts(activityDate(y));
+    if (!px && !py) return 0;
+    if (!px) return 1;
+    if (!py) return -1;
+    const d = dayNumber(px) - dayNumber(py);
+    return newestFirst ? -d : d;
+  };
+  if (month) {
+    const inMonth = items.filter((a) => activityMonths(a).includes(month)).sort(byStart);
+    return inMonth.length ? [{ key: month, label: monthName(month), items: inMonth, continuing: [] }] : [];
+  }
+  const startOf = (a) => activityMonths(a)[0] || '';
+  const keys = [...new Set(items.flatMap(activityMonths))].sort();
+  if (newestFirst) keys.reverse();
+  const blocks = keys.map((k) => ({
+    key: k,
+    label: monthName(k),
+    items: items.filter((a) => startOf(a) === k).sort(byStart),
+    continuing: items.filter((a) => startOf(a) !== k && activityMonths(a).includes(k)).sort(byStart),
+  }));
+  const undated = items.filter((a) => !startOf(a));
+  if (undated.length) blocks.push({ key: '', label: 'Date not set', items: undated, continuing: [] });
+  return blocks;
+}
+
+const URL_LINE = /^https?:\/\/\S+$/;
+const LABELLED_LINK = /^(.{1,80}?)\s*[:–—-]\s*(https?:\/\/\S+)$/;
+const isLinkLine = (line) => URL_LINE.test(line) || LABELLED_LINK.test(line);
+
+// An activity's description split into its words and its links. A line that is
+// only a link ("Reel: https://…", or a bare address) becomes a named link; a
+// short line heading a run of bare links ("Promotional videos") names them. A
+// link inside a sentence stays in the sentence. Nothing else is dropped.
+export function activityText(description) {
+  const lines = String(description || '').split('\n').map((l) => l.trim());
+  const keep = [];
+  const links = [];
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+    const labelled = line.match(LABELLED_LINK);
+    if (labelled) { links.push({ label: labelled[1].trim(), href: labelled[2] }); continue; }
+    if (URL_LINE.test(line)) { links.push({ label: null, href: line }); continue; }
+    let j = i + 1;
+    while (j < lines.length && isLinkLine(lines[j])) j += 1;
+    const heads = line && line.length <= 40 && !/[.!?:]$/.test(line) && j > i + 1;
+    if (heads) {
+      const bare = lines.slice(i + 1, j).filter((l) => URL_LINE.test(l));
+      let n = 0;
+      lines.slice(i + 1, j).forEach((l) => {
+        const lab = l.match(LABELLED_LINK);
+        if (lab) { links.push({ label: lab[1].trim(), href: lab[2] }); return; }
+        n += 1;
+        links.push({ label: bare.length > 1 ? `${line} ${n}` : line, href: l });
+      });
+      i = j - 1;
+      continue;
+    }
+    keep.push(line);
+  }
+  const text = keep.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  return { text, links };
+}
+
 // One cell per calendar month of the grant, with the number of activities that
 // started in it. Without grant dates the strip spans the activities themselves.
 export function monthStrip(start, end, activities, today) {

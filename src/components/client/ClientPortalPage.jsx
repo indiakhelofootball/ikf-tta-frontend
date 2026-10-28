@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
 import { ThemeProvider } from '@mui/material/styles';
 import { Button, CircularProgress, IconButton, Menu, MenuItem } from '@mui/material';
 import { Download as DownloadIcon, Menu as MenuIcon } from '@mui/icons-material';
@@ -14,7 +14,7 @@ import {
 } from './clientFormat';
 import {
   grantProgress, grantLength, grantPlace, monthStrip, placesReached, activityPlace, latestFirst, activityDate,
-  byMonth, reportDate,
+  byMonth, reportDate, activityMonths, activityDateBlock, activityMonthBlocks, activityText, monthName, monthPicker,
 } from './clientReport';
 import '../../styles/clientPortal.css';
 import ClientChangePasswordDialog from './ClientChangePasswordDialog';
@@ -290,6 +290,18 @@ const URL_RE = /(https?:\/\/[^\s]+)/g;
 // Rows shown at once on the Athletes tab; 255 in one table was a wall of names.
 const ATHLETE_PAGE = 25;
 
+// The Activities tab's order is the reader's own choice and is kept between
+// visits. Storage can be missing or blocked; the default then applies.
+const ORDER_KEY = 'tta_client_activity_order';
+const readOrder = () => {
+  try { return localStorage.getItem(ORDER_KEY) === 'newest' ? 'newest' : 'oldest'; } catch { return 'oldest'; }
+};
+const saveOrder = (order) => {
+  try { localStorage.setItem(ORDER_KEY, order); } catch { /* the choice lasts this visit only */ }
+};
+// A description longer than this opens at three lines, with Read more.
+const LONG_TEXT = 220;
+
 // A link as a reader wants it: the site and the page, without the tracking
 // query ("instagram.com/p/DSWy4lpCHqU", not the full address).
 const linkLabel = (href) => {
@@ -301,14 +313,37 @@ const linkLabel = (href) => {
   }
 };
 
-function LinkedText({ text, className }) {
+const LinkedText = React.forwardRef(function LinkedText({ text, className }, ref) {
   const parts = String(text).split(URL_RE);
   return (
-    <div className={className}>
+    <div className={className} ref={ref}>
       {parts.map((part, i) => (i % 2 === 1
         ? <a key={i} href={part} target="_blank" rel="noopener noreferrer" title={part}>{linkLabel(part)}</a>
         : part))}
     </div>
+  );
+});
+
+// A description opens at three lines, and offers Read more only when there is
+// more to read. The browser says whether the text overflows; where it cannot
+// measure (no layout, as under test), the length decides.
+function ClampText({ text, open, onToggle }) {
+  const ref = useRef(null);
+  const [overflows, setOverflows] = useState(text.length > LONG_TEXT || text.split('\n').length > 3);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || open || !el.clientHeight) return;
+    setOverflows(el.scrollHeight > el.clientHeight + 1);
+  }, [text, open]);
+  return (
+    <>
+      <LinkedText ref={ref} className={`cact-text${open ? '' : ' cclamp'}`} text={text} />
+      {(overflows || open) && (
+        <button type="button" className="cbtn-link cact-more" aria-expanded={open} onClick={onToggle}>
+          {open ? 'Show less' : 'Read more'}
+        </button>
+      )}
+    </>
   );
 }
 
@@ -359,6 +394,20 @@ const typeTone = (type) => {
   return 5 + (h % 2);
 };
 
+function MonthCell({ m }) {
+  return (
+    <>
+      <span className="cmo-m">{m.label}<span className="cmo-y"> {m.year}</span></span>
+      <span className="cmo-bars" aria-hidden="true">
+        {Array.from({ length: Math.min(m.count, 6) }, (_, i) => <i key={i} />)}
+      </span>
+      <span className="cmo-c">
+        {m.count > 0 ? `${formatCount(m.count)} held` : m.state === 'ahead' ? 'Ahead' : 'None'}
+      </span>
+    </>
+  );
+}
+
 function EmptyPanel({ title, children }) {
   return (
     <div className="cpanel">
@@ -387,6 +436,10 @@ export default function ClientPortalPage({ source = funderSource, preview = null
   const [athleteLimit, setAthleteLimit] = useState(ATHLETE_PAGE);
   const [fyMenuAnchor, setFyMenuAnchor] = useState(null);
   const [photosOpen, setPhotosOpen] = useState(null);
+  const [actMonth, setActMonth] = useState(null);
+  const [actType, setActType] = useState(null);
+  const [actOrder, setActOrder] = useState(readOrder);
+  const [textOpen, setTextOpen] = useState(() => new Set());
 
   const [brand, setBrand] = useState(null);
   const [cert, setCert] = useState(null);
@@ -576,6 +629,9 @@ export default function ClientPortalPage({ source = funderSource, preview = null
     tabRefs.current[tab]?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
   }, [tab, loading]);
 
+  // A month or kind picked on one grant means nothing on another.
+  useEffect(() => { setActMonth(null); setActType(null); }, [project?.id]);
+
   const selectTab = useCallback((key) => {
     setTab(key);
     if (window.location.hash !== `#${key}`) window.location.hash = key;
@@ -713,15 +769,15 @@ export default function ClientPortalPage({ source = funderSource, preview = null
               <ol className="cmonths" aria-label="Activities by month">
                 {months.map((m) => (
                   <li key={m.key} className={`cmo ${m.state}`}>
-                    <span className="cmo-m">{m.label}<span className="cmo-y"> {m.year}</span></span>
-                    <span className="cmo-bars" aria-hidden="true">
-                      {Array.from({ length: Math.min(m.count, 6) }, (_, i) => <i key={i} />)}
-                    </span>
-                    <span className="cmo-c">
-                      {m.count > 0
-                        ? `${formatCount(m.count)} held`
-                        : m.state === 'ahead' ? 'Ahead' : 'None'}
-                    </span>
+                    {/* A month with activity opens the Activities tab on that month. */}
+                    {m.count > 0 ? (
+                      <button
+                        type="button" className="cmo-open"
+                        onClick={() => { setActMonth(m.key); setActType(null); selectTab('activities'); }}
+                      >
+                        <MonthCell m={m} />
+                      </button>
+                    ) : <MonthCell m={m} />}
                   </li>
                 ))}
               </ol>
@@ -859,14 +915,46 @@ export default function ClientPortalPage({ source = funderSource, preview = null
     const photoCount = a.status === 'Completed' && a.photos ? a.photos.length : 0;
     const open = photosOpen === a.id;
     const tone = `ctone-${typeTone(a.activityType)}`;
-    const placeAndWhen = [when, activityPlace(a)].filter(Boolean).join(' · ');
+    const place = activityPlace(a);
+    const block = activityDateBlock(a);
+    const runs = activityMonths(a).length;
+    const { text, links } = activityText(a.description);
+    const toggleText = () => setTextOpen((prev) => {
+      const next = new Set(prev);
+      if (next.has(a.id)) next.delete(a.id); else next.add(a.id);
+      return next;
+    });
     return (
-      <li className={`crow ${tone}`} key={a.id}>
+      <li className={`crow cact ${tone}`} key={a.id}>
+        <div className="cact-date" title={when || undefined}>
+          {block
+            ? (
+              <>
+                <span className={`cact-day${block.top.length > 5 ? ' cact-day-long' : ''}`}>{block.top}</span>
+                <span className="cact-mon">{block.bottom}</span>
+              </>
+            )
+            : <span className="cact-mon">No date</span>}
+        </div>
         <div className="crow-main">
-          {a.activityType && <span className="ctype">{a.activityType}</span>}
-          <div className="crow-t">{a.title}</div>
-          {placeAndWhen && <div className="crow-s">{placeAndWhen}</div>}
-          {a.description && <LinkedText className="crow-d" text={a.description} />}
+          <div className="cact-meta">
+            {a.activityType && <span className="ctype">{a.activityType}</span>}
+            {place && <span className="cact-place">{place}</span>}
+            {runs > 1 && <span className="cact-runs">Runs {formatCount(runs)} months</span>}
+            {/* Delivered work is the section's own heading; any other status is said on the card. */}
+            {a.status && a.status !== 'Completed' && <span className="cpill">{a.status}</span>}
+          </div>
+          <div className="crow-t cact-t">{a.title}</div>
+          {text && <ClampText text={text} open={textOpen.has(a.id)} onToggle={toggleText} />}
+          {links.length > 0 && (
+            <div className="cact-links">
+              {links.map((l) => (
+                <a key={l.href} href={l.href} target="_blank" rel="noopener noreferrer" title={l.href} className="cact-link">
+                  {l.label || linkLabel(l.href)}
+                </a>
+              ))}
+            </div>
+          )}
           {photoCount > 0 && (
             <>
               <ActivityGallery activity={a} source={source} limit={open ? null : 4} />
@@ -881,11 +969,6 @@ export default function ClientPortalPage({ source = funderSource, preview = null
             </>
           )}
         </div>
-        {a.status && (
-          <div className="crow-end">
-            <span className={`cpill${a.status === 'Completed' ? ' ok' : ''}`}>{a.status}</span>
-          </div>
-        )}
       </li>
     );
   };
@@ -897,29 +980,129 @@ export default function ClientPortalPage({ source = funderSource, preview = null
     { key: 'cancelled', heading: 'Cancelled', list: cancelled },
   ].filter((g) => g.list.length > 0);
 
-  const renderActivities = () => (
-    activityGroups.length === 0 ? (
-      <EmptyPanel>
-        {closed
-          ? 'No activities were published under this grant.'
-          : 'Nothing published yet. Trials, workshops and training sessions under this grant appear here, both those coming up and those delivered.'}
-      </EmptyPanel>
-    ) : (
-      activityGroups.map((g) => (
-        <section className="cpanel cpanel-open" aria-labelledby={`cp-acts-${g.key}`} key={g.key}>
-          <h2 className="csec" id={`cp-acts-${g.key}`}>{g.heading}</h2>
-          {byMonth(g.list, activityDate).map((m) => (
-            <div className="cmonth" key={m.key}>
-              <h3 className="csub">{m.label}</h3>
-              <ul className="crows ccards">
-                {m.items.map(activityRow)}
-              </ul>
-            </div>
-          ))}
-        </section>
-      ))
-    )
-  );
+  const changeOrder = (order) => { setActOrder(order); saveOrder(order); };
+
+  // 28 Oct (design/portal-activities-2026-10-28.html): month by month, with a
+  // month picker, a kind filter and the reader's own order. Everything the
+  // funder may see is still here; the controls only narrow the view.
+  const renderActivities = () => {
+    if (activityGroups.length === 0) {
+      return (
+        <EmptyPanel>
+          {closed
+            ? 'No activities were published under this grant.'
+            : 'Nothing published yet. Trials, workshops and training sessions under this grant appear here, both those coming up and those delivered.'}
+        </EmptyPanel>
+      );
+    }
+    const newestFirst = actOrder === 'newest';
+    const listed = activityGroups.flatMap((g) => g.list);
+    const picker = monthPicker(project?.startDate, project?.endDate, listed);
+    const inMonth = (a) => !actMonth || activityMonths(a).includes(actMonth);
+    const kinds = [...new Set(listed.filter(inMonth).map((a) => a.activityType).filter(Boolean))]
+      .sort((x, y) => x.localeCompare(y));
+    const keep = (a) => inMonth(a) && (!actType || a.activityType === actType);
+    const groups = activityGroups
+      .map((g) => ({ ...g, list: g.list.filter(keep) }))
+      .filter((g) => g.list.length > 0);
+    const shown = groups.reduce((sum, g) => sum + g.list.length, 0);
+    const n = delivered.length;
+    const span = picker.length > 1
+      ? `${monthName(picker[0].key)} to ${monthName(picker[picker.length - 1].key)}`
+      : picker.length === 1 ? monthName(picker[0].key) : '';
+    const where = grantPlace(project?.cities) || placesReached(delivered).slice(0, 3).map((p) => p.name).join(', ');
+    const summary = [
+      n > 0 ? `${formatCount(n)} activit${n === 1 ? 'y' : 'ies'} delivered` : '',
+      upcoming.length > 0 ? `${formatCount(upcoming.length)} upcoming` : '',
+    ].filter(Boolean).join(', ');
+
+    return (
+      <>
+        <div className="cacts-bar">
+          <p className="cacts-sum">
+            {summary && <b>{summary}</b>}
+            {[span, where].filter(Boolean).map((t) => <span key={t}> · {t}</span>)}
+          </p>
+          <div className="cseg" role="group" aria-label="Order">
+            <button type="button" aria-pressed={!newestFirst} onClick={() => changeOrder('oldest')}>Oldest first</button>
+            <button type="button" aria-pressed={newestFirst} onClick={() => changeOrder('newest')}>Newest first</button>
+          </div>
+        </div>
+
+        {picker.length > 1 && (
+          <div className="cmonthpick" role="group" aria-label="Month">
+            <button type="button" aria-pressed={!actMonth} onClick={() => setActMonth(null)}>
+              All<small>{formatCount(listed.length)}</small>
+            </button>
+            {picker.map((m) => (
+              <button
+                type="button" key={m.key} aria-pressed={actMonth === m.key} disabled={m.count === 0}
+                onClick={() => { setActMonth(m.key); setActType(null); }}
+              >
+                {m.short}
+                <small>
+                  {m.count === 0 ? 'None' : m.started === 0 ? `${formatCount(m.count)} ongoing` : formatCount(m.count)}
+                </small>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {(kinds.length > 1 || actType) && (
+          <div className="ckindpick" role="group" aria-label="Kind of activity">
+            <button type="button" aria-pressed={!actType} onClick={() => setActType(null)}>All kinds</button>
+            {kinds.map((k) => (
+              <button type="button" key={k} aria-pressed={actType === k} onClick={() => setActType(k)}>{k}</button>
+            ))}
+          </div>
+        )}
+
+        {actMonth && (
+          <p className="cacts-showing">
+            <strong>{monthName(actMonth)}</strong>
+            <span>{formatCount(shown)} activit{shown === 1 ? 'y' : 'ies'}</span>
+            <button type="button" className="cbtn-link" onClick={() => setActMonth(null)}>Show all months</button>
+          </p>
+        )}
+
+        {groups.length === 0 ? (
+          <p className="cacts-none">
+            Nothing of this kind in {actMonth ? monthName(actMonth) : 'this grant'}.{' '}
+            <button type="button" className="cbtn-link" onClick={() => { setActMonth(null); setActType(null); }}>Show everything</button>
+          </p>
+        ) : groups.map((g) => (
+          <section className="cpanel cpanel-open cacts" aria-labelledby={`cp-acts-${g.key}`} key={g.key}>
+            <h2 className="csec" id={`cp-acts-${g.key}`}>{g.heading}</h2>
+            {activityMonthBlocks(g.list, { month: actMonth, newestFirst }).map((m) => (
+              <div className={`cmonth${actMonth ? ' cmonth-one' : ''}`} key={m.key || 'undated'}>
+                {!actMonth && (
+                  <div className="cmonth-rail">
+                    <h3 className="cmonth-h">{m.label}</h3>
+                    <p className="cmonth-c">
+                      {m.items.length > 0
+                        ? `${formatCount(m.items.length)} activit${m.items.length === 1 ? 'y' : 'ies'}`
+                        : 'Ongoing'}
+                    </p>
+                  </div>
+                )}
+                <div className="cmonth-body">
+                  {m.items.length > 0 && <ul className="crows ccards">{m.items.map(activityRow)}</ul>}
+                  {m.continuing.length > 0 && (
+                    <p className="ccont">
+                      <span className="ccont-k">Continuing</span>
+                      {m.continuing.map((a, i) => (
+                        <React.Fragment key={a.id}>{i > 0 && <span aria-hidden="true"> · </span>}<b>{a.title}</b></React.Fragment>
+                      ))}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </section>
+        ))}
+      </>
+    );
+  };
 
   // Maps the stored status ('Participated', 'Shortlisted', 'Scholarship Awarded',
   // 'National Finals') to its filter bucket.
