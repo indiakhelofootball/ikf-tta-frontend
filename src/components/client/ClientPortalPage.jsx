@@ -291,10 +291,10 @@ const URL_RE = /(https?:\/\/[^\s]+)/g;
 const ATHLETE_PAGE = 25;
 
 // The Activities tab's order is the reader's own choice and is kept between
-// visits. Storage can be missing or blocked; the default then applies.
+// visits. Storage can be missing or blocked; the default, newest first, then applies.
 const ORDER_KEY = 'tta_client_activity_order';
 const readOrder = () => {
-  try { return localStorage.getItem(ORDER_KEY) === 'newest' ? 'newest' : 'oldest'; } catch { return 'oldest'; }
+  try { return localStorage.getItem(ORDER_KEY) === 'oldest' ? 'oldest' : 'newest'; } catch { return 'newest'; }
 };
 const saveOrder = (order) => {
   try { localStorage.setItem(ORDER_KEY, order); } catch { /* the choice lasts this visit only */ }

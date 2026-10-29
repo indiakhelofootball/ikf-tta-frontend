@@ -676,6 +676,7 @@ const PLANNED_2 = {
 };
 
 test('the Activities tab lists Upcoming (Planned) first, then Delivered (Completed)', async () => {
+  localStorage.setItem('tta_client_activity_order', 'oldest');
   clientAPI.activities.mockResolvedValue([FIELD[0], PLANNED, FIELD[1], PLANNED_2]);
   window.history.replaceState(null, '', '#activities');
   render(<ClientPortalPage />);
@@ -1395,9 +1396,27 @@ describe('the Activities tab, month by month', () => {
   const cardTitles = (root) => within(root).queryAllByText((_, el) => el?.classList?.contains('cact-t')).map((t) => t.textContent);
 
   beforeEach(() => {
-    localStorage.removeItem('tta_client_activity_order');
+    localStorage.setItem('tta_client_activity_order', 'oldest');
     clientAPI.project.mockResolvedValue([PILOT]);
     clientAPI.activities.mockResolvedValue(ALL);
+  });
+
+  test('a reader who has never chosen an order sees the newest first', async () => {
+    localStorage.removeItem('tta_client_activity_order');
+    const done = await openTab();
+    expect(within(done).getAllByRole('heading', { level: 3 }).map((h) => h.textContent))
+      .toEqual(['March 2026', 'February 2026', 'January 2026', 'December 2025']);
+    expect(cardTitles(done)).toEqual(['Showcase for clubs', 'Player development', 'Trials Day 1', 'Awareness drive']);
+    expect(screen.getByRole('button', { name: 'Newest first' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  test('Oldest first, once chosen, is remembered over the newest-first default', async () => {
+    localStorage.removeItem('tta_client_activity_order');
+    await openTab();
+    fireEvent.click(screen.getByRole('button', { name: 'Oldest first' }));
+    expect(localStorage.getItem('tta_client_activity_order')).toBe('oldest');
+    const done = screen.getByRole('region', { name: 'Delivered' });
+    expect(within(done).getAllByRole('heading', { level: 3 })[0]).toHaveTextContent('December 2025');
   });
 
   test('each month has its own heading, oldest first, and a running activity shows once', async () => {
