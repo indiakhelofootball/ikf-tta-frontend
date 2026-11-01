@@ -266,3 +266,23 @@ test('with a logo, the funder is still named on the form side, which is all a ph
   expect(within(main).getByText('Acme Foundation')).toBeInTheDocument();
   expect(screen.queryByText('CSR Portal')).not.toBeInTheDocument();
 });
+
+test('the name sits beside the logo in one row, and no width hides it', async () => {
+  clientAPI.brandingBySlug.mockResolvedValue(ACME);
+  render(<ClientLogin />);
+  const main = await screen.findByRole('main');
+  const logo = within(main).getByRole('img', { name: 'Acme Foundation' });
+  const name = within(main).getByText('Acme Foundation');
+
+  // The row is the shared parent; there is no role for it to be found by.
+  // eslint-disable-next-line testing-library/no-node-access
+  const row = logo.parentElement;
+  // eslint-disable-next-line testing-library/no-node-access
+  expect(name.parentElement).toBe(row);
+  expect(window.getComputedStyle(row).display).toBe('flex');
+  const css = Array.from(document.styleSheets)
+    .flatMap((sheet) => Array.from(sheet.cssRules).map((r) => r.cssText))
+    .join('\n');
+  const nameRules = css.split('\n').filter((r) => name.className.split(' ').some((c) => c && r.includes(`.${c}`)));
+  expect(nameRules.join('\n')).not.toMatch(/display:\s*none/);
+});

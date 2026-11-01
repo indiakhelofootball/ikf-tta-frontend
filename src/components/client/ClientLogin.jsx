@@ -365,20 +365,18 @@ export default function ClientLogin() {
         >
           <Box sx={{ width: '100%', maxWidth: 420 }}>
             {showLogo ? (
-              <Box sx={{ mb: 4 }}>
+              // Owner, 1 Nov: the name sits beside the mark at every width, as the
+              // portal header already does, even where the hero also names them.
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 4 }}>
                 <Box
                   component="img"
                   src={brand.logoUrl}
                   alt={title}
                   onError={() => setLogoBroken(true)}
-                  sx={{ maxHeight: 48, maxWidth: 200, display: 'block' }}
+                  sx={{ maxHeight: 48, maxWidth: 200, display: 'block', flexShrink: 0 }}
                 />
-                {/* The hero carries the name on a desk; below lg it is hidden. */}
                 <Typography
-                  sx={{
-                    display: { xs: 'block', lg: 'none' },
-                    mt: 1.5, fontWeight: 600, color: INK, fontSize: '0.9375rem', fontFamily: SANS,
-                  }}
+                  sx={{ minWidth: 0, fontWeight: 600, color: INK, fontSize: '0.9375rem', fontFamily: SANS, lineHeight: 1.3 }}
                 >
                   {title}
                 </Typography>
