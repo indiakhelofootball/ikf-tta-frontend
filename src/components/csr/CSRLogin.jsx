@@ -381,14 +381,12 @@ export default function CSRLogin() {
             component="img"
             src={ikfLogo}
             alt="India Khelega Foundation"
-            // The asset is RGB with no alpha, so it carries a white rectangle that
-            // reads as a sticker on the cream ground. `multiply` maps white to the
-            // ground beneath it and leaves the mark's own colours essentially
-            // unchanged against a near-white -- cheaper and more honest than
-            // shipping a second, keyed copy of a logo we did not author.
+            // The asset is the official IKF-Logo.png (Logos zip, 2000x1345 RGBA)
+            // cut to the mark's own edges, both players and balls whole, on a
+            // transparent ground; no blend is needed over the cream.
             sx={{
               height: 64, width: 'auto', display: 'block',
-              mixBlendMode: 'multiply', mb: { xs: 4, md: 6 },
+              mb: { xs: 4, md: 6 },
             }}
           />
 
