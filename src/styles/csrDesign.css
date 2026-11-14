@@ -2307,6 +2307,7 @@
    before the layout itself breaks. */
 .csrx .pform-row{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
 .csrx .pform-row3{grid-template-columns:1fr 1fr 1fr}
+.csrx .pform-row--next{margin-top:16px}
 @media (max-width:720px){
   .csrx .pform-row,
   .csrx .pform-row3{grid-template-columns:1fr}

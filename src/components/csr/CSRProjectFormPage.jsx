@@ -15,13 +15,20 @@ import { getProjectNames, getSeasons } from '../../utils/adminStorage';
 import useConfigVersion from '../../hooks/useConfigVersion';
 import ConfirmDialog from '../common/ConfirmDialog';
 import GrantCityPicker from './GrantCityPicker';
+import { fyLabel, fyOf, fyOptions } from './financialYear';
 import '../../styles/csrDesign.css';
 
+// A grant created Closed freezes its certificate before it has an id, so before
+// any expense can count. Closing is an edit, never a starting state.
 const STATUS_OPTIONS = ['Active', 'Closed'];
+const CREATE_STATUS_OPTIONS = ['Active'];
+const FIELD_ERROR_KEYS = ['status', 'financialYear'];
+const firstMessage = (v) => (Array.isArray(v) ? v[0] : v);
 
 const EMPTY = {
   name: '', clientName: '', sanctionedAmount: '',
   startDate: '', endDate: '', fundsReceivedOn: '', agreedBudget: [], status: 'Active', description: '',
+  financialYear: '',
   projectRefId: '', season: '', showHeldBackToFunder: false, cityIds: [],
 };
 
@@ -60,6 +67,8 @@ export default function CSRProjectFormPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [confirmZero, setConfirmZero] = useState(false);
+  // On a new grant the year follows the start date until someone picks one.
+  const [fyPicked, setFyPicked] = useState(false);
   // null until the picker has loaded the project + season's cities.
   const [cityOptions, setCityOptions] = useState(null);
 
@@ -72,6 +81,7 @@ export default function CSRProjectFormPage() {
       setProject(null);
       setForm(EMPTY);
       setErrors({});
+      setFyPicked(false);
       setLoading(false);
       setLoadFailed(false);
       return undefined;
@@ -92,6 +102,7 @@ export default function CSRProjectFormPage() {
           fundsReceivedOn: data.fundsReceivedOn || '',
           agreedBudget: (data.agreedBudget || []).map((r) => ({ head: r.head || '', amount: r.amount ?? '' })),
           status: data.status || 'Active',
+          financialYear: data.financialYear || '',
           description: data.description || '',
           projectRefId: data.projectRefId ?? '',
           season: data.season || '',
@@ -139,6 +150,23 @@ export default function CSRProjectFormPage() {
     setCityOptions(null);
   };
   const onCityOptions = useCallback((opts) => setCityOptions(opts), []);
+  const setStartDate = (e) => {
+    const { value } = e.target;
+    setForm((f) => ({
+      ...f,
+      startDate: value,
+      ...(!isEdit && !fyPicked ? { financialYear: fyOf(value) } : {}),
+    }));
+  };
+  const setFinancialYear = (e) => {
+    const { value } = e.target;
+    setFyPicked(true);
+    setForm((f) => ({ ...f, financialYear: value }));
+    setErrors((x) => ({ ...x, financialYear: undefined }));
+  };
+  const fyChoices = fyOptions(form.startDate, form.financialYear);
+  const derivedFy = fyOf(form.startDate);
+  const statusChoices = isEdit ? STATUS_OPTIONS : CREATE_STATUS_OPTIONS;
 
   const progress = filled(form);
   const endDateError = endsBeforeStart(form) ? END_BEFORE_START : '';
@@ -189,6 +217,7 @@ export default function CSRProjectFormPage() {
       clientName: form.clientName.trim(),
       sanctionedAmount: form.sanctionedAmount,
       status: form.status,
+      financialYear: form.financialYear,
       description: form.description.trim(),
       startDate: form.startDate || null,
       endDate: form.endDate || null,
@@ -226,7 +255,17 @@ export default function CSRProjectFormPage() {
     } catch (err) {
       // Stay on the page. Navigating away on a failed save is how typed work
       // gets thrown out — the grant is gone and the person has nothing to retry.
-      setSaveError(err?.message || 'Could not save this grant. Please try again.');
+      const data = err?.response?.data;
+      const fieldErrors = {};
+      FIELD_ERROR_KEYS.forEach((k) => {
+        if (data && data[k]) fieldErrors[k] = firstMessage(data[k]);
+      });
+      if (Object.keys(fieldErrors).length) {
+        setErrors((x) => ({ ...x, ...fieldErrors }));
+        setSaveError('Not saved. Fix the field marked below.');
+      } else {
+        setSaveError(err?.message || 'Could not save this grant. Please try again.');
+      }
       setSaving(false);
     }
   };
@@ -449,7 +488,7 @@ export default function CSRProjectFormPage() {
               <div className="pform-field">
                 <label htmlFor="csr-start">Start date</label>
                 <div className={`pform-input${progress.startDate ? ' ok' : ''}`}>
-                  <input id="csr-start" type="date" value={form.startDate} onChange={setField('startDate')} />
+                  <input id="csr-start" type="date" value={form.startDate} onChange={setStartDate} />
                 </div>
               </div>
               <div className="pform-field">
@@ -467,11 +506,46 @@ export default function CSRProjectFormPage() {
               </div>
               <div className="pform-field">
                 <label htmlFor="csr-status">Status</label>
-                <select id="csr-status" className="sel" value={form.status} onChange={setField('status')}>
-                  {STATUS_OPTIONS.map((s) => (
+                <select
+                  id="csr-status" className="sel" value={form.status}
+                  onChange={(e) => {
+                    setField('status')(e);
+                    setErrors((x) => ({ ...x, status: undefined }));
+                  }}
+                  aria-invalid={Boolean(errors.status)}
+                  aria-describedby={errors.status ? 'csr-status-help' : undefined}
+                >
+                  {statusChoices.map((s) => (
                     <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
+                {errors.status ? (
+                  <p id="csr-status-help" className="pform-help bad">{errors.status}</p>
+                ) : null}
+              </div>
+            </div>
+            <div className="pform-row pform-row3 pform-row--next">
+              <div className="pform-field">
+                <label htmlFor="csr-fy">Financial year</label>
+                <select
+                  id="csr-fy" className="sel" value={form.financialYear} onChange={setFinancialYear}
+                  aria-invalid={Boolean(errors.financialYear)}
+                  aria-describedby="csr-fy-help"
+                >
+                  <option value="">Not set</option>
+                  {fyChoices.map((fy) => (
+                    <option key={fy} value={fy}>{fyLabel(fy)}</option>
+                  ))}
+                </select>
+                {errors.financialYear ? (
+                  <p id="csr-fy-help" className="pform-help bad">{errors.financialYear}</p>
+                ) : (
+                  <p id="csr-fy-help" className="pform-help">
+                    {!form.financialYear && derivedFy
+                      ? `Funder sees ${fyLabel(derivedFy)} (from the start date)`
+                      : 'The funder portal groups grants by this year.'}
+                  </p>
+                )}
               </div>
             </div>
           </section>

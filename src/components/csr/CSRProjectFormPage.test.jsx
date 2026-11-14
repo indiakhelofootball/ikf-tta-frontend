@@ -399,3 +399,98 @@ test('D-019: the city error clears once a city is ticked', async () => {
   await userEvent.click(pune);
   expect(screen.queryByText('Pick the cities this grant funds.')).toBeNull();
 });
+
+describe('financial year', () => {
+  const FY = /financial year/i;
+  const fillRequired = async () => {
+    await userEvent.type(screen.getByLabelText(/project name/i), 'Khelo Girls');
+    await userEvent.type(screen.getByLabelText(/client \/ funder/i), 'Tata Trusts');
+    await userEvent.type(screen.getByLabelText(/sanctioned amount/i), '1200000');
+  };
+
+  test('a new grant fills it from the start date and follows the date until a year is picked', async () => {
+    csrAPI.projects.create.mockResolvedValue({});
+    render(<CSRProjectFormPage />);
+    await fillRequired();
+
+    fireEvent.change(screen.getByLabelText(/start date/i), { target: { value: '2025-12-02' } });
+    expect(screen.getByLabelText(FY)).toHaveValue('2025-26');
+    expect(within(screen.getByLabelText(FY)).getAllByRole('option').map((o) => o.textContent)).toEqual([
+      'Not set', 'FY 2022-23', 'FY 2023-24', 'FY 2024-25', 'FY 2025-26', 'FY 2026-27', 'FY 2027-28',
+    ]);
+
+    fireEvent.change(screen.getByLabelText(/start date/i), { target: { value: '2026-04-01' } });
+    expect(screen.getByLabelText(FY)).toHaveValue('2026-27');
+
+    await userEvent.selectOptions(screen.getByLabelText(FY), '2025-26');
+    fireEvent.change(screen.getByLabelText(/start date/i), { target: { value: '2027-05-01' } });
+    expect(screen.getByLabelText(FY)).toHaveValue('2025-26');
+
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+    await waitFor(() => expect(csrAPI.projects.create).toHaveBeenCalled());
+    expect(csrAPI.projects.create.mock.calls[0][0].financialYear).toBe('2025-26');
+  });
+
+  test('an edit with no stored year stays blank and says what the funder sees', async () => {
+    mockParams = { id: '11' };
+    csrAPI.projects.getById.mockResolvedValue({ ...GRANT, financialYear: '' });
+    csrAPI.projects.update.mockResolvedValue({});
+    render(<CSRProjectFormPage />);
+
+    await screen.findByDisplayValue('Tata Trusts');
+    expect(screen.getByLabelText(FY)).toHaveValue('');
+    expect(screen.getByText('Funder sees FY 2026-27 (from the start date)')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+    await waitFor(() => expect(csrAPI.projects.update).toHaveBeenCalled());
+    expect(csrAPI.projects.update.mock.calls[0][1].financialYear).toBe('');
+  });
+
+  test('an edit keeps a stored year outside the offered window', async () => {
+    mockParams = { id: '11' };
+    csrAPI.projects.getById.mockResolvedValue({ ...GRANT, financialYear: '2019-20' });
+    csrAPI.projects.update.mockResolvedValue({});
+    render(<CSRProjectFormPage />);
+
+    await screen.findByDisplayValue('Tata Trusts');
+    expect(screen.getByLabelText(FY)).toHaveValue('2019-20');
+    expect(screen.queryByText(/Funder sees/)).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+    await waitFor(() => expect(csrAPI.projects.update).toHaveBeenCalled());
+    expect(csrAPI.projects.update.mock.calls[0][1].financialYear).toBe('2019-20');
+  });
+});
+
+describe('a new grant cannot start Closed', () => {
+  const statusOptions = () => within(screen.getByLabelText(/^status$/i))
+    .getAllByRole('option').map((o) => o.textContent);
+
+  test('create offers Active only', () => {
+    render(<CSRProjectFormPage />);
+    expect(statusOptions()).toEqual(['Active']);
+  });
+
+  test('edit still offers Closed, which is how the certificate is frozen', async () => {
+    mockParams = { id: '11' };
+    csrAPI.projects.getById.mockResolvedValue(GRANT);
+    render(<CSRProjectFormPage />);
+    await screen.findByDisplayValue('Tata Trusts');
+    expect(statusOptions()).toEqual(['Active', 'Closed']);
+  });
+
+  test('a server error on status is shown under the Status field', async () => {
+    const msg = 'A new grant cannot start Closed. Create it, add its expenses, then close it.';
+    const err = new Error(`status: ${msg}`);
+    err.response = { status: 400, data: { status: [msg] } };
+    csrAPI.projects.create.mockRejectedValue(err);
+    render(<CSRProjectFormPage />);
+    await userEvent.type(screen.getByLabelText(/project name/i), 'Khelo Girls');
+    await userEvent.type(screen.getByLabelText(/client \/ funder/i), 'Tata Trusts');
+    await userEvent.type(screen.getByLabelText(/sanctioned amount/i), '1200000');
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+    expect(await screen.findByText(msg)).toHaveAttribute('id', 'csr-status-help');
+    expect(screen.getByLabelText(/^status$/i)).toHaveAttribute('aria-invalid', 'true');
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+});
