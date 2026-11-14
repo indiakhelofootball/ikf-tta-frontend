@@ -222,13 +222,17 @@
    own, edge to edge, and the page never does: before, the row was ~475px in a
    390px viewport and dragged the whole page sideways with it. The hairline is
    an inset shadow, not a border the tabs overlap with a negative margin, so
-   the scroll container has nothing poking out of it to clip. */
+   the scroll container has nothing poking out of it to clip. The row fades
+   out at each edge, so a tab cut by the screen edge reads as more to scroll
+   to; the fades sit over the 16px end padding, so a tab scrolled fully into
+   view is never faded. */
 .cportal .ctabs{
   display:flex;flex-wrap:nowrap;gap:4px;
   margin:0 -16px 18px;padding:0 16px;
   overflow-x:auto;overscroll-behavior-x:contain;
   scrollbar-width:none;
   box-shadow:inset 0 -1px 0 var(--line);
+  mask-image:linear-gradient(to right,transparent,oklch(0.2 0 0) 16px,oklch(0.2 0 0) calc(100% - 32px),transparent);
 }
 .cportal .ctabs::-webkit-scrollbar{display:none}
 .cportal .ctab{
@@ -425,7 +429,7 @@
   .cportal .cplaces{grid-template-columns:repeat(3,minmax(0,1fr))}
   .cportal .cphoto img{aspect-ratio:16/7}
   .cportal .ctiles{grid-template-columns:repeat(3,minmax(0,1fr))}
-  .cportal .ctabs{margin:0 0 22px;padding:0}
+  .cportal .ctabs{margin:0 0 22px;padding:0;mask-image:none}
   .cportal .ctab{padding:11px 16px}
   .cportal .cpanel{padding:22px 24px}
   .cportal .cfacts{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:auto}
@@ -596,6 +600,19 @@ html:has(.cportal) .MuiDialog-root :focus-visible{outline-color:#243040}
   white-space:nowrap;
 }
 .cportal .cpill.warn{background:#FEF3C7;color:#92400E}
+/* On a phone the four columns do not fit, and Status was the one cut off. Each
+   athlete becomes the name on its own line with position, category and status
+   as a row of badges under it; the headings stay for screen readers. */
+@media (max-width:600px){
+  .cportal .cathletes-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  .cportal .cathletes-table,
+  .cportal .cathletes-table tbody{display:block}
+  .cportal .cathletes-table tr{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;padding:12px 0;border-bottom:1px solid var(--line-soft)}
+  .cportal .cathletes-table td{display:block;padding:0;border-bottom:0}
+  .cportal .cathletes-table td:first-child{flex-basis:100%}
+  .cportal .cathletes-table tr:hover td{background:none}
+  .cportal .cath-name strong{overflow-wrap:anywhere}
+}
 
 /* ---- cards (27 Oct, owner: "ui with border and cards where details are well
    placed and organised date wise"). Each Overview section is its own card;
