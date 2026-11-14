@@ -1529,3 +1529,75 @@ describe('the Activities tab, month by month', () => {
     expect(cardTitles(screen.getByRole('region', { name: 'Delivered' }))).toEqual(['Player development']);
   });
 });
+
+// A year the login may no longer open is answered 404 by every per-grant
+// endpoint (activities, reports, deliverables, athletes, my-branding,
+// certificate); the year list (/client/project/) still answers. The portal goes
+// back to the login's own grant, asked for without project_id, once: never a
+// broken page, never a loop.
+describe('a refused year falls back to the funder own grant', () => {
+  const OWN = { id: 1, name: 'Project 2026', clientName: 'Acme', startDate: '2026-09-01', financialYear: '2026-27' };
+  const TAKEN = { id: 2, name: 'Project 2025', clientName: 'Acme', startDate: '2025-09-01', financialYear: '2025-26' };
+  const ENDPOINTS = ['activities', 'reports', 'deliverables', 'athletes', 'myBranding', 'certificate'];
+  const OK = {
+    activities: [{ id: 1, title: 'Trial at Bhilai', status: 'Completed' }],
+    reports: [],
+    deliverables: DELIVERABLES,
+    athletes: [],
+    myBranding: null,
+    certificate: { available: false, reason: 'open' },
+  };
+  const refuseFrom = (names) => {
+    ENDPOINTS.forEach((name) => {
+      clientAPI[name].mockImplementation((pid) => (names.includes(name) && pid === TAKEN.id
+        ? Promise.reject(httpError(404, { detail: 'Not found.' }))
+        : Promise.resolve(OK[name])));
+    });
+  };
+
+  test.each(ENDPOINTS)('picking a year refused by %s lands on the own grant, without project_id', async (name) => {
+    clientAPI.project.mockResolvedValue([OWN, TAKEN]);
+    refuseFrom([name]);
+    render(<ClientPortalPage />);
+    await screen.findByRole('heading', { level: 1, name: 'Project 2026' });
+
+    fireEvent.click(screen.getByRole('button', { name: /2025-26/i }));
+
+    await waitFor(() => expect(clientAPI.project).toHaveBeenCalledTimes(3));
+    expect(clientAPI.project.mock.calls.map((c) => c[0] ?? null)).toEqual([null, TAKEN.id, null]);
+    expect(await screen.findByRole('heading', { level: 1, name: 'Project 2026' })).toBeInTheDocument();
+    await waitFor(() => expect(clientAPI[name].mock.calls.at(-1)[0] ?? null).toBeNull());
+    expect(screen.queryByText(/couldn.t load your grant/)).not.toBeInTheDocument();
+    expect(clientAPI.project).toHaveBeenCalledTimes(3);
+  });
+
+  test('a year refused everywhere at once still reloads the own grant only once', async () => {
+    clientAPI.project.mockResolvedValue([OWN, TAKEN]);
+    refuseFrom(ENDPOINTS);
+    render(<ClientPortalPage />);
+    await screen.findByRole('heading', { level: 1, name: 'Project 2026' });
+
+    fireEvent.click(screen.getByRole('button', { name: /2025-26/i }));
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Project 2026' })).toBeInTheDocument();
+    await waitFor(() => expect(clientAPI.certificate.mock.calls.at(-1)[0] ?? null).toBeNull());
+    expect(clientAPI.project.mock.calls.map((c) => c[0] ?? null)).toEqual([null, TAKEN.id, null]);
+    expect(screen.queryByText(/couldn.t load your grant/)).not.toBeInTheDocument();
+  });
+
+  test('a chosen year refused on returning to the tab falls back the same way', async () => {
+    clientAPI.project.mockResolvedValue([OWN, TAKEN]);
+    refuseFrom([]);
+    render(<ClientPortalPage />);
+    await screen.findByRole('heading', { level: 1, name: 'Project 2026' });
+    fireEvent.click(screen.getByRole('button', { name: /2025-26/i }));
+    await screen.findByRole('heading', { level: 1, name: 'Project 2025' });
+
+    refuseFrom(ENDPOINTS);
+    returnToTab(31 * 1000);
+
+    await waitFor(() => expect(clientAPI.project).toHaveBeenLastCalledWith(null));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Project 2026' })).toBeInTheDocument();
+    expect(screen.queryByText(/couldn.t load your grant/)).not.toBeInTheDocument();
+  });
+});

@@ -78,6 +78,11 @@ const isNoGrant = (err) => {
   return data.code === 'no_project' || data.detail?.code === 'no_project';
 };
 
+// A year the login may no longer open (an admin took it away after the year
+// list was read) is answered 404. The portal then goes back to the login's own
+// grant, asked for without project_id, so it cannot be refused the same way.
+const isRefusedYear = (err) => err?.response?.status === 404;
+
 // The funder's copy of the Utilisation Certificate. Everything printed here
 // comes from the server's frozen snapshot — nothing is summed in the browser,
 // because this is the document that gets filed and a second implementation of
@@ -455,6 +460,7 @@ export default function ClientPortalPage({ source = funderSource, preview = null
   const certSeq = useRef(0);
   const mounted = useRef(true);
   const selectedProjectIdRef = useRef(selectedProjectId);
+  const fellBackRef = useRef(false);
 
   useEffect(() => {
     selectedProjectIdRef.current = selectedProjectId;
@@ -491,6 +497,16 @@ export default function ClientPortalPage({ source = funderSource, preview = null
     setUpdatedAt(new Date());
   }, []);
 
+  const fallBackToOwnGrant = useCallback(() => {
+    if (selectedProjectIdRef.current === null) return;
+    fellBackRef.current = true;
+    loadSeq.current += 1;
+    certSeq.current += 1;
+    selectedProjectIdRef.current = null;
+    setSelectedProjectId(null);
+    setAttempt((n) => n + 1);
+  }, []);
+
   // Project switch handler for multi-year selection — does NOT re-fetch projects catalog!
   const handleSelectProject = useCallback(async (pid) => {
     if (!pid || pid === selectedProjectIdRef.current) return;
@@ -509,7 +525,7 @@ export default function ClientPortalPage({ source = funderSource, preview = null
     try {
       source.branding(pid)
         .then((b) => { if (current()) setBrand(b && b.slug ? b : null); })
-        .catch(() => {});
+        .catch((e) => { if (current() && isRefusedYear(e)) fallBackToOwnGrant(); });
       const d = await source.data(pid, true);
       if (!current()) return;
       applyData({ ...d, project: matched || d.project }, true);
@@ -517,6 +533,10 @@ export default function ClientPortalPage({ source = funderSource, preview = null
       setNoGrant(false);
     } catch (e) {
       if (!current()) return;
+      if (isRefusedYear(e)) {
+        fallBackToOwnGrant();
+        return;
+      }
       if (isNoGrant(e)) setNoGrant(true);
       else setFailed(true);
     } finally {
@@ -527,8 +547,12 @@ export default function ClientPortalPage({ source = funderSource, preview = null
     setCert(null);
     source.certificate(pid)
       .then((c) => { if (mounted.current && cseq === certSeq.current) setCert(c); })
-      .catch(() => { if (mounted.current && cseq === certSeq.current) setCert({ available: false, reason: 'error' }); });
-  }, [source, applyData, allProjects]);
+      .catch((e) => {
+        if (!mounted.current || cseq !== certSeq.current) return;
+        if (isRefusedYear(e)) fallBackToOwnGrant();
+        else setCert({ available: false, reason: 'error' });
+      });
+  }, [source, applyData, allProjects, fallBackToOwnGrant]);
   const selectProjectRef = useRef(handleSelectProject);
   selectProjectRef.current = handleSelectProject;
 
@@ -539,12 +563,12 @@ export default function ClientPortalPage({ source = funderSource, preview = null
     setLoading(true);
     setFailed(false);
     setNoGrant(false);
+    const pid = selectedProjectId;
     (async () => {
       try {
-        const pid = selectedProjectId;
         source.branding(pid)
           .then((b) => { if (current()) setBrand(b && b.slug ? b : null); })
-          .catch(() => {});
+          .catch((e) => { if (current() && pid && isRefusedYear(e)) fallBackToOwnGrant(); });
 
         // Initial mount loads projects list
         const firstOpen = !selectedProjectIdRef.current;
@@ -553,13 +577,18 @@ export default function ClientPortalPage({ source = funderSource, preview = null
         applyData(d);
         // D-027: a grant with nothing delivered yet opens on the latest earlier
         // year instead, so the funder does not land on an empty page. The list
-        // puts the login's own grant first and the rest newest first.
+        // puts the login's own grant first and the rest newest first. Not after
+        // a refused year, which lands on the login's own grant and stays there.
         const nothingYet = !d.activities?.length && !d.athletes?.length && !d.deliverables?.length;
-        if (firstOpen && nothingYet && d.projects?.length > 1) {
+        if (firstOpen && !fellBackRef.current && nothingYet && d.projects?.length > 1) {
           selectProjectRef.current(d.projects[1].id);
         }
       } catch (e) {
         if (!current()) return;
+        if (pid && isRefusedYear(e)) {
+          fallBackToOwnGrant();
+          return;
+        }
         if (isNoGrant(e)) setNoGrant(true);
         else setFailed(true);
       } finally {
@@ -567,18 +596,23 @@ export default function ClientPortalPage({ source = funderSource, preview = null
       }
     })();
     return () => { active = false; };
-  }, [attempt, source, applyData]);
+  }, [attempt, source, applyData, fallBackToOwnGrant]);
 
   useEffect(() => {
     let active = true;
     const seq = ++certSeq.current;
     const current = () => active && seq === certSeq.current;
     setCert(null);
-    source.certificate(selectedProjectId)
+    const pid = selectedProjectId;
+    source.certificate(pid)
       .then((c) => { if (current()) setCert(c); })
-      .catch(() => { if (current()) setCert({ available: false, reason: 'error' }); });
+      .catch((e) => {
+        if (!current()) return;
+        if (pid && isRefusedYear(e)) fallBackToOwnGrant();
+        else setCert({ available: false, reason: 'error' });
+      });
     return () => { active = false; };
-  }, [attempt, certAttempt, source]);
+  }, [attempt, certAttempt, source, fallBackToOwnGrant]);
 
   useRefetchOnFocus(() => {
     if (loading) return;
@@ -587,7 +621,7 @@ export default function ClientPortalPage({ source = funderSource, preview = null
     const current = () => mounted.current && seq === loadSeq.current;
     source.branding(pid)
       .then((b) => { if (current()) setBrand(b && b.slug ? b : null); })
-      .catch(() => {});
+      .catch((e) => { if (current() && pid && isRefusedYear(e)) fallBackToOwnGrant(); });
     // The grant list comes back too, so a changed status, amount or period shows
     // without a reload; the funder stays on the year they picked.
     source.data(pid, true)
@@ -599,11 +633,15 @@ export default function ClientPortalPage({ source = funderSource, preview = null
         setFailed(false);
         setNoGrant(false);
       })
-      .catch(() => {});
+      .catch((e) => {
+        if (current() && pid && isRefusedYear(e)) fallBackToOwnGrant();
+      });
     const cseq = ++certSeq.current;
     source.certificate(pid)
       .then((c) => { if (mounted.current && cseq === certSeq.current) setCert(c); })
-      .catch(() => {});
+      .catch((e) => {
+        if (mounted.current && cseq === certSeq.current && pid && isRefusedYear(e)) fallBackToOwnGrant();
+      });
   });
 
   useEffect(() => {
