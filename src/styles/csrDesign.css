@@ -2308,6 +2308,18 @@
 .csrx .pform-row{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
 .csrx .pform-row3{grid-template-columns:1fr 1fr 1fr}
 .csrx .pform-row--next{margin-top:16px}
+
+/* Athlete spreadsheet upload. The preview dialog renders in a portal outside
+   .csrx, so these are not scoped to it. The table scrolls inside the dialog;
+   the page itself must not scroll sideways at 390px. */
+.athimp-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+.athimp-alert{margin-bottom:16px}
+.athimp-counts{margin:0 0 12px;font-size:14px;line-height:1.6}
+.athimp-scroll{overflow-x:auto;max-width:100%}
+.athimp-table{border-collapse:collapse;width:100%;min-width:520px;font-size:13px}
+.athimp-table th,.athimp-table td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line,rgba(0,0,0,.12));vertical-align:top}
+.athimp-table th{font-weight:600}
+.athimp-error td{color:#B4523F}
 @media (max-width:720px){
   .csrx .pform-row,
   .csrx .pform-row3{grid-template-columns:1fr}

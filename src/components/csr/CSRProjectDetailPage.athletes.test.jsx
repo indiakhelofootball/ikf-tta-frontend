@@ -21,24 +21,28 @@ jest.mock('../../services/api', () => ({
     contacts: { getAll: jest.fn() },
     activityTypes: { getAll: jest.fn() },
     expenseTags: { getAll: jest.fn() },
-    athletes: { getAll: jest.fn(), create: jest.fn() },
+    athletes: { getAll: jest.fn(), create: jest.fn(), update: jest.fn() },
+    athletesBulk: jest.fn(),
     grantTrials: jest.fn(),
   },
 }));
 
+let mockEditable = true;
 jest.mock('../../auth/useGrants', () => ({
   __esModule: true,
   default: () => ({
-    isSuper: false, canView: (m) => m === 'csr', canEdit: (m) => m === 'csr', permsLoading: false,
+    isSuper: false, canView: (m) => m === 'csr', canEdit: (m) => mockEditable && m === 'csr', permsLoading: false,
   }),
 }));
 
 jest.mock('../../utils/certificatePdf', () => ({ downloadCertificatePdf: jest.fn() }));
+jest.mock('xlsx', () => ({ ...jest.requireActual('xlsx'), writeFile: jest.fn() }));
 
 const { csrAPI } = require('../../services/api');
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockEditable = true;
   csrAPI.projects.getById.mockResolvedValue({
     id: 42, name: 'Football for All', clientName: 'Vardhman', status: 'Active',
     sanctionedAmount: '0', startDate: '2026-04-01',
@@ -77,10 +81,209 @@ test('a category staff already chose is not overwritten by a DOB change', async 
 
   fireEvent.change(within(dialog).getByLabelText(/Full Name/), { target: { value: 'Simran Kaur' } });
   fireEvent.mouseDown(within(dialog).getByRole('combobox', { name: 'Category' }));
-  fireEvent.click(await screen.findByRole('option', { name: 'U-21' }));
+  fireEvent.click(await screen.findByRole('option', { name: 'U21' }));
   fireEvent.change(within(dialog).getByLabelText('Date of Birth (DOB)'), { target: { value: '2012-01-15' } });
 
   fireEvent.click(within(dialog).getByRole('button', { name: 'Add Athlete' }));
   await waitFor(() => expect(csrAPI.athletes.create).toHaveBeenCalledTimes(1));
-  expect(csrAPI.athletes.create.mock.calls[0][0].category).toBe('U-21');
+  expect(csrAPI.athletes.create.mock.calls[0][0].category).toBe('U21');
+});
+
+// Owner, 14 Nov 2026: one style, U17.
+test('the category list is one style', async () => {
+  render(<CSRProjectDetailPage />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Add Athlete' }));
+  const dialog = await screen.findByRole('dialog');
+  fireEvent.mouseDown(within(dialog).getByRole('combobox', { name: 'Category' }));
+  const listbox = await screen.findByRole('listbox');
+  expect(within(listbox).getAllByRole('option').map((o) => o.textContent)).toEqual([
+    'Not set', 'U11', 'U13', 'U15', 'U17', 'U19', 'U21', 'Senior',
+  ]);
+});
+
+test('the derived category uses the one style', async () => {
+  render(<CSRProjectDetailPage />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Add Athlete' }));
+  const dialog = await screen.findByRole('dialog');
+  fireEvent.change(within(dialog).getByLabelText('Date of Birth (DOB)'), { target: { value: '2015-01-10' } });
+  expect(within(dialog).getByRole('combobox', { name: 'Category' })).toHaveTextContent('U11');
+});
+
+test('an athlete stored with an old-style category keeps it through an edit', async () => {
+  csrAPI.athletes.getAll.mockResolvedValue([
+    { id: 7, fullName: 'Old Style', category: 'U-11', gender: 'Male', status: 'Participated' },
+  ]);
+  csrAPI.athletes.update.mockResolvedValue({ id: 7 });
+  render(<CSRProjectDetailPage />);
+  const [, pencil] = await screen.findAllByRole('button', { name: 'Edit athlete Old Style' });
+  fireEvent.click(pencil);
+  const dialog = await screen.findByRole('dialog');
+  expect(within(dialog).getByRole('combobox', { name: 'Category' })).toHaveTextContent('U-11');
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Update Athlete' }));
+  await waitFor(() => expect(csrAPI.athletes.update).toHaveBeenCalledTimes(1));
+  expect(csrAPI.athletes.update.mock.calls[0][1].category).toBe('U-11');
+});
+
+describe('athletes from an Excel file', () => {
+  const XLSX = require('xlsx');
+  const workbookFile = (aoa) => {
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), 'Athletes');
+    const bytes = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+    return new File([bytes], 'athletes.xlsx', {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+  };
+  const upload = async (aoa) => {
+    render(<CSRProjectDetailPage />);
+    await screen.findByRole('button', { name: 'Add Athlete' });
+    fireEvent.change(screen.getByLabelText('Upload Excel'), { target: { files: [workbookFile(aoa)] } });
+  };
+  const SHEET = [
+    ['Full Name', 'Date of Birth', 'Category'],
+    ['Manpreet Singh', '01/06/2008', ''],
+    ['Simran Kaur', 'soon', ''],
+    ['Ravi Kumar', '2010-01-15', 'U-17'],
+  ];
+  const DRY = {
+    dryRun: true, total: 3, valid: 1, duplicates: 1, invalid: 1, created: 0,
+    rows: [
+      { row: 1, fullName: 'Manpreet Singh', category: 'U17', result: 'duplicate', errors: {} },
+      { row: 2, fullName: 'Simran Kaur', category: '', result: 'error', errors: { dob: 'Enter a date as YYYY-MM-DD.' } },
+      { row: 3, fullName: 'Ravi Kumar', category: 'U17', result: 'ok', errors: {} },
+    ],
+  };
+  const CLEAN = {
+    ...DRY, valid: 2, invalid: 0,
+    rows: [
+      { row: 1, fullName: 'Manpreet Singh', category: 'U17', result: 'duplicate', errors: {} },
+      { row: 2, fullName: 'Simran Kaur', category: 'U13', result: 'ok', errors: {} },
+      { row: 3, fullName: 'Ravi Kumar', category: 'U17', result: 'ok', errors: {} },
+    ],
+  };
+
+  test('the template and upload sit beside Add Athlete, for exactly those who can add', async () => {
+    const { unmount } = render(<CSRProjectDetailPage />);
+    expect(await screen.findByRole('button', { name: 'Download template' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Upload Excel')).toBeInTheDocument();
+    unmount();
+
+    mockEditable = false;
+    render(<CSRProjectDetailPage />);
+    await screen.findByText(/Beneficiaries and scouted/);
+    expect(screen.queryByRole('button', { name: 'Add Athlete' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Download template' })).toBeNull();
+    expect(screen.queryByLabelText('Upload Excel')).toBeNull();
+  });
+
+  test('Download template writes the workbook with both sheets', async () => {
+    const spy = XLSX.writeFile;
+    render(<CSRProjectDetailPage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Download template' }));
+    expect(spy).toHaveBeenCalledTimes(1);
+    const [wb, name] = spy.mock.calls[0];
+    expect(name).toBe('athletes-template.xlsx');
+    expect(wb.SheetNames).toEqual(['Athletes', 'Allowed values']);
+  });
+
+  test('a dry run shows the counts and the rows, errors first, by spreadsheet row', async () => {
+    csrAPI.athletesBulk.mockResolvedValue(DRY);
+    await upload(SHEET);
+
+    const dialog = await screen.findByRole('dialog');
+    expect(csrAPI.athletesBulk).toHaveBeenCalledWith('42', expect.any(Array), true);
+    const sent = csrAPI.athletesBulk.mock.calls[0][1];
+    expect(sent).toHaveLength(3);
+    expect(sent[0]).toMatchObject({ fullName: 'Manpreet Singh', dob: '2008-06-01', category: '' });
+    expect(sent[1].dob).toBe('soon');
+    expect(sent[2].category).toBe('U17');
+
+    expect(within(dialog).getByText(
+      'Ready to add 1 · Already on this grant or repeated in the file 1 · Need fixing 1',
+    )).toBeInTheDocument();
+    const bodyRows = within(dialog).getAllByRole('row').slice(1);
+    expect(bodyRows.map((r) => within(r).getAllByRole('cell')[0].textContent)).toEqual(['3', '2', '4']);
+    expect(within(bodyRows[0]).getByText('Date of Birth: Enter a date as YYYY-MM-DD.')).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Add 1 athlete' })).toBeDisabled();
+  });
+
+  test('a clean dry run enables Add; the real run closes, refreshes and reports', async () => {
+    csrAPI.athletesBulk
+      .mockResolvedValueOnce(CLEAN)
+      .mockResolvedValueOnce({ ...CLEAN, dryRun: false, created: 2 });
+    await upload(SHEET);
+    const dialog = await screen.findByRole('dialog');
+    const add = within(dialog).getByRole('button', { name: 'Add 2 athletes' });
+    expect(add).toBeEnabled();
+
+    csrAPI.athletes.getAll.mockResolvedValue([
+      { id: 1, fullName: 'Simran Kaur', category: 'U13', status: 'Participated' },
+      { id: 2, fullName: 'Ravi Kumar', category: 'U17', status: 'Participated' },
+    ]);
+    fireEvent.click(add);
+    await waitFor(() => expect(csrAPI.athletesBulk).toHaveBeenCalledTimes(2));
+    expect(csrAPI.athletesBulk.mock.calls[1][2]).toBe(false);
+    expect(await screen.findByText('Added 2 athletes. Skipped 1 already listed.')).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(await screen.findByText('Ravi Kumar')).toBeInTheDocument();
+    expect(csrAPI.athletes.getAll).toHaveBeenCalledTimes(2);
+  });
+
+  test('a nothing-to-add dry run keeps Add disabled', async () => {
+    csrAPI.athletesBulk.mockResolvedValue({
+      ...DRY, valid: 0, invalid: 0, duplicates: 3,
+      rows: DRY.rows.map((r) => ({ ...r, result: 'duplicate', errors: {} })),
+    });
+    await upload(SHEET);
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByRole('button', { name: 'Add 0 athletes' })).toBeDisabled();
+  });
+
+  test('a refused real run shows the row errors in the same table', async () => {
+    const refused = new Error('rows: [object Object]');
+    refused.response = {
+      status: 400,
+      data: {
+        ...CLEAN, dryRun: false, valid: 1, invalid: 1, created: 0,
+        rows: [
+          CLEAN.rows[0],
+          { row: 2, fullName: 'Simran Kaur', category: '', result: 'error', errors: { fullName: 'Already added a moment ago.' } },
+          CLEAN.rows[2],
+        ],
+      },
+    };
+    csrAPI.athletesBulk.mockResolvedValueOnce(CLEAN).mockRejectedValueOnce(refused);
+    await upload(SHEET);
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add 2 athletes' }));
+
+    expect(await within(dialog).findByText('Full Name: Already added a moment ago.')).toBeInTheDocument();
+    expect(within(dialog).getByText(/Nothing was saved/)).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Add 1 athlete' })).toBeDisabled();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  test('a network failure on the real run keeps the dialog open with the message', async () => {
+    csrAPI.athletesBulk.mockResolvedValueOnce(CLEAN).mockRejectedValueOnce(new Error('Failed to fetch'));
+    await upload(SHEET);
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add 2 athletes' }));
+    expect(await within(dialog).findByText('Failed to fetch')).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Add 2 athletes' })).toBeEnabled();
+  });
+
+  test('a file with no Full Name column is refused without calling the server', async () => {
+    await upload([['DOB', 'City'], ['2010-01-01', 'Pune']]);
+    expect(await screen.findByText(/No Full Name column was found/)).toBeInTheDocument();
+    expect(csrAPI.athletesBulk).not.toHaveBeenCalled();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  test('more than 2000 rows is refused without calling the server', async () => {
+    const aoa = [['Full Name']];
+    for (let i = 0; i < 2001; i += 1) aoa.push([`Player ${i}`]);
+    await upload(aoa);
+    expect(await screen.findByText(/Upload at most 2000 at a time/)).toBeInTheDocument();
+    expect(csrAPI.athletesBulk).not.toHaveBeenCalled();
+  });
 });

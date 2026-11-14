@@ -28,6 +28,10 @@ import { downloadCertificatePdf } from '../../utils/certificatePdf';
 import { getUtilisationTypes } from '../../utils/adminStorage';
 import useConfigVersion from '../../hooks/useConfigVersion';
 import { GRANT_TABS } from './grantTabs';
+import {
+  ATHLETE_CATEGORIES, categoryFromDob, downloadTemplate, FIELD_LABELS,
+  readFileAsArrayBuffer, rowsFromWorkbook,
+} from './athleteImport';
 
 // The record lists on this page are the module's coloured table (.twrap /
 // .lgrid / .lrow), the same one every other CSR screen uses — the owner's
@@ -103,28 +107,9 @@ const outOfPeriodTitle = (x, project) => {
   return undefined;
 };
 
-const ATHLETE_CATEGORIES = ['U-11', 'U-13', 'U-15', 'U17', 'U19', 'U-21', 'Senior'];
-
-// An athlete's category is fixed by their age when the grant started, not by
-// today's date, or every player would move up a band each birthday after the
-// trial. Only a suggestion: staff can change it before saving.
-const categoryFromDob = (dob, startDate) => {
-  const birth = new Date(dob);
-  if (!dob || isNaN(birth.getTime())) return '';
-  const start = startDate ? new Date(startDate) : null;
-  const on = start && !isNaN(start.getTime()) ? start : new Date();
-  let age = on.getUTCFullYear() - birth.getUTCFullYear();
-  const m = on.getUTCMonth() - birth.getUTCMonth();
-  if (m < 0 || (m === 0 && on.getUTCDate() < birth.getUTCDate())) age--;
-  if (age < 0 || age > 100) return '';
-  if (age <= 11) return 'U-11';
-  if (age <= 13) return 'U-13';
-  if (age <= 15) return 'U-15';
-  if (age <= 17) return 'U17';
-  if (age <= 19) return 'U19';
-  if (age <= 21) return 'U-21';
-  return 'Senior';
-};
+const IMPORT_RESULT_ORDER = { error: 0, duplicate: 1, ok: 2 };
+const IMPORT_RESULT_LABELS = { ok: 'Ready', duplicate: 'Already listed', error: 'Needs fixing' };
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
 const rowActivation = (label, onActivate) => (onActivate ? {
   role: 'button',
@@ -325,6 +310,10 @@ export default function CSRProjectDetailPage() {
   });
   const [athleteSaving, setAthleteSaving] = useState(false);
   const [athleteError, setAthleteError] = useState('');
+  // { rows, sheetRows, result, error, busy } while a spreadsheet is being checked.
+  const [athleteImport, setAthleteImport] = useState(null);
+  const [importError, setImportError] = useState('');
+  const [importChecking, setImportChecking] = useState(false);
   const [listFailed, setListFailed] = useState({ activities: false, reports: false, contacts: false, athletes: false });
   // A row opened from the cross-grant Activities/Reports log (CSRActivitiesPage,
   // CSRReportsPage) arrives with the tab it belongs to in navigation state, so
@@ -567,6 +556,60 @@ export default function CSRProjectDetailPage() {
       setAthleteError(err.message || 'Failed to save athlete.');
     } finally {
       setAthleteSaving(false);
+    }
+  };
+
+  const onAthleteFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setImportError('');
+    let parsed;
+    try {
+      parsed = rowsFromWorkbook(await readFileAsArrayBuffer(file));
+    } catch (err) {
+      setImportError(err?.message || 'The file could not be read.');
+      return;
+    }
+    if (parsed.error) {
+      setImportError(parsed.error);
+      return;
+    }
+    setImportChecking(true);
+    try {
+      const result = await csrAPI.athletesBulk(id, parsed.rows, true);
+      setAthleteImport({ rows: parsed.rows, sheetRows: parsed.sheetRows, result, error: '', busy: false });
+    } catch (err) {
+      setImportError(err?.message || 'The file could not be checked. Please try again.');
+    } finally {
+      setImportChecking(false);
+    }
+  };
+
+  const addImportedAthletes = async () => {
+    const { rows } = athleteImport;
+    setAthleteImport((s) => ({ ...s, busy: true, error: '' }));
+    try {
+      const result = await csrAPI.athletesBulk(id, rows, false);
+      setAthleteImport(null);
+      const added = result?.created ?? result?.valid ?? 0;
+      notify(`Added ${plural(added, 'athlete', 'athletes')}. Skipped ${result?.duplicates ?? 0} already listed.`);
+      try {
+        setAthletes(asList(await csrAPI.athletes.getAll({ project: id })));
+      } catch {
+        setListFailed((f) => ({ ...f, athletes: true }));
+      }
+    } catch (err) {
+      const body = err?.response?.data;
+      if (err?.response?.status === 400 && Array.isArray(body?.rows)) {
+        setAthleteImport((s) => ({
+          ...s, busy: false, result: body, error: 'Nothing was saved. Fix the rows marked below and upload again.',
+        }));
+      } else {
+        setAthleteImport((s) => ({
+          ...s, busy: false, error: err?.message || 'The athletes could not be added. Please try again.',
+        }));
+      }
     }
   };
 
@@ -1289,16 +1332,30 @@ export default function CSRProjectDetailPage() {
               Beneficiaries and scouted football players supported under this grant.
             </Typography>
             {editable && (
-              <Button
-                size="small"
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={openAddAthleteModal}
-              >
-                Add Athlete
-              </Button>
+              <div className="athimp-actions">
+                <Button size="small" variant="outlined" onClick={downloadTemplate}>
+                  Download template
+                </Button>
+                <Button size="small" variant="outlined" component="label" disabled={importChecking}>
+                  {importChecking ? 'Checking\u2026' : 'Upload Excel'}
+                  <input hidden type="file" accept=".xlsx,.xls" onChange={onAthleteFile} />
+                </Button>
+                <Button
+                  size="small"
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={openAddAthleteModal}
+                >
+                  Add Athlete
+                </Button>
+              </div>
             )}
           </Stack>
+          {editable && importError && (
+            <Alert severity="error" className="athimp-alert" onClose={() => setImportError('')}>
+              {importError}
+            </Alert>
+          )}
 
           {listFailed.athletes ? listError('athletes') : (
             <div className="twrap">
@@ -1540,6 +1597,74 @@ export default function CSRProjectDetailPage() {
             </Button>
           </DialogActions>
         </form>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(athleteImport)}
+        onClose={() => !athleteImport?.busy && setAthleteImport(null)}
+        maxWidth="md"
+        fullWidth
+        aria-labelledby="athimp-title"
+      >
+        {athleteImport && (() => {
+          const { result, sheetRows, error, busy } = athleteImport;
+          const rows = [...(result?.rows || [])].sort((a, b) => (
+            (IMPORT_RESULT_ORDER[a.result] ?? 3) - (IMPORT_RESULT_ORDER[b.result] ?? 3) || a.row - b.row
+          ));
+          const valid = result?.valid ?? 0;
+          const invalid = result?.invalid ?? 0;
+          return (
+            <>
+              <DialogTitle id="athimp-title">Check the athletes before adding</DialogTitle>
+              <DialogContent dividers>
+                {error && <Alert severity="error" className="athimp-alert">{error}</Alert>}
+                <p className="athimp-counts">
+                  Ready to add {valid} · Already on this grant or repeated in the file {result?.duplicates ?? 0} · Need fixing {invalid}
+                </p>
+                <div className="athimp-scroll">
+                  <table className="athimp-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">Row</th>
+                        <th scope="col">Name</th>
+                        <th scope="col">Category</th>
+                        <th scope="col">Result</th>
+                        <th scope="col">Problems</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((r) => (
+                        <tr key={r.row} className={`athimp-${r.result}`}>
+                          <td>{sheetRows[r.row - 1] ?? r.row}</td>
+                          <td>{r.fullName || '\u2014'}</td>
+                          <td>{r.category || '\u2014'}</td>
+                          <td>{IMPORT_RESULT_LABELS[r.result] || r.result}</td>
+                          <td>
+                            {Object.entries(r.errors || {})
+                              .map(([k, m]) => `${FIELD_LABELS[k] || k}: ${Array.isArray(m) ? m.join(' ') : m}`)
+                              .join('; ')}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </DialogContent>
+              <DialogActions>
+                <Button onClick={() => setAthleteImport(null)} disabled={busy} color="inherit">
+                  Cancel
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={addImportedAthletes}
+                  disabled={busy || invalid !== 0 || valid <= 0}
+                >
+                  {busy ? 'Adding\u2026' : `Add ${plural(valid, 'athlete', 'athletes')}`}
+                </Button>
+              </DialogActions>
+            </>
+          );
+        })()}
       </Dialog>
 
       <ConfirmDialog

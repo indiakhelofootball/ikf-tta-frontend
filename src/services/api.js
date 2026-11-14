@@ -1297,6 +1297,14 @@ export const csrAPI = /*#__PURE__*/ {
   // White-label branding — admin-managed CRUD (SUPER_ADMIN/ADMIN).
   branding: /*#__PURE__*/ csrCrud('/csr/branding'),
   athletes: /*#__PURE__*/ csrCrud('/csr/athletes'),
+  // Many athletes for one grant from a spreadsheet. A dry run only checks; a
+  // real run saves every row or none, and a refusal (400) carries the per-row
+  // errors on err.response.data.
+  athletesBulk: async (projectId, rows, dryRun) =>
+    apiService.request(`/csr/projects/${projectId}/athletes/bulk/`, {
+      method: 'POST',
+      body: JSON.stringify({ dryRun, rows }),
+    }),
   // The partners an activity or a partner contact may name: the TTA Admin
   // vendor-name master entries whose service type is Partner (owner, 10 Oct
   // 2026). Read-only on purpose, and deliberately NOT csrCrud — the list is
