@@ -27,6 +27,7 @@ import useGrants from '../../auth/useGrants';
 import useRefetchOnFocus from '../../hooks/useRefetchOnFocus';
 import DatePassedPrompt from './DatePassedPrompt';
 import { activityStatusPillClass, needsDatePassedPrompt } from './activityVisibility';
+import { activityLocation } from './activityLocation';
 import '../../styles/csrDesign.css';
 
 const asList = (data) => (Array.isArray(data) ? data : data?.results || []);
@@ -271,7 +272,7 @@ export default function CSRActivitiesPage() {
                   <span>{grantOf(a)}</span>
                   {ttaRefLabel(a) && <span className="act-ref">{ttaRefLabel(a)}</span>}
                 </span>
-                <span className="t2">{a.location || '—'}</span>
+                <span className="t2">{activityLocation(a)}</span>
                 <span className="lend">
                   <StatusChip status={a.status} />
                   <button

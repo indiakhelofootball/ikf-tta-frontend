@@ -192,3 +192,14 @@ test('a blank Delivered By says Not set, never Delivered in-house', async () => 
   const partnerValues = screen.getAllByText('Partner', { selector: '.dk' }).map((el) => el.nextSibling.textContent);
   expect(partnerValues).toEqual(['Not set', 'Not set', 'Delivered in-house']);
 });
+
+test('the Location column names the city first, then the venue', async () => {
+  csrAPI.activities.getAll.mockResolvedValue([
+    { ...ACTIVITY, trialCityName: 'Mumbai', location: 'Andheri Sports Complex' },
+    { ...ACTIVITY, id: 2, title: 'Pune camp', trialCityName: 'Pune', location: '' },
+  ]);
+  render(<CSRActivitiesPage />);
+
+  expect(await screen.findByText('Mumbai · Andheri Sports Complex')).toBeInTheDocument();
+  expect(screen.getByText('Pune')).toBeInTheDocument();
+});

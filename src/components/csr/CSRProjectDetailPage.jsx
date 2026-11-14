@@ -29,6 +29,7 @@ import { downloadCertificatePdf } from '../../utils/certificatePdf';
 import { getUtilisationTypes } from '../../utils/adminStorage';
 import useConfigVersion from '../../hooks/useConfigVersion';
 import { GRANT_TABS } from './grantTabs';
+import { activityLocation } from './activityLocation';
 import {
   ATHLETE_CATEGORIES, categoryFromDob, downloadTemplate, FIELD_LABELS,
   MAX_IMPORT_BYTES, readFileAsArrayBuffer, rowsFromWorkbook,
@@ -972,7 +973,7 @@ export default function CSRProjectDetailPage() {
                         middle of this table while it sits on the right of every
                         other one. The status moved to where it belongs and the
                         location got its column back. */}
-                    <span className="t2">{a.location || '—'}</span>
+                    <span className="t2">{activityLocation(a)}</span>
                     <span className="t2">{a.activityTypeName || activityType?.name || '—'}</span>
                     <span className="lend">
                       <span className={`pill ${activityStatusPillClass(a.status)}`}>
@@ -1025,7 +1026,7 @@ export default function CSRProjectDetailPage() {
                     <div className="ldetail">
                       <div>
                         <span className="dk">Location</span>
-                        <span className="dv">{a.location || '—'}</span>
+                        <span className="dv">{activityLocation(a)}</span>
                       </div>
                       <div>
                         <span className="dk">Linked to</span>
