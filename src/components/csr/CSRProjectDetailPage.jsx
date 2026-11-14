@@ -1669,12 +1669,12 @@ export default function CSRProjectDetailPage() {
                     <tbody>
                       {rows.map((r) => (
                         <tr key={r.row} className={`athimp-${r.result}`}>
-                          <td>{sheetRows[r.row - 1] ?? r.row}</td>
-                          <td>{r.fullName || '\u2014'}</td>
-                          <td>{sent[r.row - 1]?.dob || '\u2014'}</td>
-                          <td>{r.category || '\u2014'}</td>
-                          <td>{IMPORT_RESULT_LABELS[r.result] || r.result}</td>
-                          <td>
+                          <td data-label="Row">{sheetRows[r.row - 1] ?? r.row}</td>
+                          <td data-label="Name" className="athimp-name">{r.fullName || '\u2014'}</td>
+                          <td data-label="Date of birth">{sent[r.row - 1]?.dob || '\u2014'}</td>
+                          <td data-label="Category">{r.category || '\u2014'}</td>
+                          <td data-label="Result">{IMPORT_RESULT_LABELS[r.result] || r.result}</td>
+                          <td data-label="Problems">
                             {Object.entries(r.errors || {})
                               .map(([k, m]) => `${FIELD_LABELS[k] || k}: ${Array.isArray(m) ? m.join(' ') : m}`)
                               .join('; ')}

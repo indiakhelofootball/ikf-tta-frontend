@@ -2310,7 +2310,9 @@
 
 /* Athlete spreadsheet upload. The preview dialog renders in a portal outside
    .csrx, so these are not scoped to it and carry their own colours. The table
-   scrolls inside the dialog; the page itself must not scroll sideways at 390px. */
+   scrolls inside the dialog; the page itself must not scroll sideways at 390px.
+   On a phone each row stacks as label/value pairs, so a row's Problems sit
+   under its name instead of off to the right, and a name with no spaces wraps. */
 .athimp-scroll{
   --athimp-line:oklch(0.22 0.01 60 / 0.14);
   --athimp-bad:oklch(0.53 0.12 35);
@@ -2324,6 +2326,17 @@
 .athimp-table th,.athimp-table td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--athimp-line);vertical-align:top}
 .athimp-table th{font-weight:600}
 .athimp-error td{color:var(--athimp-bad)}
+.athimp-name{overflow-wrap:anywhere}
+@media (max-width:600px){
+  .athimp-table,
+  .athimp-table tbody,
+  .athimp-table tr{display:block;min-width:0}
+  .athimp-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  .athimp-table tr{padding:8px 0;border-bottom:1px solid var(--athimp-line)}
+  .athimp-table td{display:grid;grid-template-columns:7.5em minmax(0,1fr);gap:8px;padding:2px 0;border-bottom:0;overflow-wrap:anywhere}
+  .athimp-table td::before{content:attr(data-label);font-weight:600}
+  .athimp-table td:empty{display:none}
+}
 @media (max-width:720px){
   .csrx .pform-row,
   .csrx .pform-row3{grid-template-columns:1fr}
