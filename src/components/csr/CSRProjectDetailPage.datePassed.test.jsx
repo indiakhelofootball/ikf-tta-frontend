@@ -100,7 +100,7 @@ test.each([
   expect(csrAPI.activities.patch).toHaveBeenCalledTimes(1);
   expect(csrAPI.activities.patch).toHaveBeenCalledWith(1, { status });
   await waitFor(() => expect(csrAPI.activities.getAll).toHaveBeenCalledTimes(2));
-  expect(csrAPI.activities.getAll).toHaveBeenLastCalledWith({ project: '42' });
+  expect(csrAPI.activities.getAll).toHaveBeenLastCalledWith({ project: '42', limit: 1000, page: 1 });
   await waitFor(() => expect(screen.queryByText(PROMPT)).toBeNull());
   // Only the activity list is re-read, not the whole grant.
   expect(csrAPI.projects.getById).toHaveBeenCalledTimes(1);

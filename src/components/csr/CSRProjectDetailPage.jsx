@@ -22,6 +22,7 @@ import {
 } from './activityVisibility';
 import DatePassedPrompt from './DatePassedPrompt';
 import { csrAPI } from '../../services/api';
+import { getAllPages } from '../../services/allPages';
 import '../../styles/csrDesign.css';
 import useGrants from '../../auth/useGrants';
 import { downloadCertificatePdf } from '../../utils/certificatePdf';
@@ -380,11 +381,11 @@ export default function CSRProjectDetailPage() {
     setLoading(true);
     const [p, acts, reps, cons, types, aths] = await Promise.allSettled([
       csrAPI.projects.getById(id),
-      csrAPI.activities.getAll({ project: id }),
-      csrAPI.reports.getAll({ project: id }),
-      csrAPI.contacts.getAll({ project: id }),
-      csrAPI.activityTypes.getAll().catch(() => []),
-      csrAPI.athletes.getAll({ project: id }),
+      getAllPages(csrAPI.activities.getAll, { project: id }),
+      getAllPages(csrAPI.reports.getAll, { project: id }),
+      getAllPages(csrAPI.contacts.getAll, { project: id }),
+      getAllPages(csrAPI.activityTypes.getAll).catch(() => []),
+      getAllPages(csrAPI.athletes.getAll, { project: id }),
     ]);
     const listOf = (r) => (r.status === 'fulfilled' ? asList(r.value) : []);
     if (p.status === 'fulfilled') {
@@ -410,7 +411,7 @@ export default function CSRProjectDetailPage() {
     // so a csr-only user still sees the rest of the project.
     if (canViewCert) {
       try {
-        setExpenses(asList(await csrAPI.expenseTags.getAll({ project: id })));
+        setExpenses(await getAllPages(csrAPI.expenseTags.getAll, { project: id }));
       } catch {
         /* ignore — no certificate access */
       }
@@ -424,7 +425,7 @@ export default function CSRProjectDetailPage() {
   const setActivityStatus = async (activity, status) => {
     try {
       await csrAPI.activities.patch(activity.id, { status });
-      setActivities(asList(await csrAPI.activities.getAll({ project: id })));
+      setActivities(await getAllPages(csrAPI.activities.getAll, { project: id }));
     } catch (e) {
       notify(e.message || 'Could not update this activity.', 'error');
     }
@@ -560,8 +561,7 @@ export default function CSRProjectDetailPage() {
         notify('Athlete added successfully.');
       }
       setAthleteModalOpen(false);
-      const updated = await csrAPI.athletes.getAll({ project: id });
-      setAthletes(asList(updated));
+      setAthletes(await getAllPages(csrAPI.athletes.getAll, { project: id }));
     } catch (err) {
       setAthleteError(err.message || 'Failed to save athlete.');
     } finally {
@@ -621,7 +621,7 @@ export default function CSRProjectDetailPage() {
       const added = result?.created ?? result?.valid ?? 0;
       notify(`Added ${plural(added, 'athlete', 'athletes')}. Skipped ${result?.duplicates ?? 0} already listed.`);
       try {
-        setAthletes(asList(await csrAPI.athletes.getAll({ project: id })));
+        setAthletes(await getAllPages(csrAPI.athletes.getAll, { project: id }));
       } catch {
         setListFailed((f) => ({ ...f, athletes: true }));
       }

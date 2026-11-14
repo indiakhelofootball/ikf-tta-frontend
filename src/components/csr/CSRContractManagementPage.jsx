@@ -16,6 +16,7 @@ import {
   CONTRACT_PROGRESS_FILTERS, filterContracts, contractLabel, fieldErrorsFrom,
 } from './csrContractRules';
 import { csrAPI } from '../../services/api';
+import { getAllPages } from '../../services/allPages';
 import useGrants from '../../auth/useGrants';
 
 const CONTRACT_FIELDS = [
@@ -25,8 +26,6 @@ const CONTRACT_FIELDS = [
 const DELIVERABLE_FIELDS = [
   'title', 'description', 'targetCount', 'completedCount', 'dueDate', 'status', 'workOrderId',
 ];
-
-const asList = (data) => (Array.isArray(data) ? data : data?.results || []);
 
 export default function CSRContractManagementPage({ projectId }) {
   const { canEdit } = useGrants();
@@ -53,8 +52,7 @@ export default function CSRContractManagementPage({ projectId }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await csrAPI.workOrders.getAll(projectId ? { project: projectId } : {});
-      setContracts(asList(data));
+      setContracts(await getAllPages(csrAPI.workOrders.getAll, projectId ? { project: projectId } : {}));
     } catch (e) {
       notify(e.message || 'Failed to load grant contracts.', 'error');
     } finally {
