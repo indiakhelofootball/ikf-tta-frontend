@@ -125,9 +125,7 @@ export const funderSource = {
 // date and the stored status.
 function DeliverableRow({ d, detailed }) {
   const percent = deliverablePercent(d);
-  const target = Number(d.targetCount) || 0;
   const done = Number(d.completedCount) || 0;
-  const exceeded = target > 0 && done > target;
   const due = detailed ? formatDate(d.dueDate) : '';
   return (
     <li className="crow crow-wrap">
@@ -146,7 +144,6 @@ function DeliverableRow({ d, detailed }) {
         ) : !(detailed && notDelivered(d)) && (
           <div className="crow-s">{notDelivered(d) ? NOT_DELIVERED : NO_RESULT}</div>
         )}
-        {exceeded && <div className="cnote">Target exceeded</div>}
         {detailed && d.status && (
           <span className={`cpill${d.status === 'Completed' ? ' ok' : ''}`}>{d.status}</span>
         )}
@@ -172,8 +169,7 @@ function DeliverableRow({ d, detailed }) {
 // line, never a total.
 const deliveryNote = (done, target, percent) => {
   if (target <= 0) return '';
-  if (done > target) return 'Target exceeded';
-  if (done === target) return 'Target met';
+  if (done >= target) return 'Target met';
   if (done === 0) return 'Not started';
   return `${percent}% of target`;
 };
@@ -1467,7 +1463,7 @@ export default function ClientPortalPage({ source = funderSource, preview = null
         </dl>
 
         {lines.length > 0 && (project?.agreedBudget || []).length > 0 && (
-          <h3 className="csub">Spent, by head</h3>
+          <h3 className="csub">Spent</h3>
         )}
         {lines.length === 0 ? (
           <p className="clede cdesc">No expenses are recorded against this grant.</p>

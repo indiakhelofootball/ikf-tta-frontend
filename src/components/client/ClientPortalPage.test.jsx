@@ -244,7 +244,9 @@ test('the grant period is one human range, not two ISO dates', async () => {
   expect(screen.queryByText(/2026-04-01/)).not.toBeInTheDocument();
 });
 
-test('delivery above target reads "318 of 300" with a note, and the bar stops at full', async () => {
+// Owner, 14 Nov 2026: staff cannot enter more than the target, so the funder
+// never sees a state the staff form refuses. Above target reads as met.
+test('delivery above target reads "318", Target met, never exceeded, and the bar stops at full', async () => {
   clientAPI.deliverables.mockResolvedValue([
     { id: 9, title: 'Players screened', targetCount: 300, completedCount: 318, status: 'In Progress' },
   ]);
@@ -253,7 +255,8 @@ test('delivery above target reads "318 of 300" with a note, and the bar stops at
   expect(await screen.findByText('318')).toBeInTheDocument();
   expect(screen.getByText('Players screened')).toBeInTheDocument();
   expect(screen.getByText('Target 300')).toBeInTheDocument();
-  expect(screen.getByText('Target exceeded')).toBeInTheDocument();
+  expect(screen.getByText('Target met')).toBeInTheDocument();
+  expect(screen.queryByText(/exceeded/i)).not.toBeInTheDocument();
   expect(screen.getByRole('progressbar', { name: /Players screened/ }))
     .toHaveAttribute('aria-valuenow', '100');
 });
@@ -435,6 +438,20 @@ test('when every spend line has the same date it is shown once above the list, n
   expect(await screen.findByText('Spent up to 31 Mar 2026')).toBeInTheDocument();
   expect(screen.getByText('Venue hire')).toBeInTheDocument();
   expect(screen.queryByText('31 Mar 2026')).not.toBeInTheDocument();
+});
+
+test('the certificate spend heading reads "Spent": expenses carry no budget head', async () => {
+  clientAPI.project.mockResolvedValue([{ ...PROJECT, agreedBudget: [{ head: 'Coaching', amount: '5000' }] }]);
+  clientAPI.certificate.mockResolvedValue({
+    available: true, certificateVersion: 1, frozenAt: '2026-10-08T07:05:25Z',
+    periodStart: '2026-04-01', periodEnd: '2027-03-31',
+    lineItems: [{ note: 'Coaching kits', amount: '1000.00', date: '2026-06-15' }],
+  });
+  window.history.replaceState(null, '', '#certificate');
+  render(<ClientPortalPage />);
+
+  expect(await screen.findByRole('heading', { name: 'Spent' })).toBeInTheDocument();
+  expect(screen.queryByText(/by head/i)).not.toBeInTheDocument();
 });
 
 test('when spend lines have different dates each line keeps its own and no shared date is shown', async () => {
