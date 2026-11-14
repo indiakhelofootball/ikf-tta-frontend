@@ -102,7 +102,7 @@ export default function CSRProjectFormPage() {
           fundsReceivedOn: data.fundsReceivedOn || '',
           agreedBudget: (data.agreedBudget || []).map((r) => ({ head: r.head || '', amount: r.amount ?? '' })),
           status: data.status || 'Active',
-          financialYear: data.financialYear || '',
+          financialYear: (data.financialYear || '').replace(/^FY\s*/i, ''),
           description: data.description || '',
           projectRefId: data.projectRefId ?? '',
           season: data.season || '',
@@ -524,7 +524,7 @@ export default function CSRProjectFormPage() {
                 ) : null}
               </div>
             </div>
-            <div className="pform-row pform-row3 pform-row--next">
+            <div className="pform-row pform-row3">
               <div className="pform-field">
                 <label htmlFor="csr-fy">Financial year</label>
                 <select

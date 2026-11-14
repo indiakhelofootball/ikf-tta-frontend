@@ -115,7 +115,9 @@ class APIService {
         }
         const retryData = await retry.json();
         if (!retry.ok) {
-          throw new Error(retryData.message || retryData.detail || 'Request failed');
+          const retryErr = new Error(retryData.message || retryData.detail || 'Request failed');
+          retryErr.response = { status: retry.status, data: retryData };
+          throw retryErr;
         }
         return retryData;
       } else {

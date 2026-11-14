@@ -40,3 +40,17 @@ test('a refused real run hands back the row errors', async () => {
   expect(err.response.status).toBe(400);
   expect(err.response.data).toEqual(body);
 });
+
+test('a refusal on the retry after a token refresh still hands back the row errors', async () => {
+  localStorage.setItem('tta_refresh', 'ref');
+  const body = { dryRun: false, invalid: 1, rows: [{ row: 1, result: 'error', errors: { dob: 'Bad date.' } }] };
+  global.fetch.mockImplementation((url, init = {}) => {
+    if (/\/auth\/token\/refresh\/$/.test(url)) return Promise.resolve(json(200, { access: 'new', refresh: 'ref2' }));
+    if (init.headers?.Authorization === 'Bearer new') return Promise.resolve(json(400, body));
+    return Promise.resolve(json(401, { detail: 'Token expired' }));
+  });
+
+  const err = await csrAPI.athletesBulk(42, ROWS, false).catch((e) => e);
+
+  expect(err.response).toEqual({ status: 400, data: body });
+});

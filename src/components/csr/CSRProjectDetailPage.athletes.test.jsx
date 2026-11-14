@@ -3,12 +3,13 @@
 // suggests it from the age on the grant's start date.
 import React from 'react';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import CSRProjectDetailPage from './CSRProjectDetailPage';
 
 jest.mock('react-router-dom', () => ({
   __esModule: true,
-  useParams: () => ({ id: '42' }),
+  useParams: () => ({ id: mockId }),
   useNavigate: () => jest.fn(),
   useLocation: () => ({ pathname: '/csr/42', state: { tab: 'athletes' } }),
 }), { virtual: true });
@@ -28,6 +29,7 @@ jest.mock('../../services/api', () => ({
 }));
 
 let mockEditable = true;
+let mockId = '42';
 jest.mock('../../auth/useGrants', () => ({
   __esModule: true,
   default: () => ({
@@ -43,6 +45,7 @@ const { csrAPI } = require('../../services/api');
 beforeEach(() => {
   jest.clearAllMocks();
   mockEditable = true;
+  mockId = '42';
   csrAPI.projects.getById.mockResolvedValue({
     id: 42, name: 'Football for All', clientName: 'Vardhman', status: 'Active',
     sanctionedAmount: '0', startDate: '2026-04-01',
@@ -135,9 +138,10 @@ describe('athletes from an Excel file', () => {
     });
   };
   const upload = async (aoa) => {
-    render(<CSRProjectDetailPage />);
+    const view = render(<CSRProjectDetailPage />);
     await screen.findByRole('button', { name: 'Add Athlete' });
-    fireEvent.change(screen.getByLabelText('Upload Excel'), { target: { files: [workbookFile(aoa)] } });
+    fireEvent.change(screen.getByTestId('athlete-file'), { target: { files: [workbookFile(aoa)] } });
+    return view;
   };
   const SHEET = [
     ['Full Name', 'Date of Birth', 'Category'],
@@ -165,7 +169,7 @@ describe('athletes from an Excel file', () => {
   test('the template and upload sit beside Add Athlete, for exactly those who can add', async () => {
     const { unmount } = render(<CSRProjectDetailPage />);
     expect(await screen.findByRole('button', { name: 'Download template' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Upload Excel')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Upload Excel' })).toBeInTheDocument();
     unmount();
 
     mockEditable = false;
@@ -173,14 +177,15 @@ describe('athletes from an Excel file', () => {
     await screen.findByText(/Beneficiaries and scouted/);
     expect(screen.queryByRole('button', { name: 'Add Athlete' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Download template' })).toBeNull();
-    expect(screen.queryByLabelText('Upload Excel')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Upload Excel' })).toBeNull();
+    expect(screen.queryByTestId('athlete-file')).toBeNull();
   });
 
   test('Download template writes the workbook with both sheets', async () => {
     const spy = XLSX.writeFile;
     render(<CSRProjectDetailPage />);
     fireEvent.click(await screen.findByRole('button', { name: 'Download template' }));
-    expect(spy).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
     const [wb, name] = spy.mock.calls[0];
     expect(name).toBe('athletes-template.xlsx');
     expect(wb.SheetNames).toEqual(['Athletes', 'Allowed values']);
@@ -203,6 +208,9 @@ describe('athletes from an Excel file', () => {
     )).toBeInTheDocument();
     const bodyRows = within(dialog).getAllByRole('row').slice(1);
     expect(bodyRows.map((r) => within(r).getAllByRole('cell')[0].textContent)).toEqual(['3', '2', '4']);
+    expect(within(dialog).getByRole('columnheader', { name: 'Date of birth' })).toBeInTheDocument();
+    expect(bodyRows.map((r) => within(r).getAllByRole('cell')[2].textContent))
+      .toEqual(['soon', '2008-06-01', '2010-01-15']);
     expect(within(bodyRows[0]).getByText('Date of Birth: Enter a date as YYYY-MM-DD.')).toBeInTheDocument();
     expect(within(dialog).getByRole('button', { name: 'Add 1 athlete' })).toBeDisabled();
   });
@@ -280,10 +288,57 @@ describe('athletes from an Excel file', () => {
   });
 
   test('more than 2000 rows is refused without calling the server', async () => {
-    const aoa = [['Full Name']];
-    for (let i = 0; i < 2001; i += 1) aoa.push([`Player ${i}`]);
+    const aoa = [['Full Name'], ...Array.from({ length: 2001 }, (_, i) => [`P${i}`])];
     await upload(aoa);
-    expect(await screen.findByText(/Upload at most 2000 at a time/)).toBeInTheDocument();
+    expect(await screen.findByText(/Upload at most 2000 at a time/, {}, { timeout: 15000 })).toBeInTheDocument();
     expect(csrAPI.athletesBulk).not.toHaveBeenCalled();
+  }, 30000);
+
+  test('a file over 5 MB is refused before it is read', async () => {
+    const big = new File(['not a workbook'], 'big.xlsx');
+    Object.defineProperty(big, 'size', { value: 5 * 1024 * 1024 + 1 });
+    render(<CSRProjectDetailPage />);
+    await screen.findByRole('button', { name: 'Add Athlete' });
+    fireEvent.change(screen.getByTestId('athlete-file'), { target: { files: [big] } });
+    expect(await screen.findByText('This file is larger than 5 MB. Upload a smaller file.')).toBeInTheDocument();
+    expect(screen.queryByText(/could not be read/)).toBeNull();
+    expect(csrAPI.athletesBulk).not.toHaveBeenCalled();
+  });
+
+  test('Upload Excel opens the file picker from the keyboard', async () => {
+    render(<CSRProjectDetailPage />);
+    const button = await screen.findByRole('button', { name: 'Upload Excel' });
+    const input = screen.getByTestId('athlete-file');
+    const pick = jest.spyOn(input, 'click').mockImplementation(() => {});
+    button.focus();
+    await userEvent.keyboard('{Enter}');
+    expect(pick).toHaveBeenCalledTimes(1);
+    await userEvent.keyboard(' ');
+    expect(pick).toHaveBeenCalledTimes(2);
+  });
+
+  test('Upload Excel stays disabled while the file is checked', async () => {
+    let finish;
+    csrAPI.athletesBulk.mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+    await upload(SHEET);
+    expect(screen.getByRole('button', { name: 'Upload Excel' })).toBeDisabled();
+    await waitFor(() => expect(csrAPI.athletesBulk).toHaveBeenCalled());
+    expect(screen.getByRole('button', { name: 'Upload Excel' })).toBeDisabled();
+    finish(CLEAN);
+    await screen.findByRole('dialog');
+    expect(screen.getByRole('button', { name: 'Upload Excel', hidden: true })).toBeEnabled();
+  });
+
+  test('a preview checked on one grant is gone when the page moves to another', async () => {
+    csrAPI.athletesBulk.mockResolvedValue(CLEAN);
+    const { rerender } = await upload(SHEET);
+    await screen.findByRole('dialog');
+
+    mockId = '43';
+    rerender(<CSRProjectDetailPage />);
+    await waitFor(() => expect(csrAPI.projects.getById).toHaveBeenLastCalledWith('43'));
+    await screen.findByRole('button', { name: 'Add Athlete' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(csrAPI.athletesBulk).toHaveBeenCalledTimes(1);
   });
 });

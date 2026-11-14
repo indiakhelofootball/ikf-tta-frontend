@@ -35,12 +35,21 @@ test('headers map ignoring case, spaces and punctuation', () => {
 
 test('dates become YYYY-MM-DD; an unreadable one is sent as typed', () => {
   expect(toIsoDate(40000)).toBe('2009-07-06');
+  expect(toIsoDate(7306)).toBe('1920-01-01');
   expect(toIsoDate('15/08/2010')).toBe('2010-08-15');
   expect(toIsoDate('15-08-2010')).toBe('2010-08-15');
   expect(toIsoDate('2010-8-5')).toBe('2010-08-05');
   expect(toIsoDate('31/02/2010')).toBe('31/02/2010');
   expect(toIsoDate('next week')).toBe('next week');
   expect(toIsoDate('')).toBe('');
+});
+
+test('a bare year or a small number in the date column is sent as typed, not as a date', () => {
+  expect(toIsoDate(2010)).toBe('2010');
+  expect(toIsoDate(1900)).toBe('1900');
+  expect(toIsoDate(2100)).toBe('2100');
+  expect(toIsoDate(7305)).toBe('7305');
+  expect(toIsoDate(15)).toBe('15');
 });
 
 test('rows carry every field, skip blank lines, and keep their spreadsheet row number', () => {
@@ -70,8 +79,8 @@ test('more than 2000 rows is refused', () => {
   expect(rowsFromSheet(aoa.slice(0, 2001)).rows).toHaveLength(2000);
 });
 
-test('the template has the Athletes headers and an Allowed values sheet', () => {
-  const wb = buildTemplateWorkbook();
+test('the template has the Athletes headers and an Allowed values sheet', async () => {
+  const wb = await buildTemplateWorkbook();
   expect(wb.SheetNames).toEqual(['Athletes', 'Allowed values']);
   const head = XLSX.utils.sheet_to_json(wb.Sheets.Athletes, { header: 1 })[0];
   expect(head).toEqual([
@@ -87,10 +96,10 @@ test('the template has the Athletes headers and an Allowed values sheet', () => 
   expect(allowed.flat().join(' ')).toMatch(/Date of Birth as YYYY-MM-DD\. Leave Category blank/);
 });
 
-test('a written workbook reads back through the same path the upload uses', () => {
-  const wb = buildTemplateWorkbook();
+test('a written workbook reads back through the same path the upload uses', async () => {
+  const wb = await buildTemplateWorkbook();
   XLSX.utils.sheet_add_aoa(wb.Sheets.Athletes, [['Ravi Kumar', '2010-01-15']], { origin: 'A2' });
-  const out = rowsFromWorkbook(XLSX.write(wb, { type: 'array', bookType: 'xlsx' }));
+  const out = await rowsFromWorkbook(XLSX.write(wb, { type: 'array', bookType: 'xlsx' }));
   expect(out.rows).toHaveLength(1);
   expect(out.rows[0]).toMatchObject({ fullName: 'Ravi Kumar', dob: '2010-01-15' });
   expect(out.sheetRows).toEqual([2]);

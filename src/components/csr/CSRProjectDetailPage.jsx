@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box, Container, Typography, Button, Stack, Tabs, Tab, Snackbar, Alert,
@@ -30,7 +30,7 @@ import useConfigVersion from '../../hooks/useConfigVersion';
 import { GRANT_TABS } from './grantTabs';
 import {
   ATHLETE_CATEGORIES, categoryFromDob, downloadTemplate, FIELD_LABELS,
-  readFileAsArrayBuffer, rowsFromWorkbook,
+  MAX_IMPORT_BYTES, readFileAsArrayBuffer, rowsFromWorkbook,
 } from './athleteImport';
 
 // The record lists on this page are the module's coloured table (.twrap /
@@ -310,10 +310,20 @@ export default function CSRProjectDetailPage() {
   });
   const [athleteSaving, setAthleteSaving] = useState(false);
   const [athleteError, setAthleteError] = useState('');
-  // { rows, sheetRows, result, error, busy } while a spreadsheet is being checked.
+  // { projectId, rows, sheetRows, result, error, busy } while a spreadsheet is being checked.
   const [athleteImport, setAthleteImport] = useState(null);
   const [importError, setImportError] = useState('');
   const [importChecking, setImportChecking] = useState(false);
+  const athleteFileRef = useRef(null);
+  // A preview belongs to the grant it was checked against; it never follows the
+  // page to another grant, where Add would save it to the wrong one.
+  const importGrantRef = useRef(id);
+  useEffect(() => {
+    importGrantRef.current = id;
+    setAthleteImport(null);
+    setImportError('');
+    setImportChecking(false);
+  }, [id]);
   const [listFailed, setListFailed] = useState({ activities: false, reports: false, contacts: false, athletes: false });
   // A row opened from the cross-grant Activities/Reports log (CSRActivitiesPage,
   // CSRReportsPage) arrives with the tab it belongs to in navigation state, so
@@ -564,33 +574,49 @@ export default function CSRProjectDetailPage() {
     e.target.value = '';
     if (!file) return;
     setImportError('');
-    let parsed;
-    try {
-      parsed = rowsFromWorkbook(await readFileAsArrayBuffer(file));
-    } catch (err) {
-      setImportError(err?.message || 'The file could not be read.');
+    if (file.size > MAX_IMPORT_BYTES) {
+      setImportError('This file is larger than 5 MB. Upload a smaller file.');
       return;
     }
-    if (parsed.error) {
-      setImportError(parsed.error);
-      return;
-    }
+    const projectId = id;
     setImportChecking(true);
     try {
-      const result = await csrAPI.athletesBulk(id, parsed.rows, true);
-      setAthleteImport({ rows: parsed.rows, sheetRows: parsed.sheetRows, result, error: '', busy: false });
+      const parsed = await rowsFromWorkbook(await readFileAsArrayBuffer(file));
+      if (importGrantRef.current !== projectId) return;
+      if (parsed.error) {
+        setImportError(parsed.error);
+        return;
+      }
+      const result = await csrAPI.athletesBulk(projectId, parsed.rows, true);
+      if (importGrantRef.current !== projectId) return;
+      setAthleteImport({
+        projectId, rows: parsed.rows, sheetRows: parsed.sheetRows, result, error: '', busy: false,
+      });
     } catch (err) {
+      if (importGrantRef.current !== projectId) return;
       setImportError(err?.message || 'The file could not be checked. Please try again.');
     } finally {
-      setImportChecking(false);
+      if (importGrantRef.current === projectId) setImportChecking(false);
+    }
+  };
+
+  const onDownloadTemplate = async () => {
+    try {
+      await downloadTemplate();
+    } catch (err) {
+      setImportError(err?.message || 'The template could not be made. Please try again.');
     }
   };
 
   const addImportedAthletes = async () => {
-    const { rows } = athleteImport;
+    const { rows, projectId } = athleteImport;
+    if (projectId !== id) {
+      setAthleteImport(null);
+      return;
+    }
     setAthleteImport((s) => ({ ...s, busy: true, error: '' }));
     try {
-      const result = await csrAPI.athletesBulk(id, rows, false);
+      const result = await csrAPI.athletesBulk(projectId, rows, false);
       setAthleteImport(null);
       const added = result?.created ?? result?.valid ?? 0;
       notify(`Added ${plural(added, 'athlete', 'athletes')}. Skipped ${result?.duplicates ?? 0} already listed.`);
@@ -1333,13 +1359,20 @@ export default function CSRProjectDetailPage() {
             </Typography>
             {editable && (
               <div className="athimp-actions">
-                <Button size="small" variant="outlined" onClick={downloadTemplate}>
+                <Button size="small" variant="outlined" onClick={onDownloadTemplate}>
                   Download template
                 </Button>
-                <Button size="small" variant="outlined" component="label" disabled={importChecking}>
+                <Button
+                  size="small" variant="outlined" disabled={importChecking}
+                  aria-label="Upload Excel"
+                  onClick={() => athleteFileRef.current?.click()}
+                >
                   {importChecking ? 'Checking\u2026' : 'Upload Excel'}
-                  <input hidden type="file" accept=".xlsx,.xls" onChange={onAthleteFile} />
                 </Button>
+                <input
+                  ref={athleteFileRef} className="athimp-file" type="file" accept=".xlsx,.xls"
+                  tabIndex={-1} aria-hidden="true" data-testid="athlete-file" onChange={onAthleteFile}
+                />
                 <Button
                   size="small"
                   variant="contained"
@@ -1607,7 +1640,7 @@ export default function CSRProjectDetailPage() {
         aria-labelledby="athimp-title"
       >
         {athleteImport && (() => {
-          const { result, sheetRows, error, busy } = athleteImport;
+          const { result, rows: sent, sheetRows, error, busy } = athleteImport;
           const rows = [...(result?.rows || [])].sort((a, b) => (
             (IMPORT_RESULT_ORDER[a.result] ?? 3) - (IMPORT_RESULT_ORDER[b.result] ?? 3) || a.row - b.row
           ));
@@ -1627,6 +1660,7 @@ export default function CSRProjectDetailPage() {
                       <tr>
                         <th scope="col">Row</th>
                         <th scope="col">Name</th>
+                        <th scope="col">Date of birth</th>
                         <th scope="col">Category</th>
                         <th scope="col">Result</th>
                         <th scope="col">Problems</th>
@@ -1637,6 +1671,7 @@ export default function CSRProjectDetailPage() {
                         <tr key={r.row} className={`athimp-${r.result}`}>
                           <td>{sheetRows[r.row - 1] ?? r.row}</td>
                           <td>{r.fullName || '\u2014'}</td>
+                          <td>{sent[r.row - 1]?.dob || '\u2014'}</td>
                           <td>{r.category || '\u2014'}</td>
                           <td>{IMPORT_RESULT_LABELS[r.result] || r.result}</td>
                           <td>

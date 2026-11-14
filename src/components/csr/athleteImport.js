@@ -1,4 +1,5 @@
-import * as XLSX from 'xlsx';
+// Loaded on use, so the spreadsheet library stays out of the main staff bundle.
+const loadXlsx = () => import('xlsx');
 
 export const ATHLETE_CATEGORIES = ['U11', 'U13', 'U15', 'U17', 'U19', 'U21', 'Senior'];
 // CSRAthlete.GENDER_CHOICES and STATUS_CHOICES (backend/csr/models.py).
@@ -10,6 +11,10 @@ const STATUS_LABELS = {
 };
 
 export const MAX_IMPORT_ROWS = 2000;
+export const MAX_IMPORT_BYTES = 5 * 1024 * 1024;
+// 1 Jan 1920 as an Excel day number. A smaller number in the date column is a
+// bare year or a typo, not a date, and is sent as typed for the server to refuse.
+const FIRST_DATE_SERIAL = 7306;
 
 // An athlete's category is fixed by their age when the grant started, not by
 // today's date, or every player would move up a band each birthday after the
@@ -91,7 +96,7 @@ export const toIsoDate = (value) => {
   if (value instanceof Date) {
     return Number.isNaN(value.getTime()) ? '' : `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`;
   }
-  if (typeof value === 'number') return Number.isFinite(value) && value > 0 ? fromSerial(value) : String(value);
+  if (typeof value === 'number') return Number.isFinite(value) && value >= FIRST_DATE_SERIAL ? fromSerial(value) : String(value);
   const text = String(value).trim();
   if (!text) return '';
   let m = /^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/.exec(text);
@@ -144,7 +149,8 @@ export const rowsFromSheet = (aoa, firstRow = 1) => {
   return { rows, sheetRows };
 };
 
-export const rowsFromWorkbook = (data) => {
+export const rowsFromWorkbook = async (data) => {
+  const XLSX = await loadXlsx();
   let wb;
   try {
     wb = XLSX.read(data, { type: 'array' });
@@ -159,7 +165,8 @@ export const rowsFromWorkbook = (data) => {
   return rowsFromSheet(aoa, start);
 };
 
-export const buildTemplateWorkbook = () => {
+export const buildTemplateWorkbook = async () => {
+  const XLSX = await loadXlsx();
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([TEMPLATE_HEADERS]), 'Athletes');
   const longest = Math.max(ATHLETE_GENDERS.length, ATHLETE_CATEGORIES.length, ATHLETE_STATUSES.length);
@@ -173,8 +180,9 @@ export const buildTemplateWorkbook = () => {
   return wb;
 };
 
-export const downloadTemplate = () => {
-  XLSX.writeFile(buildTemplateWorkbook(), 'athletes-template.xlsx');
+export const downloadTemplate = async () => {
+  const XLSX = await loadXlsx();
+  XLSX.writeFile(await buildTemplateWorkbook(), 'athletes-template.xlsx');
 };
 
 export const readFileAsArrayBuffer = (file) => new Promise((resolve, reject) => {

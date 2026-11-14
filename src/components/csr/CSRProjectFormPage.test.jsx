@@ -446,6 +446,21 @@ describe('financial year', () => {
     expect(csrAPI.projects.update.mock.calls[0][1].financialYear).toBe('');
   });
 
+  test('a stored year written "FY 2025-26" loads as the plain year, with no doubled FY', async () => {
+    mockParams = { id: '11' };
+    csrAPI.projects.getById.mockResolvedValue({ ...GRANT, financialYear: 'FY 2025-26' });
+    csrAPI.projects.update.mockResolvedValue({});
+    render(<CSRProjectFormPage />);
+
+    await screen.findByDisplayValue('Tata Trusts');
+    expect(screen.getByLabelText(FY)).toHaveValue('2025-26');
+    const labels = within(screen.getByLabelText(FY)).getAllByRole('option').map((o) => o.textContent);
+    expect(labels.filter((l) => l.includes('2025-26'))).toEqual(['FY 2025-26']);
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+    await waitFor(() => expect(csrAPI.projects.update).toHaveBeenCalled());
+    expect(csrAPI.projects.update.mock.calls[0][1].financialYear).toBe('2025-26');
+  });
+
   test('an edit keeps a stored year outside the offered window', async () => {
     mockParams = { id: '11' };
     csrAPI.projects.getById.mockResolvedValue({ ...GRANT, financialYear: '2019-20' });
