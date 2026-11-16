@@ -456,7 +456,7 @@ export default function CSRActivityFormPage() {
             />
             <p id="a-type-help" className={`pform-help${errors.activityTypeId ? ' bad' : ''}`}>
               {noTypes
-                ? 'No activity types defined yet — add them in the catalog first.'
+                ? 'No activity types yet. They are added in Admin > CSR > Activity Types, by an admin.'
                 : (errors.activityTypeId || ' ')}
             </p>
           </div>
@@ -474,7 +474,7 @@ export default function CSRActivityFormPage() {
 
               `date` is no longer collected. It stays on the model for rows that
               already carry one, and every reader already falls through to
-              startDate — see sortKey and whenLabel in CSRActivitiesPage. */}
+              startDate — the project Activities tab sorts by it. */}
           <p className="pform-sub">Leave End blank for a single-day activity.</p>
 
           <div className="pform-row pform-row3">
@@ -580,7 +580,7 @@ export default function CSRActivityFormPage() {
                 />
                 <p id="a-workshop-help" className="pform-help">
                   {workshops.length === 0
-                    ? 'No workshops yet. They are added in Admin > CSR > Workshop Names.'
+                    ? 'No workshops yet. They are added in Admin > CSR > Workshop Names, by an admin.'
                     : 'For a workshop activity. Leave blank otherwise.'}
                 </p>
               </div>
@@ -601,7 +601,7 @@ export default function CSRActivityFormPage() {
                 />
                 <p id="a-programme-help" className="pform-help">
                   {programmes.length === 0
-                    ? 'No training programmes yet. They are added in Admin > CSR > Training Programmes.'
+                    ? 'No training programmes yet. They are added in Admin > CSR > Training Programmes, by an admin.'
                     : 'For a multi-month training. Pair it with the start and end dates above.'}
                 </p>
               </div>

@@ -33,7 +33,7 @@ import VendorAuditReport from "./components/reports/VendorAuditReport";
 import TrialSpendReport from "./components/reports/TrialSpendReport";
 import TrialsReport from "./components/reports/TrialsReport";
 import CourierManagementPage from "./components/courier/CourierManagementPage";
-import { CSRLogin, CSRDashboard, CSRProjectManagementPage, CSRProjectFormPage, CSRActivityFormPage, CSRReportFormPage, CSRContactFormPage, CSRExpenseTagFormPage, CSRProjectDetailPage, CSRActivitiesPage, CSRReportsPage, CSRUtilisationPage, CSRActivityTypesPage, CSRPartnersPage, CSRPartnerFormPage, CSRPartnerDetailPage, CSRClientsPage, CSRBrandingPage, CSRAccountPage, CSRNoEditAccess } from "./components/csr";
+import { CSRLogin, CSRDashboard, CSRProjectManagementPage, CSRProjectFormPage, CSRActivityFormPage, CSRReportFormPage, CSRContactFormPage, CSRExpenseTagFormPage, CSRProjectDetailPage, CSRReportsPage, CSRUtilisationPage, CSRPartnersPage, CSRPartnerFormPage, CSRPartnerDetailPage, CSRClientsPage, CSRBrandingPage, CSRAccountPage, CSRNoEditAccess } from "./components/csr";
 import ClientPortalPage from "./components/client/ClientPortalPage";
 import FunderPreviewPage from "./components/client/FunderPreviewPage";
 import ClientLogin from "./components/client/ClientLogin";
@@ -293,11 +293,9 @@ function App() {
 
               Static /csr/... routes MUST stay above /csr/:id or the dynamic
               route swallows them. */}
-          <Route path="/csr/activities" element={
-            <GrantedRoute module="csr">
-              <CSRActivitiesPage />
-            </GrantedRoute>
-          } />
+          {/* D-037: activities are entered and listed inside each project. The
+              old cross-grant list redirects so /csr/:id never sees "activities". */}
+          <Route path="/csr/activities" element={<Navigate to="/csr" replace />} />
           {/* D-021: CSR partners. /new is listed before /:id so the literal
               segment is never read as an id. */}
           <Route path="/csr/partners" element={
@@ -334,13 +332,8 @@ function App() {
               <CSRUtilisationPage />
             </GrantedRoute>
           } />
-          {/* D-020: anyone in CSR adds an activity type; delete stays with admins
-              (the page and the server both enforce that). */}
-          <Route path="/csr/activity-types" element={
-            <GrantedRoute module="csr">
-              <CSRActivityTypesPage />
-            </GrantedRoute>
-          } />
+          {/* D-037: activity types are managed in TTA Admin > CSR, by admins only. */}
+          <Route path="/csr/activity-types" element={<Navigate to="/csr" replace />} />
           {/* Funder onboarding — admin-only, not csr-grant gated. Static path
               must precede the dynamic /csr/:id route. */}
           <Route path="/csr/clients" element={

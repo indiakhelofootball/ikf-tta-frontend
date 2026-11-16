@@ -1,7 +1,6 @@
 // src/components/admin/AdminPage.jsx
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   Box, Container, Typography, Paper, Stack, TextField,
   Button, IconButton, Divider, Tooltip, Alert,
@@ -20,7 +19,6 @@ import {
   AccountBalance as BankingIcon,
   LocalShipping as CourierIcon,
   VolunteerActivism as CSRIcon,
-  ArrowForward as GoIcon,
 } from '@mui/icons-material';
 import {
   getProjectNames,
@@ -41,7 +39,7 @@ import {
   editConfigOption,
   deleteConfigOption,
 } from '../../utils/adminStorage';
-import { configAPI } from '../../services/api';
+import { configAPI, csrAPI } from '../../services/api';
 
 const fieldSx = {
   '& .MuiOutlinedInput-root': { borderRadius: '12px', fontSize: '0.95rem' },
@@ -571,7 +569,6 @@ function SectionGroup({ icon, label, color, defaultOpen, children }) {
 }
 
 export default function AdminPage() {
-  const navigate = useNavigate();
   const [projectNames, setProjectNames] = useState([]);
   const [seasons, setSeasons] = useState([]);
   const [vendorTypes, setVendorTypes] = useState([]);
@@ -585,6 +582,7 @@ export default function AdminPage() {
   const [trainingProgrammes, setTrainingProgrammes] = useState([]);
   const [utilisationTypes, setUtilisationTypes] = useState([]);
   const [reportTypes, setReportTypes] = useState([]);
+  const [activityTypes, setActivityTypes] = useState([]);
   const [saveError, setSaveError] = useState('');
   const [renameInfo, setRenameInfo] = useState('');
 
@@ -699,7 +697,34 @@ export default function AdminPage() {
     }
   };
 
+  // Activity types are a CSR table, not a config category, so they load and save
+  // through the CSR API. D-037: they are added and edited here only.
+  const loadActivityTypes = () => Promise.resolve()
+    .then(() => csrAPI.activityTypes.getAll())
+    .then((data) => {
+      const rows = Array.isArray(data) ? data : (data?.results || []);
+      setActivityTypes(rows.map((t) => ({ id: t.id, name: t.name })));
+    });
+
+  const handleActivityTypeSave = (action, optimistic) => {
+    setActivityTypes(optimistic);
+    setSaveError('');
+    const { item } = action;
+    const write = {
+      add: () => csrAPI.activityTypes.create({ name: item.name }),
+      edit: () => csrAPI.activityTypes.update(item.id, { name: item.name }),
+      delete: () => csrAPI.activityTypes.delete(item.id),
+    }[action.type];
+    write()
+      .catch((err) => {
+        const detail = err?.response?.data?.detail || err?.message;
+        setSaveError(detail || 'Failed to save the activity type. Try again.');
+      })
+      .finally(() => { loadActivityTypes().catch(() => {}); });
+  };
+
   useEffect(() => {
+    loadActivityTypes().catch(() => {});
     // Load defaults immediately, then fetch from API
     setProjectNames(getProjectNames());
     setSeasons(getSeasons());
@@ -890,43 +915,12 @@ export default function AdminPage() {
               onSave={handleSave('reportTypes', setReportTypes, getReportTypes)}
               onRename={handleCatalogRename('report_type', 'report type', setReportTypes, getReportTypes, 'CSR report')}
             />
-            <Paper elevation={0} sx={{ border: '1.5px solid #e8e8e8', borderRadius: '20px', overflow: 'hidden' }}>
-              <Box sx={{ px: 3.5, py: 2.5, bgcolor: '#fafafa', borderBottom: '1px solid #e8e8e8' }}>
-                <Typography sx={{ fontSize: '1rem', fontWeight: 700, color: '#1d1d1f' }}>Activity Types</Typography>
-                <Typography sx={{ fontSize: '0.82rem', color: '#6e6e73', mt: 0.25 }}>
-                  The catalog of CSR activity types (trials, workshops, trainings). CSR staff pick
-                  from these when adding a project activity; only admins maintain the list.
-                </Typography>
-              </Box>
-              <Box sx={{ px: 3.5, py: 3 }}>
-                <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
-                  <Button
-                    variant="contained"
-                    endIcon={<GoIcon sx={{ fontSize: '1.1rem' }} />}
-                    onClick={() => navigate('/csr/activity-types')}
-                    sx={{
-                      bgcolor: '#ec4899', color: '#fff', borderRadius: '12px',
-                      textTransform: 'none', fontWeight: 700, boxShadow: 'none',
-                      '&:hover': { bgcolor: '#db2777', boxShadow: 'none' },
-                    }}
-                  >
-                    Manage Activity Types
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    endIcon={<GoIcon sx={{ fontSize: '1.1rem' }} />}
-                    onClick={() => navigate('/csr/branding')}
-                    sx={{
-                      color: '#ec4899', borderColor: '#ec4899', borderRadius: '12px',
-                      textTransform: 'none', fontWeight: 700,
-                      '&:hover': { borderColor: '#db2777', bgcolor: '#fdf2f8' },
-                    }}
-                  >
-                    Client Portal Branding
-                  </Button>
-                </Stack>
-              </Box>
-            </Paper>
+            <OptionPanel
+              title="Activity Types"
+              subtitle="The kinds of CSR activity (e.g. Trial, Workshop, Training Programme). Picked when adding an activity inside a CSR project. A name containing trial, workshop or training shows that kind's fields on the activity form. Added and edited only here; an activity type in use cannot be deleted."
+              items={activityTypes}
+              onSave={handleActivityTypeSave}
+            />
           </SectionGroup>
         </Stack>
 

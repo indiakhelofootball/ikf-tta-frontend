@@ -8,14 +8,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import { csrAPI } from '../../services/api';
-import { addConfigOption, getPartnerCategories } from '../../utils/adminStorage';
+import { getPartnerCategories } from '../../utils/adminStorage';
 import useConfigVersion from '../../hooks/useConfigVersion';
-import useGrants from '../../auth/useGrants';
 import CSRCombobox from './CSRCombobox';
 import '../../styles/csrDesign.css';
 
-const VENDOR_HELP = 'From Admin > Vendor Names.';
-const CATEGORY_HELP = 'Managed in Admin > CSR > CSR Partner Types.';
+const VENDOR_HELP = 'Added in Admin > Vendor Names, by an admin.';
+const CATEGORY_HELP = 'Added in Admin > CSR > CSR Partner Types, by an admin.';
 const RECORD_HELP = 'Only needed if this partner is paid through TTA. Set it up under TTA Vendors (PAN required).';
 
 const fieldError = (data, key) => {
@@ -51,10 +50,6 @@ export default function CSRPartnerFormPage() {
   const cfgVersion = useConfigVersion();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const partnerCategories = useMemo(() => getPartnerCategories(), [cfgVersion]);
-  // The server writes config only for a 'config' edit grant; the same check
-  // decides who is offered the inline add.
-  const { canEdit } = useGrants();
-  const canAddConfig = canEdit('config');
 
   useEffect(() => {
     let cancelled = false;
@@ -142,33 +137,10 @@ export default function CSRPartnerFormPage() {
     setErrors((errs) => ({ ...errs, vendorNameId: '', vendorId: '' }));
   };
 
-  const addedRowId = (rows, text) => {
-    const row = (rows || []).find((r) => r.name === text);
-    if (!row) throw new Error(`"${text}" was saved but could not be read back. Reload the page.`);
-    return row.id;
-  };
-
-  const addVendorName = async (text) => {
-    const rows = await addConfigOption('vendorNames', { name: text });
-    const newId = addedRowId(rows, text);
-    const data = await csrAPI.partnerRecords.vendorOptions();
-    const fresh = Array.isArray(data) ? data : data?.results || [];
-    setVendorOptions(fresh);
-    if (!fresh.some((v) => String(v.id) === String(newId))) {
-      throw new Error(`"${text}" is in Admin > Vendor Names but cannot be picked here. It may already be a partner.`);
-    }
-    return newId;
-  };
-
-  const addPartnerCategory = async (text) => {
-    const rows = await addConfigOption('partnerCategories', { name: text });
-    return addedRowId(rows, text);
-  };
-
   const back = () => navigate(isEdit ? `/csr/partners/${id}` : '/csr/partners');
 
   const noVendors = !isEdit && vendorOptions.length === 0;
-  const blockedNoVendors = noVendors && !canAddConfig;
+  const blockedNoVendors = noVendors;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -212,13 +184,8 @@ export default function CSRPartnerFormPage() {
   else if (recordsState === 'failed') recordHelp = 'The TTA vendor records could not be loaded. Try again in a moment.';
   else if (recordOptions.length === 0) recordHelp = `No vendor record with this name in TTA yet. ${RECORD_HELP}`;
 
-  let vendorHelp = VENDOR_HELP;
-  if (blockedNoVendors) vendorHelp = `No vendor names left to pick. ${VENDOR_HELP}`;
-  else if (canAddConfig) vendorHelp = `${VENDOR_HELP} Type a new name to add it there.`;
-
-  let categoryHelp = CATEGORY_HELP;
-  if (partnerCategories.length === 0 && !canAddConfig) categoryHelp = `No partner types yet. ${CATEGORY_HELP}`;
-  else if (canAddConfig) categoryHelp = `${CATEGORY_HELP} Type a new type to add it there.`;
+  const vendorHelp = blockedNoVendors ? `No vendor names left to pick. ${VENDOR_HELP}` : VENDOR_HELP;
+  const categoryHelp = partnerCategories.length === 0 ? `No partner types yet. ${CATEGORY_HELP}` : CATEGORY_HELP;
 
   if (loading) {
     return (
@@ -279,10 +246,6 @@ export default function CSRPartnerFormPage() {
                 placeholder="Search vendor names"
                 emptyText="No vendor name matches."
                 disabled={blockedNoVendors}
-                allowAdd={canAddConfig ? {
-                  label: (text) => `Add "${text}" to Admin > Vendor Names`,
-                  onAdd: addVendorName,
-                } : undefined}
                 aria-invalid={Boolean(errors.vendorNameId)}
                 aria-describedby="p-vendor-help"
               />
@@ -321,10 +284,6 @@ export default function CSRPartnerFormPage() {
               onChange={setValue('partnerCategoryId')}
               placeholder="Search partner types"
               emptyText="No partner type matches."
-              allowAdd={canAddConfig ? {
-                label: (text) => `Add "${text}" to Admin > CSR > CSR Partner Types`,
-                onAdd: addPartnerCategory,
-              } : undefined}
               aria-invalid={Boolean(errors.partnerCategoryId)}
               aria-describedby="p-category-help"
             />

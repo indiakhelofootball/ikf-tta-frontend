@@ -50,6 +50,6 @@ test('New Project opens the new-grant form, not the list', async () => {
 test('a view-only user is not offered New Project, and keeps the other shortcuts', async () => {
   mockCanEdit = false;
   render(<CSRDashboard />);
-  expect(await screen.findByRole('button', { name: 'Activities' })).toBeInTheDocument();
+  expect(await screen.findByRole('button', { name: 'Projects' })).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'New Project' })).toBeNull();
 });

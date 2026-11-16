@@ -101,9 +101,9 @@ describe('adding a partner', () => {
   test('help names the exact Admin lists, never "ask an admin"', async () => {
     render(<CSRPartnerFormPage />);
     await screen.findByRole('combobox', { name: NAME });
-    expect(screen.getByRole('combobox', { name: NAME })).toHaveAccessibleDescription('From Admin > Vendor Names.');
+    expect(screen.getByRole('combobox', { name: NAME })).toHaveAccessibleDescription('Added in Admin > Vendor Names, by an admin.');
     expect(screen.getByRole('combobox', { name: TYPE }))
-      .toHaveAccessibleDescription('Managed in Admin > CSR > CSR Partner Types.');
+      .toHaveAccessibleDescription('Added in Admin > CSR > CSR Partner Types, by an admin.');
     expect(screen.queryByText(/ask an admin/i)).not.toBeInTheDocument();
   });
 
@@ -228,12 +228,13 @@ describe('adding a partner', () => {
   test('no vendor left to add: says why, names the Admin list, and cannot save', async () => {
     csrAPI.partnerRecords.vendorOptions.mockResolvedValue([]);
     render(<CSRPartnerFormPage />);
-    expect(await screen.findByText('No vendor names left to pick. From Admin > Vendor Names.')).toBeInTheDocument();
+    expect(await screen.findByText('No vendor names left to pick. Added in Admin > Vendor Names, by an admin.')).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: NAME })).toBeDisabled();
     expect(screen.getByRole('button', { name: /save/i })).toBeDisabled();
   });
 
-  test('without the config right, no add row is offered', async () => {
+  test.each([false, true])('D-037: no add row is offered, even with the Admin-lists right (%s)', async (right) => {
+    mockCanEditConfig = right;
     render(<CSRPartnerFormPage />);
     await screen.findByRole('combobox', { name: NAME });
     await userEvent.type(screen.getByRole('combobox', { name: NAME }), 'Star Club');
@@ -243,68 +244,6 @@ describe('adding a partner', () => {
     expect(screen.getByText('No partner type matches.')).toBeInTheDocument();
     expect(screen.queryByRole('option', { name: /^add/i })).not.toBeInTheDocument();
     expect(addConfigOption).not.toHaveBeenCalled();
-  });
-});
-
-describe('adding to the Admin lists from the form (config edit right)', () => {
-  beforeEach(() => { mockCanEditConfig = true; });
-
-  test('a new partner name goes to Admin > Vendor Names and is picked', async () => {
-    addConfigOption.mockResolvedValue([{ id: 40, name: 'Star Club' }]);
-    csrAPI.partnerRecords.vendorOptions
-      .mockResolvedValueOnce(VENDORS)
-      .mockResolvedValueOnce([...VENDORS, { id: 40, name: 'Star Club', serviceType: '' }]);
-    csrAPI.partnerRecords.create.mockResolvedValue({ id: 9 });
-    render(<CSRPartnerFormPage />);
-    await screen.findByRole('combobox', { name: NAME });
-    await userEvent.type(screen.getByRole('combobox', { name: NAME }), 'Star Club');
-    await userEvent.click(screen.getByRole('option', { name: 'Add "Star Club" to Admin > Vendor Names' }));
-
-    expect(addConfigOption).toHaveBeenCalledWith('vendorNames', { name: 'Star Club' });
-    await waitFor(() => expect(screen.getByRole('combobox', { name: NAME })).toHaveValue('Star Club'));
-    await waitFor(() => expect(csrAPI.partnerRecords.vendorRecords).toHaveBeenCalledWith(40));
-
-    await pick(TYPE, 'Life Skills');
-    await userEvent.click(screen.getByRole('button', { name: /save/i }));
-    await waitFor(() => expect(csrAPI.partnerRecords.create).toHaveBeenCalledWith({
-      vendorNameId: 40, partnerCategoryId: 7, vendorId: null,
-    }));
-  });
-
-  test('a new partner type goes to Admin > CSR > CSR Partner Types and is picked', async () => {
-    addConfigOption.mockImplementation(async () => {
-      mockCategories = [...CATEGORIES, { id: 12, name: 'Sports Science' }];
-      mockCfgVersion += 1;
-      return mockCategories;
-    });
-    csrAPI.partnerRecords.create.mockResolvedValue({ id: 9 });
-    render(<CSRPartnerFormPage />);
-    await screen.findByRole('combobox', { name: NAME });
-    expect(screen.getByRole('combobox', { name: TYPE })).toHaveAccessibleDescription(
-      'Managed in Admin > CSR > CSR Partner Types. Type a new type to add it there.',
-    );
-    await pick(NAME, 'A1 Classes · Coaching');
-    await userEvent.type(screen.getByRole('combobox', { name: TYPE }), 'Sports Science');
-    await userEvent.click(screen.getByRole('option', { name: 'Add "Sports Science" to Admin > CSR > CSR Partner Types' }));
-
-    expect(addConfigOption).toHaveBeenCalledWith('partnerCategories', { name: 'Sports Science' });
-    await waitFor(() => expect(screen.getByRole('combobox', { name: TYPE })).toHaveValue('Sports Science'));
-    await userEvent.click(screen.getByRole('button', { name: /save/i }));
-    await waitFor(() => expect(csrAPI.partnerRecords.create).toHaveBeenCalledWith({
-      vendorNameId: 31, partnerCategoryId: 12, vendorId: null,
-    }));
-  });
-
-  test('a name that cannot be picked after adding says why and stays unpicked', async () => {
-    addConfigOption.mockResolvedValue([{ id: 40, name: 'Star Club' }]);
-    render(<CSRPartnerFormPage />);
-    await screen.findByRole('combobox', { name: NAME });
-    await userEvent.type(screen.getByRole('combobox', { name: NAME }), 'Star Club');
-    await userEvent.click(screen.getByRole('option', { name: 'Add "Star Club" to Admin > Vendor Names' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      '"Star Club" is in Admin > Vendor Names but cannot be picked here. It may already be a partner.',
-    );
-    expect(csrAPI.partnerRecords.vendorRecords).not.toHaveBeenCalled();
   });
 });
 

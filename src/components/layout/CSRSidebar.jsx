@@ -16,11 +16,9 @@ import { matchRoutes, useLocation, useNavigate } from 'react-router-dom';
 import {
   VolunteerActivism as CSRIcon,
   FolderSpecial as ProjectsIcon,
-  EventNote as ActivitiesIcon,
   Description as ReportsIcon,
   ReceiptLong as UtilisationIcon,
   GroupAdd as FundersIcon,
-  Category as CatalogIcon,
   Palette as BrandingIcon,
   HandshakeOutlined as PartnersIcon,
   SwapHoriz as SwitchIcon,
@@ -56,9 +54,11 @@ const CSR_ROUTES = [
   { path: '/csr/projects' },
   { path: '/csr/projects/new' },
   { path: '/csr/projects/:id/edit' },
-  { path: '/csr/activities' },
   { path: '/csr/activities/new' },
   { path: '/csr/activities/:id/edit' },
+  // D-037: these two now redirect to /csr; listed so /csr/:id never claims them.
+  { path: '/csr/activities' },
+  { path: '/csr/activity-types' },
   { path: '/csr/partners' },
   { path: '/csr/partners/new' },
   { path: '/csr/partners/:id' },
@@ -71,7 +71,6 @@ const CSR_ROUTES = [
   { path: '/csr/expenses/new' },
   { path: '/csr/utilisation' },
   { path: '/csr/clients' },
-  { path: '/csr/activity-types' },
   { path: '/csr/branding' },
   { path: '/csr/account' },
   { path: '/csr/:id' },
@@ -216,13 +215,11 @@ export default function CSRSidebar({ collapsed, onToggle }) {
     >
       {item({ to: '/csr', icon: <CSRIcon fontSize="small" />, label: 'Dashboard', end: true })}
       {canView('csr') && item({ to: '/csr/projects', icon: <ProjectsIcon fontSize="small" />, label: 'Projects', forceActive: onProjectDetail })}
-      {canView('csr') && item({ to: '/csr/activities', icon: <ActivitiesIcon fontSize="small" />, label: 'Activities' })}
       {canView('csr') && item({ to: '/csr/partners', icon: <PartnersIcon fontSize="small" />, label: 'Partners' })}
       {canView('csr') && item({ to: '/csr/reports', icon: <ReportsIcon fontSize="small" />, label: 'Reports' })}
       {(canView('csr_certificate') || canView('csr')) && item({ to: '/csr/utilisation', icon: <UtilisationIcon fontSize="small" />, label: 'Work Utilisation' })}
       {showSetup && <div className="sidebar-divider" role="presentation" />}
       {showSetup && item({ to: '/csr/clients', icon: <FundersIcon fontSize="small" />, label: 'Funders' })}
-      {(showSetup || canView('csr')) && item({ to: '/csr/activity-types', icon: <CatalogIcon fontSize="small" />, label: 'Activity Types' })}
       {showSetup && item({ to: '/csr/branding', icon: <BrandingIcon fontSize="small" />, label: 'Branding' })}
       {canOpenTTA && <div className="sidebar-divider" role="presentation" />}
       {canOpenTTA && item({ to: '/', icon: <SwitchIcon fontSize="small" />, label: 'Switch to TTA', end: true })}

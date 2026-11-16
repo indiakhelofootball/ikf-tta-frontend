@@ -169,7 +169,7 @@ const STATS = (sanctioned, utilised, remaining, excluded, excludedCount, utilPct
 // New Project needs edit, the same rule the Projects page applies to its button.
 const ACTIONS = [
   { label: 'New Project', to: '/csr/projects/new', needsEdit: true, icon: ic(<><path d="M12 5v14M5 12h14" /></>) },
-  { label: 'Activities', to: '/csr/activities', icon: ic(<><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M8 3v4M16 3v4M3 11h18" /></>) },
+  { label: 'Projects', to: '/csr/projects', icon: ic(<><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M8 3v4M16 3v4M3 11h18" /></>) },
   { label: 'Reports', to: '/csr/reports', icon: ic(<><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z" /><path d="M14 3v5h5" /></>) },
   { label: 'Utilisation', to: '/csr/utilisation', icon: ic(<><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>) },
 ];

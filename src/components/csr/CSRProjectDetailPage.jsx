@@ -331,8 +331,8 @@ export default function CSRProjectDetailPage() {
     setImportChecking(false);
   }, [id]);
   const [listFailed, setListFailed] = useState({ activities: false, reports: false, contacts: false, athletes: false });
-  // A row opened from the cross-grant Activities/Reports log (CSRActivitiesPage,
-  // CSRReportsPage) arrives with the tab it belongs to in navigation state, so
+  // A row opened from the cross-grant Reports log or the Work Utilisation page
+  // arrives with the tab it belongs to in navigation state, so
   // "open" lands you on the record instead of back on the Overview tab.
   const [tab, setTab] = useState(() => {
     const requested = location.state?.tab;
@@ -1267,7 +1267,7 @@ export default function CSRProjectDetailPage() {
               )}
               <p id="uc-type-help" className="pform-help">
                 {typeOptions.length === 0
-                  ? 'No certificate types yet. They are added in Admin > CSR > Utilisation Certificate Types.'
+                  ? 'No certificate types yet. They are added in Admin > CSR > Utilisation Certificate Types, by an admin.'
                   : freeze.frozen
                     ? 'Changing this does not alter the issued version; it applies when the certificate is issued again.'
                     : 'Printed on the Utilisation Certificate.'}

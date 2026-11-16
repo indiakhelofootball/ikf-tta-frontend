@@ -9,7 +9,7 @@ import { activityStatusPillClass } from './activityVisibility';
 import '../../styles/csrDesign.css';
 
 // CSRProjectDetailPage reads location.state.tab; 2 is its Activities tab, the
-// same value CSRActivitiesPage sends.
+// same value the project Activities tab sends.
 const ACTIVITIES_TAB = 2;
 
 const vendorRecordLabel = (r) => [
