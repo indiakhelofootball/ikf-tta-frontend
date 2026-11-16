@@ -89,3 +89,26 @@ test('a refused update shows the server message and keeps the saved row', async 
   expect(within(vendorPanel()).getByText('Printing')).toBeInTheDocument();
   expect(configAPI.bulk).not.toHaveBeenCalled();
 });
+
+test('the filter box narrows the vendor names by name or service type', async () => {
+  vendorNameRows = [
+    { id: 57, value: 'A1 Classes', comment: '', serviceType: 'Printing', entityType: '' },
+    { id: 58, value: 'Bright Lens', comment: '', serviceType: 'Photography', entityType: '' },
+  ];
+  render(<AdminPage />);
+  await waitFor(() => expect(within(vendorPanel()).getByText('Bright Lens')).toBeInTheDocument());
+  const filter = within(vendorPanel()).getByLabelText('Filter vendor names');
+
+  fireEvent.change(filter, { target: { value: 'bright' } });
+  expect(within(vendorPanel()).getByText('Bright Lens')).toBeInTheDocument();
+  expect(within(vendorPanel()).queryByText('A1 Classes')).not.toBeInTheDocument();
+
+  fireEvent.change(filter, { target: { value: 'printing' } });
+  expect(within(vendorPanel()).getByText('A1 Classes')).toBeInTheDocument();
+  expect(within(vendorPanel()).queryByText('Bright Lens')).not.toBeInTheDocument();
+
+  fireEvent.change(filter, { target: { value: 'zzz' } });
+  expect(within(vendorPanel()).getByText('Nothing matches this filter.')).toBeInTheDocument();
+  expect(configAPI.bulk).not.toHaveBeenCalled();
+  expect(configAPI.update).not.toHaveBeenCalled();
+});

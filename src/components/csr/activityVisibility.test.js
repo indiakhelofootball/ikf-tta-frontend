@@ -19,10 +19,10 @@ test('a record from before the switch existed follows the stored default, visibl
 });
 
 test('the label names the outcome', () => {
-  expect(funderVisibilityLabel({ status: 'Completed', visibleToClient: true })).toBe('Shown to funder');
-  expect(funderVisibilityLabel({ status: 'Completed', visibleToClient: false })).toBe('Hidden from funder');
-  expect(funderVisibilityLabel({ status: 'Planned', visibleToClient: true })).toBe('Shown to funder');
-  expect(funderVisibilityLabel({ status: 'Planned', visibleToClient: false })).toBe('Hidden from funder');
+  expect(funderVisibilityLabel({ status: 'Completed', visibleToClient: true })).toBe('Visible to funder');
+  expect(funderVisibilityLabel({ status: 'Completed', visibleToClient: false })).toBe('Not visible to funder');
+  expect(funderVisibilityLabel({ status: 'Planned', visibleToClient: true })).toBe('Visible to funder');
+  expect(funderVisibilityLabel({ status: 'Planned', visibleToClient: false })).toBe('Not visible to funder');
 });
 
 // D-018 (contract D018_CONTRACT.md): Cancelled, and Planned with the date
@@ -30,14 +30,14 @@ test('the label names the outcome', () => {
 test('Cancelled is hidden from the funder whatever the switch says', () => {
   expect(isShownToFunder({ status: 'Cancelled', visibleToClient: true })).toBe(false);
   expect(isShownToFunder({ status: 'Cancelled' })).toBe(false);
-  expect(funderVisibilityLabel({ status: 'Cancelled', visibleToClient: true })).toBe('Hidden from funder');
+  expect(funderVisibilityLabel({ status: 'Cancelled', visibleToClient: true })).toBe('Not visible to funder');
 });
 
 test('a Planned activity the server marks date-passed is hidden; not marked, shown', () => {
   expect(isShownToFunder({ status: 'Planned', visibleToClient: true, needsUpdate: true })).toBe(false);
   expect(isShownToFunder({ status: 'Planned', visibleToClient: true, needsUpdate: false })).toBe(true);
   expect(funderVisibilityLabel({ status: 'Planned', visibleToClient: true, needsUpdate: true }))
-    .toBe('Hidden from funder');
+    .toBe('Not visible to funder');
   // needsUpdate only ever means something on Planned.
   expect(isShownToFunder({ status: 'Completed', visibleToClient: true, needsUpdate: true })).toBe(true);
 });

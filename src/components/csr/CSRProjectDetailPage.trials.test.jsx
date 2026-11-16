@@ -1,6 +1,7 @@
 // 26 Aug review, 03:52-05:31: the grant must not say a trial "runs under" it.
 // "Following trials will be conducted on this project", read in the order the
-// client gave: the funder first, then the description, then the trials.
+// client gave: the funder first, then the description, then the trials. A
+// grant that is Closed, or whose end date has passed, says it in past tense.
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
@@ -38,6 +39,7 @@ jest.mock('../../utils/certificatePdf', () => ({ downloadCertificatePdf: jest.fn
 const { csrAPI } = require('../../services/api');
 
 const HEADING = 'Following trials will be conducted on this project';
+const PAST_HEADING = 'Trials conducted on this project';
 
 const GRANT = {
   id: 42,
@@ -163,9 +165,24 @@ test('D-019: names the cities this grant funds', async () => {
   expect(await screen.findByText('Cities this grant funds: Pune, Wardha')).toBeInTheDocument();
 });
 
-test('D-019: a linked grant with no cities says to pick them', async () => {
+test('D-019: a linked grant with no cities says none are recorded', async () => {
   render(<CSRProjectDetailPage />);
-  expect(
-    await screen.findByText('No cities chosen for this grant yet. Edit the grant to pick the cities it funds.'),
-  ).toBeInTheDocument();
+  expect(await screen.findByText('No cities recorded for this grant.')).toBeInTheDocument();
+  expect(screen.queryByText(/Edit the grant to pick/)).not.toBeInTheDocument();
+});
+
+test.each([
+  ['a Closed grant', { status: 'Closed' }],
+  ['a grant whose end date has passed', { endDate: '2020-03-31' }],
+])('%s says the trials were conducted', async (_label, change) => {
+  csrAPI.projects.getById.mockResolvedValue({ ...GRANT, ...change });
+  render(<CSRProjectDetailPage />);
+  expect(await screen.findByRole('heading', { name: PAST_HEADING })).toBeInTheDocument();
+  expect(screen.queryByRole('heading', { name: HEADING })).not.toBeInTheDocument();
+});
+
+test('an Active grant ending in the future keeps the future tense', async () => {
+  csrAPI.projects.getById.mockResolvedValue({ ...GRANT, endDate: '2999-03-31' });
+  render(<CSRProjectDetailPage />);
+  expect(await screen.findByRole('heading', { name: HEADING })).toBeInTheDocument();
 });

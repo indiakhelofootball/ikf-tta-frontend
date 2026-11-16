@@ -37,6 +37,7 @@ import { useNavigate } from 'react-router-dom';
 import { Alert } from '@mui/material';
 
 import { csrAPI } from '../../services/api';
+import { GRANT_TABS, grantTabState } from './grantTabs';
 import '../../styles/csrDesign.css';
 import useGrants from '../../auth/useGrants';
 import { ttaProjectIdentity } from './CSRProjectDetailView';
@@ -253,7 +254,7 @@ export default function CSRUtilisationPage() {
             const over = sanctioned > 0 && utilised > sanctioned;
             const funder = project.clientName || "Funder not recorded";
             const isOpen = open.has(project.id);
-            const openGrant = () => navigate(`/csr/${project.id}`);
+            const openGrant = () => navigate(`/csr/${project.id}`, grantTabState(GRANT_TABS.utilisation));
 
             return (
               <div className="lwrap" key={project.id}>

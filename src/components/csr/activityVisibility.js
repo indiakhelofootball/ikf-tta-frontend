@@ -15,7 +15,7 @@ export function isShownToFunder(activity) {
 }
 
 export function funderVisibilityLabel(activity) {
-  return isShownToFunder(activity) ? 'Shown to funder' : 'Hidden from funder';
+  return isShownToFunder(activity) ? 'Visible to funder' : 'Not visible to funder';
 }
 
 // Today as the yyyy-mm-dd string a date input holds, in the browser's own

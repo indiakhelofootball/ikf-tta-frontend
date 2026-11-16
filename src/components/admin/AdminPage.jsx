@@ -61,7 +61,12 @@ function OptionPanel({ title, subtitle, items, onSave, onRename = null, autoCode
   const [editName, setEditName] = useState('');
   const [dupeError, setDupeError] = useState('');
 
+  const [query, setQuery] = useState('');
+
   useEffect(() => { setList(items); }, [items]);
+
+  const needle = query.trim().toLowerCase();
+  const shown = needle ? list.filter(item => item.name.toLowerCase().includes(needle)) : list;
 
   const persist = (action, updated) => {
     setList(updated);
@@ -140,13 +145,27 @@ function OptionPanel({ title, subtitle, items, onSave, onRename = null, autoCode
 
       {/* Current items */}
       <Box sx={{ px: 3.5, pt: 2.5, pb: 1 }}>
+        {list.length > 0 && (
+          <TextField
+            size="small" fullWidth
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Filter by name"
+            sx={{ ...fieldSx, mb: 1.5 }}
+            slotProps={{ htmlInput: { 'aria-label': `Filter ${title}` } }}
+          />
+        )}
         {list.length === 0 ? (
           <Typography sx={{ fontSize: '0.85rem', color: '#5A6B82', py: 1.5 }}>
             No options added yet.
           </Typography>
+        ) : shown.length === 0 ? (
+          <Typography sx={{ fontSize: '0.85rem', color: '#5A6B82', py: 1.5 }}>
+            Nothing matches this filter.
+          </Typography>
         ) : (
           <Stack spacing={1.5}>
-            {list.map((item) => (
+            {shown.map((item) => (
               <Box key={item.id}>
                 {editingId === item.id ? (
                   /* Edit mode */
@@ -259,8 +278,15 @@ function VendorNamePanel({ items, onSave, onUpdate, serviceTypes, entityTypes })
   const [editServiceType, setEditServiceType] = useState('');
   const [editEntityType, setEditEntityType] = useState('');
   const [dupeError, setDupeError] = useState('');
+  const [query, setQuery] = useState('');
 
   useEffect(() => { setList(items); }, [items]);
+
+  const needle = query.trim().toLowerCase();
+  const shown = needle
+    ? list.filter(item => item.name.toLowerCase().includes(needle)
+      || (item.serviceType || '').toLowerCase().includes(needle))
+    : list;
 
   const persist = (action, updated) => { setList(updated); onSave(action, updated); };
 
@@ -345,11 +371,23 @@ function VendorNamePanel({ items, onSave, onUpdate, serviceTypes, entityTypes })
 
       {/* Current items */}
       <Box sx={{ px: 3.5, pt: 2.5, pb: 1 }}>
+        {list.length > 0 && (
+          <TextField
+            size="small" fullWidth
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Filter by name or service type"
+            sx={{ ...fieldSx, mb: 1.5 }}
+            slotProps={{ htmlInput: { 'aria-label': 'Filter vendor names' } }}
+          />
+        )}
         {list.length === 0 ? (
           <Typography sx={{ fontSize: '0.85rem', color: '#5A6B82', py: 1.5 }}>No vendor names added yet.</Typography>
+        ) : shown.length === 0 ? (
+          <Typography sx={{ fontSize: '0.85rem', color: '#5A6B82', py: 1.5 }}>Nothing matches this filter.</Typography>
         ) : (
           <Stack spacing={1.5}>
-            {list.map((item) => (
+            {shown.map((item) => (
               <Box key={item.id}>
                 {editingId === item.id ? (
                   /* Edit mode */

@@ -545,7 +545,7 @@ function PaymentRequestModal({
                   value={selectedVendor}
                   onChange={handleVendorSelect}
                   onInputChange={(_, val) => setVendorInputValue(val)}
-                  noOptionsText="No vendor found — ask admin to add them first"
+                  noOptionsText="No vendor record for this name yet. Add it under Vendors > Add Vendor."
                   renderOption={(props, option) => {
                     const { key, ...otherProps } = props;
                     return (

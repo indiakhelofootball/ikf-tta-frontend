@@ -65,7 +65,7 @@ test('each activity row says whether the funder sees it', async () => {
   const row = (title) => screen.getAllByRole('button', { name: `Show details for activity ${title}` })[0];
 
   await screen.findByText('Done and shown');
-  expect(row('Done and shown')).toHaveTextContent('Shown to funder');
-  expect(row('Done but switched off')).toHaveTextContent('Hidden from funder');
-  expect(row('Still planned')).toHaveTextContent('Shown to funder');
+  expect(row('Done and shown')).toHaveTextContent('Visible to funder');
+  expect(row('Done but switched off')).toHaveTextContent('Not visible to funder');
+  expect(row('Still planned')).toHaveTextContent('Visible to funder');
 });

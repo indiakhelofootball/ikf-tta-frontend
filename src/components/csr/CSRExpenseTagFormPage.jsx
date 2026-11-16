@@ -13,14 +13,6 @@ import { csrAPI } from '../../services/api';
 import { GRANT_TABS, grantTabState } from './grantTabs';
 import '../../styles/csrDesign.css';
 
-/** Today as `YYYY-MM-DD` in the operator's own timezone — `toISOString()` would
- *  hand back UTC and shift the date by a day for anyone east of Greenwich. */
-function today() {
-  const d = new Date();
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-
 /** Whether `value` sits inside the grant's stated period. Either bound may be
  *  absent, which means unbounded on that side — the same rule the server
  *  applies in certificate_rules.within_certificate_period. */
@@ -42,10 +34,12 @@ export default function CSRExpenseTagFormPage() {
   // certificate files the expense under this date and compares it against the
   // grant's own period, so a tag entered months after the fact, or against a
   // grant that ran last year, lands where it belongs instead of dropping off
-  // the document. Defaulted to today so the common case is unchanged; never
-  // left blank, because blank falls back to the typing date and that is the
-  // behaviour being corrected.
-  const [expenseDate, setExpenseDate] = useState(today());
+  // the document. Starts blank so she picks it, and a blank date is refused on
+  // submit: blank would fall back to the typing date on the server.
+  const [expenseDate, setExpenseDate] = useState('');
+  // The grant-period check speaks only once the date has been changed or a
+  // save tried, so an ended grant does not open on a red field.
+  const [dateTouched, setDateTouched] = useState(false);
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
   const [dateError, setDateError] = useState('');
@@ -58,7 +52,8 @@ export default function CSRExpenseTagFormPage() {
 
   useEffect(() => {
     setManualAmount('');
-    setExpenseDate(today());
+    setExpenseDate('');
+    setDateTouched(false);
     setNote('');
     setError('');
     setDateError('');
@@ -78,7 +73,7 @@ export default function CSRExpenseTagFormPage() {
   const grantPeriod = project
     ? `${project.startDate || 'open'} to ${project.endDate || 'open'}`
     : '';
-  const periodError = outside
+  const periodError = outside && dateTouched
     ? `The expense date must fall within the grant period (${grantPeriod}).`
     : '';
 
@@ -92,6 +87,7 @@ export default function CSRExpenseTagFormPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setDateTouched(true);
     if (manualAmount === '' || Number.isNaN(Number(manualAmount))) {
       setError('Enter an amount');
       return;
@@ -174,7 +170,7 @@ export default function CSRExpenseTagFormPage() {
             <div className={`pform-input${expenseDate && !outside ? ' ok' : ''}`}>
               <input
                 id="x-date" type="date" value={expenseDate}
-                onChange={(e) => { setExpenseDate(e.target.value); setDateError(''); }}
+                onChange={(e) => { setExpenseDate(e.target.value); setDateTouched(true); setDateError(''); }}
                 aria-invalid={Boolean(dateError || periodError)} aria-describedby="x-date-help"
               />
             </div>
