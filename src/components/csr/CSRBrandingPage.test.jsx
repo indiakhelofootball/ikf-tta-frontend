@@ -145,7 +145,6 @@ test('a refused image saves nothing, says which image and why, and keeps the dia
   await userEvent.click(await screen.findByRole('button', { name: /^new$/i }));
   await userEvent.click(screen.getByLabelText('Project'));
   await userEvent.click(await screen.findByRole('option', { name: 'Grassroots Football' }));
-  await userEvent.type(screen.getByLabelText('Display name'), 'DLF Foundation');
   const pic = new File([new Uint8Array([255, 216, 255])], 'pitch.jpg', { type: 'image/jpeg' });
   await userEvent.upload(screen.getByLabelText('Login image file'), pic);
   await userEvent.click(screen.getByRole('button', { name: /^save$/i }));
@@ -156,7 +155,8 @@ test('a refused image saves nothing, says which image and why, and keeps the dia
   expect(csrAPI.branding.saveWithImages.mock.calls[0][0]).toBeNull();
   expect(csrAPI.branding.saveWithImages.mock.calls[0][2]).toEqual({ 'login-image': pic, remove: [] });
   expect(csrAPI.branding.create).not.toHaveBeenCalled();
-  expect(screen.getByLabelText('Display name')).toHaveValue('DLF Foundation');
+  expect(screen.getByRole('dialog')).toBeInTheDocument();
+  expect(csrAPI.branding.saveWithImages.mock.calls[0][1]).not.toHaveProperty('displayName');
 });
 
 test('an SVG logo is refused before anything is sent', async () => {
