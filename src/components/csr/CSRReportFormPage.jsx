@@ -58,6 +58,7 @@ export default function CSRReportFormPage() {
   // Report types are an Admin catalogue. Re-read it when refreshAllFromAPI
   // lands instead of freezing whatever was cached at mount.
   const cfgVersion = useConfigVersion();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const catalogueTypes = useMemo(() => getReportTypes().map((t) => t.name), [cfgVersion]);
   // A report can hold a type Admin has since retired. It stays selectable for
   // that report, so an edit does not silently clear it.
