@@ -33,15 +33,23 @@ jest.mock('../../services/api', () => ({
 jest.mock('../../utils/adminStorage', () => ({
   getProjectNames: () => [{ id: 7, name: 'Khelo Girls — Chhattisgarh' }],
   getSeasons: () => [{ id: 10, name: 'Season 1' }, { id: 11, name: 'Season 5' }],
+  getFunderOrganisations: () => [{ id: 21, name: 'Tata Trusts' }, { id: 22, name: 'Vardhman' }],
 }));
 
 jest.mock('../../hooks/useConfigVersion', () => ({ __esModule: true, default: () => 0 }));
 
 const { csrAPI } = require('../../services/api');
 
+// The funder is picked from Admin's list (D-037), never typed.
+const pickFunder = async (name) => {
+  await userEvent.click(screen.getByLabelText(/client \/ funder/i));
+  await userEvent.click(screen.getByRole('option', { name }));
+};
+
 const GRANT = {
   id: 11,
   name: 'Grassroots Football — Maharashtra',
+  funderId: 21,
   clientName: 'Tata Trusts',
   sanctionedAmount: '2500000.00',
   startDate: '2026-04-05',
@@ -86,14 +94,15 @@ test('the season is asked beside the project, because together they are one iden
     render(<CSRProjectFormPage />);
 
     await userEvent.type(screen.getByLabelText(/project name/i), '  Khelo Girls  ');
-    await userEvent.type(screen.getByLabelText(/client \/ funder/i), ' Tata Trusts ');
+    await pickFunder('Tata Trusts');
     await userEvent.type(screen.getByLabelText(/sanctioned amount/i), '1200000');
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     await waitFor(() => expect(csrAPI.projects.create).toHaveBeenCalled());
     const payload = csrAPI.projects.create.mock.calls[0][0];
     expect(payload.name).toBe('Khelo Girls');
-    expect(payload.clientName).toBe('Tata Trusts');
+    expect(payload.funderId).toBe(21);
+    expect(payload).not.toHaveProperty('clientName');
     // Never asked for, always sent. A grant recorded before the field was
     // dropped must not be blanked by an unrelated edit.
     expect(payload).toHaveProperty('season');
@@ -104,12 +113,38 @@ test('the season is asked beside the project, because together they are one iden
     );
   });
 
+  test('will not save without a funder, and says where funders come from', async () => {
+    render(<CSRProjectFormPage />);
+    expect(screen.getByText('Added in Admin > CSR > Funder Organisations, by an admin.')).toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText(/project name/i), 'Khelo Girls');
+    await userEvent.type(screen.getByLabelText(/sanctioned amount/i), '1200000');
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+    expect(await screen.findByText('Pick the funder.')).toBeInTheDocument();
+    expect(screen.getByLabelText(/client \/ funder/i)).toHaveAttribute('aria-invalid', 'true');
+    expect(csrAPI.projects.create).not.toHaveBeenCalled();
+
+    await pickFunder('Vardhman');
+    expect(screen.queryByText('Pick the funder.')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+    await waitFor(() => expect(csrAPI.projects.create).toHaveBeenCalled());
+    expect(csrAPI.projects.create.mock.calls[0][0].funderId).toBe(22);
+  });
+
+  test('a funder cannot be typed in as a new one', async () => {
+    render(<CSRProjectFormPage />);
+    await userEvent.type(screen.getByLabelText(/client \/ funder/i), 'Brand New Corp');
+    expect(screen.getByText('No funder matches.')).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: /add/i })).toBeNull();
+  });
+
   test('an end date before the start date is named inline and blocks the save', async () => {
     csrAPI.projects.create.mockResolvedValue({});
     render(<CSRProjectFormPage />);
 
     await userEvent.type(screen.getByLabelText(/project name/i), 'Khelo Girls');
-    await userEvent.type(screen.getByLabelText(/client \/ funder/i), 'Tata Trusts');
+    await pickFunder('Tata Trusts');
     await userEvent.type(screen.getByLabelText(/sanctioned amount/i), '1200000');
     fireEvent.change(screen.getByLabelText(/start date/i), { target: { value: '2026-04-05' } });
     fireEvent.change(screen.getByLabelText(/end date/i), { target: { value: '2026-04-01' } });
@@ -136,6 +171,17 @@ describe('editing a grant', () => {
     await waitFor(() => expect(csrAPI.projects.getById).toHaveBeenCalledWith('11'));
     expect(await screen.findByDisplayValue('Grassroots Football — Maharashtra')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Tata Trusts')).toBeInTheDocument();
+  });
+
+  test('a funder since removed in Admin still shows on its grant and is sent back', async () => {
+    csrAPI.projects.getById.mockResolvedValue({ ...GRANT, funderId: 99, clientName: 'Old Funder Ltd' });
+    csrAPI.projects.update.mockResolvedValue({});
+    render(<CSRProjectFormPage />);
+
+    expect(await screen.findByDisplayValue('Old Funder Ltd')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+    await waitFor(() => expect(csrAPI.projects.update).toHaveBeenCalled());
+    expect(csrAPI.projects.update.mock.calls[0][1].funderId).toBe(99);
   });
 
   test('carries season through an edit that never showed it', async () => {
@@ -231,7 +277,7 @@ describe('the sanctioned amount', () => {
   const create = async (amount) => {
     render(<CSRProjectFormPage />);
     await userEvent.type(screen.getByLabelText(/project name/i), 'Khelo Girls');
-    await userEvent.type(screen.getByLabelText(/client \/ funder/i), 'Tata Trusts');
+    await pickFunder('Tata Trusts');
     await userEvent.type(screen.getByLabelText(/sanctioned amount/i), amount);
     await userEvent.click(screen.getByRole('button', { name: /^save$/i }));
   };
@@ -289,7 +335,7 @@ describe('show cancelled and overdue activities to the funder', () => {
 
     expect(screen.getByRole('switch', { name: SWITCH })).not.toBeChecked();
     await userEvent.type(screen.getByLabelText(/project name/i), 'Khelo Girls');
-    await userEvent.type(screen.getByLabelText(/client \/ funder/i), 'Tata Trusts');
+    await pickFunder('Tata Trusts');
     await userEvent.type(screen.getByLabelText(/sanctioned amount/i), '1200000');
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
     await waitFor(() => expect(csrAPI.projects.create).toHaveBeenCalled());
@@ -328,7 +374,7 @@ describe('D-019: the grant picks the cities it funds', () => {
 
   const fillRequired = async () => {
     await userEvent.type(screen.getByLabelText(/project name/i), 'Vardhman');
-    await userEvent.type(screen.getByLabelText(/client \/ funder/i), 'Vardhman');
+    await pickFunder('Vardhman');
     await userEvent.type(screen.getByLabelText(/sanctioned amount/i), '500000');
   };
 
@@ -404,7 +450,7 @@ describe('financial year', () => {
   const FY = /financial year/i;
   const fillRequired = async () => {
     await userEvent.type(screen.getByLabelText(/project name/i), 'Khelo Girls');
-    await userEvent.type(screen.getByLabelText(/client \/ funder/i), 'Tata Trusts');
+    await pickFunder('Tata Trusts');
     await userEvent.type(screen.getByLabelText(/sanctioned amount/i), '1200000');
   };
 
@@ -500,7 +546,7 @@ describe('a new grant cannot start Closed', () => {
     csrAPI.projects.create.mockRejectedValue(err);
     render(<CSRProjectFormPage />);
     await userEvent.type(screen.getByLabelText(/project name/i), 'Khelo Girls');
-    await userEvent.type(screen.getByLabelText(/client \/ funder/i), 'Tata Trusts');
+    await pickFunder('Tata Trusts');
     await userEvent.type(screen.getByLabelText(/sanctioned amount/i), '1200000');
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 

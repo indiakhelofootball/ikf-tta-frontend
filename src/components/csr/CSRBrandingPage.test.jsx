@@ -38,7 +38,7 @@ const ROW = {
 beforeEach(() => {
   jest.clearAllMocks();
   csrAPI.branding.getAll.mockResolvedValue([ROW]);
-  csrAPI.projects.getAll.mockResolvedValue([{ id: 11, name: 'Grassroots Football' }]);
+  csrAPI.projects.getAll.mockResolvedValue([{ id: 11, name: 'Grassroots Football', clientName: 'DLF Foundation' }]);
   csrAPI.branding.update.mockResolvedValue({});
 });
 
@@ -98,10 +98,12 @@ test('a primary colour too light for text says so; a dark one does not', async (
   expect(screen.getByText(note)).toBeInTheDocument();
 });
 
-test('a new branding suggests its link from the display name until the link is edited', async () => {
+test('a new branding suggests its link from the grant funder until the link is edited', async () => {
   render(<CSRBrandingPage />);
   await userEvent.click(await screen.findByRole('button', { name: /^new$/i }));
-  await userEvent.type(screen.getByLabelText('Display name'), 'DLF Foundation');
+  await userEvent.click(screen.getByRole('combobox', { name: 'Project' }));
+  await userEvent.click(await screen.findByRole('option', { name: 'Grassroots Football' }));
+  expect(screen.getByLabelText('Funder name')).toHaveValue('DLF Foundation');
   expect(screen.getByLabelText('Slug (URL key)')).toHaveValue('dlf');
   expect(screen.getByText('Invitation link: /client/dlf/login. It locks once the funder signs in.')).toBeInTheDocument();
 });
@@ -145,4 +147,18 @@ test('removing an uploaded logo deletes it on save', async () => {
   await userEvent.click(screen.getAllByRole('button', { name: 'Remove' })[0]);
   await userEvent.click(screen.getByRole('button', { name: /^save$/i }));
   await waitFor(() => expect(csrAPI.brandingImage.remove).toHaveBeenCalledWith(4, 'logo'));
+});
+
+// D-037: the portal shows the grant's funder, named once in Admin.
+test('the funder name is the grant funder, read-only, and is never sent', async () => {
+  await openEdit();
+  const name = screen.getByLabelText('Funder name');
+  expect(name).toHaveValue('Acme Foundation');
+  expect(name).toHaveAttribute('readonly');
+  expect(screen.getByText("The grant's funder. Renamed in Admin > CSR > Funder Organisations, by an admin.")).toBeInTheDocument();
+  expect(screen.queryByLabelText('Display name')).toBeNull();
+
+  await userEvent.click(screen.getByRole('button', { name: /^save$/i }));
+  await waitFor(() => expect(csrAPI.branding.update).toHaveBeenCalled());
+  expect(csrAPI.branding.update.mock.calls[0][1]).not.toHaveProperty('displayName');
 });

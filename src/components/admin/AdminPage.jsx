@@ -34,6 +34,7 @@ import {
   getTrainingProgrammes,
   getUtilisationTypes,
   getReportTypes,
+  getFunderOrganisations,
   refreshAllFromAPI,
   addConfigOption,
   editConfigOption,
@@ -582,6 +583,7 @@ export default function AdminPage() {
   const [trainingProgrammes, setTrainingProgrammes] = useState([]);
   const [utilisationTypes, setUtilisationTypes] = useState([]);
   const [reportTypes, setReportTypes] = useState([]);
+  const [funderOrganisations, setFunderOrganisations] = useState([]);
   const [activityTypes, setActivityTypes] = useState([]);
   const [saveError, setSaveError] = useState('');
   const [renameInfo, setRenameInfo] = useState('');
@@ -739,6 +741,7 @@ export default function AdminPage() {
     setTrainingProgrammes(getTrainingProgrammes());
     setUtilisationTypes(getUtilisationTypes());
     setReportTypes(getReportTypes());
+    setFunderOrganisations(getFunderOrganisations());
 
     // Fetch latest from API and refresh state
     refreshAllFromAPI().then(() => {
@@ -755,6 +758,7 @@ export default function AdminPage() {
       setTrainingProgrammes(getTrainingProgrammes());
       setUtilisationTypes(getUtilisationTypes());
       setReportTypes(getReportTypes());
+      setFunderOrganisations(getFunderOrganisations());
     }).catch(() => {});
   }, []);
 
@@ -880,6 +884,13 @@ export default function AdminPage() {
             color="#ec4899"
             defaultOpen={false}
           >
+            <OptionPanel
+              title="Funder Organisations"
+              subtitle="The organisations that fund CSR grants. Picked on each grant; the funder portal shows this name. Renaming one updates every grant and the funder's portal."
+              items={funderOrganisations}
+              onSave={handleSave('funderOrganisations', setFunderOrganisations, getFunderOrganisations)}
+              onRename={handleCatalogRename('csr_funder', 'funder', setFunderOrganisations, getFunderOrganisations, 'CSR grant')}
+            />
             <OptionPanel
               title="CSR Partner Types"
               subtitle="The kinds of CSR partner (e.g. Education, Life skills). Picked on CSR > Partners for each partner. Used by CSR only; a vendor's Service Type is a separate TTA list. Renaming one updates every partner already using it."

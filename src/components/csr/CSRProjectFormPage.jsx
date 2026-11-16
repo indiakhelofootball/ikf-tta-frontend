@@ -11,9 +11,10 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 
 import { csrAPI } from '../../services/api';
-import { getProjectNames, getSeasons } from '../../utils/adminStorage';
+import { getFunderOrganisations, getProjectNames, getSeasons } from '../../utils/adminStorage';
 import useConfigVersion from '../../hooks/useConfigVersion';
 import ConfirmDialog from '../common/ConfirmDialog';
+import CSRCombobox from './CSRCombobox';
 import GrantCityPicker from './GrantCityPicker';
 import { fyLabel, fyOf, fyOptions } from './financialYear';
 import '../../styles/csrDesign.css';
@@ -22,11 +23,11 @@ import '../../styles/csrDesign.css';
 // any expense can count. Closing is an edit, never a starting state.
 const STATUS_OPTIONS = ['Active', 'Closed'];
 const CREATE_STATUS_OPTIONS = ['Active'];
-const FIELD_ERROR_KEYS = ['status', 'financialYear'];
+const FIELD_ERROR_KEYS = ['status', 'financialYear', 'funderId'];
 const firstMessage = (v) => (Array.isArray(v) ? v[0] : v);
 
 const EMPTY = {
-  name: '', clientName: '', sanctionedAmount: '',
+  name: '', funderId: '', sanctionedAmount: '',
   startDate: '', endDate: '', fundsReceivedOn: '', agreedBudget: [], status: 'Active', description: '',
   financialYear: '',
   projectRefId: '', season: '', showHeldBackToFunder: false, cityIds: [],
@@ -40,7 +41,7 @@ const EMPTY = {
 // cannot get past when a date genuinely is not agreed yet.
 const filled = (f) => ({
   name: f.name.trim() !== '',
-  clientName: f.clientName.trim() !== '',
+  funder: f.funderId !== '',
   sanctionedAmount: f.sanctionedAmount !== '' && !Number.isNaN(Number(f.sanctionedAmount)) && Number(f.sanctionedAmount) >= 0,
   startDate: f.startDate !== '',
   endDate: f.endDate !== '',
@@ -95,7 +96,7 @@ export default function CSRProjectFormPage() {
         setProject(data);
         setForm({
           name: data.name || '',
-          clientName: data.clientName || '',
+          funderId: data.funderId ?? '',
           sanctionedAmount: data.sanctionedAmount ?? '',
           startDate: data.startDate || '',
           endDate: data.endDate || '',
@@ -132,6 +133,9 @@ export default function CSRProjectFormPage() {
   // TTA project's identity come from config, so no `trials` grant is needed and
   // the 403 on /api/trials/ is not in the way.
   const ttaSeasons = useMemo(() => getSeasons().map((x) => x.name).filter(Boolean), [cfgVersion]);
+  // D-037: the funder is one Admin record, picked here and never typed.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const funders = useMemo(() => getFunderOrganisations().filter((f) => typeof f.id === 'number'), [cfgVersion]);
 
   const setBudget = (i, key, value) => setForm((f) => ({
     ...f,
@@ -144,6 +148,10 @@ export default function CSRProjectFormPage() {
     setForm((f) => ({ ...f, [k]: value }));
   };
   // A city belongs to one project + season, so changing either clears them.
+  const setFunder = (value) => {
+    setForm((f) => ({ ...f, funderId: value }));
+    setErrors((x) => ({ ...x, funderId: undefined }));
+  };
   const setIdentity = (k) => (e) => {
     const { value } = e.target;
     setForm((f) => ({ ...f, [k]: value, cityIds: [] }));
@@ -176,7 +184,7 @@ export default function CSRProjectFormPage() {
   const validate = () => {
     const next = {};
     if (!form.name.trim()) next.name = 'Required';
-    if (!form.clientName.trim()) next.clientName = 'Required';
+    if (form.funderId === '') next.funderId = 'Pick the funder.';
     if (form.sanctionedAmount === '' || Number.isNaN(Number(form.sanctionedAmount))) {
       next.sanctionedAmount = 'Enter an amount';
     } else if (Number(form.sanctionedAmount) < 0) {
@@ -214,7 +222,7 @@ export default function CSRProjectFormPage() {
     setConfirmZero(false);
     const payload = {
       name: form.name.trim(),
-      clientName: form.clientName.trim(),
+      funderId: Number(form.funderId),
       sanctionedAmount: form.sanctionedAmount,
       status: form.status,
       financialYear: form.financialYear,
@@ -283,6 +291,13 @@ export default function CSRProjectFormPage() {
   const options = selectedTTAProject && !ttaProjects.some((p) => p.id === selectedTTAProject.id)
     ? [...ttaProjects, selectedTTAProject]
     : ttaProjects;
+  // Same for a funder Admin has since removed: the grant keeps it, by the name
+  // the server still reads through it.
+  const funderOptions = form.funderId !== '' && !funders.some((f) => f.id === Number(form.funderId))
+    ? [...funders, { id: Number(form.funderId), name: project?.clientName || `#${form.funderId}` }]
+    : funders;
+  const funderChoices = funderOptions.map((f) => ({ id: f.id, label: f.name }));
+  const funderName = funderChoices.find((f) => String(f.id) === String(form.funderId))?.label || '';
 
   if (loading) {
     return (
@@ -322,8 +337,8 @@ export default function CSRProjectFormPage() {
     },
     {
       n: 2, label: 'Funder & grant', hint: 'Who pays, and how much',
-      done: progress.clientName && progress.sanctionedAmount,
-      summary: [money, form.clientName.trim()].filter(Boolean).join(' \u00b7 '),
+      done: progress.funder && progress.sanctionedAmount,
+      summary: [money, funderName].filter(Boolean).join(' \u00b7 '),
     },
     {
       n: 3, label: 'Term & status', hint: 'When it runs',
@@ -387,16 +402,19 @@ export default function CSRProjectFormPage() {
             <div className="pform-row">
               <div className="pform-field">
                 <label htmlFor="csr-client">Client / Funder <span className="pform-req" aria-hidden="true">*</span></label>
-                <div className={`pform-input${progress.clientName ? ' ok' : ''}`}>
-                  <input
-                    id="csr-client" type="text" value={form.clientName} onChange={setField('clientName')}
-                    aria-invalid={Boolean(errors.clientName)}
-                    aria-describedby={errors.clientName ? 'csr-client-help' : undefined}
-                  />
-                </div>
-                {errors.clientName ? (
-                  <p id="csr-client-help" className="pform-help bad">{errors.clientName}</p>
-                ) : null}
+                <CSRCombobox
+                  id="csr-client"
+                  value={form.funderId}
+                  options={funderChoices}
+                  onChange={setFunder}
+                  placeholder="Search funders"
+                  emptyText="No funder matches."
+                  aria-invalid={Boolean(errors.funderId)}
+                  aria-describedby="csr-client-help"
+                />
+                <p id="csr-client-help" className={`pform-help${errors.funderId ? ' bad' : ''}`}>
+                  {errors.funderId || 'Added in Admin > CSR > Funder Organisations, by an admin.'}
+                </p>
               </div>
 
               <div className="pform-field">
