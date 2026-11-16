@@ -213,14 +213,15 @@ class APIService {
     }
     if (!response.ok) {
       let message = `Request failed (${response.status})`;
+      let data;
       const contentType = response.headers.get('content-type') || '';
       if (contentType.includes('application/json')) {
-        const data = await response.json();
+        data = await response.json();
         const first = data.detail || data.message || Object.values(data)[0];
         if (first) message = Array.isArray(first) ? first[0] : String(first);
       }
       const err = new Error(message);
-      err.response = { status: response.status };
+      err.response = { status: response.status, data };
       throw err;
     }
     return response;
@@ -1183,6 +1184,28 @@ function csrCrud(base) {
   };
 }
 
+// A save that carries files: the record's JSON goes in the `data` part beside
+// them, and the server writes the record and the files in one transaction, so a
+// refused file leaves no record behind and no half-applied edit. `parts` maps a
+// part name to a value or a list of values; empty ones are left out.
+function csrSaveWithFiles(base) {
+  return async (id, data, parts = {}) => {
+    const body = new FormData();
+    body.append('data', JSON.stringify(data));
+    Object.entries(parts).forEach(([name, value]) => {
+      [].concat(value).forEach((v) => {
+        if (v !== null && v !== undefined && v !== '') body.append(name, v);
+      });
+    });
+    const res = await apiService.rawFetch(
+      id ? `${base}/${id}/` : `${base}/`,
+      { method: id ? 'PUT' : 'POST', body },
+      UPLOAD_TIMEOUT_MS,
+    );
+    return res.json();
+  };
+}
+
 // /*#__PURE__*/ is load-bearing, not decoration. These objects are built by
 // calling a factory at module scope, and a bundler cannot prove such a call is
 // side-effect-free on its own — so it keeps every one of them, in every bundle
@@ -1200,7 +1223,12 @@ export const csrAPI = /*#__PURE__*/ {
   },
   activities: /*#__PURE__*/ csrCrud('/csr/activities'),
   activityTypes: /*#__PURE__*/ csrCrud('/csr/activity-types'),
-  reports: /*#__PURE__*/ csrCrud('/csr/reports'),
+  reports: {
+    ...(/*#__PURE__*/ csrCrud('/csr/reports')),
+    // The report and its upload in one request: parts { file } or
+    // { removeFile: 'true' }. id null creates.
+    saveWithFile: /*#__PURE__*/ csrSaveWithFiles('/csr/reports'),
+  },
   // A report's uploaded copy. Kept off the report payload on purpose: lists
   // carry only hasFile / uploadedFileName / uploadedFileSize, and the bytes
   // travel only through these calls.
@@ -1302,7 +1330,12 @@ export const csrAPI = /*#__PURE__*/ {
   funderView: async (projectId) =>
     apiService.request(`/csr/projects/${projectId}/funder-view/`),
   // White-label branding — admin-managed CRUD (SUPER_ADMIN/ADMIN).
-  branding: /*#__PURE__*/ csrCrud('/csr/branding'),
+  branding: {
+    ...(/*#__PURE__*/ csrCrud('/csr/branding')),
+    // The branding and its images in one request: parts { logo, 'login-image',
+    // remove: [kind, ...] }. id null creates.
+    saveWithImages: /*#__PURE__*/ csrSaveWithFiles('/csr/branding'),
+  },
   athletes: /*#__PURE__*/ csrCrud('/csr/athletes'),
   // Many athletes for one grant from a spreadsheet. A dry run only checks; a
   // real run saves every row or none, and a refusal (400) carries the per-row

@@ -13,7 +13,9 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('../../services/api', () => ({
   csrAPI: {
-    branding: { getAll: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn() },
+    branding: {
+      getAll: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn(), saveWithImages: jest.fn(),
+    },
     brandingImage: { upload: jest.fn(), remove: jest.fn() },
     projects: { getAll: jest.fn() },
   },
@@ -113,7 +115,7 @@ test('the link cannot be edited once a funder has signed in', async () => {
   expect(screen.getByText(/Locked: a funder has already signed in/)).toBeInTheDocument();
 });
 
-test('a picked logo is uploaded after the branding saves, and the preview shows it', async () => {
+test('a picked logo is sent with the branding in one request, and the preview shows it', async () => {
   const { trimLogo } = require('./brandImage');
   trimLogo.mockImplementation(async (f) => ({ file: f, width: 400, height: 120, trimmed: true }));
   URL.createObjectURL = jest.fn(() => 'blob:preview');
@@ -124,8 +126,35 @@ test('a picked logo is uploaded after the branding saves, and the preview shows 
   expect(screen.getByText(/logo\.png, 1 KB, uploaded when you save/)).toBeInTheDocument();
 
   await userEvent.click(screen.getByRole('button', { name: /^save$/i }));
-  await waitFor(() => expect(csrAPI.brandingImage.upload).toHaveBeenCalledWith(4, 'logo', logo));
-  expect(csrAPI.branding.update).toHaveBeenCalled();
+  await waitFor(() => expect(csrAPI.branding.saveWithImages).toHaveBeenCalledTimes(1));
+  const [id, payload, parts] = csrAPI.branding.saveWithImages.mock.calls[0];
+  expect(id).toBe(4);
+  expect(payload.slug).toBe('acme');
+  expect(parts).toEqual({ logo, remove: [] });
+  expect(csrAPI.branding.update).not.toHaveBeenCalled();
+  expect(csrAPI.brandingImage.upload).not.toHaveBeenCalled();
+});
+
+test('a refused image saves nothing, says which image and why, and keeps the dialog open', async () => {
+  const err = new Error('Upload a PNG, JPG or WEBP image.');
+  err.response = { status: 400, data: { 'login-image': ['Upload a PNG, JPG or WEBP image.'] } };
+  csrAPI.branding.saveWithImages.mockRejectedValue(err);
+  render(<CSRBrandingPage />);
+  await userEvent.click(await screen.findByRole('button', { name: /^new$/i }));
+  await userEvent.click(screen.getByLabelText('Project'));
+  await userEvent.click(await screen.findByRole('option', { name: 'Grassroots Football' }));
+  await userEvent.type(screen.getByLabelText('Display name'), 'DLF Foundation');
+  const pic = new File([new Uint8Array([255, 216, 255])], 'pitch.jpg', { type: 'image/jpeg' });
+  await userEvent.upload(screen.getByLabelText('Login image file'), pic);
+  await userEvent.click(screen.getByRole('button', { name: /^save$/i }));
+
+  expect(await screen.findByText('Nothing was saved. Login image: Upload a PNG, JPG or WEBP image.'))
+    .toBeInTheDocument();
+  expect(csrAPI.branding.saveWithImages).toHaveBeenCalledTimes(1);
+  expect(csrAPI.branding.saveWithImages.mock.calls[0][0]).toBeNull();
+  expect(csrAPI.branding.saveWithImages.mock.calls[0][2]).toEqual({ 'login-image': pic, remove: [] });
+  expect(csrAPI.branding.create).not.toHaveBeenCalled();
+  expect(screen.getByLabelText('Display name')).toHaveValue('DLF Foundation');
 });
 
 test('an SVG logo is refused before anything is sent', async () => {
@@ -135,14 +164,17 @@ test('an SVG logo is refused before anything is sent', async () => {
   expect(await screen.findByRole('alert')).toHaveTextContent('Upload a PNG, JPG or WEBP image.');
   await userEvent.click(screen.getByRole('button', { name: /^save$/i }));
   await waitFor(() => expect(csrAPI.branding.update).toHaveBeenCalled());
-  expect(csrAPI.brandingImage.upload).not.toHaveBeenCalled();
+  expect(csrAPI.branding.saveWithImages).not.toHaveBeenCalled();
 });
 
-test('removing an uploaded logo deletes it on save', async () => {
+test('removing an uploaded logo deletes it in the same request as the save', async () => {
   csrAPI.branding.getAll.mockResolvedValue([{ ...ROW, logoFile: { name: 'old.png', size: 2048, version: 'abc' } }]);
   await openEdit();
   expect(screen.getByText('old.png, 2 KB')).toBeInTheDocument();
   await userEvent.click(screen.getAllByRole('button', { name: 'Remove' })[0]);
   await userEvent.click(screen.getByRole('button', { name: /^save$/i }));
-  await waitFor(() => expect(csrAPI.brandingImage.remove).toHaveBeenCalledWith(4, 'logo'));
+  await waitFor(() => expect(csrAPI.branding.saveWithImages)
+    .toHaveBeenCalledWith(4, expect.any(Object), { remove: ['logo'] }));
+  expect(csrAPI.brandingImage.remove).not.toHaveBeenCalled();
+  expect(csrAPI.branding.update).not.toHaveBeenCalled();
 });

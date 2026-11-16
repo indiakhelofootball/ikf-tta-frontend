@@ -22,7 +22,7 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('../../services/api', () => ({
   csrAPI: {
-    reports: { getById: jest.fn(), create: jest.fn(), update: jest.fn() },
+    reports: { getById: jest.fn(), create: jest.fn(), update: jest.fn(), saveWithFile: jest.fn() },
     activities: { getAll: jest.fn() },
     reportFile: { upload: jest.fn(), download: jest.fn(), remove: jest.fn() },
   },
@@ -197,13 +197,11 @@ describe('a document link or an uploaded file', () => {
     expect(screen.getByLabelText(/or paste a link/i))
       .toHaveAccessibleDescription('Upload the report, or paste a Drive link.');
     expect(csrAPI.reports.create).not.toHaveBeenCalled();
-    expect(csrAPI.reportFile.upload).not.toHaveBeenCalled();
+    expect(csrAPI.reports.saveWithFile).not.toHaveBeenCalled();
   });
 
-  test('a file alone is enough: the report is saved, then the file uploaded to it', async () => {
-    const order = [];
-    csrAPI.reports.create.mockImplementation(async () => { order.push('create'); return { id: 42 }; });
-    csrAPI.reportFile.upload.mockImplementation(async () => { order.push('upload'); return {}; });
+  test('a file alone is enough: the report and its file go in one request', async () => {
+    csrAPI.reports.saveWithFile.mockResolvedValue({ id: 42, hasFile: true });
     render(<CSRReportFormPage />);
 
     await userEvent.type(screen.getByLabelText(/report name/i), 'Q2 statement');
@@ -212,10 +210,15 @@ describe('a document link or an uploaded file', () => {
     expect(screen.getByText(/summary\.pdf \(2 KB\) will be uploaded on save/i)).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
-    await waitFor(() => expect(csrAPI.reportFile.upload).toHaveBeenCalledWith(42, file));
-    expect(order).toEqual(['create', 'upload']);
-    expect(csrAPI.reports.create.mock.calls[0][0].fileUrl).toBe('');
-    expect(csrAPI.reports.create.mock.calls[0][0].fileName).toBe('summary.pdf');
+    await waitFor(() => expect(csrAPI.reports.saveWithFile).toHaveBeenCalledTimes(1));
+    const [reportId, payload, parts] = csrAPI.reports.saveWithFile.mock.calls[0];
+    expect(reportId).toBeNull();
+    expect(parts).toEqual({ file });
+    expect(payload.fileUrl).toBe('');
+    expect(payload.fileName).toBe('summary.pdf');
+    expect(payload.projectId).toBe(11);
+    expect(csrAPI.reports.create).not.toHaveBeenCalled();
+    expect(csrAPI.reportFile.upload).not.toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenCalledWith('/csr/11', { state: { saved: 'Report filed.', tab: 3 } });
   });
 
@@ -227,7 +230,7 @@ describe('a document link or an uploaded file', () => {
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     await waitFor(() => expect(csrAPI.reports.create).toHaveBeenCalled());
-    expect(csrAPI.reportFile.upload).not.toHaveBeenCalled();
+    expect(csrAPI.reports.saveWithFile).not.toHaveBeenCalled();
   });
 
   test('a file over 15 MB is refused before anything is sent', async () => {
@@ -250,23 +253,38 @@ describe('a document link or an uploaded file', () => {
     expect(input).toHaveAccessibleDescription(/upload a pdf, image/i);
   });
 
-  test('a failed upload keeps the page and retries against the same report', async () => {
-    csrAPI.reports.create.mockResolvedValue({ id: 42 });
-    csrAPI.reportFile.upload.mockRejectedValueOnce(new Error('network down'));
-    csrAPI.reportFile.upload.mockResolvedValueOnce({});
-    csrAPI.reports.update.mockResolvedValue({});
+  test('a timeout is not reported as nothing saved, since it proves nothing', async () => {
+    csrAPI.reports.saveWithFile.mockRejectedValue(
+      new Error('The server took too long to respond. Please try again.'),
+    );
+    render(<CSRReportFormPage />);
+    await userEvent.type(screen.getByLabelText(/report name/i), 'Q2 statement');
+    await userEvent.upload(screen.getByLabelText(/upload a file/i), pdf());
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+    expect(await screen.findByRole('alert'))
+      .toHaveTextContent(/^The server took too long to respond. Please try again.$/);
+  });
+
+  test('a refused file saves nothing, keeps the page, and Save sends the whole report again', async () => {
+    const refused = new Error('The file does not match its .pdf extension.');
+    refused.response = { status: 400, data: { file: [refused.message] } };
+    csrAPI.reports.saveWithFile.mockRejectedValueOnce(refused);
+    csrAPI.reports.saveWithFile.mockResolvedValueOnce({ id: 42 });
     render(<CSRReportFormPage />);
 
     await userEvent.type(screen.getByLabelText(/report name/i), 'Q2 statement');
     await userEvent.upload(screen.getByLabelText(/upload a file/i), pdf());
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(/saved, but the file was not/i);
+    expect(await screen.findByRole('alert'))
+      .toHaveTextContent('Nothing was saved. The file does not match its .pdf extension.');
     expect(mockNavigate).not.toHaveBeenCalled();
 
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
-    await waitFor(() => expect(csrAPI.reportFile.upload).toHaveBeenCalledTimes(2));
-    expect(csrAPI.reports.create).toHaveBeenCalledTimes(1);
-    expect(csrAPI.reports.update).toHaveBeenCalledWith(42, expect.any(Object));
+    await waitFor(() => expect(csrAPI.reports.saveWithFile).toHaveBeenCalledTimes(2));
+    expect(csrAPI.reports.saveWithFile.mock.calls[1][0]).toBeNull();
+    expect(csrAPI.reports.create).not.toHaveBeenCalled();
+    expect(csrAPI.reports.update).not.toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith('/csr/11', { state: { saved: 'Report filed.', tab: 3 } });
   });
 });
 
@@ -292,8 +310,7 @@ describe('editing a report that has an uploaded file', () => {
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     await waitFor(() => expect(csrAPI.reports.update).toHaveBeenCalled());
-    expect(csrAPI.reportFile.remove).not.toHaveBeenCalled();
-    expect(csrAPI.reportFile.upload).not.toHaveBeenCalled();
+    expect(csrAPI.reports.saveWithFile).not.toHaveBeenCalled();
   });
 
   test('a file that also has a link keeps the link editable', async () => {
@@ -303,10 +320,9 @@ describe('editing a report that has an uploaded file', () => {
     expect(screen.getByLabelText('Link')).toHaveValue('https://drive.example.com/x');
   });
 
-  test('Replace takes a new file and uploads it on save', async () => {
+  test('Replace takes a new file and sends it with the report on save', async () => {
     csrAPI.reports.getById.mockResolvedValue(WITH_FILE);
-    csrAPI.reports.update.mockResolvedValue({});
-    csrAPI.reportFile.upload.mockResolvedValue({});
+    csrAPI.reports.saveWithFile.mockResolvedValue({});
     render(<CSRReportFormPage />);
     await screen.findByText('nashik.pdf (2 KB)');
 
@@ -315,9 +331,10 @@ describe('editing a report that has an uploaded file', () => {
     await userEvent.upload(screen.getByLabelText(/upload a file/i), file);
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
-    await waitFor(() => expect(csrAPI.reportFile.upload).toHaveBeenCalledWith('9', file));
-    expect(csrAPI.reports.update.mock.calls[0][1].fileName).toBe('nashik-v2.pdf');
-    expect(csrAPI.reportFile.remove).not.toHaveBeenCalled();
+    await waitFor(() => expect(csrAPI.reports.saveWithFile)
+      .toHaveBeenCalledWith('9', expect.any(Object), { file }));
+    expect(csrAPI.reports.saveWithFile.mock.calls[0][1].fileName).toBe('nashik-v2.pdf');
+    expect(csrAPI.reports.update).not.toHaveBeenCalled();
   });
 
   test('removing the only file without a link is blocked', async () => {
@@ -330,20 +347,22 @@ describe('editing a report that has an uploaded file', () => {
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     expect(csrAPI.reports.update).not.toHaveBeenCalled();
-    expect(csrAPI.reportFile.remove).not.toHaveBeenCalled();
+    expect(csrAPI.reports.saveWithFile).not.toHaveBeenCalled();
   });
 
-  test('removing the file while keeping a link deletes it on save', async () => {
+  test('removing the file while keeping a link deletes it in the same request as the save', async () => {
     csrAPI.reports.getById.mockResolvedValue({ ...WITH_FILE, fileUrl: 'https://drive.example.com/x' });
-    csrAPI.reports.update.mockResolvedValue({});
-    csrAPI.reportFile.remove.mockResolvedValue();
+    csrAPI.reports.saveWithFile.mockResolvedValue({});
     render(<CSRReportFormPage />);
     await screen.findByText('nashik.pdf (2 KB)');
 
     await userEvent.click(screen.getByRole('button', { name: /^remove$/i }));
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
-    await waitFor(() => expect(csrAPI.reportFile.remove).toHaveBeenCalledWith('9'));
+    await waitFor(() => expect(csrAPI.reports.saveWithFile)
+      .toHaveBeenCalledWith('9', expect.any(Object), { removeFile: 'true' }));
+    expect(csrAPI.reports.update).not.toHaveBeenCalled();
+    expect(csrAPI.reportFile.remove).not.toHaveBeenCalled();
   });
 
   test('Keep current file undoes a Remove', async () => {
@@ -358,7 +377,7 @@ describe('editing a report that has an uploaded file', () => {
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     await waitFor(() => expect(csrAPI.reports.update).toHaveBeenCalled());
-    expect(csrAPI.reportFile.remove).not.toHaveBeenCalled();
+    expect(csrAPI.reports.saveWithFile).not.toHaveBeenCalled();
   });
 });
 

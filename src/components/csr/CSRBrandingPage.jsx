@@ -30,6 +30,7 @@ const NO_IMAGES = {
   logo: { file: null, preview: '', notes: [], error: '', remove: false },
   'login-image': { file: null, preview: '', notes: [], error: '', remove: false },
 };
+const IMAGE_LABELS = { logo: 'Logo', 'login-image': 'Login image' };
 const fmtSize = (n) => (n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 
 // What the funder will see, drawn with the portal's own stylesheet and the
@@ -228,26 +229,28 @@ export default function CSRBrandingPage() {
         primaryColor: normaliseHex(form.primaryColor) || '',
         secondaryColor: normaliseHex(form.secondaryColor) || '',
       };
-      const saved = modal.editing
-        ? await csrAPI.branding.update(modal.editing.id, payload)
-        : await csrAPI.branding.create(payload);
-      const id = modal.editing ? modal.editing.id : saved?.id;
-      const failures = [];
-      for (const kind of ['logo', 'login-image']) {
-        const st = images[kind];
-        try {
-          if (st.file && id) await csrAPI.brandingImage.upload(id, kind, st.file);
-          else if (st.remove && id) await csrAPI.brandingImage.remove(id, kind);
-        } catch (err) {
-          failures.push(`${kind === 'logo' ? 'Logo' : 'Login image'}: ${err.message}`);
-        }
-      }
-      if (failures.length) notify(`Branding saved, but ${failures.join(' ')}`, 'warning');
-      else notify('Branding saved.');
+      // The branding and its picked images go in one request, saved together
+      // or not at all: a refused image leaves no branding and no half-edit.
+      const parts = { remove: [] };
+      Object.keys(IMAGE_LABELS).forEach((kind) => {
+        if (images[kind].file) parts[kind] = images[kind].file;
+        else if (images[kind].remove) parts.remove.push(kind);
+      });
+      const withImages = Object.keys(parts).length > 1 || parts.remove.length > 0;
+      const id = modal.editing ? modal.editing.id : null;
+      if (withImages) await csrAPI.branding.saveWithImages(id, payload, parts);
+      else if (id) await csrAPI.branding.update(id, payload);
+      else await csrAPI.branding.create(payload);
+      notify('Branding saved.');
       setModal({ open: false, editing: null });
       load();
     } catch (e) {
-      notify(e.message || 'Save failed.', 'error');
+      const data = e?.response?.data || {};
+      const refused = Object.keys(IMAGE_LABELS).find((kind) => data[kind]);
+      const reason = refused
+        ? `${IMAGE_LABELS[refused]}: ${[].concat(data[refused])[0]}`
+        : (e.message || 'Save failed.');
+      notify(refused ? `Nothing was saved. ${reason}` : reason, 'error');
     } finally {
       setSaving(false);
     }

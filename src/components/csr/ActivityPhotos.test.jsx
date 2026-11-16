@@ -47,3 +47,38 @@ test('more than eight photos are refused, and a photo can be removed', async () 
   await waitFor(() => expect(csrAPI.activityPhotos.remove).toHaveBeenCalledWith('5', 1));
   expect(await screen.findByText(/7 of 8/)).toBeInTheDocument();
 });
+
+test('when one photo of a pick is refused, the ones already added are removed and the error says so', async () => {
+  const a = { id: 3, name: 'a.jpg', size: 10, version: 'v' };
+  const b = { id: 4, name: 'b.jpg', size: 10, version: 'v' };
+  csrAPI.activityPhotos.upload
+    .mockResolvedValueOnce([a])
+    .mockResolvedValueOnce([a, b])
+    .mockRejectedValueOnce(new Error('The file does not match its .jpg extension.'));
+  csrAPI.activityPhotos.remove.mockResolvedValue();
+  render(<ActivityPhotos activityId="5" />);
+  await userEvent.upload(screen.getByLabelText('Add activity photos'), [jpg('a.jpg'), jpg('b.jpg'), jpg('c.jpg')]);
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'c.jpg could not be added: The file does not match its .jpg extension. None of the 3 photos were added.',
+  );
+  expect(csrAPI.activityPhotos.upload).toHaveBeenCalledTimes(3);
+  expect(csrAPI.activityPhotos.remove).toHaveBeenCalledWith('5', 3);
+  expect(csrAPI.activityPhotos.remove).toHaveBeenCalledWith('5', 4);
+  expect(csrAPI.activityPhotos.remove).toHaveBeenCalledTimes(2);
+  expect(screen.queryByRole('img')).toBeNull();
+});
+
+test('a photo that cannot be taken back is named in the error', async () => {
+  const a = { id: 3, name: 'a.jpg', size: 10, version: 'v' };
+  csrAPI.activityPhotos.upload
+    .mockResolvedValueOnce([a])
+    .mockRejectedValueOnce(new Error('The photo is larger than 4 MB. Export a smaller version.'));
+  csrAPI.activityPhotos.remove.mockRejectedValue(new Error('offline'));
+  render(<ActivityPhotos activityId="5" />);
+  await userEvent.upload(screen.getByLabelText('Add activity photos'), [jpg('a.jpg'), jpg('b.jpg')]);
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    '1 photo from this pick could not be taken back; remove it below.',
+  );
+});

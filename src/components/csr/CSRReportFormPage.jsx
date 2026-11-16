@@ -41,16 +41,13 @@ export default function CSRReportFormPage() {
   const [loadFailed, setLoadFailed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
-  // The file chosen in this visit, not yet sent. Uploaded after the report row
-  // is saved, because the upload route needs the report's id.
+  // The file chosen in this visit, not yet sent. It travels with the report in
+  // the same request, so the report and its file are saved together or not at all.
   const [pickedFile, setPickedFile] = useState(null);
   const [fileError, setFileError] = useState('');
   const [removeUpload, setRemoveUpload] = useState(false);
   const [replacing, setReplacing] = useState(false);
   const [fileInputKey, setFileInputKey] = useState(0);
-  // Set when a new report saved but its upload failed: the next Save updates
-  // that report and retries the upload instead of filing a second report.
-  const [createdId, setCreatedId] = useState(null);
   const [downloadError, setDownloadError] = useState('');
 
   const projectId = report?.projectId ?? (projectIdFromQuery ? Number(projectIdFromQuery) : null);
@@ -195,28 +192,27 @@ export default function CSRReportFormPage() {
     payload.projectId = projectId;
     setSaving(true);
     setSaveError('');
-    let reportId = id || createdId;
+    const removing = isEdit && removeUpload && report?.hasFile;
     try {
-      if (reportId) await csrAPI.reports.update(reportId, payload);
-      else reportId = (await csrAPI.reports.create(payload)).id;
+      if (pickedFile || removing) {
+        await csrAPI.reports.saveWithFile(
+          isEdit ? id : null, payload, pickedFile ? { file: pickedFile } : { removeFile: 'true' },
+        );
+      } else if (isEdit) {
+        await csrAPI.reports.update(id, payload);
+      } else {
+        await csrAPI.reports.create(payload);
+      }
+      leave(isEdit ? 'Report updated.' : 'Report filed.');
     } catch (err) {
       // Stay on the page. Navigating away on a failed save is how typed work
       // gets thrown out — the report is gone and the person has nothing to
-      // retry.
-      setSaveError(err?.message || 'Could not save this report. Please try again.');
-      setSaving(false);
-      return;
-    }
-    try {
-      if (pickedFile) await csrAPI.reportFile.upload(reportId, pickedFile);
-      else if (isEdit && removeUpload && report?.hasFile) await csrAPI.reportFile.remove(reportId);
-      leave(isEdit ? 'Report updated.' : 'Report filed.');
-    } catch (err) {
-      if (!isEdit) setCreatedId(reportId);
-      setSaveError(
-        `The report was saved, but the file was not: ${err?.message || 'upload failed'}. `
-        + 'Save again to retry.',
-      );
+      // retry. A file the server refused (a 4xx) takes the report back with it,
+      // so nothing is half-saved and Save simply tries the whole thing again.
+      // A timeout proves nothing either way, so it is not called "nothing saved".
+      const reason = err?.message || 'Could not save this report. Please try again.';
+      const refused = err?.response?.status >= 400 && err.response.status < 500;
+      setSaveError(pickedFile && refused ? `Nothing was saved. ${reason}` : reason);
       setSaving(false);
     }
   };
