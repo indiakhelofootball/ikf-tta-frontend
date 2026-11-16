@@ -69,9 +69,9 @@ test('renaming a type goes through the backend rename and names grants', async (
 test('adding a type saves it under the utilisation_type category', async () => {
   await openCsrSection();
 
-  // Certificate types are the last option panel on the page, so theirs is the
-  // last "Option name" field.
-  const field = screen.getAllByPlaceholderText('Option name').at(-1);
+  // Certificate types are the second-to-last option panel on the page (Report
+  // Types follows), so theirs is the second-to-last "Option name" field.
+  const field = screen.getAllByPlaceholderText('Option name').at(-2);
   fireEvent.change(field, { target: { value: 'Periodic' } });
   fireEvent.keyDown(field, { key: 'Enter' });
 

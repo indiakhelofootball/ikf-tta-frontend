@@ -35,6 +35,7 @@ import {
   getWorkshopNames,
   getTrainingProgrammes,
   getUtilisationTypes,
+  getReportTypes,
   refreshAllFromAPI,
   addConfigOption,
   editConfigOption,
@@ -545,6 +546,7 @@ export default function AdminPage() {
   const [workshopNames, setWorkshopNames] = useState([]);
   const [trainingProgrammes, setTrainingProgrammes] = useState([]);
   const [utilisationTypes, setUtilisationTypes] = useState([]);
+  const [reportTypes, setReportTypes] = useState([]);
   const [saveError, setSaveError] = useState('');
   const [renameInfo, setRenameInfo] = useState('');
 
@@ -673,6 +675,7 @@ export default function AdminPage() {
     setWorkshopNames(getWorkshopNames());
     setTrainingProgrammes(getTrainingProgrammes());
     setUtilisationTypes(getUtilisationTypes());
+    setReportTypes(getReportTypes());
 
     // Fetch latest from API and refresh state
     refreshAllFromAPI().then(() => {
@@ -688,6 +691,7 @@ export default function AdminPage() {
       setWorkshopNames(getWorkshopNames());
       setTrainingProgrammes(getTrainingProgrammes());
       setUtilisationTypes(getUtilisationTypes());
+      setReportTypes(getReportTypes());
     }).catch(() => {});
   }, []);
 
@@ -840,6 +844,13 @@ export default function AdminPage() {
               items={utilisationTypes}
               onSave={handleSave('utilisationTypes', setUtilisationTypes, getUtilisationTypes)}
               onRename={handleCatalogRename('utilisation_type', 'certificate type', setUtilisationTypes, getUtilisationTypes, 'CSR grant')}
+            />
+            <OptionPanel
+              title="Report Types"
+              subtitle="Report types offered on the CSR report form. Renaming one updates every report already using it."
+              items={reportTypes}
+              onSave={handleSave('reportTypes', setReportTypes, getReportTypes)}
+              onRename={handleCatalogRename('report_type', 'report type', setReportTypes, getReportTypes, 'CSR report')}
             />
             <Paper elevation={0} sx={{ border: '1.5px solid #e8e8e8', borderRadius: '20px', overflow: 'hidden' }}>
               <Box sx={{ px: 3.5, py: 2.5, bgcolor: '#fafafa', borderBottom: '1px solid #e8e8e8' }}>

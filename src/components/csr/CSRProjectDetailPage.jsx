@@ -1095,7 +1095,7 @@ export default function CSRProjectDetailPage() {
                 Both fields the collapsed panel held, the linked activity and the
                 gate, are now on the row, so there is nothing left to disclose. */}
             <div className="lgrid lgrid--greports lgrid-head">
-              {['Added', 'Report', 'Type', 'Activity', 'Gate'].map((h) => <span key={h}>{h}</span>)}
+              {['Added', 'Report', 'Type', 'Activity', 'Funder'].map((h) => <span key={h}>{h}</span>)}
             </div>
 
             {reports.length === 0 ? (
@@ -1140,7 +1140,7 @@ export default function CSRProjectDetailPage() {
                     <span className="t2">{linkedActivity?.title || '—'}</span>
                     <span className="lend">
                       <span className={`pill ${r.visibleToClient ? 'act' : 'wait'}`}>
-                        {r.visibleToClient ? 'Client-visible' : 'Internal'}
+                        {r.visibleToClient ? 'Visible' : 'Not visible'}
                       </span>
                       {editable && (
                         <>

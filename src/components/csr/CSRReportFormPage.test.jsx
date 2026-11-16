@@ -1,7 +1,8 @@
 // The report form is a page now, not a dialog. Coverage focuses on what only
 // exists because it became a page: loading by :id, refusing a blank form on a
 // failed load, the ?project= query param scoping both the orphan-record guard
-// and the activity picker.
+// and the activity picker. Plus the simplified shape: one Attach block (a file
+// or a link), report types from the Admin catalogue, Activity under "More".
 import React from 'react';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -26,6 +27,17 @@ jest.mock('../../services/api', () => ({
     reportFile: { upload: jest.fn(), download: jest.fn(), remove: jest.fn() },
   },
 }));
+
+jest.mock('../../utils/adminStorage', () => ({
+  getReportTypes: () => [
+    { id: 1, name: 'Trial' },
+    { id: 2, name: 'Workshop' },
+    { id: 3, name: 'Overall' },
+    { id: 4, name: 'Annual Impact Review' },
+  ],
+}));
+
+jest.mock('../../hooks/useConfigVersion', () => ({ __esModule: true, default: () => 0 }));
 
 const { csrAPI } = require('../../services/api');
 
@@ -64,7 +76,7 @@ describe('creating a report', () => {
 
     await userEvent.type(screen.getByLabelText(/report name/i), 'Q2 Utilisation Statement');
     await userEvent.selectOptions(screen.getByLabelText(/report type/i), 'Overall');
-    await userEvent.type(screen.getByLabelText(/document link/i), 'https://drive.example.com/q2');
+    await userEvent.type(screen.getByLabelText(/or paste a link/i), 'https://drive.example.com/q2');
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     await waitFor(() => expect(csrAPI.reports.create).toHaveBeenCalled());
@@ -72,17 +84,33 @@ describe('creating a report', () => {
     expect(payload.title).toBe('Q2 Utilisation Statement');
     expect(payload.reportType).toBe('Overall');
     expect(payload.fileUrl).toBe('https://drive.example.com/q2');
+    expect(payload.fileName).toBe('');
     expect(payload.projectId).toBe(11);
     expect(mockNavigate).toHaveBeenCalledWith(
       '/csr/11', { state: { saved: 'Report filed.', tab: 3 } },
     );
   });
 
-  test('report type order matches the backend choices, Overall before Other', async () => {
+  test('report types come from the Admin catalogue, not a list in the form', async () => {
     render(<CSRReportFormPage />);
-    const options = within(screen.getByLabelText(/report type/i)).getAllByRole('option');
+    const select = screen.getByLabelText(/report type/i);
+    const options = within(select).getAllByRole('option');
     expect(options.map((o) => o.textContent))
-      .toEqual(['—', 'Trial', 'Workshop', 'Training Programme', 'Overall', 'Other']);
+      .toEqual(['—', 'Trial', 'Workshop', 'Overall', 'Annual Impact Review']);
+    expect(select).toHaveAccessibleDescription('Managed in Admin > Report Types.');
+  });
+
+  test('the fields run name, type, attach, date, show to funder, then activity under More', async () => {
+    const { container } = render(<CSRReportFormPage />);
+    // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
+    const controls = Array.from(container.querySelectorAll('input, select'))
+      .map((el) => el.id || el.type);
+    expect(controls).toEqual(['r-title', 'r-type', 'r-file', 'r-url', 'r-docdate', 'checkbox', 'r-activity']);
+    expect(screen.getByLabelText('Date shown to funder (optional)')).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: /attach/i }))
+      .toHaveAccessibleDescription('A file or a link, either is enough');
+    expect(screen.getByText('More').tagName).toBe('SUMMARY');
+    expect(screen.queryByLabelText(/file name/i)).toBeNull();
   });
 
   test('the activity picker is scoped to the grant from the query param', async () => {
@@ -102,6 +130,13 @@ describe('editing a report', () => {
     await waitFor(() => expect(csrAPI.reports.getById).toHaveBeenCalledWith('9'));
     expect(await screen.findByDisplayValue('Nashik Trial Summary')).toBeInTheDocument();
     expect(screen.getByDisplayValue('https://drive.example.com/x')).toBeInTheDocument();
+  });
+
+  test('a type Admin has since retired stays selected on that report', async () => {
+    csrAPI.reports.getById.mockResolvedValue({ ...REPORT, reportType: 'Training Programme' });
+    render(<CSRReportFormPage />);
+    await screen.findByDisplayValue('Nashik Trial Summary');
+    expect(screen.getByLabelText(/report type/i)).toHaveValue('Training Programme');
   });
 
   test('a record that will not load stops, rather than offering an empty form', async () => {
@@ -129,7 +164,7 @@ describe('editing a report', () => {
 test('the visibility control says the funder reads the title', async () => {
   mockSearch = new URLSearchParams({ project: '11' });
   render(<CSRReportFormPage />);
-  const box = await screen.findByRole('checkbox', { name: /visible to funder/i });
+  const box = await screen.findByRole('checkbox', { name: /show to funder/i });
   expect(box).toHaveAccessibleDescription('The funder sees this title on their portal.');
   expect(screen.queryByText(/linked report/i)).toBeNull();
 });
@@ -137,7 +172,7 @@ test('the visibility control says the funder reads the title', async () => {
 test('a report needs a title even when the document link is filled', async () => {
   mockSearch = new URLSearchParams({ project: '11' });
   render(<CSRReportFormPage />);
-  await userEvent.type(screen.getByLabelText(/document link/i), 'https://drive.example.com/q2');
+  await userEvent.type(screen.getByLabelText(/or paste a link/i), 'https://drive.example.com/q2');
   await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
   expect(screen.getByLabelText(/report name/i)).toHaveAttribute('aria-invalid', 'true');
@@ -145,21 +180,21 @@ test('a report needs a title even when the document link is filled', async () =>
   expect(csrAPI.reports.create).not.toHaveBeenCalled();
 });
 
+const pdf = (size = 2048, name = 'summary.pdf') => {
+  const f = new File(['%PDF-1.4'], name, { type: 'application/pdf' });
+  Object.defineProperty(f, 'size', { value: size });
+  return f;
+};
+
 describe('a document link or an uploaded file', () => {
   beforeEach(() => { mockSearch = new URLSearchParams({ project: '11' }); });
-
-  const pdf = (size = 2048, name = 'summary.pdf') => {
-    const f = new File(['%PDF-1.4'], name, { type: 'application/pdf' });
-    Object.defineProperty(f, 'size', { value: size });
-    return f;
-  };
 
   test('with neither, the save is blocked and says what is missing', async () => {
     render(<CSRReportFormPage />);
     await userEvent.type(screen.getByLabelText(/report name/i), 'Q2 statement');
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
-    expect(screen.getByLabelText(/document link/i))
+    expect(screen.getByLabelText(/or paste a link/i))
       .toHaveAccessibleDescription('Upload the report, or paste a Drive link.');
     expect(csrAPI.reports.create).not.toHaveBeenCalled();
     expect(csrAPI.reportFile.upload).not.toHaveBeenCalled();
@@ -173,13 +208,14 @@ describe('a document link or an uploaded file', () => {
 
     await userEvent.type(screen.getByLabelText(/report name/i), 'Q2 statement');
     const file = pdf();
-    await userEvent.upload(screen.getByLabelText(/upload file/i), file);
+    await userEvent.upload(screen.getByLabelText(/upload a file/i), file);
     expect(screen.getByText(/summary\.pdf \(2 KB\) will be uploaded on save/i)).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     await waitFor(() => expect(csrAPI.reportFile.upload).toHaveBeenCalledWith(42, file));
     expect(order).toEqual(['create', 'upload']);
     expect(csrAPI.reports.create.mock.calls[0][0].fileUrl).toBe('');
+    expect(csrAPI.reports.create.mock.calls[0][0].fileName).toBe('summary.pdf');
     expect(mockNavigate).toHaveBeenCalledWith('/csr/11', { state: { saved: 'Report filed.', tab: 3 } });
   });
 
@@ -187,7 +223,7 @@ describe('a document link or an uploaded file', () => {
     csrAPI.reports.create.mockResolvedValue({ id: 5 });
     render(<CSRReportFormPage />);
     await userEvent.type(screen.getByLabelText(/report name/i), 'Q2 statement');
-    await userEvent.type(screen.getByLabelText(/document link/i), 'https://drive.example.com/q2');
+    await userEvent.type(screen.getByLabelText(/or paste a link/i), 'https://drive.example.com/q2');
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     await waitFor(() => expect(csrAPI.reports.create).toHaveBeenCalled());
@@ -197,8 +233,8 @@ describe('a document link or an uploaded file', () => {
   test('a file over 15 MB is refused before anything is sent', async () => {
     render(<CSRReportFormPage />);
     await userEvent.type(screen.getByLabelText(/report name/i), 'Q2 statement');
-    await userEvent.upload(screen.getByLabelText(/upload file/i), pdf(15 * 1024 * 1024 + 1));
-    expect(screen.getByLabelText(/upload file/i))
+    await userEvent.upload(screen.getByLabelText(/upload a file/i), pdf(15 * 1024 * 1024 + 1));
+    expect(screen.getByLabelText(/upload a file/i))
       .toHaveAccessibleDescription('The file is larger than 15 MB.');
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
     expect(csrAPI.reports.create).not.toHaveBeenCalled();
@@ -206,7 +242,7 @@ describe('a document link or an uploaded file', () => {
 
   test('a disallowed type is refused', async () => {
     render(<CSRReportFormPage />);
-    const input = screen.getByLabelText(/upload file/i);
+    const input = screen.getByLabelText(/upload a file/i);
     // The accept attribute would filter this in a browser picker; a drop or a
     // changed filter must still be caught.
     input.removeAttribute('accept');
@@ -222,7 +258,7 @@ describe('a document link or an uploaded file', () => {
     render(<CSRReportFormPage />);
 
     await userEvent.type(screen.getByLabelText(/report name/i), 'Q2 statement');
-    await userEvent.upload(screen.getByLabelText(/upload file/i), pdf());
+    await userEvent.upload(screen.getByLabelText(/upload a file/i), pdf());
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
     expect(await screen.findByRole('alert')).toHaveTextContent(/saved, but the file was not/i);
     expect(mockNavigate).not.toHaveBeenCalled();
@@ -242,13 +278,17 @@ describe('editing a report that has an uploaded file', () => {
     uploadedFileName: 'nashik.pdf', uploadedFileSize: 1536,
   };
 
-  test('shows the current file, and saves without a link', async () => {
+  test('shows the file with Download, Replace and Remove, and saves without a link', async () => {
     csrAPI.reports.getById.mockResolvedValue(WITH_FILE);
     csrAPI.reports.update.mockResolvedValue({});
     render(<CSRReportFormPage />);
 
-    expect(await screen.findByText(/current file: nashik\.pdf \(2 KB\)/i)).toBeInTheDocument();
+    expect(await screen.findByText('nashik.pdf (2 KB)')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^download$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^replace$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^remove$/i })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/upload a file/i)).toBeNull();
+    expect(screen.queryByLabelText(/link/i)).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     await waitFor(() => expect(csrAPI.reports.update).toHaveBeenCalled());
@@ -256,12 +296,37 @@ describe('editing a report that has an uploaded file', () => {
     expect(csrAPI.reportFile.upload).not.toHaveBeenCalled();
   });
 
+  test('a file that also has a link keeps the link editable', async () => {
+    csrAPI.reports.getById.mockResolvedValue({ ...WITH_FILE, fileUrl: 'https://drive.example.com/x' });
+    render(<CSRReportFormPage />);
+    await screen.findByText('nashik.pdf (2 KB)');
+    expect(screen.getByLabelText('Link')).toHaveValue('https://drive.example.com/x');
+  });
+
+  test('Replace takes a new file and uploads it on save', async () => {
+    csrAPI.reports.getById.mockResolvedValue(WITH_FILE);
+    csrAPI.reports.update.mockResolvedValue({});
+    csrAPI.reportFile.upload.mockResolvedValue({});
+    render(<CSRReportFormPage />);
+    await screen.findByText('nashik.pdf (2 KB)');
+
+    await userEvent.click(screen.getByRole('button', { name: /^replace$/i }));
+    const file = pdf(2048, 'nashik-v2.pdf');
+    await userEvent.upload(screen.getByLabelText(/upload a file/i), file);
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+    await waitFor(() => expect(csrAPI.reportFile.upload).toHaveBeenCalledWith('9', file));
+    expect(csrAPI.reports.update.mock.calls[0][1].fileName).toBe('nashik-v2.pdf');
+    expect(csrAPI.reportFile.remove).not.toHaveBeenCalled();
+  });
+
   test('removing the only file without a link is blocked', async () => {
     csrAPI.reports.getById.mockResolvedValue(WITH_FILE);
     render(<CSRReportFormPage />);
-    await screen.findByText(/current file/i);
+    await screen.findByText('nashik.pdf (2 KB)');
 
-    await userEvent.click(screen.getByRole('button', { name: /remove/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^remove$/i }));
+    expect(screen.getByText('nashik.pdf will be removed on save.')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     expect(csrAPI.reports.update).not.toHaveBeenCalled();
@@ -273,12 +338,27 @@ describe('editing a report that has an uploaded file', () => {
     csrAPI.reports.update.mockResolvedValue({});
     csrAPI.reportFile.remove.mockResolvedValue();
     render(<CSRReportFormPage />);
-    await screen.findByText(/current file/i);
+    await screen.findByText('nashik.pdf (2 KB)');
 
-    await userEvent.click(screen.getByRole('button', { name: /remove/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^remove$/i }));
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     await waitFor(() => expect(csrAPI.reportFile.remove).toHaveBeenCalledWith('9'));
+  });
+
+  test('Keep current file undoes a Remove', async () => {
+    csrAPI.reports.getById.mockResolvedValue(WITH_FILE);
+    csrAPI.reports.update.mockResolvedValue({});
+    render(<CSRReportFormPage />);
+    await screen.findByText('nashik.pdf (2 KB)');
+
+    await userEvent.click(screen.getByRole('button', { name: /^remove$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /keep current file/i }));
+    expect(screen.getByText('nashik.pdf (2 KB)')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+    await waitFor(() => expect(csrAPI.reports.update).toHaveBeenCalled());
+    expect(csrAPI.reportFile.remove).not.toHaveBeenCalled();
   });
 });
 
@@ -288,10 +368,10 @@ test('a new report starts visible to the client, and is sent that way', async ()
   mockSearch = new URLSearchParams({ project: '11' });
   csrAPI.reports.create.mockResolvedValue({});
   render(<CSRReportFormPage />);
-  expect(await screen.findByRole('checkbox', { name: /visible to funder/i })).toBeChecked();
+  expect(await screen.findByRole('checkbox', { name: /show to funder/i })).toBeChecked();
 
   await userEvent.type(screen.getByLabelText(/report name/i), 'Q2 Utilisation Statement');
-  await userEvent.type(screen.getByLabelText(/document link/i), 'https://drive.example.com/q2');
+  await userEvent.type(screen.getByLabelText(/or paste a link/i), 'https://drive.example.com/q2');
   await userEvent.click(screen.getByRole('button', { name: /save/i }));
   await waitFor(() => expect(csrAPI.reports.create).toHaveBeenCalled());
   expect(csrAPI.reports.create.mock.calls[0][0].visibleToClient).toBe(true);
@@ -302,7 +382,7 @@ test.each([false, true])('editing keeps the stored visibility (%p)', async (stor
   csrAPI.reports.getById.mockResolvedValue({ ...REPORT, visibleToClient: stored });
   render(<CSRReportFormPage />);
   await screen.findByDisplayValue('Nashik Trial Summary');
-  expect(screen.getByRole('checkbox', { name: /visible to funder/i }).checked).toBe(stored);
+  expect(screen.getByRole('checkbox', { name: /show to funder/i }).checked).toBe(stored);
 });
 
 describe('D-018: the line beside Save follows the switch', () => {
@@ -312,7 +392,7 @@ describe('D-018: the line beside Save follows the switch', () => {
     mockSearch = new URLSearchParams({ project: '11' });
     render(<CSRReportFormPage />);
     expect(line()).toHaveTextContent('The funder will see this');
-    await userEvent.click(screen.getByRole('checkbox', { name: /visible to funder/i }));
+    await userEvent.click(screen.getByRole('checkbox', { name: /show to funder/i }));
     expect(line()).toHaveTextContent('Hidden from the funder');
     expect(line()).not.toHaveTextContent('The funder will see this');
   });

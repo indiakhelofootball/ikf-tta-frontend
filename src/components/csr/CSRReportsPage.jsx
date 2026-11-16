@@ -57,7 +57,7 @@ const fmtDay = (value) => {
 function GateChip({ visible }) {
   return (
     <span className={`pill ${visible ? 'act' : 'wait'}`}>
-      {visible ? 'Client-visible' : 'Internal'}
+      {visible ? 'Visible' : 'Not visible'}
     </span>
   );
 }
@@ -239,7 +239,7 @@ export default function CSRReportsPage() {
       ) : (
         <div className="twrap">
           <div className="lgrid lgrid--reports lgrid-head">
-            {['Added', 'File', 'Activity', 'Grant', 'Gate'].map((h) => <span key={h}>{h}</span>)}
+            {['Added', 'File', 'Activity', 'Grant', 'Funder'].map((h) => <span key={h}>{h}</span>)}
           </div>
 
           {rows.length === 0 ? (loadFailed ? null : (
@@ -266,7 +266,9 @@ export default function CSRReportsPage() {
             >
               <span className="fig nowrap">{fmtDay(r.createdAt)}</span>
               <span className="t1wrap">
-                <span className="t1">{reportDisplayName(r)}</span>
+                <span className="t1">
+                  {reportDisplayName(r)}{r.reportType ? ` (${r.reportType})` : ''}
+                </span>
                 <ReportFileButton report={r} onError={setError} />
                 {r.fileUrl && (
                   <a
