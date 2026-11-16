@@ -7,9 +7,9 @@
 // objects stay reachable only from inside a CSR project — in the act of
 // attaching one — never as a place to navigate to. The absence IS the spec.
 //
-// There is deliberately no "Back to TTA" link either: CSR is its own front door
-// at /csr/login, not a room inside TTA. An internal admin who needs the ledger
-// signs into it at /login.
+// CSR is its own front door at /csr/login. The one way out is "Switch to TTA"
+// (owner, 16 Nov 2026), shown only to a user who can open a TTA module, so a
+// CSR-only operator still never sees a door into the ledger.
 
 import React from 'react';
 import { matchRoutes, useLocation, useNavigate } from 'react-router-dom';
@@ -23,6 +23,7 @@ import {
   Category as CatalogIcon,
   Palette as BrandingIcon,
   HandshakeOutlined as PartnersIcon,
+  SwapHoriz as SwitchIcon,
 } from '@mui/icons-material';
 import { Menu, MenuItem, ListItemIcon } from '@mui/material';
 import {
@@ -35,6 +36,9 @@ import { ROLES } from '../../auth/roles';
 import SidebarFrame, { NavItem } from './SidebarFrame';
 import './Sidebar.css';
 import '../../styles/csrDesign.css';
+
+// The TTA sidebar's own gates (Sidebar.jsx). Holding any one means TTA opens.
+const TTA_MODULES = ['trials', 'vendors', 'workorders', 'payments', 'reps', 'courier', 'config'];
 
 // Mirrors App.js's /csr/* routes. A project detail page (/csr/:id) has to light
 // up Projects — it is a row of that list — but /csr/:id also matches every
@@ -196,6 +200,7 @@ export default function CSRSidebar({ collapsed, onToggle }) {
   // "settings"; it is not in the reference, so it is gone. The admin gate on
   // the last three is unchanged — it was never what the headings were for.
   const showSetup = isAdminOrSuper;
+  const canOpenTTA = isAdminOrSuper || TTA_MODULES.some((m) => canView(m));
 
   return (
     <SidebarFrame
@@ -219,6 +224,8 @@ export default function CSRSidebar({ collapsed, onToggle }) {
       {showSetup && item({ to: '/csr/clients', icon: <FundersIcon fontSize="small" />, label: 'Funders' })}
       {(showSetup || canView('csr')) && item({ to: '/csr/activity-types', icon: <CatalogIcon fontSize="small" />, label: 'Activity Types' })}
       {showSetup && item({ to: '/csr/branding', icon: <BrandingIcon fontSize="small" />, label: 'Branding' })}
+      {canOpenTTA && <div className="sidebar-divider" role="presentation" />}
+      {canOpenTTA && item({ to: '/', icon: <SwitchIcon fontSize="small" />, label: 'Switch to TTA', end: true })}
     </SidebarFrame>
   );
 }
