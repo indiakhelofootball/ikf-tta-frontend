@@ -801,7 +801,7 @@ export default function AdminPage() {
             />
             <OptionPanel
               title="Partner Categories"
-              subtitle="Classifications for vendors who deliver CSR work (e.g. Workshop Partner, Training Partner). A vendor flagged with one becomes selectable as the partner who ran a CSR workshop. Renaming one updates every vendor already using it."
+              subtitle="Partner types offered on CSR > Partners > New Partner. Renaming one updates every partner already using it."
               items={partnerCategories}
               onSave={handleSave('partnerCategories', setPartnerCategories, getPartnerCategories)}
               onRename={handleVendorTagRename('partner_category', setPartnerCategories, getPartnerCategories)}

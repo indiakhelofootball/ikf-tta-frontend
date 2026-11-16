@@ -10,6 +10,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 
 import { csrAPI } from '../../services/api';
 import ActivityPhotos from './ActivityPhotos';
+import CSRCombobox from './CSRCombobox';
 import { activityFormFunderLine, defaultStatusFor, localToday } from './activityVisibility';
 import { getWorkshopNames, getTrainingProgrammes } from '../../utils/adminStorage';
 import useConfigVersion from '../../hooks/useConfigVersion';
@@ -215,6 +216,7 @@ export default function CSRActivityFormPage() {
     : partners;
 
   const setField = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  const setValue = (k) => (value) => setForm((f) => ({ ...f, [k]: value }));
 
   const handleStartDateChange = (e) => {
     const startDate = e.target.value;
@@ -234,8 +236,7 @@ export default function CSRActivityFormPage() {
   // that no longer belong (rather than just hiding them) matters because the
   // serializer validates these per-category -- a stale workshop id surviving
   // under a trial would submit clean and come back as a confusing 400.
-  const handleTypeChange = (e) => {
-    const newId = e.target.value;
+  const handleTypeChange = (newId) => {
     const newType = activityTypes.find((t) => t.id === Number(newId));
     const keep = new Set(KIND_FIELDS[kindOfTypeName(newType?.name)]);
     setForm((f) => {
@@ -345,6 +346,19 @@ export default function CSRActivityFormPage() {
     }]
     : programmes;
 
+  const typeChoices = activityTypes.map((t) => ({
+    id: t.id, label: t.name, hint: t.isMaster ? 'Master template' : undefined,
+  }));
+  const cityChoices = cityOptions.map((c) => ({
+    id: c.id, label: c.state ? `${c.cityName}, ${c.state}` : c.cityName,
+  }));
+  const workshopChoices = workshopOptions.map((w) => ({ id: w.id, label: w.name }));
+  const programmeChoices = programmeOptions.map((t) => ({ id: t.id, label: t.name }));
+  const trialChoices = trialOptions.map((t) => ({
+    id: t.id, label: `${t.trialCode ? `${t.trialCode} — ` : ''}${t.trialName || `#${t.id}`}`,
+  }));
+  const partnerChoices = partnerOptions.map((p) => ({ id: p.id, label: p.name || `#${p.id}` }));
+
   const grantName = activity?.projectName || grant?.name || '';
   const ttaProject = activity?.ttaProject || grant?.ttaProjectName || '';
   const season = activity?.season || grant?.season || '';
@@ -429,19 +443,17 @@ export default function CSRActivityFormPage() {
 
           <div className="pform-field">
             <label htmlFor="a-type">Activity Type <span className="pform-req" aria-hidden="true">*</span></label>
-            <select
-              id="a-type" className="sel" value={form.activityTypeId} onChange={handleTypeChange}
+            <CSRCombobox
+              id="a-type"
+              value={form.activityTypeId}
+              options={typeChoices}
+              onChange={handleTypeChange}
+              placeholder="Search activity types"
+              emptyText="No activity type matches."
               disabled={noTypes}
               aria-invalid={Boolean(errors.activityTypeId)}
               aria-describedby="a-type-help"
-            >
-              <option value="">—</option>
-              {activityTypes.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}{t.isMaster ? ' · master template' : ''}
-                </option>
-              ))}
-            </select>
+            />
             <p id="a-type-help" className={`pform-help${errors.activityTypeId ? ' bad' : ''}`}>
               {noTypes
                 ? 'No activity types defined yet — add them in the catalog first.'
@@ -493,16 +505,16 @@ export default function CSRActivityFormPage() {
 
           <div className="pform-field">
             <label htmlFor="a-city">City</label>
-            <select
-              id="a-city" className="sel" value={form.trialCityId}
-              onChange={setField('trialCityId')} aria-describedby="a-city-help"
+            <CSRCombobox
+              id="a-city"
+              value={form.trialCityId}
+              options={cityChoices}
+              onChange={setValue('trialCityId')}
+              placeholder="Search this grant's cities"
+              emptyText="No city matches."
               disabled={cityOptions.length === 0}
-            >
-              <option value="">—</option>
-              {cityOptions.map((c) => (
-                <option key={c.id} value={c.id}>{c.state ? `${c.cityName}, ${c.state}` : c.cityName}</option>
-              ))}
-            </select>
+              aria-describedby="a-city-help"
+            />
             <p id="a-city-help" className="pform-help">
               {cityOptions.length === 0
                 ? 'This grant has no cities yet. Pick them on the grant first.'
@@ -556,15 +568,16 @@ export default function CSRActivityFormPage() {
             {showField('workshopId') && (
               <div className="pform-field">
                 <label htmlFor="a-workshop">Workshop</label>
-                <select
-                  id="a-workshop" className="sel" value={form.workshopId} onChange={setField('workshopId')}
-                  disabled={workshopOptions.length === 0} aria-describedby="a-workshop-help"
-                >
-                  <option value="">— none —</option>
-                  {workshopOptions.map((w) => (
-                    <option key={w.id} value={w.id}>{w.name}</option>
-                  ))}
-                </select>
+                <CSRCombobox
+                  id="a-workshop"
+                  value={form.workshopId}
+                  options={workshopChoices}
+                  onChange={setValue('workshopId')}
+                  placeholder="Search workshops"
+                  emptyText="No workshop matches."
+                  disabled={workshopOptions.length === 0}
+                  aria-describedby="a-workshop-help"
+                />
                 <p id="a-workshop-help" className="pform-help">
                   {workshops.length === 0
                     ? 'No workshops in the catalog yet — an admin adds them in TTA Admin → Setup.'
@@ -576,16 +589,16 @@ export default function CSRActivityFormPage() {
             {showField('trainingProgrammeId') && (
               <div className="pform-field">
                 <label htmlFor="a-programme">Training Programme</label>
-                <select
-                  id="a-programme" className="sel" value={form.trainingProgrammeId}
-                  onChange={setField('trainingProgrammeId')}
-                  disabled={programmeOptions.length === 0} aria-describedby="a-programme-help"
-                >
-                  <option value="">— none —</option>
-                  {programmeOptions.map((t) => (
-                    <option key={t.id} value={t.id}>{t.name}</option>
-                  ))}
-                </select>
+                <CSRCombobox
+                  id="a-programme"
+                  value={form.trainingProgrammeId}
+                  options={programmeChoices}
+                  onChange={setValue('trainingProgrammeId')}
+                  placeholder="Search training programmes"
+                  emptyText="No training programme matches."
+                  disabled={programmeOptions.length === 0}
+                  aria-describedby="a-programme-help"
+                />
                 <p id="a-programme-help" className="pform-help">
                   {programmes.length === 0
                     ? 'No training programmes in the catalog yet — an admin adds them in TTA Admin → Setup.'
@@ -597,17 +610,15 @@ export default function CSRActivityFormPage() {
             {showField('linkedTrialId') && (
               <div className="pform-field">
                 <label htmlFor="a-trial">Linked Trial (optional)</label>
-                <select
-                  id="a-trial" className="sel" value={form.linkedTrialId}
-                  onChange={setField('linkedTrialId')} aria-describedby="a-trial-help"
-                >
-                  <option value="">— none —</option>
-                  {trialOptions.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.trialCode ? `${t.trialCode} — ` : ''}{t.trialName || `#${t.id}`}
-                    </option>
-                  ))}
-                </select>
+                <CSRCombobox
+                  id="a-trial"
+                  value={form.linkedTrialId}
+                  options={trialChoices}
+                  onChange={setValue('linkedTrialId')}
+                  placeholder="Search this grant's trials"
+                  emptyText="No trial matches."
+                  aria-describedby="a-trial-help"
+                />
                 <p id="a-trial-help" className="pform-help">
                   Link an existing trial, if this activity is one.
                 </p>
@@ -637,24 +648,23 @@ export default function CSRActivityFormPage() {
                 {showField('partnerId') && (
                   <div className="pform-field">
                     <label htmlFor="a-partner">Partner</label>
-                    <select
-                      id="a-partner" className="sel" value={form.partnerId}
-                      onChange={setField('partnerId')}
+                    <CSRCombobox
+                      id="a-partner"
+                      value={form.partnerId}
+                      options={partnerChoices}
+                      onChange={setValue('partnerId')}
+                      placeholder="Search partners"
+                      emptyText="No partner matches."
                       disabled={form.deliveryMode === 'Self'}
                       aria-invalid={Boolean(errors.partnerId)}
                       aria-describedby="a-partner-help"
-                    >
-                      <option value="">— none —</option>
-                      {partnerOptions.map((p) => (
-                        <option key={p.id} value={p.id}>{p.name || `#${p.id}`}</option>
-                      ))}
-                    </select>
+                    />
                     <p id="a-partner-help" className={`pform-help${errors.partnerId ? ' bad' : ''}`}>
                       {errors.partnerId || (form.deliveryMode === 'Self'
                         ? 'Not needed — this one was delivered by TTA.'
                         : partnerOptions.length === 0
                           ? 'No partners yet. Add one on the CSR Partners page.'
-                          : 'The partner who delivered this. Vendor names with service type Partner in TTA Admin appear here.')}
+                          : 'Partners added on the CSR Partners page.')}
                     </p>
                   </div>
                 )}
