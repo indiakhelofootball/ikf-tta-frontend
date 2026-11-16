@@ -3260,3 +3260,48 @@
    inside its fact cell rather than widening the strip on a phone. */
 .csrx .pt-facts .fc{min-width:0}
 .csrx .pt-facts .fv{overflow-wrap:anywhere}
+
+/* CSRCombobox: one input that searches the list it picks from. The input
+   matches .sel and .pform-field input; the list drops under it at its width. */
+.csrx .cbx{position:relative;min-width:0}
+.csrx .cbx .cbx-in{
+  font:inherit;font-size:14px;line-height:1.7;color:var(--ink);
+  background-color:var(--card);border:1px solid var(--line);border-radius:var(--r-ctl);
+  width:100%;padding:9px 64px 9px 12px;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237C8783' stroke-width='2'><path d='M6 9l6 6 6-6'/></svg>");
+  background-repeat:no-repeat;background-position:right 12px center;background-size:13px;
+  text-overflow:ellipsis;
+}
+.csrx .cbx .cbx-in:focus{outline:none;border-color:var(--g);box-shadow:0 0 0 3px var(--g-wash)}
+.csrx .cbx .cbx-in[aria-invalid="true"]{border-color:var(--red)}
+.csrx .cbx .cbx-in[aria-invalid="true"]:focus{box-shadow:0 0 0 3px var(--red-wash)}
+.csrx .cbx .cbx-in:disabled{color:var(--muted);background-color:var(--ground2);cursor:not-allowed}
+.csrx .cbx .cbx-in::placeholder{color:var(--muted)}
+.csrx .cbx-clear{
+  position:absolute;right:32px;top:7px;width:30px;height:30px;
+  display:grid;place-items:center;padding:0;border:0;border-radius:var(--r-ctl);
+  background:none;color:var(--muted);cursor:pointer;
+}
+.csrx .cbx-clear:hover{background:var(--ground2);color:var(--ink)}
+.csrx .cbx-clear:focus-visible{outline:2px solid var(--g);outline-offset:1px}
+.csrx .cbx-clear svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.csrx .cbx-list{
+  position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:30;
+  margin:0;padding:4px;list-style:none;
+  max-height:min(18rem,50vh);overflow-y:auto;overscroll-behavior:contain;
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r-ctl);
+  box-shadow:0 8px 24px rgba(28,35,32,.12);
+}
+.csrx .cbx-list[hidden]{display:none}
+.csrx .cbx-opt{
+  display:flex;flex-direction:column;gap:2px;
+  padding:9px 10px;border-radius:var(--r-ctl);cursor:pointer;
+  font-size:14px;line-height:1.5;color:var(--ink);overflow-wrap:anywhere;
+}
+.csrx .cbx-opt.on{background:var(--g-wash)}
+.csrx .cbx-opt[aria-selected="true"]{color:var(--g-deep);font-weight:600}
+.csrx .cbx-hint{font-size:12.5px;font-weight:400;color:var(--muted)}
+.csrx .cbx-empty{padding:9px 10px;font-size:13.5px;color:var(--muted);line-height:1.5}
+.csrx .cbx-add{color:var(--g);font-weight:600}
+.csrx .cbx-add[aria-disabled="true"]{cursor:progress;opacity:.7}
+.csrx .cbx-err{margin:6px 0 0;font-size:13px;line-height:1.6;color:var(--red)}

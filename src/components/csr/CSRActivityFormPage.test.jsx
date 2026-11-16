@@ -41,6 +41,22 @@ jest.mock('../../hooks/useConfigVersion', () => ({ __esModule: true, default: ()
 
 const { csrAPI, trialsAPI } = require('../../services/api');
 
+const typesLoaded = () => waitFor(
+  () => expect(screen.getByRole('combobox', { name: /activity type/i })).toBeEnabled(),
+);
+
+const pick = async (label, name) => {
+  const input = screen.getByLabelText(label);
+  await userEvent.clear(input);
+  await userEvent.type(input, name);
+  await userEvent.click(await screen.findByRole('option', { name }));
+};
+
+const openOptions = async (input) => {
+  await userEvent.click(input);
+  return within(screen.getByRole('listbox'));
+};
+
 const TYPES = [
   { id: 10, name: 'District Trial', isMaster: false },
   { id: 11, name: 'Career Workshop', isMaster: false },
@@ -78,7 +94,7 @@ describe('creating an activity', () => {
 
   test('will not save without a title and a type', async () => {
     render(<CSRActivityFormPage />);
-    await screen.findByText('District Trial');
+    await typesLoaded();
 
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
@@ -88,10 +104,10 @@ describe('creating an activity', () => {
   test('sends the payload with the grant from the query param', async () => {
     csrAPI.activities.create.mockResolvedValue({});
     render(<CSRActivityFormPage />);
-    await screen.findByText('District Trial');
+    await typesLoaded();
 
     await userEvent.type(screen.getByLabelText(/title/i), 'Nashik Trial');
-    await userEvent.selectOptions(screen.getByLabelText(/activity type/i), '10');
+    await pick(/activity type/i, 'District Trial');
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     await waitFor(() => expect(csrAPI.activities.create).toHaveBeenCalled());
@@ -106,17 +122,17 @@ describe('creating an activity', () => {
 
   test('the type cascade shows and hides category fields', async () => {
     render(<CSRActivityFormPage />);
-    await screen.findByText('District Trial');
+    await typesLoaded();
 
     // Nothing chosen yet: no category field is on the page.
     expect(screen.queryByLabelText(/linked trial/i)).toBeNull();
     expect(screen.queryByLabelText(/workshop/i)).toBeNull();
 
-    await userEvent.selectOptions(screen.getByLabelText(/activity type/i), '10');
+    await pick(/activity type/i, 'District Trial');
     expect(await screen.findByLabelText(/linked trial/i)).toBeInTheDocument();
     expect(screen.queryByLabelText(/^workshop$/i)).toBeNull();
 
-    await userEvent.selectOptions(screen.getByLabelText(/activity type/i), '11');
+    await pick(/activity type/i, 'Career Workshop');
     expect(await screen.findByLabelText(/^workshop$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/delivered by/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^partner$/i)).toBeInTheDocument();
@@ -125,8 +141,8 @@ describe('creating an activity', () => {
 
   test('an empty partner list says how to add a partner in TTA Admin', async () => {
     render(<CSRActivityFormPage />);
-    await screen.findByText('District Trial');
-    await userEvent.selectOptions(screen.getByLabelText(/activity type/i), '11');
+    await typesLoaded();
+    await pick(/activity type/i, 'Career Workshop');
     expect(await screen.findByText(
       'No partners yet. Add one on the CSR Partners page.',
     )).toBeInTheDocument();
@@ -138,16 +154,18 @@ describe('creating an activity', () => {
     });
     csrAPI.activities.create.mockResolvedValue({});
     render(<CSRActivityFormPage />);
-    await screen.findByText('District Trial');
+    await typesLoaded();
 
     await userEvent.type(screen.getByLabelText(/title/i), 'Life skills session');
-    await userEvent.selectOptions(screen.getByLabelText(/activity type/i), '11');
+    await pick(/activity type/i, 'Career Workshop');
     await userEvent.selectOptions(screen.getByLabelText(/delivered by/i), 'Partner');
     const picker = screen.getByLabelText(/^partner$/i);
-    await waitFor(() => expect(within(picker).getAllByRole('option')).toHaveLength(3));
-    expect(within(picker).getAllByRole('option').map((o) => o.textContent))
-      .toEqual(['— none —', 'A1 Classes', 'Kick Academy']);
-    await userEvent.selectOptions(picker, '4');
+    expect(picker).toHaveAccessibleDescription('Partners added on the CSR Partners page.');
+    const list = await openOptions(picker);
+    await waitFor(() => expect(list.getAllByRole('option')).toHaveLength(2));
+    expect(list.getAllByRole('option').map((o) => o.textContent)).toEqual(['A1 Classes', 'Kick Academy']);
+    await userEvent.click(list.getByRole('option', { name: 'Kick Academy' }));
+    expect(picker).toHaveValue('Kick Academy');
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     await waitFor(() => expect(csrAPI.activities.create).toHaveBeenCalled());
@@ -158,9 +176,9 @@ describe('creating an activity', () => {
 
   test('Partner delivery with no partner named is stopped before the round trip', async () => {
     render(<CSRActivityFormPage />);
-    await screen.findByText('District Trial');
+    await typesLoaded();
     await userEvent.type(screen.getByLabelText(/title/i), 'Life skills session');
-    await userEvent.selectOptions(screen.getByLabelText(/activity type/i), '11');
+    await pick(/activity type/i, 'Career Workshop');
     await userEvent.selectOptions(screen.getByLabelText(/delivered by/i), 'Partner');
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
@@ -174,13 +192,12 @@ describe('creating an activity', () => {
     err.response = { status: 400, data: { partnerId: ['Not a partner.'] } };
     csrAPI.activities.create.mockRejectedValue(err);
     render(<CSRActivityFormPage />);
-    await screen.findByText('District Trial');
+    await typesLoaded();
 
     await userEvent.type(screen.getByLabelText(/title/i), 'Life skills session');
-    await userEvent.selectOptions(screen.getByLabelText(/activity type/i), '11');
+    await pick(/activity type/i, 'Career Workshop');
     await userEvent.selectOptions(screen.getByLabelText(/delivered by/i), 'Partner');
-    await waitFor(() => expect(screen.getByRole('option', { name: 'A1 Classes' })).toBeInTheDocument());
-    await userEvent.selectOptions(screen.getByLabelText(/^partner$/i), '3');
+    await pick(/^partner$/i, 'A1 Classes');
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     expect(await screen.findByText('Not a partner.')).toBeInTheDocument();
@@ -189,7 +206,7 @@ describe('creating an activity', () => {
 
   test('exactly two date fields exist, never three: Start and End only', async () => {
     render(<CSRActivityFormPage />);
-    await screen.findByText('District Trial');
+    await typesLoaded();
     expect(screen.getByLabelText(/start date/i)).toHaveAttribute('type', 'date');
     expect(screen.getByLabelText(/end date/i)).toHaveAttribute('type', 'date');
     // A single-day activity sets Start alone; there is no third date field
@@ -199,7 +216,7 @@ describe('creating an activity', () => {
 
   test('status offers Planned, Completed and Cancelled (D-018)', async () => {
     render(<CSRActivityFormPage />);
-    await screen.findByText('District Trial');
+    await typesLoaded();
     const options = within(screen.getByLabelText(/status/i)).getAllByRole('option');
     expect(options.map((o) => o.textContent)).toEqual(['Planned', 'Completed', 'Cancelled']);
   });
@@ -228,9 +245,11 @@ describe('editing an activity', () => {
     await screen.findByDisplayValue('Bhilai Trial');
 
     const picker = await screen.findByLabelText(/^partner$/i);
-    await waitFor(() => expect(within(picker).getByRole('option', { name: 'A1 Classes' })).toBeInTheDocument());
-    expect(picker).toHaveValue('99');
-    expect(within(picker).getByRole('option', { name: 'Old Partner Trust' })).toBeInTheDocument();
+    await waitFor(() => expect(picker).toHaveValue('Old Partner Trust'));
+    const list = await openOptions(picker);
+    await waitFor(() => expect(list.getByRole('option', { name: 'A1 Classes' })).toBeInTheDocument());
+    expect(list.getByRole('option', { name: 'Old Partner Trust' })).toHaveAttribute('aria-selected', 'true');
+    await userEvent.keyboard('{Escape}');
 
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
     await waitFor(() => expect(csrAPI.activities.update).toHaveBeenCalled());
@@ -264,13 +283,13 @@ describe('visible to funder', () => {
     mockSearch = new URLSearchParams({ project: '11' });
     csrAPI.activities.create.mockResolvedValue({});
     render(<CSRActivityFormPage />);
-    await screen.findByText('District Trial');
+    await typesLoaded();
 
     const sw = screen.getByRole('switch', { name: 'Visible to funder' });
     expect(sw).toBeChecked();
 
     await userEvent.type(screen.getByLabelText(/title/i), 'Nashik Trial');
-    await userEvent.selectOptions(screen.getByLabelText(/activity type/i), '10');
+    await pick(/activity type/i, 'District Trial');
     await userEvent.click(sw);
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
@@ -307,7 +326,7 @@ describe('visible to funder', () => {
   test('the helper says the funder sees the activity, Planned or Completed, unless switched off', async () => {
     mockSearch = new URLSearchParams({ project: '11' });
     render(<CSRActivityFormPage />);
-    await screen.findByText('District Trial');
+    await typesLoaded();
 
     const sw = screen.getByRole('switch', { name: 'Visible to funder' });
     const helper = 'The funder sees this activity, labelled Planned or Completed, unless you switch this off.';
@@ -319,6 +338,41 @@ describe('visible to funder', () => {
   });
 });
 
+describe('search where you pick', () => {
+  beforeEach(() => { mockSearch = new URLSearchParams({ project: '11' }); });
+
+  test('activity type, city, workshop and partner filter as you type; status and delivery stay selects', async () => {
+    csrAPI.activityTypes.getAll.mockResolvedValue([...TYPES, { id: 12, name: 'Coach Training', isMaster: true }]);
+    csrAPI.projects.getById.mockResolvedValue({
+      id: 11, cities: [{ id: 7, cityName: 'Pune', state: 'MH' }, { id: 8, cityName: 'Wardha', state: 'MH' }],
+    });
+    csrAPI.partners.getAll.mockResolvedValue([{ id: 3, name: 'A1 Classes' }, { id: 4, name: 'Kick Academy' }]);
+    render(<CSRActivityFormPage />);
+    await typesLoaded();
+
+    await userEvent.type(screen.getByLabelText(/activity type/i), 'master');
+    expect(within(screen.getByRole('listbox')).getAllByRole('option').map((o) => o.textContent))
+      .toEqual(['Coach TrainingMaster template']);
+    await userEvent.keyboard('{Escape}');
+
+    await waitFor(() => expect(screen.getByLabelText(/^city$/i)).toBeEnabled());
+    await userEvent.type(screen.getByLabelText(/^city$/i), 'ward');
+    expect(within(screen.getByRole('listbox')).getAllByRole('option').map((o) => o.textContent))
+      .toEqual(['Wardha, MH']);
+    await userEvent.keyboard('{ArrowDown}{Enter}');
+    expect(screen.getByLabelText(/^city$/i)).toHaveValue('Wardha, MH');
+
+    await pick(/activity type/i, 'Career Workshop');
+    await userEvent.type(screen.getByLabelText(/^partner$/i), 'kick');
+    expect(within(screen.getByRole('listbox')).getAllByRole('option').map((o) => o.textContent))
+      .toEqual(['Kick Academy']);
+    await userEvent.keyboard('{Escape}');
+
+    expect(screen.getByLabelText(/status/i).tagName).toBe('SELECT');
+    expect(screen.getByLabelText(/delivered by/i).tagName).toBe('SELECT');
+  });
+});
+
 describe('linked trial', () => {
   const GRANT_TRIALS = [{ id: 7, trialCode: 'BH-01', trialName: 'Bhilai Trial' }];
 
@@ -326,11 +380,11 @@ describe('linked trial', () => {
     mockSearch = new URLSearchParams({ project: '11' });
     csrAPI.grantTrials.mockResolvedValue(GRANT_TRIALS);
     render(<CSRActivityFormPage />);
-    await screen.findByText('District Trial');
-    await userEvent.selectOptions(screen.getByLabelText(/activity type/i), '10');
+    await typesLoaded();
+    await pick(/activity type/i, 'District Trial');
 
-    const select = screen.getByLabelText(/linked trial/i);
-    expect(within(select).getByRole('option', { name: 'BH-01 — Bhilai Trial' })).toBeInTheDocument();
+    const list = await openOptions(screen.getByLabelText(/linked trial/i));
+    expect(list.getAllByRole('option').map((o) => o.textContent)).toEqual(['BH-01 — Bhilai Trial']);
     expect(csrAPI.grantTrials).toHaveBeenCalledWith(11);
     expect(trialsAPI.getAll).not.toHaveBeenCalled();
   });
@@ -342,8 +396,9 @@ describe('linked trial', () => {
     render(<CSRActivityFormPage />);
 
     const select = await screen.findByLabelText(/linked trial/i);
-    await waitFor(() => expect(select).toHaveValue('99'));
-    expect(within(select).getByRole('option', { name: '#99' })).toBeInTheDocument();
+    await waitFor(() => expect(select).toHaveValue('#99'));
+    const list = await openOptions(select);
+    expect(list.getByRole('option', { name: '#99' })).toHaveAttribute('aria-selected', 'true');
   });
 });
 
@@ -352,9 +407,9 @@ describe('activity dates', () => {
 
   const fill = async (start, end) => {
     render(<CSRActivityFormPage />);
-    await screen.findByText('District Trial');
+    await typesLoaded();
     await userEvent.type(screen.getByLabelText(/title/i), 'Dated');
-    await userEvent.selectOptions(screen.getByLabelText(/activity type/i), '10');
+    await pick(/activity type/i, 'District Trial');
     fireEvent.change(screen.getByLabelText(/start date/i), { target: { value: start } });
     fireEvent.change(screen.getByLabelText(/end date/i), { target: { value: end } });
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
@@ -396,7 +451,7 @@ describe("D-018: a new activity's status follows its start date until picked", (
 
   test('no date starts as Completed', async () => {
     render(<CSRActivityFormPage />);
-    await screen.findByText('District Trial');
+    await typesLoaded();
     expect(status()).toHaveValue('Completed');
   });
 
@@ -406,7 +461,7 @@ describe("D-018: a new activity's status follows its start date until picked", (
     ['yesterday', YESTERDAY, 'Completed'],
   ])('a start date of %s gives %s', async (_, start, expected) => {
     render(<CSRActivityFormPage />);
-    await screen.findByText('District Trial');
+    await typesLoaded();
     setStart(start);
     expect(status()).toHaveValue(expected);
   });
@@ -414,7 +469,7 @@ describe("D-018: a new activity's status follows its start date until picked", (
   test('the default keeps following while the date moves, and is what is saved', async () => {
     csrAPI.activities.create.mockResolvedValue({});
     render(<CSRActivityFormPage />);
-    await screen.findByText('District Trial');
+    await typesLoaded();
     setStart(TOMORROW);
     expect(status()).toHaveValue('Planned');
     setStart(TODAY);
@@ -424,7 +479,7 @@ describe("D-018: a new activity's status follows its start date until picked", (
     setStart(TOMORROW);
 
     await userEvent.type(screen.getByLabelText(/title/i), 'Nashik Trial');
-    await userEvent.selectOptions(screen.getByLabelText(/activity type/i), '10');
+    await pick(/activity type/i, 'District Trial');
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
     await waitFor(() => expect(csrAPI.activities.create).toHaveBeenCalled());
     expect(csrAPI.activities.create.mock.calls[0][0].status).toBe('Planned');
@@ -432,7 +487,7 @@ describe("D-018: a new activity's status follows its start date until picked", (
 
   test('once the user picks a status, a date change leaves it alone', async () => {
     render(<CSRActivityFormPage />);
-    await screen.findByText('District Trial');
+    await typesLoaded();
     await userEvent.selectOptions(status(), 'Completed');
     setStart(TOMORROW);
     expect(status()).toHaveValue('Completed');
@@ -472,7 +527,7 @@ describe('D-018: the line beside Save says whether the funder will see it', () =
 
   test('switch on, Completed: shown; switch off: hidden', async () => {
     render(<CSRActivityFormPage />);
-    await screen.findByText('District Trial');
+    await typesLoaded();
     expect(line()).toHaveTextContent(SHOWN);
     await userEvent.click(screen.getByRole('switch', { name: 'Visible to funder' }));
     expect(line()).toHaveTextContent(HIDDEN);
@@ -481,7 +536,7 @@ describe('D-018: the line beside Save says whether the funder will see it', () =
 
   test('Cancelled is hidden even with the switch on', async () => {
     render(<CSRActivityFormPage />);
-    await screen.findByText('District Trial');
+    await typesLoaded();
     await userEvent.selectOptions(status(), 'Cancelled');
     expect(line()).toHaveTextContent(HIDDEN);
     await userEvent.selectOptions(status(), 'Completed');
@@ -494,7 +549,7 @@ describe('D-018: the line beside Save says whether the funder will see it', () =
     ['tomorrow', TOMORROW, SHOWN],
   ])('Planned starting %s: %s', async (_, start, expected) => {
     render(<CSRActivityFormPage />);
-    await screen.findByText('District Trial');
+    await typesLoaded();
     await userEvent.selectOptions(status(), 'Planned');
     setDate(/start date/i, start);
     expect(line()).toHaveTextContent(expected);
@@ -505,7 +560,7 @@ describe('D-018: the line beside Save says whether the funder will see it', () =
     ['today', TODAY, SHOWN],
   ])('a Planned span is judged by its end date: ending %s gives %s', async (_, end, expected) => {
     render(<CSRActivityFormPage />);
-    await screen.findByText('District Trial');
+    await typesLoaded();
     await userEvent.selectOptions(status(), 'Planned');
     setDate(/start date/i, dayFromToday(-5));
     setDate(/end date/i, end);
@@ -514,14 +569,14 @@ describe('D-018: the line beside Save says whether the funder will see it', () =
 
   test('Planned with no date is shown', async () => {
     render(<CSRActivityFormPage />);
-    await screen.findByText('District Trial');
+    await typesLoaded();
     await userEvent.selectOptions(status(), 'Planned');
     expect(line()).toHaveTextContent(SHOWN);
   });
 
   test('Completed with a past date is shown', async () => {
     render(<CSRActivityFormPage />);
-    await screen.findByText('District Trial');
+    await typesLoaded();
     setDate(/start date/i, YESTERDAY);
     expect(status()).toHaveValue('Completed');
     expect(line()).toHaveTextContent(SHOWN);
@@ -537,14 +592,16 @@ describe('D-019: the activity city comes from the grant', () => {
     });
     csrAPI.activities.create.mockResolvedValue({ id: 1 });
     render(<CSRActivityFormPage />);
-    await screen.findByText('District Trial');
+    await typesLoaded();
     const city = await screen.findByLabelText(/^city$/i);
-    await waitFor(() => expect(within(city).getAllByRole('option')).toHaveLength(3));
-    expect(within(city).getByRole('option', { name: 'Pune, MH' })).toBeInTheDocument();
+    await waitFor(() => expect(city).toBeEnabled());
+    const list = await openOptions(city);
+    expect(list.getAllByRole('option').map((o) => o.textContent)).toEqual(['Pune, MH', 'Wardha, MH']);
+    await userEvent.keyboard('{Escape}');
     expect(csrAPI.projects.getById).toHaveBeenCalledWith(11);
     await userEvent.type(screen.getByLabelText(/title/i), 'Pune Trial');
-    await userEvent.selectOptions(screen.getByLabelText(/activity type/i), '10');
-    await userEvent.selectOptions(city, '7');
+    await pick(/activity type/i, 'District Trial');
+    await pick(/^city$/i, 'Pune, MH');
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
     await waitFor(() => expect(csrAPI.activities.create).toHaveBeenCalled());
     expect(csrAPI.activities.create.mock.calls[0][0].trialCityId).toBe(7);
@@ -563,9 +620,10 @@ describe('D-019: the activity city comes from the grant', () => {
     });
     render(<CSRActivityFormPage />);
     const workshop = await screen.findByLabelText(/^workshop$/i);
-    await waitFor(() => expect(workshop).toHaveValue('4'));
-    expect(within(workshop).getByRole('option', { name: 'Goal Setting (removed in TTA)' })).toBeInTheDocument();
-    expect(within(workshop).getByRole('option', { name: 'Career Guidance' })).toBeInTheDocument();
+    await waitFor(() => expect(workshop).toHaveValue('Goal Setting (removed in TTA)'));
+    const list = await openOptions(workshop);
+    expect(list.getByRole('option', { name: 'Goal Setting (removed in TTA)' })).toHaveAttribute('aria-selected', 'true');
+    expect(list.getByRole('option', { name: 'Career Guidance' })).toBeInTheDocument();
   });
 
   test('a held training programme Admin has removed still shows as itself', async () => {
@@ -577,8 +635,9 @@ describe('D-019: the activity city comes from the grant', () => {
     });
     render(<CSRActivityFormPage />);
     const programme = await screen.findByLabelText(/training programme/i);
-    await waitFor(() => expect(programme).toHaveValue('6'));
-    expect(within(programme).getByRole('option', { name: 'Digital Skills (removed in TTA)' })).toBeInTheDocument();
+    await waitFor(() => expect(programme).toHaveValue('Digital Skills (removed in TTA)'));
+    const list = await openOptions(programme);
+    expect(list.getByRole('option', { name: 'Digital Skills (removed in TTA)' })).toHaveAttribute('aria-selected', 'true');
   });
 
   test('a stored city the grant has dropped still shows as itself', async () => {
@@ -587,8 +646,9 @@ describe('D-019: the activity city comes from the grant', () => {
     csrAPI.projects.getById.mockResolvedValue({ id: 11, cities: [{ id: 7, cityName: 'Pune', state: 'MH' }] });
     render(<CSRActivityFormPage />);
     const city = await screen.findByLabelText(/^city$/i);
-    await waitFor(() => expect(city).toHaveValue('9'));
-    expect(within(city).getByRole('option', { name: 'Akola' })).toBeInTheDocument();
+    await waitFor(() => expect(city).toHaveValue('Akola'));
+    const list = await openOptions(city);
+    expect(list.getByRole('option', { name: 'Akola' })).toHaveAttribute('aria-selected', 'true');
   });
 });
 

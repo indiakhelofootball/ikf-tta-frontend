@@ -8,19 +8,21 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import { csrAPI } from '../../services/api';
-import { getPartnerCategories } from '../../utils/adminStorage';
+import { addConfigOption, getPartnerCategories } from '../../utils/adminStorage';
 import useConfigVersion from '../../hooks/useConfigVersion';
+import useGrants from '../../auth/useGrants';
+import CSRCombobox from './CSRCombobox';
 import '../../styles/csrDesign.css';
 
-const VENDOR_HELP = 'Picked from the TTA vendor list. To add a new vendor name, ask an admin to add it in TTA Admin.';
+const VENDOR_HELP = 'From Admin > Vendor Names.';
+const CATEGORY_HELP = 'Managed in Admin > Partner Categories.';
+const RECORD_HELP = 'Only needed if this partner is paid through TTA. Set it up under TTA Vendors (PAN required).';
 
 const fieldError = (data, key) => {
   const v = data?.[key];
   if (!v) return '';
   return Array.isArray(v) ? v[0] : String(v);
 };
-
-const RECORD_HELP = 'Optional. The vendor record in TTA this partner is paid through. Payments stay in TTA.';
 
 const vendorLabel = (v) => (v.serviceType ? `${v.name} · ${v.serviceType}` : v.name);
 
@@ -37,7 +39,6 @@ export default function CSRPartnerFormPage() {
 
   const [partner, setPartner] = useState(null);
   const [vendorOptions, setVendorOptions] = useState([]);
-  const [vendorQuery, setVendorQuery] = useState('');
   const [form, setForm] = useState({ vendorNameId: '', vendorId: '', partnerCategoryId: '', isActive: true });
   const [vendorRecords, setVendorRecords] = useState([]);
   const [recordsState, setRecordsState] = useState('idle');
@@ -50,6 +51,10 @@ export default function CSRPartnerFormPage() {
   const cfgVersion = useConfigVersion();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const partnerCategories = useMemo(() => getPartnerCategories(), [cfgVersion]);
+  // The server writes config only for a 'config' edit grant; the same check
+  // decides who is offered the inline add.
+  const { canEdit } = useGrants();
+  const canAddConfig = canEdit('config');
 
   useEffect(() => {
     let cancelled = false;
@@ -111,31 +116,59 @@ export default function CSRPartnerFormPage() {
     return [...vendorRecords, partner.vendorRecord || { id: heldId }];
   }, [vendorRecords, partner]);
 
-  // The picked vendor stays in the list while the filter narrows, so the select
-  // never silently drops the current choice.
-  const shownVendors = useMemo(() => {
-    const q = vendorQuery.trim().toLowerCase();
-    const sorted = [...vendorOptions].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-    if (!q) return sorted;
-    return sorted.filter((v) => String(v.id) === String(form.vendorNameId)
-      || `${v.name} ${v.serviceType || ''}`.toLowerCase().includes(q));
-  }, [vendorOptions, vendorQuery, form.vendorNameId]);
+  const vendorChoices = useMemo(() => [...vendorOptions]
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+    .map((v) => ({ id: v.id, label: vendorLabel(v) })), [vendorOptions]);
 
-  const setField = (k) => (e) => {
-    const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+  const recordChoices = useMemo(
+    () => recordOptions.map((r) => ({ id: r.id, label: vendorRecordLabel(r) })),
+    [recordOptions],
+  );
+
+  const categoryChoices = useMemo(
+    () => partnerCategories.map((c) => ({ id: c.id, label: c.name })),
+    [partnerCategories],
+  );
+
+  const setValue = (k) => (value) => {
     setForm((f) => ({ ...f, [k]: value }));
     setErrors((errs) => ({ ...errs, [k]: '' }));
   };
 
-  const pickVendor = (e) => {
-    const { value } = e.target;
+  const setActive = (e) => setValue('isActive')(e.target.checked);
+
+  const pickVendor = (value) => {
     setForm((f) => ({ ...f, vendorNameId: value, vendorId: '' }));
     setErrors((errs) => ({ ...errs, vendorNameId: '', vendorId: '' }));
+  };
+
+  const addedRowId = (rows, text) => {
+    const row = (rows || []).find((r) => r.name === text);
+    if (!row) throw new Error(`"${text}" was saved but could not be read back. Reload the page.`);
+    return row.id;
+  };
+
+  const addVendorName = async (text) => {
+    const rows = await addConfigOption('vendorNames', { name: text });
+    const newId = addedRowId(rows, text);
+    const data = await csrAPI.partnerRecords.vendorOptions();
+    const fresh = Array.isArray(data) ? data : data?.results || [];
+    setVendorOptions(fresh);
+    if (!fresh.some((v) => String(v.id) === String(newId))) {
+      throw new Error(`"${text}" is in Admin > Vendor Names but cannot be picked here. It may already be a partner.`);
+    }
+    return newId;
+  };
+
+  const addPartnerCategory = async (text) => {
+    const rows = await addConfigOption('partnerCategories', { name: text });
+    return addedRowId(rows, text);
   };
 
   const back = () => navigate(isEdit ? `/csr/partners/${id}` : '/csr/partners');
 
   const noVendors = !isEdit && vendorOptions.length === 0;
+  const blockedNoVendors = noVendors && !canAddConfig;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -177,7 +210,15 @@ export default function CSRPartnerFormPage() {
   let recordHelp = RECORD_HELP;
   if (recordsState === 'loading') recordHelp = 'Loading TTA vendor records…';
   else if (recordsState === 'failed') recordHelp = 'The TTA vendor records could not be loaded. Try again in a moment.';
-  else if (recordOptions.length === 0) recordHelp = 'No vendor record with this name in TTA yet.';
+  else if (recordOptions.length === 0) recordHelp = `No vendor record with this name in TTA yet. ${RECORD_HELP}`;
+
+  let vendorHelp = VENDOR_HELP;
+  if (blockedNoVendors) vendorHelp = `No vendor names left to pick. ${VENDOR_HELP}`;
+  else if (canAddConfig) vendorHelp = `${VENDOR_HELP} Type a new name to add it there.`;
+
+  let categoryHelp = CATEGORY_HELP;
+  if (partnerCategories.length === 0 && !canAddConfig) categoryHelp = `No partner types yet. ${CATEGORY_HELP}`;
+  else if (canAddConfig) categoryHelp = `${CATEGORY_HELP} Type a new type to add it there.`;
 
   if (loading) {
     return (
@@ -221,7 +262,7 @@ export default function CSRPartnerFormPage() {
 
           <div className="pform-field">
             <label htmlFor="p-vendor">
-              Vendor {!isEdit && <span className="pform-req" aria-hidden="true">*</span>}
+              Partner name {!isEdit && <span className="pform-req" aria-hidden="true">*</span>}
             </label>
             {isEdit ? (
               <input
@@ -230,51 +271,41 @@ export default function CSRPartnerFormPage() {
                 aria-describedby="p-vendor-help"
               />
             ) : (
-              <>
-                <input
-                  type="search"
-                  placeholder="Search vendors"
-                  aria-label="Search vendors"
-                  value={vendorQuery}
-                  onChange={(e) => setVendorQuery(e.target.value)}
-                  disabled={noVendors}
-                />
-                <select
-                  id="p-vendor" className="sel" value={form.vendorNameId}
-                  onChange={pickVendor}
-                  disabled={noVendors}
-                  aria-invalid={Boolean(errors.vendorNameId)}
-                  aria-describedby="p-vendor-help"
-                >
-                  <option value="">— pick a vendor —</option>
-                  {shownVendors.map((v) => (
-                    <option key={v.id} value={v.id}>{vendorLabel(v)}</option>
-                  ))}
-                </select>
-              </>
+              <CSRCombobox
+                id="p-vendor"
+                value={form.vendorNameId}
+                options={vendorChoices}
+                onChange={pickVendor}
+                placeholder="Search vendor names"
+                emptyText="No vendor name matches."
+                disabled={blockedNoVendors}
+                allowAdd={canAddConfig ? {
+                  label: (text) => `Add "${text}" to Admin > Vendor Names`,
+                  onAdd: addVendorName,
+                } : undefined}
+                aria-invalid={Boolean(errors.vendorNameId)}
+                aria-describedby="p-vendor-help"
+              />
             )}
             <p id="p-vendor-help" className={`pform-help${errors.vendorNameId ? ' bad' : ''}`}>
-              {errors.vendorNameId || (noVendors
-                ? `No vendors can be added right now. ${VENDOR_HELP}`
-                : VENDOR_HELP)}
+              {errors.vendorNameId || (isEdit ? VENDOR_HELP : vendorHelp)}
             </p>
           </div>
 
           {form.vendorNameId !== '' && (
             <div className="pform-field">
               <label htmlFor="p-vendor-record">TTA vendor record</label>
-              <select
-                id="p-vendor-record" className="sel" value={form.vendorId}
-                onChange={setField('vendorId')}
+              <CSRCombobox
+                id="p-vendor-record"
+                value={form.vendorId}
+                options={recordChoices}
+                onChange={setValue('vendorId')}
+                placeholder="Not set up in TTA yet"
+                emptyText="No vendor record matches."
                 disabled={recordsState === 'loading'}
                 aria-invalid={Boolean(errors.vendorId)}
                 aria-describedby="p-vendor-record-help"
-              >
-                <option value="">Not set up in TTA yet</option>
-                {recordOptions.map((r) => (
-                  <option key={r.id} value={r.id}>{vendorRecordLabel(r)}</option>
-                ))}
-              </select>
+              />
               <p id="p-vendor-record-help" className={`pform-help${errors.vendorId ? ' bad' : ''}`}>
                 {errors.vendorId || recordHelp}
               </p>
@@ -283,28 +314,29 @@ export default function CSRPartnerFormPage() {
 
           <div className="pform-field">
             <label htmlFor="p-category">Partner type <span className="pform-req" aria-hidden="true">*</span></label>
-            <select
-              id="p-category" className="sel" value={form.partnerCategoryId}
-              onChange={setField('partnerCategoryId')}
+            <CSRCombobox
+              id="p-category"
+              value={form.partnerCategoryId}
+              options={categoryChoices}
+              onChange={setValue('partnerCategoryId')}
+              placeholder="Search partner types"
+              emptyText="No partner type matches."
+              allowAdd={canAddConfig ? {
+                label: (text) => `Add "${text}" to Admin > Partner Categories`,
+                onAdd: addPartnerCategory,
+              } : undefined}
               aria-invalid={Boolean(errors.partnerCategoryId)}
               aria-describedby="p-category-help"
-            >
-              <option value="">— pick a partner type —</option>
-              {partnerCategories.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
+            />
             <p id="p-category-help" className={`pform-help${errors.partnerCategoryId ? ' bad' : ''}`}>
-              {errors.partnerCategoryId || (partnerCategories.length === 0
-                ? 'No partner types in the catalog yet. An admin adds them in TTA Admin.'
-                : 'What this partner does, e.g. life skills, player development, education.')}
+              {errors.partnerCategoryId || categoryHelp}
             </p>
           </div>
 
           {isEdit && (
             <div className="pform-field">
               <label className="chk" htmlFor="p-active">
-                <input id="p-active" type="checkbox" checked={form.isActive} onChange={setField('isActive')} />
+                <input id="p-active" type="checkbox" checked={form.isActive} onChange={setActive} />
                 Active
               </label>
               <p className="pform-help">An inactive partner stays on past activities but cannot be picked for new ones.</p>
@@ -318,7 +350,7 @@ export default function CSRPartnerFormPage() {
           <button type="button" className="ghostbtn" onClick={back} disabled={saving}>
             Cancel
           </button>
-          <button type="submit" className="newbtn" disabled={saving || noVendors}>
+          <button type="submit" className="newbtn" disabled={saving || blockedNoVendors}>
             {saving ? 'Saving…' : 'Save'}
           </button>
         </div>
