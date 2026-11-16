@@ -1,6 +1,6 @@
 // src/components/vendors/VendorManagementPage.jsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Container,
@@ -38,7 +38,6 @@ import useRefetchOnFocus from '../../hooks/useRefetchOnFocus';
 function VendorManagementPage() {
   const { canEdit } = useGrants();
   const [vendors, setVendors] = useState([]);
-  const [filteredVendors, setFilteredVendors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
@@ -66,10 +65,6 @@ function VendorManagementPage() {
   }, []);
   useRefetchOnFocus(() => loadVendors({ silent: true }));
 
-  useEffect(() => {
-    filterAndSort();
-  }, [vendors, searchQuery, sortBy, filterType]);
-
   const loadVendors = async ({ silent = false } = {}) => {
     try {
       if (!silent) setLoading(true);
@@ -83,7 +78,7 @@ function VendorManagementPage() {
     }
   };
 
-  const filterAndSort = () => {
+  const filteredVendors = useMemo(() => {
     let filtered = [...vendors];
 
     if (searchQuery.trim()) {
@@ -120,8 +115,8 @@ function VendorManagementPage() {
       }
     });
 
-    setFilteredVendors(filtered);
-  };
+    return filtered;
+  }, [vendors, searchQuery, sortBy, filterType]);
 
   const showToast = (message, severity = 'success') => {
     setToast({ open: true, message, severity });

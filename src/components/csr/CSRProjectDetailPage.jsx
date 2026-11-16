@@ -18,7 +18,7 @@ import { certificateFreezeState } from './csrContractRules';
 import { DEFAULT_REPORT_SORT, reportDisplayName, reportSortOptions, sortReports } from './reportSort';
 import ReportFileButton from './ReportFileButton';
 import {
-  activityStatusPillClass, funderVisibilityLabel, needsDatePassedPrompt,
+  activityStatusPillClass, funderVisibilityLabel, localToday, needsDatePassedPrompt,
 } from './activityVisibility';
 import DatePassedPrompt from './DatePassedPrompt';
 import { csrAPI } from '../../services/api';
@@ -186,10 +186,14 @@ function GrantTrials({ project }) {
 
   const { status, trials } = state;
   const scope = [project.ttaProjectName, project.season].filter(Boolean).join(' · ');
+  const ended = project.status === 'Closed'
+    || Boolean(project.endDate && project.endDate < localToday());
 
   return (
     <section className="ovw-trials" aria-labelledby="grant-trials-heading">
-      <h3 id="grant-trials-heading">Following trials will be conducted on this project</h3>
+      <h3 id="grant-trials-heading">
+        {ended ? 'Trials conducted on this project' : 'Following trials will be conducted on this project'}
+      </h3>
       {linked && !project.season && (
         <p className="ovw-note">
           This grant has no season set, so trials from every season
@@ -200,7 +204,7 @@ function GrantTrials({ project }) {
         <p className="ovw-note">
           {project.cities?.length
             ? `Cities this grant funds: ${project.cities.map((c) => c.cityName).join(', ')}`
-            : 'No cities chosen for this grant yet. Edit the grant to pick the cities it funds.'}
+            : 'No cities recorded for this grant.'}
         </p>
       )}
 
@@ -1192,7 +1196,9 @@ export default function CSRProjectDetailPage() {
               certificate grant. */}
           <Box sx={{ mb: 2, maxWidth: 420 }}>
             <div className="pform-field">
-              <label htmlFor="uc-type">Certificate type</label>
+              <label htmlFor="uc-type">
+                {freeze.frozen ? 'Certificate type for the next issue' : 'Certificate type'}
+              </label>
               {editable ? (
                 <select
                   id="uc-type"
@@ -1214,7 +1220,7 @@ export default function CSRProjectDetailPage() {
                 {typeOptions.length === 0
                   ? 'No certificate types in the catalog yet — an admin adds them in TTA Admin → CSR.'
                   : freeze.frozen
-                    ? 'The frozen certificate keeps the type it was issued with. A change here applies when the grant is next closed.'
+                    ? 'Changing this does not alter the issued version; it applies when the certificate is issued again.'
                     : 'Printed on the Utilisation Certificate.'}
               </p>
             </div>

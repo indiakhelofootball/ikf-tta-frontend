@@ -130,6 +130,18 @@ test('a grant holding a retired type still shows it rather than "not set"', asyn
   expect(within(select).getByRole('option', { name: 'Quarterly' })).toBeInTheDocument();
 });
 
+test('a frozen certificate labels the type for the next issue', async () => {
+  csrAPI.projects.getById.mockResolvedValue({
+    ...PROJECT, certificateVersion: 1, certificateFrozenAt: '2026-10-01T10:00:00Z',
+  });
+  render(<CSRProjectDetailPage />);
+  expect(await screen.findByLabelText('Certificate type for the next issue')).toBeInTheDocument();
+  expect(screen.getByText(
+    'Changing this does not alter the issued version; it applies when the certificate is issued again.',
+  )).toBeInTheDocument();
+  expect(screen.queryByText(/keeps the type it was issued with/)).not.toBeInTheDocument();
+});
+
 test('without the csr edit grant the type is read, not edited', async () => {
   mockCanEditCsr = false;
   csrAPI.projects.getById.mockResolvedValue({

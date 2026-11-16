@@ -211,3 +211,21 @@ test('renaming a project name still goes through the rename endpoint only', asyn
   expect(configAPI.bulk).not.toHaveBeenCalled();
   expect(configAPI.delete).not.toHaveBeenCalled();
 });
+
+test('the filter box narrows an option list by name and writes nothing', async () => {
+  installFakeServer([
+    { id: 1, category: 'bank_name', value: 'IDFC First Bank' },
+    { id: 2, category: 'bank_name', value: 'Kotak Bank' },
+  ]);
+  await openBanking();
+  const filter = within(bankPanel()).getByLabelText('Filter Bank Names');
+
+  fireEvent.change(filter, { target: { value: 'kotak' } });
+  expect(within(bankPanel()).getByText('Kotak Bank')).toBeInTheDocument();
+  expect(within(bankPanel()).queryByText('IDFC First Bank')).not.toBeInTheDocument();
+
+  fireEvent.change(filter, { target: { value: '' } });
+  expect(within(bankPanel()).getByText('IDFC First Bank')).toBeInTheDocument();
+  expect(configAPI.bulk).not.toHaveBeenCalled();
+  expect(configAPI.delete).not.toHaveBeenCalled();
+});

@@ -128,10 +128,10 @@ test('funder labels: Cancelled and date-passed Planned are hidden', async () => 
   render(<CSRProjectDetailPage />);
   await screen.findByText('Overdue trial');
   const row = (title) => screen.getAllByRole('button', { name: `Show details for activity ${title}` })[0];
-  expect(row('Overdue trial')).toHaveTextContent('Hidden from funder');
-  expect(row('Upcoming trial')).toHaveTextContent('Shown to funder');
-  expect(row('Done trial')).toHaveTextContent('Shown to funder');
-  expect(row('Called off')).toHaveTextContent('Hidden from funder');
+  expect(row('Overdue trial')).toHaveTextContent('Not visible to funder');
+  expect(row('Upcoming trial')).toHaveTextContent('Visible to funder');
+  expect(row('Done trial')).toHaveTextContent('Visible to funder');
+  expect(row('Called off')).toHaveTextContent('Not visible to funder');
   const pill = within(row('Called off')).getByText('Cancelled');
   expect(pill).toHaveClass('pill', 'plain');
   expect(pill).not.toHaveClass('closed');

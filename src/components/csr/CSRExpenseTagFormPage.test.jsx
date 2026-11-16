@@ -32,18 +32,18 @@ const { csrAPI } = require('../../services/api');
 
 const GRANT = { id: 11, name: 'Grassroots Football', startDate: '2025-04-01', endDate: '2026-03-31' };
 
-/** Today as the date input renders it, so a test never depends on the clock. */
-const today = () => {
-  const d = new Date();
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const SPENT_ON = '2025-09-10';
+
+const setDate = async (value) => {
+  await userEvent.clear(screen.getByLabelText(/expense date/i));
+  await userEvent.type(screen.getByLabelText(/expense date/i), value);
 };
 
 beforeEach(() => {
   jest.clearAllMocks();
   mockSearch = new URLSearchParams();
-  // Open-ended by default, so a test that keeps the today() default never
-  // depends on the clock falling inside a fixed period.
+  // Open-ended by default, so a test never depends on the clock falling
+  // inside a fixed period.
   csrAPI.projects.getById.mockResolvedValue({ ...GRANT, endDate: null });
 });
 
@@ -76,6 +76,7 @@ describe('with a grant in the query param', () => {
 
     await userEvent.type(screen.getByLabelText(/amount/i), '180000');
     await userEvent.type(screen.getByLabelText(/note/i), 'Pending clearance');
+    await setDate(SPENT_ON);
     await userEvent.click(screen.getByRole('button', { name: /tag/i }));
 
     await waitFor(() => expect(csrAPI.expenseTags.create).toHaveBeenCalled());
@@ -89,17 +90,26 @@ describe('with a grant in the query param', () => {
     );
   });
 
-  test('the expense date defaults to today and is sent with the tag', async () => {
-    csrAPI.expenseTags.create.mockResolvedValue({});
+  test('the expense date starts blank and a blank date is refused on submit', async () => {
     render(<CSRExpenseTagFormPage />);
     await waitFor(() => expect(csrAPI.projects.getById).toHaveBeenCalledWith(11));
 
-    expect(screen.getByLabelText(/expense date/i)).toHaveValue(today());
+    expect(screen.getByLabelText(/expense date/i)).toHaveValue('');
     await userEvent.type(screen.getByLabelText(/amount/i), '5000');
     await userEvent.click(screen.getByRole('button', { name: /^tag$/i }));
 
-    await waitFor(() => expect(csrAPI.expenseTags.create).toHaveBeenCalled());
-    expect(csrAPI.expenseTags.create.mock.calls[0][0].expenseDate).toBe(today());
+    expect(await screen.findByText('Enter the date this expense was incurred')).toBeInTheDocument();
+    expect(csrAPI.expenseTags.create).not.toHaveBeenCalled();
+  });
+
+  test('a grant that has ended opens without a period error', async () => {
+    csrAPI.projects.getById.mockResolvedValue(GRANT);
+    render(<CSRExpenseTagFormPage />);
+    await waitFor(() => expect(csrAPI.projects.getById).toHaveBeenCalled());
+    await screen.findByText(/when the money was spent/i);
+
+    expect(screen.queryByText(/must fall within the grant period/i)).toBeNull();
+    expect(screen.getByLabelText(/expense date/i)).toHaveAttribute('aria-invalid', 'false');
   });
 
   test('a date the operator sets is what gets sent, not the day they typed it', async () => {
@@ -108,12 +118,11 @@ describe('with a grant in the query param', () => {
     await waitFor(() => expect(csrAPI.projects.getById).toHaveBeenCalled());
 
     await userEvent.type(screen.getByLabelText(/amount/i), '5000');
-    await userEvent.clear(screen.getByLabelText(/expense date/i));
-    await userEvent.type(screen.getByLabelText(/expense date/i), '2025-09-10');
+    await setDate(SPENT_ON);
     await userEvent.click(screen.getByRole('button', { name: /^tag$/i }));
 
     await waitFor(() => expect(csrAPI.expenseTags.create).toHaveBeenCalled());
-    expect(csrAPI.expenseTags.create.mock.calls[0][0].expenseDate).toBe('2025-09-10');
+    expect(csrAPI.expenseTags.create.mock.calls[0][0].expenseDate).toBe(SPENT_ON);
   });
 
   test('a date outside the grant period is refused inline and not saved', async () => {
@@ -148,6 +157,7 @@ describe('with a grant in the query param', () => {
     render(<CSRExpenseTagFormPage />);
 
     await userEvent.type(screen.getByLabelText(/amount/i), '5000');
+    await setDate(SPENT_ON);
     await userEvent.click(screen.getByRole('button', { name: /^tag$/i }));
     await waitFor(() => expect(csrAPI.expenseTags.create).toHaveBeenCalled());
     expect(screen.queryByText(/must fall within the grant period/i)).toBeNull();
@@ -176,6 +186,7 @@ describe('the expense amount', () => {
     csrAPI.expenseTags.create.mockResolvedValue({});
     render(<CSRExpenseTagFormPage />);
     await userEvent.type(screen.getByLabelText(/amount/i), '0.5');
+    await setDate(SPENT_ON);
     await userEvent.click(screen.getByRole('button', { name: /tag/i }));
     await waitFor(() => expect(csrAPI.expenseTags.create).toHaveBeenCalled());
   });
