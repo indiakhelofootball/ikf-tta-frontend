@@ -1192,7 +1192,12 @@ function csrCrud(base) {
 // whole domain surface rode along. The annotation lets the funder build drop
 // what it never calls. Keep it on any new export here.
 export const csrAPI = /*#__PURE__*/ {
-  projects: /*#__PURE__*/ csrCrud('/csr/projects'),
+  // delete is a soft delete on the server; getAll({ deleted: true }) is the
+  // super admin's Deleted list, and restore brings a grant back from it.
+  projects: {
+    ...(/*#__PURE__*/ csrCrud('/csr/projects')),
+    restore: async (id) => apiService.request(`/csr/projects/${id}/restore/`, { method: 'POST' }),
+  },
   activities: /*#__PURE__*/ csrCrud('/csr/activities'),
   activityTypes: /*#__PURE__*/ csrCrud('/csr/activity-types'),
   reports: /*#__PURE__*/ csrCrud('/csr/reports'),

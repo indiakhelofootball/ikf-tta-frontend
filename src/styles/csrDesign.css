@@ -3260,3 +3260,8 @@
    inside its fact cell rather than widening the strip on a phone. */
 .csrx .pt-facts .fc{min-width:0}
 .csrx .pt-facts .fv{overflow-wrap:anywhere}
+
+/* Deleted list: the row and its Restore button side by side. */
+.csrx .lr-deleted{display:flex;align-items:center;gap:8px;padding-right:12px}
+.csrx .lr-deleted > .lr{flex:1;min-width:0}
+.csr-delete-list{margin:0 0 12px;padding-left:20px}
