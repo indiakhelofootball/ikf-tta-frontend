@@ -103,7 +103,7 @@ describe('adding a partner', () => {
     await screen.findByRole('combobox', { name: NAME });
     expect(screen.getByRole('combobox', { name: NAME })).toHaveAccessibleDescription('From Admin > Vendor Names.');
     expect(screen.getByRole('combobox', { name: TYPE }))
-      .toHaveAccessibleDescription('Managed in Admin > Partner Categories.');
+      .toHaveAccessibleDescription('Managed in Admin > CSR > CSR Partner Types.');
     expect(screen.queryByText(/ask an admin/i)).not.toBeInTheDocument();
   });
 
@@ -271,7 +271,7 @@ describe('adding to the Admin lists from the form (config edit right)', () => {
     }));
   });
 
-  test('a new partner type goes to Admin > Partner Categories and is picked', async () => {
+  test('a new partner type goes to Admin > CSR > CSR Partner Types and is picked', async () => {
     addConfigOption.mockImplementation(async () => {
       mockCategories = [...CATEGORIES, { id: 12, name: 'Sports Science' }];
       mockCfgVersion += 1;
@@ -281,11 +281,11 @@ describe('adding to the Admin lists from the form (config edit right)', () => {
     render(<CSRPartnerFormPage />);
     await screen.findByRole('combobox', { name: NAME });
     expect(screen.getByRole('combobox', { name: TYPE })).toHaveAccessibleDescription(
-      'Managed in Admin > Partner Categories. Type a new type to add it there.',
+      'Managed in Admin > CSR > CSR Partner Types. Type a new type to add it there.',
     );
     await pick(NAME, 'A1 Classes · Coaching');
     await userEvent.type(screen.getByRole('combobox', { name: TYPE }), 'Sports Science');
-    await userEvent.click(screen.getByRole('option', { name: 'Add "Sports Science" to Admin > Partner Categories' }));
+    await userEvent.click(screen.getByRole('option', { name: 'Add "Sports Science" to Admin > CSR > CSR Partner Types' }));
 
     expect(addConfigOption).toHaveBeenCalledWith('partnerCategories', { name: 'Sports Science' });
     await waitFor(() => expect(screen.getByRole('combobox', { name: TYPE })).toHaveValue('Sports Science'));

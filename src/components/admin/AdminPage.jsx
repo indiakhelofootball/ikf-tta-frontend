@@ -791,7 +791,7 @@ export default function AdminPage() {
           >
             <OptionPanel
               title="Service Types"
-              subtitle="Service types available when adding a vendor (e.g. Photography, Videography, Printing). Renaming one updates every vendor already using it."
+              subtitle="What TTA pays a vendor for (e.g. Photography, Videography, Printing), offered when adding a vendor. Not used by CSR: a CSR partner's type is under CSR > CSR Partner Types. Renaming one updates every vendor already using it."
               items={vendorTypes}
               onSave={handleSave('vendorTypes', setVendorTypes, getVendorTypes)}
               onRename={handleVendorTagRename('service_type', setVendorTypes, getVendorTypes)}
@@ -802,13 +802,6 @@ export default function AdminPage() {
               items={entityTypes}
               onSave={handleSave('entityTypes', setEntityTypes, getEntityTypes)}
               onRename={handleVendorTagRename('entity_type', setEntityTypes, getEntityTypes)}
-            />
-            <OptionPanel
-              title="Partner Categories"
-              subtitle="Partner types offered on CSR > Partners > New Partner. Renaming one updates every partner already using it."
-              items={partnerCategories}
-              onSave={handleSave('partnerCategories', setPartnerCategories, getPartnerCategories)}
-              onRename={handleVendorTagRename('partner_category', setPartnerCategories, getPartnerCategories)}
             />
             <VendorNamePanel
               items={vendorNames}
@@ -862,6 +855,13 @@ export default function AdminPage() {
             color="#ec4899"
             defaultOpen={false}
           >
+            <OptionPanel
+              title="CSR Partner Types"
+              subtitle="The kinds of CSR partner (e.g. Education, Life skills). Picked on CSR > Partners for each partner. Used by CSR only; a vendor's Service Type is a separate TTA list. Renaming one updates every partner already using it."
+              items={partnerCategories}
+              onSave={handleSave('partnerCategories', setPartnerCategories, getPartnerCategories)}
+              onRename={handleVendorTagRename('partner_category', setPartnerCategories, getPartnerCategories)}
+            />
             <OptionPanel
               title="Workshop Names"
               subtitle="The workshops CSR staff can pick from when logging a workshop activity. CSR reads this list and cannot edit it, so a workshop only exists once it is added here. Renaming one updates every activity that references it."

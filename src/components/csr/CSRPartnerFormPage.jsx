@@ -15,7 +15,7 @@ import CSRCombobox from './CSRCombobox';
 import '../../styles/csrDesign.css';
 
 const VENDOR_HELP = 'From Admin > Vendor Names.';
-const CATEGORY_HELP = 'Managed in Admin > Partner Categories.';
+const CATEGORY_HELP = 'Managed in Admin > CSR > CSR Partner Types.';
 const RECORD_HELP = 'Only needed if this partner is paid through TTA. Set it up under TTA Vendors (PAN required).';
 
 const fieldError = (data, key) => {
@@ -322,7 +322,7 @@ export default function CSRPartnerFormPage() {
               placeholder="Search partner types"
               emptyText="No partner type matches."
               allowAdd={canAddConfig ? {
-                label: (text) => `Add "${text}" to Admin > Partner Categories`,
+                label: (text) => `Add "${text}" to Admin > CSR > CSR Partner Types`,
                 onAdd: addPartnerCategory,
               } : undefined}
               aria-invalid={Boolean(errors.partnerCategoryId)}
