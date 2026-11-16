@@ -12,6 +12,11 @@ const TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 //
 // Uploads go straight to the server rather than waiting for Save: the activity
 // already exists, and a photo is its own record.
+//
+// A pick of several photos is all or nothing. Each photo is its own request,
+// because the production request cap (nginx, 16 MB) cannot carry eight 4 MB
+// photos at once; so when one is refused, the photos this pick already added
+// are removed again and the error says so.
 export default function ActivityPhotos({ activityId }) {
   const [photos, setPhotos] = useState([]);
   const [thumbs, setThumbs] = useState({});
@@ -66,19 +71,45 @@ export default function ActivityPhotos({ activityId }) {
       return;
     }
     setBusy(true);
-    try {
-      let latest = photos;
-      for (const f of files) {
+    let latest = photos;
+    const added = [];
+    let failed = null;
+    for (const f of files) {
+      try {
+        const known = new Set((Array.isArray(latest) ? latest : []).map((p) => p.id));
         // eslint-disable-next-line no-await-in-loop
-        latest = await csrAPI.activityPhotos.upload(activityId, f);
+        const list = await csrAPI.activityPhotos.upload(activityId, f);
+        if (Array.isArray(list)) {
+          added.push(...list.filter((p) => !known.has(p.id)));
+          latest = list;
+        }
+      } catch (err) {
+        failed = { name: f.name, reason: err.message || 'The photo could not be uploaded.' };
+        break;
       }
-      setPhotos(Array.isArray(latest) ? latest : photos);
-    } catch (err) {
-      setError(err.message || 'The photo could not be uploaded.');
-      load();
-    } finally {
-      setBusy(false);
     }
+    if (!failed) {
+      setPhotos(Array.isArray(latest) ? latest : photos);
+      setBusy(false);
+      return;
+    }
+    const stuck = [];
+    for (const p of added) {
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        await csrAPI.activityPhotos.remove(activityId, p.id);
+      } catch {
+        stuck.push(p);
+      }
+    }
+    if (files.length === 1) setError(failed.reason);
+    else if (stuck.length) {
+      setError(`${failed.name} could not be added: ${failed.reason} ${stuck.length} photo${stuck.length === 1 ? '' : 's'} from this pick could not be taken back; remove ${stuck.length === 1 ? 'it' : 'them'} below.`);
+    } else {
+      setError(`${failed.name} could not be added: ${failed.reason} None of the ${files.length} photos were added.`);
+    }
+    await load();
+    setBusy(false);
   };
 
   const remove = async (ph) => {

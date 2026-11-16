@@ -58,3 +58,41 @@ test('the plain filename is used when there is no encoded one', () => {
   expect(fileNameFromDisposition('attachment; filename="deck.pptx"')).toBe('deck.pptx');
   expect(fileNameFromDisposition(null)).toBe('');
 });
+
+test('a report with its file is ONE multipart request carrying the record as JSON', async () => {
+  global.fetch.mockResolvedValue(response(201, { id: 7, hasFile: true }, { 'content-type': 'application/json' }));
+  const file = new File(['%PDF-1.4'], 'r.pdf', { type: 'application/pdf' });
+
+  const out = await csrAPI.reports.saveWithFile(null, { title: 'Q3', visibleToClient: false }, { file });
+
+  expect(global.fetch).toHaveBeenCalledTimes(1);
+  const [url, init] = global.fetch.mock.calls[0];
+  expect(url).toMatch(/\/csr\/reports\/$/);
+  expect(init.method).toBe('POST');
+  expect(JSON.parse(init.body.get('data'))).toEqual({ title: 'Q3', visibleToClient: false });
+  expect(init.body.get('file')).toBe(file);
+  expect(init.headers['Content-Type']).toBeUndefined();
+  expect(out).toEqual({ id: 7, hasFile: true });
+});
+
+test('an edit with images is a PUT to the record, and a remove list becomes one part per kind', async () => {
+  global.fetch.mockResolvedValue(response(200, { id: 4 }, { 'content-type': 'application/json' }));
+  const logo = new File(['x'], 'l.png', { type: 'image/png' });
+
+  await csrAPI.branding.saveWithImages(4, { slug: 'acme' }, { logo, remove: ['login-image'] });
+
+  const [url, init] = global.fetch.mock.calls[0];
+  expect(url).toMatch(/\/csr\/branding\/4\/$/);
+  expect(init.method).toBe('PUT');
+  expect(init.body.get('logo')).toBe(logo);
+  expect(init.body.getAll('remove')).toEqual(['login-image']);
+});
+
+test('a refused save keeps the server body on the error, so a screen can say which file', async () => {
+  global.fetch.mockResolvedValue(response(400, { logo: ['The file is empty.'] }, {
+    'content-type': 'application/json',
+  }));
+  const err = await csrAPI.branding.saveWithImages(null, {}, {}).catch((e) => e);
+  expect(err.message).toBe('The file is empty.');
+  expect(err.response).toEqual({ status: 400, data: { logo: ['The file is empty.'] } });
+});
