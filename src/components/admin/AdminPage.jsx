@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Box, Container, Typography, Paper, Stack, TextField,
   Button, IconButton, Divider, Tooltip, Alert,
-  FormControl, Select, MenuItem, Chip,
+  FormControl, Select, MenuItem, Chip, FormControlLabel, Switch,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -530,6 +530,255 @@ function VendorNamePanel({ items, onSave, onUpdate, serviceTypes, entityTypes })
   );
 }
 
+/* ── CSR Contacts Panel (people named as contacts on CSR grants) ── */
+const PERSON_FIELDS = [
+  { key: 'name', label: 'Name', required: true },
+  { key: 'designation', label: 'Designation' },
+  { key: 'email', label: 'Email' },
+  { key: 'phone', label: 'Phone' },
+];
+const EMPTY_PERSON = { name: '', designation: '', email: '', phone: '' };
+
+const trimPerson = (p) => ({
+  name: (p.name || '').trim(),
+  designation: (p.designation || '').trim(),
+  email: (p.email || '').trim(),
+  phone: (p.phone || '').trim(),
+});
+
+function PersonFields({ value, onChange, idPrefix, autoFocus = false, onEnter }) {
+  return (
+    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1.5 }}>
+      {PERSON_FIELDS.map((f, i) => (
+        <TextField
+          key={f.key}
+          size="small" fullWidth
+          value={value[f.key]}
+          onChange={(e) => onChange({ ...value, [f.key]: e.target.value })}
+          placeholder={f.required ? `${f.label} (required)` : f.label}
+          sx={fieldSx}
+          autoFocus={autoFocus && i === 0}
+          onKeyDown={(e) => { if (e.key === 'Enter' && onEnter) onEnter(); }}
+          slotProps={{ htmlInput: { 'aria-label': `${idPrefix} ${f.label.toLowerCase()}` } }}
+        />
+      ))}
+    </Box>
+  );
+}
+
+function ContactsPanel({ items, onAdd, onUpdate, onDelete }) {
+  const [draft, setDraft] = useState(EMPTY_PERSON);
+  const [editingId, setEditingId] = useState(null);
+  const [edit, setEdit] = useState({ ...EMPTY_PERSON, isActive: true });
+  const [dupeError, setDupeError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [query, setQuery] = useState('');
+
+  const needle = query.trim().toLowerCase();
+  const shown = needle
+    ? items.filter((p) => [p.name, p.designation, p.email, p.phone]
+      .some((v) => (v || '').toLowerCase().includes(needle)))
+    : items;
+
+  // Stored once: a second person with the same email is the same person typed
+  // twice. The server refuses it too; this says so before the round trip.
+  const emailTaken = (email, excludeId = null) => {
+    const lower = email.toLowerCase();
+    return Boolean(lower) && items.some(
+      (p) => (p.email || '').trim().toLowerCase() === lower && p.id !== excludeId,
+    );
+  };
+
+  const handleAdd = async () => {
+    const person = trimPerson(draft);
+    if (!person.name || busy) return;
+    if (emailTaken(person.email)) {
+      setDupeError(`A person with the email "${person.email}" is already on the list.`);
+      return;
+    }
+    setDupeError('');
+    setBusy(true);
+    try {
+      await onAdd(person);
+      setDraft(EMPTY_PERSON);
+    } catch (err) {
+      // Kept as typed, so a refused add can be corrected rather than retyped.
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const startEdit = (item) => {
+    setEditingId(item.id);
+    setEdit({ ...EMPTY_PERSON, ...trimPerson(item), isActive: item.isActive !== false });
+    setDupeError('');
+  };
+
+  const handleCancelEdit = () => { setEditingId(null); setDupeError(''); };
+
+  const handleSaveEdit = async () => {
+    const person = trimPerson(edit);
+    if (!person.name || busy) return;
+    if (emailTaken(person.email, editingId)) {
+      setDupeError(`A person with the email "${person.email}" is already on the list.`);
+      return;
+    }
+    setDupeError('');
+    setBusy(true);
+    try {
+      await onUpdate(editingId, { ...person, isActive: edit.isActive });
+      setEditingId(null);
+    } catch (err) {
+      // Stays open with the edit as typed.
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const details = (p) => [p.designation, p.email, p.phone].filter(Boolean).join(' · ');
+
+  return (
+    <Paper elevation={0} sx={{ border: '1.5px solid #e8e8e8', borderRadius: '20px', overflow: 'hidden' }}>
+      <Box sx={{ px: 3.5, py: 2.5, bgcolor: '#fafafa', borderBottom: '1px solid #e8e8e8' }}>
+        <Typography sx={{ fontSize: '1rem', fontWeight: 700, color: '#1d1d1f' }}>Contacts</Typography>
+        <Typography sx={{ fontSize: '0.82rem', color: '#6e6e73', mt: 0.25 }}>
+          People CSR grants name as contacts (IKF, funder and partner representatives). Picked on each grant&apos;s Contacts tab. Editing a person here updates every grant.
+        </Typography>
+      </Box>
+
+      <Box sx={{ px: 3.5, pt: 2.5, pb: 1 }}>
+        {items.length > 0 && (
+          <TextField
+            size="small" fullWidth
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Filter by name, designation, email or phone"
+            sx={{ ...fieldSx, mb: 1.5 }}
+            slotProps={{ htmlInput: { 'aria-label': 'Filter contacts' } }}
+          />
+        )}
+        {dupeError && editingId !== null && (
+          <Alert severity="warning" sx={{ mb: 1.5, borderRadius: '12px', py: 0 }}>{dupeError}</Alert>
+        )}
+        {items.length === 0 ? (
+          <Typography sx={{ fontSize: '0.85rem', color: '#5A6B82', py: 1.5 }}>No people added yet.</Typography>
+        ) : shown.length === 0 ? (
+          <Typography sx={{ fontSize: '0.85rem', color: '#5A6B82', py: 1.5 }}>Nothing matches this filter.</Typography>
+        ) : (
+          <Stack spacing={1.5}>
+            {shown.map((item) => (
+              <Box key={item.id}>
+                {editingId === item.id ? (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, p: 2, border: '1px solid #e0e0e0', borderRadius: '12px', bgcolor: '#fafafa' }}>
+                    <PersonFields
+                      value={edit}
+                      onChange={(v) => { setEdit(v); setDupeError(''); }}
+                      idPrefix="Edit"
+                      autoFocus
+                      onEnter={handleSaveEdit}
+                    />
+                    <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ flexWrap: 'wrap', gap: 1 }}>
+                      <FormControlLabel
+                        control={(
+                          <Switch
+                            size="small"
+                            checked={edit.isActive}
+                            onChange={(e) => setEdit({ ...edit, isActive: e.target.checked })}
+                          />
+                        )}
+                        label="Active (offered on grants)"
+                        slotProps={{ typography: { sx: { fontSize: '0.85rem', color: '#475569' } } }}
+                      />
+                      <Stack direction="row" spacing={0.5}>
+                        <Tooltip title="Save">
+                          <IconButton size="small" onClick={handleSaveEdit} aria-label="Save" disabled={busy}
+                            sx={{ color: '#22c55e', '&:hover': { bgcolor: '#f0fdf4' } }}>
+                            <CheckIcon sx={{ fontSize: 18 }} />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Cancel">
+                          <IconButton size="small" onClick={handleCancelEdit} aria-label="Cancel"
+                            sx={{ color: '#5A6B82', '&:hover': { bgcolor: '#f5f5f7' } }}>
+                            <CloseIcon sx={{ fontSize: 18 }} />
+                          </IconButton>
+                        </Tooltip>
+                      </Stack>
+                    </Stack>
+                  </Box>
+                ) : (
+                  <Stack direction="row" alignItems="center" justifyContent="space-between"
+                    sx={{ p: 1.5, borderRadius: '12px', border: '1px solid #f0f0f0', bgcolor: '#fff',
+                      '&:hover': { borderColor: '#e0e0e0', bgcolor: '#fafafa' }, transition: 'all 0.15s' }}>
+                    <Box sx={{ minWidth: 0 }}>
+                      <Stack direction="row" spacing={0.75} alignItems="center" sx={{ flexWrap: 'wrap' }}>
+                        <Typography sx={{ fontSize: '0.95rem', fontWeight: 600, color: '#1d1d1f' }}>
+                          {item.name}
+                        </Typography>
+                        {item.isActive === false && (
+                          <Chip label="Inactive" size="small"
+                            sx={{ fontSize: '0.68rem', height: 22, bgcolor: '#f1f5f9', color: '#5A6B82' }} />
+                        )}
+                      </Stack>
+                      {details(item) && (
+                        <Typography sx={{ fontSize: '0.82rem', color: '#5A6B82', mt: 0.25, overflowWrap: 'anywhere' }}>
+                          {details(item)}
+                        </Typography>
+                      )}
+                    </Box>
+                    <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0, ml: 1.5 }}>
+                      <Tooltip title="Edit">
+                        <IconButton size="small" onClick={() => startEdit(item)} aria-label={`Edit ${item.name}`}
+                          sx={{ color: '#64748b', '&:hover': { bgcolor: '#f1f5f9', color: '#4f46e5' } }}>
+                          <EditIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Delete">
+                        <IconButton size="small" onClick={() => onDelete(item)} aria-label={`Delete ${item.name}`}
+                          sx={{ color: '#5A6B82', '&:hover': { bgcolor: '#fef2f2', color: '#ef4444' } }}>
+                          <DeleteIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
+                      </Tooltip>
+                    </Stack>
+                  </Stack>
+                )}
+              </Box>
+            ))}
+          </Stack>
+        )}
+      </Box>
+
+      <Divider sx={{ mx: 3.5, my: 2, borderColor: '#f0f0f0' }} />
+
+      <Box sx={{ px: 3.5, pb: 3 }}>
+        <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: '#5A6B82', textTransform: 'uppercase', letterSpacing: '0.06em', mb: 1.5 }}>
+          Add New Person
+        </Typography>
+        {dupeError && editingId === null && (
+          <Alert severity="warning" sx={{ mb: 1.5, borderRadius: '12px', py: 0 }}>{dupeError}</Alert>
+        )}
+        <PersonFields
+          value={draft}
+          onChange={(v) => { setDraft(v); setDupeError(''); }}
+          idPrefix="New person"
+          onEnter={handleAdd}
+        />
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1.5 }}>
+          <Button variant="contained" onClick={handleAdd} disabled={!draft.name.trim() || busy}
+            startIcon={<AddIcon sx={{ fontSize: '0.95rem' }} />}
+            sx={{
+              bgcolor: '#6366f1', color: '#fff', borderRadius: '12px',
+              textTransform: 'none', fontWeight: 700, boxShadow: 'none', whiteSpace: 'nowrap',
+              '&:hover': { bgcolor: '#4f46e5', boxShadow: 'none' },
+              '&.Mui-disabled': { bgcolor: '#e0e0e0', color: '#9e9e9e' },
+            }}>
+            Add
+          </Button>
+        </Box>
+      </Box>
+    </Paper>
+  );
+}
+
 /* ── Collapsible section group ── */
 function SectionGroup({ icon, label, color, defaultOpen, children }) {
   const [open, setOpen] = useState(defaultOpen ?? true);
@@ -585,6 +834,7 @@ export default function AdminPage() {
   const [reportTypes, setReportTypes] = useState([]);
   const [funderOrganisations, setFunderOrganisations] = useState([]);
   const [activityTypes, setActivityTypes] = useState([]);
+  const [people, setPeople] = useState([]);
   const [saveError, setSaveError] = useState('');
   const [renameInfo, setRenameInfo] = useState('');
 
@@ -725,8 +975,39 @@ export default function AdminPage() {
       .finally(() => { loadActivityTypes().catch(() => {}); });
   };
 
+  // D-037: CSR contact people, stored once and picked on each grant. A CSR
+  // table, written through the CSR people API. Every write reloads the list
+  // from the server, and a refusal (a person still named on a grant) is shown.
+  const loadPeople = () => Promise.resolve()
+    .then(() => csrAPI.people.getAll({ limit: 1000 }))
+    .then((data) => {
+      setPeople(Array.isArray(data) ? data : (data?.results || []));
+    });
+
+  const writePerson = (write, fallback) => {
+    setSaveError('');
+    return Promise.resolve()
+      .then(write)
+      .catch((err) => {
+        setSaveError(err?.response?.data?.detail || err?.message || fallback);
+        throw err;
+      })
+      .finally(() => { loadPeople().catch(() => {}); });
+  };
+
+  const handlePersonAdd = (person) => writePerson(
+    () => csrAPI.people.create(person), 'Failed to add the person. Try again.',
+  );
+  const handlePersonUpdate = (id, person) => writePerson(
+    () => csrAPI.people.update(id, person), 'Failed to save the person. Try again.',
+  );
+  const handlePersonDelete = (item) => writePerson(
+    () => csrAPI.people.delete(item.id), `Failed to delete ${item.name}. Try again.`,
+  ).catch(() => {});
+
   useEffect(() => {
     loadActivityTypes().catch(() => {});
+    loadPeople().catch(() => {});
     // Load defaults immediately, then fetch from API
     setProjectNames(getProjectNames());
     setSeasons(getSeasons());
@@ -931,6 +1212,12 @@ export default function AdminPage() {
               subtitle="The kinds of CSR activity (e.g. Trial, Workshop, Training Programme). Picked when adding an activity inside a CSR project. A name containing trial, workshop or training shows that kind's fields on the activity form. Added and edited only here; an activity type in use cannot be deleted."
               items={activityTypes}
               onSave={handleActivityTypeSave}
+            />
+            <ContactsPanel
+              items={people}
+              onAdd={handlePersonAdd}
+              onUpdate={handlePersonUpdate}
+              onDelete={handlePersonDelete}
             />
           </SectionGroup>
         </Stack>
