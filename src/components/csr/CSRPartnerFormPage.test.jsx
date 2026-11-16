@@ -55,7 +55,6 @@ const openList = async (label) => {
   const input = screen.getByRole('combobox', { name: label });
   await userEvent.clear(input);
   await userEvent.click(input);
-  return within(screen.getByRole('listbox'));
 };
 
 const NAME = /^partner name/i;
@@ -165,12 +164,12 @@ describe('adding a partner', () => {
     await waitFor(() => expect(record).toBeEnabled());
     expect(record).toHaveAttribute('placeholder', 'Not set up in TTA yet');
     await waitFor(() => expect(record).toHaveAccessibleDescription(RECORD_HELP));
-    const list = await openList(RECORD);
-    expect(list.getAllByRole('option').map((o) => o.textContent)).toEqual([
+    await openList(RECORD);
+    expect(within(screen.getByRole('listbox')).getAllByRole('option').map((o) => o.textContent)).toEqual([
       'A1 Classes · Coaching · Pune, Maharashtra',
       'A1 Classes · Goa',
     ]);
-    await userEvent.click(list.getByRole('option', { name: 'A1 Classes · Goa' }));
+    await userEvent.click(within(screen.getByRole('listbox')).getByRole('option', { name: 'A1 Classes · Goa' }));
     await pick(TYPE, 'Life Skills');
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
     await waitFor(() => expect(csrAPI.partnerRecords.create).toHaveBeenCalledWith({
@@ -204,8 +203,8 @@ describe('adding a partner', () => {
     expect(screen.getByRole('combobox', { name: RECORD })).toHaveValue('');
     await waitFor(() => expect(csrAPI.partnerRecords.vendorRecords).toHaveBeenLastCalledWith(32));
     await waitFor(() => expect(screen.getByRole('combobox', { name: RECORD })).toBeEnabled());
-    const list = await openList(RECORD);
-    expect(list.getAllByRole('option').map((o) => o.textContent)).toEqual(['Kick Academy · Partner · Delhi, Delhi']);
+    await openList(RECORD);
+    expect(within(screen.getByRole('listbox')).getAllByRole('option').map((o) => o.textContent)).toEqual(['Kick Academy · Partner · Delhi, Delhi']);
   });
 
   test('a server vendorId error shows under the TTA vendor record field', async () => {
@@ -346,7 +345,7 @@ describe('editing a partner', () => {
     await waitFor(() => expect(record).toHaveValue('A1 Classes · Coaching · Pune, Maharashtra'));
     expect(csrAPI.partnerRecords.vendorRecords).toHaveBeenCalledWith(31);
 
-    await userEvent.click(within(record.parentElement).getByRole('button', { name: 'Clear selection' }));
+    await userEvent.click(screen.getAllByRole('button', { name: 'Clear selection' })[0]);
     expect(record).toHaveValue('');
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
     await waitFor(() => expect(csrAPI.partnerRecords.update).toHaveBeenCalledWith('5', {
@@ -367,9 +366,9 @@ describe('editing a partner', () => {
     const record = await screen.findByRole('combobox', { name: RECORD });
     await waitFor(() => expect(record).toHaveValue('A1 Classes Old · Coaching · Nagpur, Maharashtra'));
     await waitFor(() => expect(record).toBeEnabled());
-    const list = await openList(RECORD);
-    expect(list.getByRole('option', { name: 'A1 Classes Old · Coaching · Nagpur, Maharashtra' })).toBeInTheDocument();
-    expect(list.getByRole('option', { name: 'A1 Classes · Goa' })).toBeInTheDocument();
+    await openList(RECORD);
+    expect(within(screen.getByRole('listbox')).getByRole('option', { name: 'A1 Classes Old · Coaching · Nagpur, Maharashtra' })).toBeInTheDocument();
+    expect(within(screen.getByRole('listbox')).getByRole('option', { name: 'A1 Classes · Goa' })).toBeInTheDocument();
     await userEvent.keyboard('{Escape}');
 
     await userEvent.click(screen.getByRole('button', { name: /save/i }));

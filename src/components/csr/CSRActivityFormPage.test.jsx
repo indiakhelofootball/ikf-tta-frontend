@@ -52,11 +52,6 @@ const pick = async (label, name) => {
   await userEvent.click(await screen.findByRole('option', { name }));
 };
 
-const openOptions = async (input) => {
-  await userEvent.click(input);
-  return within(screen.getByRole('listbox'));
-};
-
 const TYPES = [
   { id: 10, name: 'District Trial', isMaster: false },
   { id: 11, name: 'Career Workshop', isMaster: false },
@@ -161,10 +156,10 @@ describe('creating an activity', () => {
     await userEvent.selectOptions(screen.getByLabelText(/delivered by/i), 'Partner');
     const picker = screen.getByLabelText(/^partner$/i);
     expect(picker).toHaveAccessibleDescription('Partners added on the CSR Partners page.');
-    const list = await openOptions(picker);
-    await waitFor(() => expect(list.getAllByRole('option')).toHaveLength(2));
-    expect(list.getAllByRole('option').map((o) => o.textContent)).toEqual(['A1 Classes', 'Kick Academy']);
-    await userEvent.click(list.getByRole('option', { name: 'Kick Academy' }));
+    await userEvent.click(picker);
+    await waitFor(() => expect(within(screen.getByRole('listbox')).getAllByRole('option')).toHaveLength(2));
+    expect(within(screen.getByRole('listbox')).getAllByRole('option').map((o) => o.textContent)).toEqual(['A1 Classes', 'Kick Academy']);
+    await userEvent.click(within(screen.getByRole('listbox')).getByRole('option', { name: 'Kick Academy' }));
     expect(picker).toHaveValue('Kick Academy');
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
@@ -246,9 +241,9 @@ describe('editing an activity', () => {
 
     const picker = await screen.findByLabelText(/^partner$/i);
     await waitFor(() => expect(picker).toHaveValue('Old Partner Trust'));
-    const list = await openOptions(picker);
-    await waitFor(() => expect(list.getByRole('option', { name: 'A1 Classes' })).toBeInTheDocument());
-    expect(list.getByRole('option', { name: 'Old Partner Trust' })).toHaveAttribute('aria-selected', 'true');
+    await userEvent.click(picker);
+    expect(await within(screen.getByRole('listbox')).findByRole('option', { name: 'A1 Classes' })).toBeInTheDocument();
+    expect(within(screen.getByRole('listbox')).getByRole('option', { name: 'Old Partner Trust' })).toHaveAttribute('aria-selected', 'true');
     await userEvent.keyboard('{Escape}');
 
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
@@ -383,8 +378,8 @@ describe('linked trial', () => {
     await typesLoaded();
     await pick(/activity type/i, 'District Trial');
 
-    const list = await openOptions(screen.getByLabelText(/linked trial/i));
-    expect(list.getAllByRole('option').map((o) => o.textContent)).toEqual(['BH-01 — Bhilai Trial']);
+    await userEvent.click(screen.getByLabelText(/linked trial/i));
+    expect(within(screen.getByRole('listbox')).getAllByRole('option').map((o) => o.textContent)).toEqual(['BH-01 — Bhilai Trial']);
     expect(csrAPI.grantTrials).toHaveBeenCalledWith(11);
     expect(trialsAPI.getAll).not.toHaveBeenCalled();
   });
@@ -397,8 +392,8 @@ describe('linked trial', () => {
 
     const select = await screen.findByLabelText(/linked trial/i);
     await waitFor(() => expect(select).toHaveValue('#99'));
-    const list = await openOptions(select);
-    expect(list.getByRole('option', { name: '#99' })).toHaveAttribute('aria-selected', 'true');
+    await userEvent.click(select);
+    expect(within(screen.getByRole('listbox')).getByRole('option', { name: '#99' })).toHaveAttribute('aria-selected', 'true');
   });
 });
 
@@ -595,8 +590,8 @@ describe('D-019: the activity city comes from the grant', () => {
     await typesLoaded();
     const city = await screen.findByLabelText(/^city$/i);
     await waitFor(() => expect(city).toBeEnabled());
-    const list = await openOptions(city);
-    expect(list.getAllByRole('option').map((o) => o.textContent)).toEqual(['Pune, MH', 'Wardha, MH']);
+    await userEvent.click(city);
+    expect(within(screen.getByRole('listbox')).getAllByRole('option').map((o) => o.textContent)).toEqual(['Pune, MH', 'Wardha, MH']);
     await userEvent.keyboard('{Escape}');
     expect(csrAPI.projects.getById).toHaveBeenCalledWith(11);
     await userEvent.type(screen.getByLabelText(/title/i), 'Pune Trial');
@@ -621,9 +616,9 @@ describe('D-019: the activity city comes from the grant', () => {
     render(<CSRActivityFormPage />);
     const workshop = await screen.findByLabelText(/^workshop$/i);
     await waitFor(() => expect(workshop).toHaveValue('Goal Setting (removed in TTA)'));
-    const list = await openOptions(workshop);
-    expect(list.getByRole('option', { name: 'Goal Setting (removed in TTA)' })).toHaveAttribute('aria-selected', 'true');
-    expect(list.getByRole('option', { name: 'Career Guidance' })).toBeInTheDocument();
+    await userEvent.click(workshop);
+    expect(within(screen.getByRole('listbox')).getByRole('option', { name: 'Goal Setting (removed in TTA)' })).toHaveAttribute('aria-selected', 'true');
+    expect(within(screen.getByRole('listbox')).getByRole('option', { name: 'Career Guidance' })).toBeInTheDocument();
   });
 
   test('a held training programme Admin has removed still shows as itself', async () => {
@@ -636,8 +631,8 @@ describe('D-019: the activity city comes from the grant', () => {
     render(<CSRActivityFormPage />);
     const programme = await screen.findByLabelText(/training programme/i);
     await waitFor(() => expect(programme).toHaveValue('Digital Skills (removed in TTA)'));
-    const list = await openOptions(programme);
-    expect(list.getByRole('option', { name: 'Digital Skills (removed in TTA)' })).toHaveAttribute('aria-selected', 'true');
+    await userEvent.click(programme);
+    expect(within(screen.getByRole('listbox')).getByRole('option', { name: 'Digital Skills (removed in TTA)' })).toHaveAttribute('aria-selected', 'true');
   });
 
   test('a stored city the grant has dropped still shows as itself', async () => {
@@ -647,8 +642,8 @@ describe('D-019: the activity city comes from the grant', () => {
     render(<CSRActivityFormPage />);
     const city = await screen.findByLabelText(/^city$/i);
     await waitFor(() => expect(city).toHaveValue('Akola'));
-    const list = await openOptions(city);
-    expect(list.getByRole('option', { name: 'Akola' })).toHaveAttribute('aria-selected', 'true');
+    await userEvent.click(city);
+    expect(within(screen.getByRole('listbox')).getByRole('option', { name: 'Akola' })).toHaveAttribute('aria-selected', 'true');
   });
 });
 
