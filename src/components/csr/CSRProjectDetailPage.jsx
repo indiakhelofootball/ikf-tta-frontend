@@ -481,6 +481,47 @@ export default function CSRProjectDetailPage() {
     },
   });
 
+  // Deleting a grant hides it and everything under it; nothing is removed, so
+  // the prompt names what goes with it and where it comes back from. A list
+  // that failed to load is named without a number rather than with a wrong one.
+  const deleteGrant = () => {
+    const counted = (list, one, many, failed) =>
+      (failed ? many : `${list.length} ${list.length === 1 ? one : many}`);
+    const attached = [
+      counted(activities, 'activity', 'activities', listFailed.activities),
+      counted(reports, 'report', 'reports', listFailed.reports),
+      counted(expenses, 'expense line', 'expense lines', false),
+      'its contracts',
+      counted(contacts, 'contact', 'contacts', listFailed.contacts),
+      counted(athletes, 'athlete', 'athletes', listFailed.athletes),
+    ];
+    setConfirmState({
+      title: 'Delete grant',
+      message: (
+        <>
+          <Typography variant="body2" gutterBottom>
+            {project.clientName || project.name} leaves every list, for staff and the funder. These stay attached to it and are hidden with it:
+          </Typography>
+          <ul className="csr-delete-list">
+            {attached.map((line) => <li key={line}>{line}</li>)}
+          </ul>
+          <Typography variant="body2">
+            Nothing is lost; a super admin can restore it from Projects &gt; Deleted.
+          </Typography>
+        </>
+      ),
+      confirmLabel: 'Delete grant',
+      onConfirm: async () => {
+        try {
+          await csrAPI.projects.delete(id);
+          navigate('/csr/projects', { state: { saved: 'Grant deleted. It is in Projects > Deleted.' } });
+        } catch (e) {
+          notify(e.message || 'Delete failed.', 'error');
+        }
+      },
+    });
+  };
+
   const deleteExpense = (x) => setConfirmState({
     title: 'Remove expense tag',
     message: 'Remove this expense tag?',
@@ -821,6 +862,14 @@ export default function CSRProjectDetailPage() {
       >
         Preview as funder
       </Button>
+      {isSuper && (
+        <Button
+          size="small" variant="outlined" color="error" sx={{ mb: 2, ml: 1 }}
+          onClick={deleteGrant}
+        >
+          Delete grant
+        </Button>
+      )}
 
       <Tabs value={Math.min(tab, canViewCert ? 6 : 5)} onChange={(e, v) => setTab(v)} variant="scrollable" scrollButtons={false} sx={{ mb: 2 }}>
         <Tab label="Overview" />

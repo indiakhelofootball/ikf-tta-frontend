@@ -83,7 +83,7 @@ function Fact({ label, value, empty = '—' }) {
 }
 
 export default function CSRProjectManagementPage() {
-  const { canEdit } = useGrants();
+  const { canEdit, isSuper } = useGrants();
   const editable = canEdit('csr');
   const navigate = useNavigate();
   const location = useLocation();
@@ -103,6 +103,11 @@ export default function CSRProjectManagementPage() {
   // to show CSRProject.work_order, TTA's outbound vendor payable, in this slot.
   const [contractsByProject, setContractsByProject] = useState({});
 
+  // Deleted is a separate list from the server (?deleted=true), not a status
+  // the loaded grants carry, and only a super admin can see it.
+  const showDeleted = statusFilter === 'Deleted';
+  const filters = isSuper ? ['All', 'Active', 'Closed', 'Deleted'] : ['All', 'Active', 'Closed'];
+
   const notify = (message, severity = 'success') => setToast({ open: true, message, severity });
 
   // The grant form is its own route now, so the save that used to raise this
@@ -121,7 +126,7 @@ export default function CSRProjectManagementPage() {
     if (!silent) setLoading(true);
     try {
       const [data, contracts] = await Promise.all([
-        csrAPI.projects.getAll(),
+        csrAPI.projects.getAll(showDeleted ? { deleted: true } : {}),
         csrAPI.workOrders.getAll(),
       ]);
       setProjects(Array.isArray(data) ? data : data?.results || []);
@@ -136,7 +141,7 @@ export default function CSRProjectManagementPage() {
     } finally {
       if (!silent) setLoading(false);
     }
-  }, []);
+  }, [showDeleted]);
 
   useEffect(() => { load(); }, [load]);
   useRefetchOnFocus(() => load(true));
@@ -146,13 +151,22 @@ export default function CSRProjectManagementPage() {
   // form state and no save handler.
   const openCreate = () => navigate('/csr/projects/new');
   const openEdit = (p) => navigate(`/csr/projects/${p.id}/edit`);
+  const restore = async (p) => {
+    try {
+      await csrAPI.projects.restore(p.id);
+      notify(`${p.clientName || p.name} restored.`);
+      load(true);
+    } catch (e) {
+      notify(e.message || 'Restore failed.', 'error');
+    }
+  };
   const cycleSort = () =>
     setSortKey((k) => SORT_KEYS[(SORT_KEYS.indexOf(k) + 1) % SORT_KEYS.length]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return projects
-      .filter((p) => (statusFilter === 'All' ? true : p.status === statusFilter))
+      .filter((p) => (statusFilter === 'All' || showDeleted ? true : p.status === statusFilter))
       .filter((p) => {
         if (!q) return true;
         return (
@@ -163,7 +177,7 @@ export default function CSRProjectManagementPage() {
         );
       })
       .sort(SORTS[sortKey].compare);
-  }, [projects, search, statusFilter, sortKey]);
+  }, [projects, search, statusFilter, showDeleted, sortKey]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   // safePage, not page: the list can shrink under the reader — a delete, or a
@@ -216,7 +230,7 @@ export default function CSRProjectManagementPage() {
           />
         </label>
         <div className="segbar" role="tablist" aria-label="Status filter">
-          {['All', 'Active', 'Closed'].map((s) => (
+          {filters.map((s) => (
             <button
               key={s}
               type="button"
@@ -236,9 +250,11 @@ export default function CSRProjectManagementPage() {
       ) : filtered.length === 0 ? (
         <div className="panel">
           <div className="empty">
-            <h3>{projects.length === 0 ? 'No grants yet' : 'No projects match'}</h3>
+            <h3>{projects.length === 0 ? (showDeleted ? 'No deleted grants' : 'No grants yet') : 'No projects match'}</h3>
             {projects.length === 0
-              ? 'A CSR project records what a funder sanctioned and what IKF promised in return.'
+              ? (showDeleted
+                ? 'A grant deleted from its page is kept here until a super admin restores it.'
+                : 'A CSR project records what a funder sanctioned and what IKF promised in return.')
               : 'Clear the search or change the filter.'}
           </div>
         </div>
@@ -261,7 +277,7 @@ export default function CSRProjectManagementPage() {
 
             {paged.map((p) => {
               const st = statusPill(p.status);
-              return (
+              const row = (
                 <button
                   key={p.id}
                   type="button"
@@ -289,6 +305,21 @@ export default function CSRProjectManagementPage() {
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 6l6 6-6 6" /></svg>
                   </span>
                 </button>
+              );
+              if (!showDeleted) return row;
+              // A button cannot sit inside the row's button, so Restore is its sibling.
+              return (
+                <div key={p.id} className="lr-deleted">
+                  {row}
+                  <button
+                    type="button"
+                    className="ghostbtn tight"
+                    aria-label={`Restore ${p.clientName || p.name}`}
+                    onClick={() => restore(p)}
+                  >
+                    Restore
+                  </button>
+                </div>
               );
             })}
 
@@ -339,14 +370,16 @@ export default function CSRProjectManagementPage() {
                     <span className={`pill ${statusPill(selected.status).cls}`}>
                       {statusPill(selected.status).label}
                     </span>
-                    {editable && (
+                    {editable && !showDeleted && (
                       <button type="button" className="ico g" aria-label={`Edit ${selected.name}`} onClick={() => openEdit(selected)}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
                       </button>
                     )}
-                    <button type="button" className="ico" aria-label={`Open the full page for ${selected.name}`} onClick={() => navigate(`/csr/${selected.id}`)}>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 6l6 6-6 6" /></svg>
-                    </button>
+                    {!showDeleted && (
+                      <button type="button" className="ico" aria-label={`Open the full page for ${selected.name}`} onClick={() => navigate(`/csr/${selected.id}`)}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 6l6 6-6 6" /></svg>
+                      </button>
+                    )}
                   </div>
                 </div>
 

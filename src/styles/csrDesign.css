@@ -3305,3 +3305,7 @@
 .csrx .cbx-add{color:var(--g);font-weight:600}
 .csrx .cbx-add[aria-disabled="true"]{cursor:progress;opacity:.7}
 .csrx .cbx-err{margin:6px 0 0;font-size:13px;line-height:1.6;color:var(--red)}
+/* Deleted list: the row and its Restore button side by side. */
+.csrx .lr-deleted{display:flex;align-items:center;gap:8px;padding-right:12px}
+.csrx .lr-deleted > .lr{flex:1;min-width:0}
+.csr-delete-list{margin:0 0 12px;padding-left:20px}
