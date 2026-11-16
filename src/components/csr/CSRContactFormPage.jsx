@@ -221,9 +221,13 @@ export default function CSRContactFormPage() {
       // Stay on the page. Navigating away on a failed save is how typed work
       // gets thrown out — the contact is gone and the person has nothing to
       // retry.
-      setSaveError(err?.message || 'Could not save this contact. Please try again.');
-      setPartnerError(fieldError(err?.response?.data, 'partnerId'));
-      setError(fieldError(err?.response?.data, 'personId'));
+      const partnerMsg = fieldError(err?.response?.data, 'partnerId');
+      const personMsg = fieldError(err?.response?.data, 'personId');
+      setPartnerError(partnerMsg);
+      setError(personMsg);
+      if (!partnerMsg && !personMsg) {
+        setSaveError(err?.message || 'Could not save this contact. Please try again.');
+      }
       setSaving(false);
     }
   };

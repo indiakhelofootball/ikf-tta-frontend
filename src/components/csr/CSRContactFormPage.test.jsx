@@ -334,6 +334,8 @@ describe('creating a contact', () => {
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
     await waitFor(() => expect(screen.getByRole('combobox', { name: /person/i }))
       .toHaveAttribute('aria-invalid', 'true'));
+    expect(screen.queryByText(/personId:/)).not.toBeInTheDocument();
+    expect(screen.getAllByText(/Sameer Joshi is already a contact of this type/)).toHaveLength(1);
   });
 });
 
