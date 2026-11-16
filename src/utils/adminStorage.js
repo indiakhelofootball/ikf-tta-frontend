@@ -18,6 +18,7 @@ const CATEGORY_MAP = {
   workshopNames: 'workshop_name',
   trainingProgrammes: 'training_programme',
   utilisationTypes: 'utilisation_type',
+  reportTypes: 'report_type',
 };
 
 // ── In-memory cache ─────────────────────────────────────────────────
@@ -35,6 +36,7 @@ const _cache = {
   workshopNames: null,
   trainingProgrammes: null,
   utilisationTypes: null,
+  reportTypes: null,
 };
 
 // Per-key load status. 'loaded' is the ONLY state in which _cache is
@@ -55,6 +57,7 @@ const _status = {
   workshopNames: 'idle',
   trainingProgrammes: 'idle',
   utilisationTypes: 'idle',
+  reportTypes: 'idle',
 };
 
 const DEFAULTS = {
@@ -77,6 +80,9 @@ const DEFAULTS = {
   // migration, so they carry real ids a grant can reference. A local seed has
   // only a synthetic id and could not be saved onto a grant.
   utilisationTypes: [],
+  // No client-side seed either: the five starting types are rows the server
+  // seeds by migration.
+  reportTypes: [],
 };
 
 // ── Change notification ─────────────────────────────────────────────
@@ -406,6 +412,13 @@ export function getTrainingProgrammeList() {
 // holds the row by ForeignKey.
 export function getUtilisationTypes() {
   return getFromCache('utilisationTypes');
+}
+
+// The kinds of CSR report (Trial, Workshop, Overall, ...). TTA Admin edits
+// them, the CSR report form only reads them. CSRReport.report_type copies the
+// string, so a rename goes through configAPI.rename and the server cascades it.
+export function getReportTypes() {
+  return getFromCache('reportTypes');
 }
 
 // ── Helper: return just name strings ─────────────────────────────────

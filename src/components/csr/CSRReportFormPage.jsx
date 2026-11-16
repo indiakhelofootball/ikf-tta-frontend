@@ -1,13 +1,16 @@
 // CSR report form — a PAGE, not a dialog. Follows the pattern set by
 // CSRProjectFormPage (5666ded) and CSRActivityFormPage.
 //
-// Fields, validation and payload shape are carried over unchanged from
-// CSRReportModal; the comments explaining WHY a field behaves as it does come
-// with them.
-import React, { useState, useEffect, useCallback } from 'react';
+// "Reports should be simple: I upload, the report is made." So the form asks
+// for a name, a type, and one thing to attach (a file or a link). The payload
+// shape is unchanged from CSRReportModal; the comments explaining WHY a field
+// behaves as it does come with it.
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 
 import { csrAPI } from '../../services/api';
+import { getReportTypes } from '../../utils/adminStorage';
+import useConfigVersion from '../../hooks/useConfigVersion';
 import {
   REPORT_FILE_ACCEPT,
   formatFileSize,
@@ -17,12 +20,6 @@ import {
 import { reportFormFunderLine } from './activityVisibility';
 import { GRANT_TABS, grantTabState } from './grantTabs';
 import '../../styles/csrDesign.css';
-
-// The kinds the 26 Aug review asked to distinguish: "what is the report of the
-// trial, what is the report of the workshop... what will be the type of report".
-// 'Overall' added per 26 Aug review, 16:21: a grant-wide report is distinct
-// from 'Other' (uncategorised) -- every other value here is an activity kind.
-const REPORT_TYPES = ['Trial', 'Workshop', 'Training Programme', 'Overall', 'Other'];
 
 const EMPTY = {
   title: '', reportType: '', documentDate: '', fileName: '', fileUrl: '', activityId: '',
@@ -49,6 +46,7 @@ export default function CSRReportFormPage() {
   const [pickedFile, setPickedFile] = useState(null);
   const [fileError, setFileError] = useState('');
   const [removeUpload, setRemoveUpload] = useState(false);
+  const [replacing, setReplacing] = useState(false);
   const [fileInputKey, setFileInputKey] = useState(0);
   // Set when a new report saved but its upload failed: the next Save updates
   // that report and retries the upload instead of filing a second report.
@@ -56,6 +54,17 @@ export default function CSRReportFormPage() {
   const [downloadError, setDownloadError] = useState('');
 
   const projectId = report?.projectId ?? (projectIdFromQuery ? Number(projectIdFromQuery) : null);
+
+  // Report types are an Admin catalogue. Re-read it when refreshAllFromAPI
+  // lands instead of freezing whatever was cached at mount.
+  const cfgVersion = useConfigVersion();
+  const catalogueTypes = useMemo(() => getReportTypes().map((t) => t.name), [cfgVersion]);
+  // A report can hold a type Admin has since retired. It stays selectable for
+  // that report, so an edit does not silently clear it.
+  const storedType = report?.reportType || '';
+  const typeOptions = storedType && !catalogueTypes.includes(storedType)
+    ? [...catalogueTypes, storedType]
+    : catalogueTypes;
 
   useEffect(() => {
     if (!isEdit) {
@@ -111,10 +120,16 @@ export default function CSRReportFormPage() {
 
   const setField = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
+  const hasStoredFile = isEdit && Boolean(report?.hasFile);
+  const showStoredFile = hasStoredFile && !removeUpload && !replacing;
+  // With a file on show, the link input only appears when the report already
+  // has a link too, so that link stays editable.
+  const showLink = !showStoredFile || Boolean(report?.fileUrl);
+
   const validate = () => {
     const next = {};
     if (!form.title.trim()) next.title = 'Required';
-    const keepsUpload = Boolean(report?.hasFile) && !removeUpload;
+    const keepsUpload = hasStoredFile && !removeUpload;
     if (!form.fileUrl.trim() && !pickedFile && !keepsUpload) {
       next.fileUrl = 'Upload the report, or paste a Drive link.';
     }
@@ -134,6 +149,12 @@ export default function CSRReportFormPage() {
     setPickedFile(null);
     setFileError('');
     setFileInputKey((k) => k + 1);
+  };
+
+  const keepStoredFile = () => {
+    setRemoveUpload(false);
+    setReplacing(false);
+    clearPickedFile();
   };
 
   const downloadCurrent = async () => {
@@ -161,7 +182,9 @@ export default function CSRReportFormPage() {
       title: form.title.trim(),
       reportType: form.reportType,
       documentDate: form.documentDate.trim(),
-      fileName: form.fileName.trim(),
+      // No field for it any more: the uploaded file's own name when one is
+      // chosen, otherwise whatever the report already held.
+      fileName: pickedFile ? pickedFile.name : form.fileName.trim(),
       fileUrl: form.fileUrl.trim(),
       activityId: form.activityId === '' ? null : Number(form.activityId),
       visibleToClient: form.visibleToClient,
@@ -249,7 +272,7 @@ export default function CSRReportFormPage() {
       <form className="pform" onSubmit={handleSubmit} noValidate>
         <section className="pform-sec pform-sec--grant">
           <h2 className="pform-legend">The report</h2>
-          <p className="pform-sub">What this report is, and where the document lives.</p>
+          <p className="pform-sub">Name it, pick its type, and attach the document.</p>
 
           <div className="pform-field">
             <label htmlFor="r-title">Report Name <span className="pform-req" aria-hidden="true">*</span></label>
@@ -264,27 +287,97 @@ export default function CSRReportFormPage() {
             </p>
           </div>
 
-          <div className="pform-row">
-            <div className="pform-field">
-              <label htmlFor="r-type">Report Type</label>
-              <select id="r-type" className="sel" value={form.reportType} onChange={setField('reportType')}>
-                <option value="">—</option>
-                {REPORT_TYPES.map((t) => (
-                  <option key={t} value={t}>{t}</option>
-                ))}
-              </select>
-              <p className="pform-help">Trial, workshop, training programme, or other.</p>
-            </div>
-
-            <div className="pform-field">
-              <label htmlFor="r-filename">File Name (optional)</label>
-              <input id="r-filename" type="text" value={form.fileName} onChange={setField('fileName')} />
-              <p className="pform-help">The document's own file name, if it differs.</p>
-            </div>
+          <div className="pform-field">
+            <label htmlFor="r-type">Report Type</label>
+            <select
+              id="r-type" className="sel" value={form.reportType} onChange={setField('reportType')}
+              aria-describedby="r-type-help"
+            >
+              <option value="">—</option>
+              {typeOptions.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+            <p id="r-type-help" className="pform-help">Managed in Admin &gt; Report Types.</p>
           </div>
 
+          <fieldset className="pform-field" aria-describedby="r-attach-help">
+            <legend>Attach <span className="pform-req" aria-hidden="true">*</span></legend>
+
+            {showStoredFile ? (
+              <>
+                <p className="pform-attach-file">
+                  {report.uploadedFileName} ({formatFileSize(report.uploadedFileSize)})
+                </p>
+                <div className="pform-actions">
+                  <button type="button" className="ghostbtn tight" onClick={downloadCurrent}>
+                    Download
+                  </button>
+                  <button type="button" className="ghostbtn tight" onClick={() => setReplacing(true)}>
+                    Replace
+                  </button>
+                  <button type="button" className="ghostbtn tight" onClick={() => setRemoveUpload(true)}>
+                    Remove
+                  </button>
+                </div>
+                {downloadError ? <p className="pform-help bad" role="alert">{downloadError}</p> : null}
+              </>
+            ) : (
+              <>
+                {hasStoredFile ? (
+                  <div className="pform-actions">
+                    <p className="pform-help">
+                      {removeUpload
+                        ? `${report.uploadedFileName} will be removed on save.`
+                        : `${report.uploadedFileName} is replaced by the file you choose.`}
+                    </p>
+                    <button type="button" className="ghostbtn tight" onClick={keepStoredFile}>
+                      Keep current file
+                    </button>
+                  </div>
+                ) : null}
+                <div className="pform-attach-part">
+                  <label htmlFor="r-file">Upload a file</label>
+                  <input
+                    key={fileInputKey} id="r-file" type="file" accept={REPORT_FILE_ACCEPT} onChange={pickFile}
+                    aria-invalid={Boolean(fileError)} aria-describedby="r-file-help"
+                  />
+                  <p id="r-file-help" className={`pform-help${fileError ? ' bad' : ''}`}>
+                    {fileError
+                      || (pickedFile
+                        ? `${pickedFile.name} (${formatFileSize(pickedFile.size)}) will be uploaded on save.`
+                        : 'PDF, image, Word, Excel or PowerPoint, up to 15 MB.')}
+                  </p>
+                  {pickedFile ? (
+                    <div className="pform-actions">
+                      <button type="button" className="ghostbtn tight" onClick={clearPickedFile}>
+                        Clear chosen file
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              </>
+            )}
+
+            {showLink ? (
+              <div className="pform-attach-part">
+                <label htmlFor="r-url">{showStoredFile ? 'Link' : 'or paste a link'}</label>
+                <div className={`pform-input${form.fileUrl.trim() ? ' ok' : ''}`}>
+                  <input
+                    id="r-url" type="text" value={form.fileUrl} onChange={setField('fileUrl')}
+                    aria-invalid={Boolean(errors.fileUrl)} aria-describedby="r-attach-help"
+                  />
+                </div>
+              </div>
+            ) : null}
+
+            <p id="r-attach-help" className={`pform-help${errors.fileUrl ? ' bad' : ''}`}>
+              {errors.fileUrl || 'A file or a link, either is enough'}
+            </p>
+          </fieldset>
+
           <div className="pform-field">
-            <label htmlFor="r-docdate">Document date</label>
+            <label htmlFor="r-docdate">Date shown to funder (optional)</label>
             <input
               id="r-docdate" type="text" maxLength={50} value={form.documentDate}
               onChange={setField('documentDate')} aria-describedby="r-docdate-help"
@@ -292,81 +385,6 @@ export default function CSRReportFormPage() {
             <p id="r-docdate-help" className="pform-help">
               As printed on the document, e.g. December 2025 or FY 2025-26. The funder sees this instead of the upload date.
             </p>
-          </div>
-
-          <p className="pform-help">Upload the report, or paste a Drive link. Either is enough.</p>
-
-          <div className="pform-row">
-            <div className="pform-field">
-              <label htmlFor="r-file">Upload file</label>
-              <input
-                key={fileInputKey} id="r-file" type="file" accept={REPORT_FILE_ACCEPT} onChange={pickFile}
-                aria-invalid={Boolean(fileError)} aria-describedby="r-file-help"
-              />
-              <p id="r-file-help" className={`pform-help${fileError ? ' bad' : ''}`}>
-                {fileError
-                  || (pickedFile
-                    ? `${pickedFile.name} (${formatFileSize(pickedFile.size)}) will be uploaded on save.`
-                    : 'PDF, image, Word, Excel or PowerPoint, up to 15 MB.')}
-              </p>
-              {pickedFile ? (
-                <div className="pform-actions">
-                  <button type="button" className="ghostbtn tight" onClick={clearPickedFile}>
-                    Clear chosen file
-                  </button>
-                </div>
-              ) : null}
-              {isEdit && report?.hasFile ? (
-                <>
-                  <p className="pform-help">
-                    {removeUpload
-                      ? `${report.uploadedFileName} will be removed on save.`
-                      : `Current file: ${report.uploadedFileName} (${formatFileSize(report.uploadedFileSize)})${pickedFile ? ', replaced on save.' : ''}`}
-                  </p>
-                  <div className="pform-actions">
-                    <button type="button" className="ghostbtn tight" onClick={downloadCurrent}>
-                      Download
-                    </button>
-                    <button
-                      type="button" className="ghostbtn tight"
-                      onClick={() => setRemoveUpload((v) => !v)}
-                    >
-                      {removeUpload ? 'Keep file' : 'Remove'}
-                    </button>
-                  </div>
-                  {downloadError ? <p className="pform-help bad" role="alert">{downloadError}</p> : null}
-                </>
-              ) : null}
-            </div>
-
-            <div className="pform-field">
-              <label htmlFor="r-url">Document Link</label>
-              <div className={`pform-input${form.fileUrl.trim() ? ' ok' : ''}`}>
-                <input
-                  id="r-url" type="text" value={form.fileUrl} onChange={setField('fileUrl')}
-                  aria-invalid={Boolean(errors.fileUrl)} aria-describedby="r-url-help"
-                />
-              </div>
-              <p id="r-url-help" className={`pform-help${errors.fileUrl ? ' bad' : ''}`}>
-                {errors.fileUrl || 'External link, e.g. Google Drive.'}
-              </p>
-            </div>
-          </div>
-        </section>
-
-        <section className="pform-sec pform-sec--detail">
-          <h2 className="pform-legend">Linkage &amp; visibility</h2>
-          <p className="pform-sub">Optional. Attach this to one activity, and set who can see it.</p>
-
-          <div className="pform-field">
-            <label htmlFor="r-activity">Activity (optional)</label>
-            <select id="r-activity" className="sel" value={form.activityId} onChange={setField('activityId')}>
-              <option value="">— None —</option>
-              {activities.map((a) => (
-                <option key={a.id} value={a.id}>{a.title}</option>
-              ))}
-            </select>
-            <p className="pform-help">Attach this report to a specific activity.</p>
           </div>
 
           <div className="pform-field">
@@ -377,12 +395,26 @@ export default function CSRReportFormPage() {
                 aria-describedby="r-visible-help"
                 onChange={(e) => setForm((f) => ({ ...f, visibleToClient: e.target.checked }))}
               />
-              Visible to funder
+              Show to funder
             </label>
             <p id="r-visible-help" className="pform-help">
               The funder sees this title on their portal.
             </p>
           </div>
+
+          <details className="pform-more" open={Boolean(report?.activityId)}>
+            <summary>More</summary>
+            <div className="pform-field">
+              <label htmlFor="r-activity">Activity (optional)</label>
+              <select id="r-activity" className="sel" value={form.activityId} onChange={setField('activityId')}>
+                <option value="">— None —</option>
+                {activities.map((a) => (
+                  <option key={a.id} value={a.id}>{a.title}</option>
+                ))}
+              </select>
+              <p className="pform-help">Attach this report to a specific activity.</p>
+            </div>
+          </details>
         </section>
 
         {saveError ? <p className="pform-error" role="alert">{saveError}</p> : null}
