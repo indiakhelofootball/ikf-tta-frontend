@@ -1258,6 +1258,9 @@ export const csrAPI = /*#__PURE__*/ {
   deliverables: /*#__PURE__*/ csrCrud('/csr/deliverables'),
   expenseTags: /*#__PURE__*/ csrCrud('/csr/expense-tags'),
   contacts: /*#__PURE__*/ csrCrud('/csr/contacts'),
+  // D-037: the people a grant names as contacts, stored once. Admins write it
+  // in Admin > CSR > Contacts; CSR staff only read it to pick.
+  people: /*#__PURE__*/ csrCrud('/csr/people'),
   // Funder onboarding — admin-only endpoint (SUPER_ADMIN/ADMIN). Creates the
   // CSR_CLIENT login + project link in one atomic call; role is fixed server-side.
   clients: {

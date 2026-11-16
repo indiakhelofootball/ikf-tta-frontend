@@ -1,13 +1,14 @@
 // CSR contact form — a PAGE, not a dialog. Follows the pattern set by
 // CSRProjectFormPage (5666ded), CSRActivityFormPage and CSRReportFormPage.
 //
-// Fields, validation and payload shape are carried over unchanged from
-// CSRContactModal; the comments explaining WHY a field behaves as it does
-// come with them.
+// D-037: the person is picked from the Admin contacts list and sent as
+// personId; name, designation, email and phone are the person's, shown
+// read-only, so one edit in Admin reaches every grant.
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 
 import { csrAPI } from '../../services/api';
+import CSRCombobox from './CSRCombobox';
 import { GRANT_TABS, grantTabState } from './grantTabs';
 import '../../styles/csrDesign.css';
 
@@ -30,9 +31,9 @@ const CONTACT_TYPES = [
 // from partner.
 const PARTNER_TYPE = 'Vendor';
 
-const EMPTY = {
-  name: '', designation: '', contactType: '', partnerId: '', email: '', phone: '',
-};
+const EMPTY = { personId: '', contactType: '', partnerId: '' };
+
+const rowsOf = (data) => (Array.isArray(data) ? data : data?.results || []);
 
 const fieldError = (data, key) => {
   const v = data?.[key];
@@ -50,7 +51,9 @@ export default function CSRContactFormPage() {
   const [form, setForm] = useState(EMPTY);
   const [error, setError] = useState('');
   const [contact, setContact] = useState(null);
-  const [knownContacts, setKnownContacts] = useState([]);
+  // D-037: the person is picked from the Admin contacts list, stored once, so
+  // an edit there reaches every grant. null until the list has loaded.
+  const [people, setPeople] = useState(null);
   // The same list the activity form's partner picker reads: TTA Admin vendor
   // names whose service type is Partner.
   const [partners, setPartners] = useState([]);
@@ -83,12 +86,9 @@ export default function CSRContactFormPage() {
         if (cancelled) return;
         setContact(data);
         setForm({
-          name: data.name || '',
-          designation: data.designation || '',
+          personId: data.personId ?? '',
           contactType: data.contactType || '',
           partnerId: data.partnerId ?? '',
-          email: data.email || '',
-          phone: data.phone || '',
         });
         setLoading(false);
       })
@@ -100,26 +100,11 @@ export default function CSRContactFormPage() {
     return () => { cancelled = true; };
   }, [id, isEdit]);
 
-  // The same IKF/client people are re-typed on every grant (client review,
-  // 26 Aug — "IKF has 5-6 contacts"). Dedupe by email so one person picked
-  // across many grants shows once; contacts with no email fall back to a
-  // lowercased name so they still collapse.
   useEffect(() => {
     let cancelled = false;
-    csrAPI.contacts.getAll().then((data) => {
-      if (cancelled) return;
-      const list = Array.isArray(data) ? data : data?.results || [];
-      const byKey = new Map();
-      list.forEach((c) => {
-        const key = (c.email || '').trim().toLowerCase() || (c.name || '').trim().toLowerCase();
-        if (key && !byKey.has(key)) byKey.set(key, c);
-      });
-      setKnownContacts(
-        Array.from(byKey.values()).sort((a, b) => (a.name || '').localeCompare(b.name || '')),
-      );
-    }).catch(() => {
-      if (!cancelled) setKnownContacts([]);
-    });
+    csrAPI.people.getAll({ limit: 1000 })
+      .then((data) => { if (!cancelled) setPeople(rowsOf(data)); })
+      .catch(() => { if (!cancelled) setPeople([]); });
     return () => { cancelled = true; };
   }, []);
 
@@ -151,6 +136,31 @@ export default function CSRContactFormPage() {
     ? [...partners, { id: contact.partnerId, name: contact.partnerName || `#${contact.partnerId}` }]
     : partners;
 
+  // Active people are offered. A person retired in Admin stays shown for the
+  // contact that already names them, so an edit does not silently drop them.
+  const personRows = (people || []).filter(
+    (p) => p.isActive !== false || String(p.id) === String(contact?.personId),
+  );
+  if (contact?.personId && !personRows.some((p) => String(p.id) === String(contact.personId))) {
+    personRows.push({
+      id: contact.personId,
+      name: contact.name || `#${contact.personId}`,
+      designation: contact.designation,
+      email: contact.email,
+      phone: contact.phone,
+      isActive: contact.personActive,
+    });
+  }
+  const personChoices = personRows.map((p) => ({
+    id: p.id,
+    label: p.isActive === false ? `${p.name} (inactive)` : p.name,
+    hint: [p.designation, p.email].filter(Boolean).join(' · ') || undefined,
+  }));
+  const pickedPerson = form.personId === ''
+    ? null
+    : personRows.find((p) => String(p.id) === String(form.personId)) || null;
+  const noPeople = people !== null && personChoices.length === 0;
+
   const pickedPartnerType = partnerTypes && form.partnerId !== ''
     ? partnerTypes.get(String(form.partnerId)) || ''
     : null;
@@ -170,26 +180,9 @@ export default function CSRContactFormPage() {
     if (contactType !== PARTNER_TYPE) setPartnerError('');
   };
 
-  // Picking a suggestion prefills the other fields but never carries the
-  // source contact's id — each grant keeps its own contact row, this is just
-  // a shortcut for typing the same person in again. A native <input list>
-  // sets the text value on pick; matching that text against a known contact's
-  // name is how the prefill still fires without the MUI Autocomplete this
-  // replaced.
-  const handleNameChange = (e) => {
-    const value = e.target.value;
-    const picked = knownContacts.find((c) => c.name === value);
-    if (picked) {
-      setForm((f) => ({
-        ...f,
-        name: picked.name || f.name,
-        designation: picked.designation || f.designation,
-        email: picked.email || f.email,
-        phone: picked.phone || f.phone,
-      }));
-    } else {
-      setForm((f) => ({ ...f, name: value }));
-    }
+  const handlePersonChange = (personId) => {
+    setError('');
+    setForm((f) => ({ ...f, personId }));
   };
 
   const leave = useCallback(
@@ -202,10 +195,9 @@ export default function CSRContactFormPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.name.trim()) { setError('Name is required'); return; }
+    if (form.personId === '') { setError('Pick a person'); return; }
     const payload = {
-      name: form.name.trim(),
-      designation: form.designation.trim(),
+      personId: Number(form.personId),
       contactType: form.contactType,
       // partnerCategoryId is deliberately absent (D-022): a partner's type is
       // the partner's own, and leaving the key out keeps a contact's legacy
@@ -214,8 +206,6 @@ export default function CSRContactFormPage() {
       partnerId: form.contactType === PARTNER_TYPE && form.partnerId !== ''
         ? Number(form.partnerId)
         : null,
-      email: form.email.trim(),
-      phone: form.phone.trim(),
     };
     // Sent on edits too: the update is a PUT, and the server requires the grant
     // on every full write, so leaving it out made every edit fail with a 400.
@@ -233,6 +223,7 @@ export default function CSRContactFormPage() {
       // retry.
       setSaveError(err?.message || 'Could not save this contact. Please try again.');
       setPartnerError(fieldError(err?.response?.data, 'partnerId'));
+      setError(fieldError(err?.response?.data, 'personId'));
       setSaving(false);
     }
   };
@@ -306,6 +297,26 @@ export default function CSRContactFormPage() {
             </select>
           </div>
 
+          <div className="pform-field">
+            <label htmlFor="c-person">Person <span className="pform-req" aria-hidden="true">*</span></label>
+            <CSRCombobox
+              id="c-person"
+              value={form.personId}
+              options={personChoices}
+              onChange={handlePersonChange}
+              placeholder="Search people by name, designation or email"
+              emptyText="No person matches."
+              disabled={noPeople}
+              aria-invalid={Boolean(error)}
+              aria-describedby="c-person-help"
+            />
+            <p id="c-person-help" className={`pform-help${error ? ' bad' : ''}`}>
+              {error || (noPeople
+                ? 'No people yet. People are added in Admin > CSR > Contacts, by an admin.'
+                : 'People are added in Admin > CSR > Contacts, by an admin.')}
+            </p>
+          </div>
+
           {/* WHICH partner, asked only once the answer can mean something.
               The partner's type is not asked here: it is the partner's own,
               set once on the CSR Partners page (D-022), and shown read-only. */}
@@ -338,48 +349,32 @@ export default function CSRContactFormPage() {
               )}
             </div>
           )}
-
-          <div className="pform-field">
-            <label htmlFor="c-name">Name <span className="pform-req" aria-hidden="true">*</span></label>
-            <div className={`pform-input${form.name.trim() ? ' ok' : ''}`}>
-              <input
-                id="c-name" type="text" list="c-known" value={form.name} onChange={handleNameChange}
-                aria-invalid={Boolean(error)} aria-describedby={error ? 'c-name-help' : undefined}
-              />
-            </div>
-            {/* A native <input list> only offers what the browser's own picker
-                renders, so it cannot show the email under each name the way the
-                MUI Autocomplete's option did — the tradeoff for leaving MUI
-                behind. The name alone is still enough to recognise "Aditi
-                Rane" and pick her up rather than retyping. */}
-            <datalist id="c-known">
-              {knownContacts.map((c) => (
-                <option key={c.id ?? `${c.name}-${c.email}`} value={c.name} />
-              ))}
-            </datalist>
-            {error ? <p id="c-name-help" className="pform-help bad">{error}</p> : null}
-          </div>
         </section>
 
-        <section className="pform-sec pform-sec--detail">
-          <h2 className="pform-legend">Contact details</h2>
+        {pickedPerson ? (
+          <section className="pform-sec pform-sec--detail">
+            <h2 className="pform-legend">Contact details</h2>
+            <p className="pform-sub">
+              From the Admin contacts list. Changing them there updates every grant.
+            </p>
 
-          <div className="pform-field">
-            <label htmlFor="c-designation">Designation</label>
-            <input id="c-designation" type="text" value={form.designation} onChange={setField('designation')} />
-          </div>
+            <div className="pform-field">
+              <label htmlFor="c-designation">Designation</label>
+              <input id="c-designation" type="text" value={pickedPerson.designation || ''} readOnly />
+            </div>
 
-          <div className="pform-row">
-            <div className="pform-field">
-              <label htmlFor="c-email">Email</label>
-              <input id="c-email" type="text" value={form.email} onChange={setField('email')} />
+            <div className="pform-row">
+              <div className="pform-field">
+                <label htmlFor="c-email">Email</label>
+                <input id="c-email" type="text" value={pickedPerson.email || ''} readOnly />
+              </div>
+              <div className="pform-field">
+                <label htmlFor="c-phone">Phone</label>
+                <input id="c-phone" type="text" value={pickedPerson.phone || ''} readOnly />
+              </div>
             </div>
-            <div className="pform-field">
-              <label htmlFor="c-phone">Phone</label>
-              <input id="c-phone" type="text" value={form.phone} onChange={setField('phone')} />
-            </div>
-          </div>
-        </section>
+          </section>
+        ) : null}
 
         {saveError ? <p className="pform-error" role="alert">{saveError}</p> : null}
 
