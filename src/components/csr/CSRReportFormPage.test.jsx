@@ -391,10 +391,10 @@ describe('D-018: the line beside Save follows the switch', () => {
   test('a new report: shown, then hidden once switched off', async () => {
     mockSearch = new URLSearchParams({ project: '11' });
     render(<CSRReportFormPage />);
-    expect(line()).toHaveTextContent('The funder will see this');
+    expect(line()).toHaveTextContent('Visible to funder');
     await userEvent.click(screen.getByRole('checkbox', { name: /show to funder/i }));
-    expect(line()).toHaveTextContent('Hidden from the funder');
-    expect(line()).not.toHaveTextContent('The funder will see this');
+    expect(line()).toHaveTextContent('Not visible to funder');
+    expect(line()).not.toHaveTextContent('Visible to funder');
   });
 
   test('an edit of a hidden report says hidden', async () => {
@@ -402,6 +402,6 @@ describe('D-018: the line beside Save follows the switch', () => {
     csrAPI.reports.getById.mockResolvedValue(REPORT);
     render(<CSRReportFormPage />);
     await screen.findByDisplayValue('Nashik Trial Summary');
-    expect(line()).toHaveTextContent('Hidden from the funder');
+    expect(line()).toHaveTextContent('Not visible to funder');
   });
 });

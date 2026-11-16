@@ -48,11 +48,11 @@ export function activityFormFunderLine(form, today) {
     status: form.status,
     needsUpdate: isDatePassed(form, today),
   });
-  return shown ? 'The funder will see this' : 'Hidden from the funder';
+  return shown ? 'Visible to funder' : 'Not visible to funder';
 }
 
 export function reportFormFunderLine(form) {
-  return form.visibleToClient ? 'The funder will see this' : 'Hidden from the funder';
+  return form.visibleToClient ? 'Visible to funder' : 'Not visible to funder';
 }
 
 // A Planned activity whose date has passed asks staff what became of it.

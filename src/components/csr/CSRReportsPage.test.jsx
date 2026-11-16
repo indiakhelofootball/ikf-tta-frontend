@@ -98,10 +98,10 @@ test('opens on All reports, listing released and unreleased together', async () 
 
   expect(await screen.findByRole('button', { name: /Open Q2 utilisation summary/i })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /Open Released summary/i })).toBeInTheDocument();
-  expect(screen.getByRole('combobox', { name: 'Gate' })).toHaveValue('All');
+  expect(screen.getByRole('combobox', { name: 'Funder' })).toHaveValue('All');
 });
 
-test('Not yet released is still one choice away', async () => {
+test('Not visible to funder is still one choice away', async () => {
   csrAPI.reports.getAll.mockResolvedValue([
     REPORT,
     { ...REPORT, id: 2, fileName: 'Released summary', visibleToClient: true },
@@ -109,7 +109,7 @@ test('Not yet released is still one choice away', async () => {
   render(<CSRReportsPage />);
 
   await screen.findByRole('button', { name: /Open Released summary/i });
-  fireEvent.change(screen.getByRole('combobox', { name: 'Gate' }), { target: { value: 'Internal' } });
+  fireEvent.change(screen.getByRole('combobox', { name: 'Funder' }), { target: { value: 'Internal' } });
   expect(screen.queryByRole('button', { name: /Open Released summary/i })).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: /Open Q2 utilisation summary/i })).toBeInTheDocument();
 });

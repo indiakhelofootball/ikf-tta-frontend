@@ -1267,7 +1267,7 @@ export default function CSRProjectDetailPage() {
               )}
               <p id="uc-type-help" className="pform-help">
                 {typeOptions.length === 0
-                  ? 'No certificate types in the catalog yet — an admin adds them in TTA Admin → CSR.'
+                  ? 'No certificate types yet. They are added in Admin > CSR > Utilisation Certificate Types.'
                   : freeze.frozen
                     ? 'Changing this does not alter the issued version; it applies when the certificate is issued again.'
                     : 'Printed on the Utilisation Certificate.'}

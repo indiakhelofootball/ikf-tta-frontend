@@ -40,8 +40,8 @@ const PAGE_SIZE = 5;
 // is what the count in the header points at — it is the only one of the three
 // that is somebody's outstanding work.
 const VIEWS = [
-  { value: 'Internal', label: 'Not yet released' },
-  { value: 'Visible', label: 'Client-visible' },
+  { value: 'Internal', label: 'Not visible to funder' },
+  { value: 'Visible', label: 'Visible to funder' },
   { value: 'All', label: 'All reports' },
 ];
 
@@ -212,7 +212,7 @@ export default function CSRReportsPage() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </label>
-        <select className="sel" aria-label="Gate" value={view} onChange={(e) => setView(e.target.value)}>
+        <select className="sel" aria-label="Funder" value={view} onChange={(e) => setView(e.target.value)}>
           {VIEWS.map((v) => <option key={v.value} value={v.value}>{v.label}</option>)}
         </select>
         <select

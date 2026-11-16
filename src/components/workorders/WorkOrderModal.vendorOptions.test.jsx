@@ -64,14 +64,14 @@ beforeEach(() => {
   localStorage.clear();
 });
 
-async function payloadFromEdit(vendor) {
+async function payloadFromEdit(vendor, status = 'Issued') {
   vendorsAPI.getOptions.mockResolvedValue({ vendors: [vendor], total: 1 });
   const onSave = jest.fn();
   // The work order carries no vendor details of its own, so every copied field
   // in the payload can only have come from the fetched vendor.
   const workOrder = {
     id: 7, vendorId: 42, workOrderNumber: 'GS-SHR-001', type: 'Fixed',
-    amount: 5000, serviceDescription: 'Ground hire', status: 'Issued',
+    amount: 5000, serviceDescription: 'Ground hire', status,
   };
   const { unmount } = render(
     <WorkOrderModal open onClose={() => {}} onSave={onSave} saving={false} workOrder={workOrder} />
@@ -128,6 +128,15 @@ describe('WorkOrderModal save payload: options vendor == full vendor', () => {
     });
     expect(fromSlim).not.toHaveProperty('panCardImageUrl');
   });
+});
+
+describe('WorkOrderModal edit keeps the status', () => {
+  test.each(['Fully Paid', 'Partially Paid', 'Cancelled', 'Issued'])(
+    'editing a %s work order sends its own status back, never a reset to Issued',
+    async (status) => {
+      expect((await payloadFromEdit(FULL_VENDOR, status)).status).toBe(status);
+    },
+  );
 });
 
 describe('WorkOrderModal vendor fetch', () => {

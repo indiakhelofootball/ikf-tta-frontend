@@ -580,7 +580,7 @@ export default function CSRActivityFormPage() {
                 />
                 <p id="a-workshop-help" className="pform-help">
                   {workshops.length === 0
-                    ? 'No workshops in the catalog yet — an admin adds them in TTA Admin → Setup.'
+                    ? 'No workshops yet. They are added in Admin > CSR > Workshop Names.'
                     : 'For a workshop activity. Leave blank otherwise.'}
                 </p>
               </div>
@@ -601,7 +601,7 @@ export default function CSRActivityFormPage() {
                 />
                 <p id="a-programme-help" className="pform-help">
                   {programmes.length === 0
-                    ? 'No training programmes in the catalog yet — an admin adds them in TTA Admin → Setup.'
+                    ? 'No training programmes yet. They are added in Admin > CSR > Training Programmes.'
                     : 'For a multi-month training. Pair it with the start and end dates above.'}
                 </p>
               </div>

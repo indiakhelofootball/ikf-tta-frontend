@@ -342,7 +342,7 @@ function WorkOrderModal({ open, onClose, onSave, workOrder, saving, allVendors: 
       contractDriveLink: form.contractDriveLink || '',
       projectRef: form.projectRef || '',
       projectCity: form.projectCity || '',
-      status: 'Issued',
+      status: workOrder?.status || 'Issued',
       ...(form.type === 'Periodic' && {
         amountPerPeriod: Number(form.amountPerPeriod),
         numberOfPeriods: Number(form.numberOfPeriods),

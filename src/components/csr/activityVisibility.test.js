@@ -76,17 +76,17 @@ test('default status: a future start is Planned; today, the past or no date is C
 test('the activity form line', () => {
   const today = '2026-10-12';
   const f = (over) => ({ visibleToClient: true, status: 'Completed', startDate: '', endDate: '', ...over });
-  expect(activityFormFunderLine(f({}), today)).toBe('The funder will see this');
-  expect(activityFormFunderLine(f({ visibleToClient: false }), today)).toBe('Hidden from the funder');
-  expect(activityFormFunderLine(f({ status: 'Cancelled' }), today)).toBe('Hidden from the funder');
-  expect(activityFormFunderLine(f({ status: 'Planned', startDate: '2026-10-11' }), today)).toBe('Hidden from the funder');
-  expect(activityFormFunderLine(f({ status: 'Planned', startDate: '2026-10-12' }), today)).toBe('The funder will see this');
-  expect(activityFormFunderLine(f({ status: 'Planned', startDate: '2026-10-13' }), today)).toBe('The funder will see this');
+  expect(activityFormFunderLine(f({}), today)).toBe('Visible to funder');
+  expect(activityFormFunderLine(f({ visibleToClient: false }), today)).toBe('Not visible to funder');
+  expect(activityFormFunderLine(f({ status: 'Cancelled' }), today)).toBe('Not visible to funder');
+  expect(activityFormFunderLine(f({ status: 'Planned', startDate: '2026-10-11' }), today)).toBe('Not visible to funder');
+  expect(activityFormFunderLine(f({ status: 'Planned', startDate: '2026-10-12' }), today)).toBe('Visible to funder');
+  expect(activityFormFunderLine(f({ status: 'Planned', startDate: '2026-10-13' }), today)).toBe('Visible to funder');
 });
 
 test('the report form line follows the switch only', () => {
-  expect(reportFormFunderLine({ visibleToClient: true })).toBe('The funder will see this');
-  expect(reportFormFunderLine({ visibleToClient: false })).toBe('Hidden from the funder');
+  expect(reportFormFunderLine({ visibleToClient: true })).toBe('Visible to funder');
+  expect(reportFormFunderLine({ visibleToClient: false })).toBe('Not visible to funder');
 });
 
 test('the date-passed prompt is for Planned rows the server flags, nothing else', () => {

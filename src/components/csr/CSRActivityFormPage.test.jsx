@@ -514,8 +514,8 @@ describe("D-018: a new activity's status follows its start date until picked", (
 describe('D-018: the line beside Save says whether the funder will see it', () => {
   beforeEach(() => { mockSearch = new URLSearchParams({ project: '11' }); });
 
-  const SHOWN = 'The funder will see this';
-  const HIDDEN = 'Hidden from the funder';
+  const SHOWN = 'Visible to funder';
+  const HIDDEN = 'Not visible to funder';
   const status = () => screen.getByLabelText(/status/i);
   const setDate = (label, v) => fireEvent.change(screen.getByLabelText(label), { target: { value: v } });
   const line = () => screen.getByRole('button', { name: /save/i }).parentElement;

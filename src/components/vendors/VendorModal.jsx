@@ -330,7 +330,7 @@ function VendorModal({ open, onClose, onSave, vendor, saving, vendors = [] }) {
                       o.contactPerson?.toLowerCase().includes(q)
                     );
                   }}
-                  noOptionsText="No vendor found — ask admin to add them first"
+                  noOptionsText="No matching name in Admin > Vendor Names"
                   renderOption={(props, option) => {
                     const { key, ...rest } = props;
                     if (option._isAdminName) {
