@@ -19,6 +19,7 @@ const CATEGORY_MAP = {
   trainingProgrammes: 'training_programme',
   utilisationTypes: 'utilisation_type',
   reportTypes: 'report_type',
+  funderOrganisations: 'csr_funder',
 };
 
 // ── In-memory cache ─────────────────────────────────────────────────
@@ -37,6 +38,7 @@ const _cache = {
   trainingProgrammes: null,
   utilisationTypes: null,
   reportTypes: null,
+  funderOrganisations: null,
 };
 
 // Per-key load status. 'loaded' is the ONLY state in which _cache is
@@ -58,6 +60,7 @@ const _status = {
   trainingProgrammes: 'idle',
   utilisationTypes: 'idle',
   reportTypes: 'idle',
+  funderOrganisations: 'idle',
 };
 
 const DEFAULTS = {
@@ -83,6 +86,9 @@ const DEFAULTS = {
   // No client-side seed either: the five starting types are rows the server
   // seeds by migration.
   reportTypes: [],
+  // No seed: a funder is a real organisation an admin added, and a grant
+  // stores the row's id.
+  funderOrganisations: [],
 };
 
 // ── Change notification ─────────────────────────────────────────────
@@ -419,6 +425,14 @@ export function getUtilisationTypes() {
 // string, so a rename goes through configAPI.rename and the server cascades it.
 export function getReportTypes() {
   return getFromCache('reportTypes');
+}
+
+// The organisations that fund CSR grants (D-037). TTA Admin edits them, the
+// grant form picks one. CSRProject.funder holds the row by ForeignKey, so a
+// rename goes through configAPI.rename and reaches every grant and the
+// funder's portal with nothing to copy.
+export function getFunderOrganisations() {
+  return getFromCache('funderOrganisations');
 }
 
 // ── Helper: return just name strings ─────────────────────────────────

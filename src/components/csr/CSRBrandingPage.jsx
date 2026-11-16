@@ -21,7 +21,7 @@ const TOO_LIGHT = 'Too light for text on white; the portal will use a darker sha
 const SWATCH_FALLBACK = '#FFFFFF';
 
 const EMPTY = {
-  projectId: '', slug: '', displayName: '',
+  projectId: '', slug: '',
   logoUrl: '', loginImageUrl: '', primaryColor: '', secondaryColor: '', isActive: true,
 };
 // A picked image waiting for Save: the file to send, a local preview, and what
@@ -97,7 +97,7 @@ export default function CSRBrandingPage() {
   };
   const openEdit = (r) => {
     setForm({
-      projectId: r.projectId ?? '', slug: r.slug || '', displayName: r.displayName || '',
+      projectId: r.projectId ?? '', slug: r.slug || '',
       logoUrl: r.logoUrl || '', loginImageUrl: r.loginImageUrl || '',
       primaryColor: r.primaryColor || '', secondaryColor: r.secondaryColor || '',
       isActive: r.isActive !== false,
@@ -108,9 +108,14 @@ export default function CSRBrandingPage() {
     setModal({ open: true, editing: r });
   };
 
-  const setDisplayName = (e) => {
+  // The portal shows the grant's funder (D-037). It is named in Admin > CSR >
+  // Funder Organisations and read here, never typed.
+  const funderOf = (projectId) => projects.find((p) => String(p.id) === String(projectId))?.clientName || '';
+  const funderName = modal.editing ? modal.editing.displayName || '' : funderOf(form.projectId);
+
+  const setProject = (e) => {
     const { value } = e.target;
-    setForm((f) => ({ ...f, displayName: value, ...(slugTouched ? {} : { slug: suggestSlug(value) }) }));
+    setForm((f) => ({ ...f, projectId: value, ...(slugTouched ? {} : { slug: suggestSlug(funderOf(value)) }) }));
   };
 
   const pickImage = (kind) => async (e) => {
@@ -213,7 +218,6 @@ export default function CSRBrandingPage() {
     const next = {};
     if (!form.projectId) next.projectId = 'Pick a project';
     if (!form.slug.trim()) next.slug = 'Required';
-    if (!form.displayName.trim()) next.displayName = 'Required';
     ['primaryColor', 'secondaryColor'].forEach((k) => {
       if (form[k].trim() && !normaliseHex(form[k])) next[k] = HEX_ERROR;
     });
@@ -333,15 +337,15 @@ export default function CSRBrandingPage() {
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <TextField
-              label="Project" value={form.projectId} onChange={setField('projectId')} select fullWidth
+              label="Project" value={form.projectId} onChange={setProject} select fullWidth
               error={!!errors.projectId} helperText={errors.projectId} disabled={!!modal.editing}
             >
               {projects.map((p) => <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>)}
             </TextField>
             <TextField
-              label="Display name" value={form.displayName} onChange={setDisplayName}
-              error={!!errors.displayName} fullWidth slotProps={{ htmlInput: { maxLength: 60 } }}
-              helperText={errors.displayName || `${form.displayName.length} of 60 characters, so the header never wraps.`}
+              label="Funder name" value={funderName} fullWidth
+              slotProps={{ input: { readOnly: true } }}
+              helperText="The grant's funder. Renamed in Admin > CSR > Funder Organisations, by an admin."
             />
             <TextField
               label="Slug (URL key)" value={form.slug}
@@ -368,7 +372,7 @@ export default function CSRBrandingPage() {
           <section className="bprev-wrap" aria-label="Preview">
             <div className="bimg-l">Preview</div>
             <BrandPreview
-              name={form.displayName.trim()}
+              name={funderName}
               colour={form.primaryColor}
               logo={previewSrc('logo', 'logoFile', form.logoUrl)}
               loginImage={previewSrc('login-image', 'loginImageFile', form.loginImageUrl)}
